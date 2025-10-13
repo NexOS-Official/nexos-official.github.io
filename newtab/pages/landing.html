@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>New Tab | Vplaza</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/ionicons@5.5.2/dist/css/ionicons.min.css" rel="stylesheet">
+<script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+<script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+body {
+    background-color: #0f1016;
+    background-image: url('https://same-assets.com/resource/PiPkbSVK0qhGaSu4C2SiN/download.jpeg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    user-select: none;
+}
+
+@keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); }
+    75% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+}
+
+.shake-animation {
+    animation: shake 0.5s ease-in-out infinite;
+}
+
+.delete-confirmation {
+    position: fixed;
+    bottom: -70px;
+    left: 0;
+    width: 20%;
+    height: 60px;
+    background-color: rgba(40, 40, 50, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: bottom 0.3s ease;
+    z-index: 150;
+    border-radius: 50px;
+    margin-bottom: 10px;
+    margin-left: 10px;
+}
+
+.delete-confirmation.active {
+    bottom: 0;
+}
+
+.delete-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 8px 15px;
+    border-radius: 50px;
+    transition: all 0.2s ease;
+}
+
+.delete-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.delete-button ion-icon {
+    font-size: 22px;
+    color: #ff3333;
+    filter: drop-shadow(0 0 5px rgba(255, 51, 51, 0.7));
+}
+
+.bg-option.selected-for-deletion {
+    border: 2px solid #ff3333;
+}
+
+body[data-wallpaper-type="animated"] {
+    background-size: cover;
+    background-position: center;
+}
+
+.container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 100px;
+    position: relative;
+    z-index: 1;
+    user-select: none;
+}
+
+/*  Updated search container to match clock widget width (700px) with media queries */
+.search-container {
+  width: 700px;
+  max-width: 700px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow: visible;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 40px;
+    backdrop-filter: blur(24px) saturate(100%) contrast(140%) brightness(130%);
+    -webkit-backdrop-filter: blur(24px) saturate(100%) contrast(140%) brightness(130%);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 50px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+  z-index: 99999999;
+  padding: 0;
+}
+
+.search-container:hover {
+  width: 750px;
+  max-width: 750px;
+  border-color: rgba(255,255,255,0.35);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/*  Added media queries to ensure search container matches clock widget on all screen sizes */
+@media (max-width: 768px) {
+  .search-container {
+    width: 90%;
+    max-width: 90%;
+  }
+  
+  .search-container:hover {
+    width: 95%;
+    max-width: 95%;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .search-container {
+    width: 700px;
+    max-width: 700px;
+  }
+  
+  .search-container:hover {
+    width: 750px;
+    max-width: 750px;
+  }
+}
+
+@media (min-width: 1025px) {
+  .search-container {
+    width: 700px;
+    max-width: 700px;
+  }
+  
+  .search-container:hover {
+    width: 750px;
+    max-width: 750px;
+  }
+}
+
+.google-icon {
+  position: absolute;
+  left: 18px;
+  width: 28px;
+  height: 28px;
+  z-index: 2;
+}
+
+.search-box {
+  flex: 1;
+  padding: 16px 20px 16px 60px;
+  background-color: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 15px;
+  outline: none;
+  font-weight: 300;
+  transition: all 0.3s ease;
+  height: 54px;
+}
+
+.search-box::placeholder {
+  color: #cccccc;
+  opacity: 0.8;
+  font-weight: 300;
+}
+
+/*  Updated search button to display icon instead of text */
+.search-button {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #ffffff;
+  padding: 10px 16px;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 5px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255,255,255,0.2);
+}
+
+/*  Added styling for search icon inside button */
+.search-button ion-icon {
+  font-size: 20px;
+  color: #ffffff;
+}
+
+.clock-widget {
+  position: absolute;
+  bottom: 200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  max-width: 700px;
+  height: 180px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 40px;
+    backdrop-filter: blur(10px) saturate(200%) contrast(140%) brightness(60%);
+    -webkit-backdrop-filter: blur(10px) saturate(200%) contrast(140%) brightness(60%);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  z-index: 10;
+}
+
+/*  Added media query for clock widget to match responsive behavior */
+@media (max-width: 768px) {
+  .clock-widget {
+    width: 90%;
+    max-width: 90%;
+  }
+}
+
+.clock-date {
+  font-size: 18px;
+  color: #ffffff;
+  font-weight: 300;
+  margin-bottom: 15px;
+  opacity: 0.95;
+  letter-spacing: 1px;
+}
+
+.clock-time {
+  font-size: 80px;
+  color: #ffffff;
+  font-weight: 300;
+  letter-spacing: -3px;
+  line-height: 1;
+}
+
+.clock-time .minutes {
+  opacity: 0.5;
+}
+
+.clock-period {
+  font-size: 24px;
+  color: #ffffff;
+  font-weight: 300;
+  opacity: 0.8;
+  margin-left: 8px;
+}
+
+.settings-icon {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background-color: rgba(216, 216, 216, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5.2px) saturate(160%) contrast(100%);
+    -webkit-backdrop-filter: blur(5.2px) saturate(160%) contrast(100%);
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.settings-icon:hover {
+    background-color: rgba(216, 216, 216, 0.5);
+    transform: scale(1.05);
+}
+
+.settings-icon img {
+    width: 20px;
+    height: 20px;
+    fill: #ffffff;
+    color: #000;
+}
+
+.settings-panel {
+    position: fixed;
+    right: -350px;
+    top: 0;
+    width: 350px;
+    height: 100vh;
+    background-color: rgba(39, 44, 75, 0);
+    z-index: 999999999999999999999999999999999999999999999999999999;
+    transition: all 0.3s ease;
+    padding: 20px;
+    overflow-y: auto;
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(24px) saturate(100%) contrast(140%) brightness(130%);
+    -webkit-backdrop-filter: blur(24px) saturate(100%) contrast(140%) brightness(130%);
+    margin-top: 5px;
+}
+
+.settings-panel.open {
+    right: 0;
+    z-index: 99999999999999999999999999999999999999999999;
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.settings-header h2 {
+    color: #ffffff;
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+.close-settings {
+    color: #ffffff;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.close-settings:hover {
+    opacity: 1;
+}
+
+.settings-section {
+    margin-bottom: 25px;
+}
+
+#customWallpapersSection {
+    margin-top: 40px;
+}
+
+.settings-section h3 {
+    color: #ffffff;
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 15px;
+}
+
+.background-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.bg-option {
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    height: 120px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.bg-option.animated::after {
+    content: "GIF";
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 10px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.bg-option:hover {
+    transform: scale(1.05);
+}
+
+.bg-option.selected {
+    border-color: #4a9fff;
+}
+
+.bg-option img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.bg-upload {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+}
+
+.bg-upload:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.bg-upload .plus-icon {
+    font-size: 36px;
+    color: #ffffff;
+    opacity: 0.7;
+}
+
+.upload-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 600px;
+    background-color: #2c2e3e;
+    border-radius: 12px;
+    z-index: 110;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.upload-modal.open {
+    display: flex;
+}
+
+.upload-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.upload-header h3 {
+    color: #ffffff;
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+}
+
+.upload-header a {
+    color: #4a9fff;
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.close-upload {
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 24px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.close-upload:hover {
+    opacity: 1;
+}
+
+.upload-content {
+    padding: 20px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.upload-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.upload-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 6px;
+    padding: 12px 15px;
+    color: #ffffff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.upload-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.upload-button svg {
+    width: 24px;
+    height: 24px;
+    fill: #ffffff;
+}
+
+.upload-loading {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    color: #ffffff;
+}
+
+.upload-loading.active {
+    display: block;
+}
+
+.upload-loading .spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top: 3px solid #4a9fff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.upload-success {
+    display: none;
+    text-align: center;
+    padding: 20px;
+    color: #4a9fff;
+    font-size: 14px;
+}
+
+.upload-success.active {
+    display: block;
+}
+
+.images-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.image-item {
+    position: relative;
+    height: 100px;
+    border-radius: 6px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    border: 2px solid transparent;
+}
+
+.image-item:hover {
+    transform: scale(1.05);
+    border-color: #4a9fff;
+}
+
+.image-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-item.gif-indicator::after {
+    content: "GIF";
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    font-size: 9px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-weight: bold;
+}
+
+.custom-wallpapers {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 98;
+    display: none;
+}
+
+.overlay.open {
+    display: block;
+}
+
+.save-wallpapers-btn {
+    margin-top: 15px;
+    width: 100%;
+    padding: 12px;
+    background-color: #4a9fff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.save-wallpapers-btn:hover {
+    background-color: #3a8fef;
+}
+
+.save-wallpapers-btn:disabled {
+    background-color: rgba(255, 255, 255, 0.1);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+</style>
+</head>
+<body>
+
+<div class="clock-widget">
+    <div class="clock-date" id="clockDate">30 Tue</div>
+    <div class="clock-time">
+        <span id="clockHours">11</span><span class="minutes">:<span id="clockMinutes">34</span></span><span class="clock-period" id="clockPeriod">PM</span>
+    </div>
+</div>
+
+<div class="container">
+    <div class="search-container">
+        <img src="searchpng.webp" alt="Google" class="google-icon">
+        <input type="text" class="search-box" id="searchInput" placeholder="Type here..." autofocus autocomplete="off"/>
+        <button class="search-button" onclick="performSearch()">
+            <ion-icon name="search"></ion-icon>
+        </button>
+    </div>
+</div>
+
+<div class="settings-icon" id="settingsIcon" onclick="toggleSettings()">
+    <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXBlbi1pY29uIGx1Y2lkZS1wZW4iPjxwYXRoIGQ9Ik0yMS4xNzQgNi44MTJhMSAxIDAgMCAwLTMuOTg2LTMuOTg3TDMuODQyIDE2LjE3NGEyIDIgMCAwIDAtLjUuODNsLTEuMzIxIDQuMzUyYS41LjUgMCAwIDAgLjYyMy42MjJsNC4zNTMtMS4zMmEyIDIgMCAwIDAgLjgzLS40OTd6Ii8+PC9zdmc+" alt="settings">
+</div>
+
+<div class="settings-panel" id="settingsPanel">
+    <div class="settings-header">
+        <h2>WALL PAPER STYLE</h2>
+        <button class="close-settings" id="closeSettings" onclick="closeSettingsPanel()">×</button>
+    </div>
+
+    <div class="settings-section">
+        <div class="background-options" id="backgroundOptions">
+            </div>
+            <div class="bg-option bg-upload" onclick="openUploadModal()">
+                <span class="plus-icon">+</span>
+            </div>
+        </div>
+
+        <div class="settings-section" id="customWallpapersSection" style="display: none;">
+            <h3>YOUR WALLPAPERS</h3>
+            <div class="custom-wallpapers" id="customWallpapers">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeSettingsPanel()"></div>
+
+<div class="delete-confirmation" id="deleteConfirmation">
+    <button class="delete-button" id="deleteButton" onclick="deleteSelectedWallpapers()">
+        <ion-icon name="trash" role="img" class="md hydrated"></ion-icon>
+        Delete Selected Wallpapers
+    </button>
+</div>
+
+<div class="upload-modal" id="uploadModal">
+    <div class="upload-header">
+        <h3>Add Wallpapers</h3>
+        <a>Upload multiple images/GIFs - any size supported</a>
+        <button class="close-upload" id="closeUpload" onclick="closeUploadModal()">×</button>
+    </div>
+    <div class="upload-content">
+        <div class="upload-options">
+            <button class="upload-button" onclick="document.getElementById('fileInput').click()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+                Choose from your device (multiple files, any size)
+            </button>
+            <input type="file" id="fileInput" accept="image/*,.gif" multiple style="display: none;" onchange="handleFileSelect(event)">
+        </div>
+        <div class="upload-loading" id="uploadLoading">
+            <div class="spinner"></div>
+            <p>Uploading wallpapers...</p>
+        </div>
+        <div class="upload-success" id="uploadSuccess">
+            <p>✓ Wallpapers uploaded successfully!</p>
+        </div>
+    </div>
+</div>
+
+<script>
+let db;
+const DB_NAME = 'WallpaperDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'wallpapers';
+
+function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => {
+            console.error('[v0] IndexedDB error:', request.error);
+            reject(request.error);
+        };
+        
+        request.onsuccess = () => {
+            db = request.result;
+            console.log('[v0] IndexedDB initialized successfully');
+            resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+            db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                objectStore.createIndex('timestamp', 'timestamp', { unique: false });
+                console.log('[v0] Object store created');
+            }
+        };
+    });
+}
+
+function saveWallpaperToDB(wallpaper) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const request = objectStore.add(wallpaper);
+        
+        request.onsuccess = () => {
+            console.log('[v0] Wallpaper saved to IndexedDB:', wallpaper.id);
+            resolve(wallpaper.id);
+        };
+        
+        request.onerror = () => {
+            console.error('[v0] Error saving wallpaper:', request.error);
+            reject(request.error);
+        };
+    });
+}
+
+function getAllWallpapers() {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const request = objectStore.getAll();
+        
+        request.onsuccess = () => {
+            console.log('[v0] Retrieved wallpapers:', request.result.length);
+            resolve(request.result);
+        };
+        
+        request.onerror = () => {
+            console.error('[v0] Error getting wallpapers:', request.error);
+            reject(request.error);
+        };
+    });
+}
+
+function deleteWallpaperFromDB(id) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const objectStore = transaction.objectStore(STORE_NAME);
+        const request = objectStore.delete(id);
+        
+        request.onsuccess = () => {
+            console.log('[v0] Wallpaper deleted from IndexedDB:', id);
+            resolve();
+        };
+        
+        request.onerror = () => {
+            console.error('[v0] Error deleting wallpaper:', request.error);
+            reject(request.error);
+        };
+    });
+}
+
+function updateClock() {
+    const now = new Date();
+
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const day = days[now.getDay()];
+    const month = months[now.getMonth()];
+    const date = now.getDate();
+
+    let hours = now.getHours();
+    const period = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+
+    document.getElementById('clockDate').textContent = `${month} ${date} ${day}`;
+    document.getElementById('clockHours').textContent = hours;
+    document.getElementById('clockMinutes').textContent = minutes;
+    document.getElementById('clockPeriod').textContent = period;
+}
+
+updateClock();
+setInterval(updateClock, 1000);
+
+function performSearch() {
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput.value.trim();
+    if (query !== '') {
+        if (isValidUrl(query)) {
+            let url = query;
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'https://' + url;
+            }
+            window.location.href = 'active/embed.html?url=' + encodeURIComponent(url);
+        } else {
+            window.location.href = 'active/embed.html?url=' + encodeURIComponent('https://www.google.com/search?q=' + query);
+        }
+    }
+}
+
+document.getElementById('searchInput').addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+        performSearch();
+    }
+});
+
+function navigateTo(url) {
+    window.location.href = 'active/embed.html?url=' + encodeURIComponent(url);
+}
+
+function isValidUrl(string) {
+    const pattern = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
+    return pattern.test(string);
+}
+
+window.addEventListener('DOMContentLoaded', async function() {
+    await initDB();
+    
+    const savedBg = localStorage.getItem('backgroundImage');
+    const currentWallpaperId = localStorage.getItem('currentWallpaperId');
+    const isAnimated = localStorage.getItem('isAnimatedWallpaper') === 'true';
+    
+    if (currentWallpaperId) {
+        const wallpapers = await getAllWallpapers();
+        const wallpaper = wallpapers.find(wp => wp.id === currentWallpaperId);
+        
+        if (wallpaper) {
+            const objectURL = URL.createObjectURL(wallpaper.blob);
+            document.body.style.backgroundImage = `url('${objectURL}')`;
+            
+            if (wallpaper.isAnimated) {
+                document.body.setAttribute('data-wallpaper-type', 'animated');
+            }
+        }
+    } else if (savedBg) {
+        document.body.style.backgroundImage = `url('${savedBg}')`;
+        
+        if (isAnimated) {
+            document.body.setAttribute('data-wallpaper-type', 'animated');
+        }
+        
+        const bgOptions = document.querySelectorAll('.bg-option:not(.bg-upload)');
+        bgOptions.forEach(option => {
+            if (option.dataset.bg === savedBg) {
+                option.classList.add('selected');
+            }
+        });
+    } else {
+        document.body.style.backgroundImage = `url('blue-carplay-dark-wallpaper.jpeg')`;
+        const defaultOption = document.querySelector('.bg-option[data-bg="blue-carplay-dark-wallpaper.jpeg"]');
+        if (defaultOption) {
+            defaultOption.classList.add('selected');
+        }
+    }
+    
+    await displayCustomWallpapers();
+});
+
+function toggleSettings() {
+    console.log('Toggle settings clicked');
+    const settingsPanel = document.getElementById('settingsPanel');
+    const overlay = document.getElementById('overlay');
+    settingsPanel.classList.add('open');
+    overlay.classList.add('open');
+}
+
+function closeSettingsPanel() {
+    const settingsPanel = document.getElementById('settingsPanel');
+    const overlay = document.getElementById('overlay');
+    settingsPanel.classList.remove('open');
+    overlay.classList.remove('open');
+    closeUploadModal();
+}
+
+function selectBackground(element) {
+    const bgOptions = document.querySelectorAll('.bg-option');
+    bgOptions.forEach(option => option.classList.remove('selected'));
+
+    element.classList.add('selected');
+
+    const bgUrl = element.dataset.bg;
+
+    document.body.style.backgroundImage = `url('${bgUrl}')`;
+
+    document.body.removeAttribute('data-wallpaper-type');
+
+    localStorage.setItem('backgroundImage', bgUrl);
+    localStorage.setItem('isAnimatedWallpaper', false);
+}
+
+function openUploadModal() {
+    const uploadModal = document.getElementById('uploadModal');
+    uploadModal.classList.add('open');
+}
+
+function closeUploadModal() {
+    const uploadModal = document.getElementById('uploadModal');
+    uploadModal.classList.remove('open');
+    document.getElementById('fileInput').value = '';
+    document.getElementById('uploadLoading').classList.remove('active');
+    document.getElementById('uploadSuccess').classList.remove('active');
+}
+
+let pendingWallpapers = [];
+
+async function handleFileSelect(event) {
+    const files = event.target.files;
+    
+    if (files && files.length > 0) {
+        const uploadLoading = document.getElementById('uploadLoading');
+        const uploadSuccess = document.getElementById('uploadSuccess');
+        
+        uploadLoading.classList.add('active');
+        uploadSuccess.classList.remove('active');
+        
+        let successCount = 0;
+        
+        for (const file of files) {
+            if (file.type.startsWith('image/')) {
+                try {
+                    const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+                    
+                    const wallpaper = {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        blob: file,
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        isAnimated: isGif,
+                        timestamp: Date.now()
+                    };
+                    
+                    await saveWallpaperToDB(wallpaper);
+                    successCount++;
+                    console.log('[v0] Uploaded:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+                } catch (error) {
+                    console.error('[v0] Error uploading file:', file.name, error);
+                }
+            }
+        }
+        
+        uploadLoading.classList.remove('active');
+        
+        if (successCount > 0) {
+            uploadSuccess.classList.add('active');
+            uploadSuccess.querySelector('p').textContent = `✓ ${successCount} wallpaper(s) uploaded successfully!`;
+            
+            await displayCustomWallpapers();
+            
+            setTimeout(() => {
+                closeUploadModal();
+            }, 1500);
+        }
+    }
+}
+
+async function displayCustomWallpapers() {
+    const customWallpapers = await getAllWallpapers();
+    const customWallpapersContainer = document.getElementById('customWallpapers');
+    const customWallpapersSection = document.getElementById('customWallpapersSection');
+    
+    customWallpapersContainer.innerHTML = '';
+    
+    if (customWallpapers.length > 0) {
+        customWallpapersSection.style.display = 'block';
+        
+        for (const wallpaper of customWallpapers) {
+            const wallpaperDiv = document.createElement('div');
+            wallpaperDiv.className = 'bg-option';
+            
+            if (wallpaper.isAnimated) {
+                wallpaperDiv.classList.add('animated');
+            }
+            
+            wallpaperDiv.dataset.id = wallpaper.id;
+            
+            let pressTimer;
+            let isLongPress = false;
+            
+            wallpaperDiv.addEventListener('mousedown', function(e) {
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    handleLongPress(this);
+                }, 2000);
+            });
+            
+            wallpaperDiv.addEventListener('mouseup', function(e) {
+                clearTimeout(pressTimer);
+                if (!isLongPress) {
+                    if (document.querySelector('.shake-animation')) {
+                        toggleDeleteSelection(this);
+                    } else {
+                        selectCustomBackground(this, wallpaper);
+                    }
+                }
+                isLongPress = false;
+            });
+            
+            wallpaperDiv.addEventListener('mouseleave', function(e) {
+                clearTimeout(pressTimer);
+                isLongPress = false;
+            });
+            
+            wallpaperDiv.addEventListener('touchstart', function(e) {
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    handleLongPress(this);
+                }, 2000);
+            });
+            
+            wallpaperDiv.addEventListener('touchend', function(e) {
+                clearTimeout(pressTimer);
+                if (!isLongPress) {
+                    if (document.querySelector('.shake-animation')) {
+                        toggleDeleteSelection(this);
+                    } else {
+                        selectCustomBackground(this, wallpaper);
+                    }
+                }
+                isLongPress = false;
+            });
+            
+            wallpaperDiv.addEventListener('touchcancel', function(e) {
+                clearTimeout(pressTimer);
+                isLongPress = false;
+            });
+            
+            const img = document.createElement('img');
+            const objectURL = URL.createObjectURL(wallpaper.blob);
+            img.src = objectURL;
+            img.alt = 'Custom Wallpaper';
+            
+            wallpaperDiv.appendChild(img);
+            customWallpapersContainer.appendChild(wallpaperDiv);
+            
+            const currentBgId = localStorage.getItem('currentWallpaperId');
+            if (currentBgId === wallpaper.id) {
+                wallpaperDiv.classList.add('selected');
+            }
+        }
+    } else {
+        customWallpapersSection.style.display = 'none';
+    }
+}
+
+async function selectCustomBackground(element, wallpaper) {
+    if (document.querySelector('.shake-animation')) {
+        exitDeletionMode();
+        return;
+    }
+    
+    const allOptions = document.querySelectorAll('.bg-option');
+    allOptions.forEach(option => option.classList.remove('selected'));
+    
+    element.classList.add('selected');
+    
+    const objectURL = URL.createObjectURL(wallpaper.blob);
+    document.body.style.backgroundImage = `url('${objectURL}')`;
+    
+    if (wallpaper.isAnimated) {
+        document.body.setAttribute('data-wallpaper-type', 'animated');
+        localStorage.setItem('isAnimatedWallpaper', 'true');
+    } else {
+        document.body.removeAttribute('data-wallpaper-type');
+        localStorage.setItem('isAnimatedWallpaper', 'false');
+    }
+    
+    localStorage.setItem('currentWallpaperId', wallpaper.id);
+    localStorage.removeItem('backgroundImage');
+}
+
+async function deleteSelectedWallpapers() {
+    const selectedItems = document.querySelectorAll('.selected-for-deletion');
+    if (selectedItems.length === 0) return;
+    
+    const currentBgId = localStorage.getItem('currentWallpaperId');
+    let backgroundWasDeleted = false;
+    
+    for (const item of selectedItems) {
+        const id = item.dataset.id;
+        
+        if (currentBgId === id) {
+            backgroundWasDeleted = true;
+        }
+        
+        await deleteWallpaperFromDB(id);
+    }
+    
+    const remainingWallpapers = await getAllWallpapers();
+    
+    if (remainingWallpapers.length === 0 || backgroundWasDeleted) {
+        document.body.style.backgroundImage = "url('images/microsoft.png')";
+        localStorage.setItem('backgroundImage', 'images/microsoft.png');
+        localStorage.removeItem('currentWallpaperId');
+        localStorage.setItem('isAnimatedWallpaper', 'false');
+        document.body.removeAttribute('data-wallpaper-type');
+        
+        const defaultOption = document.querySelector('.bg-option[data-bg="images/microsoft.png"]');
+        if (defaultOption) {
+            const allOptions = document.querySelectorAll('.bg-option');
+            allOptions.forEach(option => option.classList.remove('selected'));
+            defaultOption.classList.add('selected');
+        }
+    }
+    
+    exitDeletionMode();
+    await displayCustomWallpapers();
+}
+
+function handleLongPress(element) {
+    element.classList.add('shake-animation');
+    element.classList.add('selected-for-deletion');
+    document.getElementById('deleteConfirmation').classList.add('active');
+}
+
+function toggleDeleteSelection(element) {
+    if (element.classList.contains('selected-for-deletion')) {
+        element.classList.remove('selected-for-deletion');
+        element.classList.remove('shake-animation');
+
+        if (!document.querySelector('.selected-for-deletion')) {
+            exitDeletionMode();
+        }
+    } else {
+        element.classList.add('selected-for-deletion');
+        element.classList.add('shake-animation');
+    }
+}
+
+function exitDeletionMode() {
+    const items = document.querySelectorAll('.bg-option');
+    items.forEach(item => {
+        item.classList.remove('shake-animation');
+        item.classList.remove('selected-for-deletion');
+    });
+
+    document.getElementById('deleteConfirmation').classList.remove('active');
+}
+
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.querySelectorAll('img').forEach(img=>img.draggable=false);
+document.addEventListener('dragstart', e=>{ if(e.target && e.target.tagName==='IMG') e.preventDefault(); });
+</script>
+</body>
+</html>
