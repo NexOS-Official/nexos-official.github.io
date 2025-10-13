@@ -84,7 +84,6 @@
             margin-top: 40px;
         }
 
-        /* Completion animation styles */
         .completion-container {
             position: fixed;
             top: 0;
@@ -114,7 +113,6 @@
             background-position: center;
         }
 
-        /* Black screen transition */
         .black-screen {
             position: fixed;
             top: 0;
@@ -144,6 +142,13 @@
     </style>
 </head>
 <body>
+    <script>
+        // 🚫 If already visited, skip the loading screen entirely
+        if (localStorage.getItem("anuraos_visited") === "true") {
+            window.location.href = "main/events/nexos/browser-type/browser-tabs.html";
+        }
+    </script>
+
     <div class="white-box"></div>
     
     <div class="container">
@@ -158,12 +163,10 @@
         </div>
     </div>
 
-    <!-- Completion animation container -->
     <div class="completion-container">
         <div class="completion-gif"></div>
     </div>
 
-    <!-- Black screen overlay -->
     <div class="black-screen"></div>
     
     <script>
@@ -172,12 +175,10 @@
         const progressCounter = document.querySelector('.progress-counter');
         const possibleIncrements = [2, 6, 4, 10];
         
-        // Function to get random increment
         function getRandomIncrement() {
             return possibleIncrements[Math.floor(Math.random() * possibleIncrements.length)];
         }
         
-        // Function to update progress
         function updateProgress() {
             if (currentProgress < totalAssets) {
                 const increment = getRandomIncrement();
@@ -186,17 +187,14 @@
                 progressCounter.textContent = `${currentProgress}/${totalAssets}`;
                 
                 if (currentProgress < totalAssets) {
-                    // Random delay between 50ms to 500ms for next update
                     const delay = Math.random() * 450 + 50;
                     setTimeout(updateProgress, delay);
                 } else {
-                    // Progress complete, wait a moment then start completion sequence
                     setTimeout(startCompletionSequence, 500);
                 }
             }
         }
         
-        // Start progress updates immediately
         setTimeout(updateProgress, 200);
 
         function startCompletionSequence() {
@@ -206,30 +204,28 @@
             const blackScreen = document.querySelector('.black-screen');
             const whiteBox = document.querySelector('.white-box');
 
-            // Step 1: Fade out the loading content and white box
             container.classList.add('fade-out');
             whiteBox.classList.add('fade-out');
             
-            // Step 2: After fade out, center the body and show completion animation
             setTimeout(() => {
                 body.classList.add('center-loading');
                 completionContainer.classList.add('show');
             }, 1000);
 
-            // Step 3: After showing completion gif, fade to black
             setTimeout(() => {
                 blackScreen.classList.add('show');
-            }, 4000); // Show completion gif for 3 seconds
+            }, 4000);
 
-            // Step 4: Navigate to index.html after black screen
             setTimeout(() => {
+                // ✅ Mark as visited so next time it skips
+                localStorage.setItem("anuraos_visited", "true");
                 window.location.href = 'main/events/nexos/browser-type/browser-tabs.html';
-            }, 7000); // 3 seconds after black screen appears
+            }, 7000);
         }
 
         // Optional: Add click to skip functionality
         document.addEventListener('click', function() {
-            // Uncomment the line below if you want clicking to skip to the end
+            // Uncomment below to allow skipping manually
             // startCompletionSequence();
         });
     </script>
