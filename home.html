@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnuraOS Loading</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #2a2a2a;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            padding-left: 100px;
+            transition: all 1s ease-in-out;
+            position: relative;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 40px;
+            max-width: 600px;
+            transition: opacity 1s ease-in-out;
+            position: relative;
+            z-index: 2;
+            color: #ffffff;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .spinner-container {
+            margin: 60px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        .progress-counter {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #ffffff;
+        }
+
+        .spinner {
+            width: 200px;
+            height: 200px;
+            background-image: url('spinner.gif');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-text {
+            font-size: 1rem;
+            font-weight: 300;
+            color: #666666;
+            margin-top: 40px;
+        }
+
+        /* Completion animation styles */
+        .completion-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #2a2a2a;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 1s ease-in-out;
+            z-index: 1000;
+        }
+
+        .completion-container.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .completion-gif {
+            width: 300px;
+            height: 300px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        /* Black screen transition */
+        .black-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 1s ease-in-out;
+            z-index: 2000;
+        }
+
+        .black-screen.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .fade-out {
+            opacity: 0;
+        }
+
+        .center-loading {
+            justify-content: center;
+            padding-left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="white-box"></div>
+    
+    <div class="container">
+        <div>
+            <h1 class="title">Downloading assets</h1>
+            <p class="subtitle">For the best experience, NexOS needs to download required assets.</p>
+        </div>
+        
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <div class="progress-counter">0/217</div>
+        </div>
+    </div>
+
+    <!-- Completion animation container -->
+    <div class="completion-container">
+        <div class="completion-gif"></div>
+    </div>
+
+    <!-- Black screen overlay -->
+    <div class="black-screen"></div>
+    
+    <script>
+        let currentProgress = 0;
+        const totalAssets = 217;
+        const progressCounter = document.querySelector('.progress-counter');
+        const possibleIncrements = [2, 6, 4, 10];
+        
+        // Function to get random increment
+        function getRandomIncrement() {
+            return possibleIncrements[Math.floor(Math.random() * possibleIncrements.length)];
+        }
+        
+        // Function to update progress
+        function updateProgress() {
+            if (currentProgress < totalAssets) {
+                const increment = getRandomIncrement();
+                const newProgress = Math.min(currentProgress + increment, totalAssets);
+                currentProgress = newProgress;
+                progressCounter.textContent = `${currentProgress}/${totalAssets}`;
+                
+                if (currentProgress < totalAssets) {
+                    // Random delay between 50ms to 500ms for next update
+                    const delay = Math.random() * 450 + 50;
+                    setTimeout(updateProgress, delay);
+                } else {
+                    // Progress complete, wait a moment then start completion sequence
+                    setTimeout(startCompletionSequence, 500);
+                }
+            }
+        }
+        
+        // Start progress updates immediately
+        setTimeout(updateProgress, 200);
+
+        function startCompletionSequence() {
+            const container = document.querySelector('.container');
+            const body = document.body;
+            const completionContainer = document.querySelector('.completion-container');
+            const blackScreen = document.querySelector('.black-screen');
+            const whiteBox = document.querySelector('.white-box');
+
+            // Step 1: Fade out the loading content and white box
+            container.classList.add('fade-out');
+            whiteBox.classList.add('fade-out');
+            
+            // Step 2: After fade out, center the body and show completion animation
+            setTimeout(() => {
+                body.classList.add('center-loading');
+                completionContainer.classList.add('show');
+            }, 1000);
+
+            // Step 3: After showing completion gif, fade to black
+            setTimeout(() => {
+                blackScreen.classList.add('show');
+            }, 4000); // Show completion gif for 3 seconds
+
+            // Step 4: Navigate to index.html after black screen
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 7000); // 3 seconds after black screen appears
+        }
+
+        // Optional: Add click to skip functionality
+        document.addEventListener('click', function() {
+            // Uncomment the line below if you want clicking to skip to the end
+            // startCompletionSequence();
+        });
+    </script>
+</body>
+</html>
