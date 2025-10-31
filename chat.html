@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>vplaza Chat</title>
+<link rel="shortcut icon" type="image/png" href="https://i.ibb.co/2FwztDC/nexus.png" />
+<script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+<script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+<style>
+    * { 
+        box-sizing: border-box; 
+        margin: 0; 
+        padding: 0; 
+    }
+    
+    body { 
+        font-family: 'gg sans', 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        height: 100vh; 
+        overflow: hidden; 
+        background: #36393f;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    ::-webkit-scrollbar { 
+        width: 8px; 
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #2f3136;
+    }
+    
+    ::-webkit-scrollbar-thumb { 
+        background: #202225;
+        border-radius: 4px; 
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #18191c;
+    }
+    
+    /* Improved modal styling */
+    .modal { 
+        display: flex; 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        width: 100%; 
+        height: 100%; 
+        background: rgba(0, 0, 0, 0.85);
+        align-items: center; 
+        justify-content: center; 
+        z-index: 50;
+        animation: fadeIn 0.15s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    .modal-content {
+        background: #36393f;
+        padding: 40px;
+        border-radius: 8px;
+        max-width: 420px;
+        width: 90%;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+        animation: slideUp 0.2s ease;
+    }
+    
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .modal-content h2 {
+        font-size: 24px;
+        font-weight: 600;
+        color: #ffffff;
+        margin-bottom: 8px;
+        text-align: center;
+    }
+    
+    .modal-content p {
+        font-size: 14px;
+        color: #b9bbbe;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    
+    #usernameInput {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #202225;
+        border-radius: 3px;
+        background: #202225;
+        color: #dcddde;
+        font-size: 16px;
+        font-family: inherit;
+        margin-bottom: 20px;
+    }
+    
+    #usernameInput:focus {
+        outline: none;
+        border-color: #5865f2;
+    }
+    
+    .modal-content button {
+        width: 100%;
+        padding: 10px;
+        background: #5865f2;
+        border: none;
+        border-radius: 3px;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.17s ease;
+    }
+    
+    .modal-content button:hover {
+        background: #4752c4;
+    }
+    
+    .container { 
+        display: flex; 
+        height: 100vh; 
+        width: 100%;
+        background: #36393f;
+    }
+    
+    /* Improved sidebar styling */
+    .sidebar {
+        width: 240px;
+        background: #2f3136;
+        display: flex;
+        flex-direction: column;
+        padding: 16px 12px;
+        border-right: 1px solid #202225;
+    }
+    
+    .sidebar-header {
+        margin-bottom: 16px;
+    }
+    
+    .room-search {
+        width: 100%;
+        padding: 8px 12px;
+        background: #202225;
+        border: 1px solid #202225;
+        border-radius: 4px;
+        color: #dcddde;
+        font-size: 14px;
+        font-family: inherit;
+        margin-bottom: 8px;
+        transition: border-color 0.17s ease;
+    }
+    
+    .room-search:focus {
+        outline: none;
+        border-color: #5865f2;
+    }
+    
+    .room-search::placeholder {
+        color: #72767d;
+    }
+    
+    .create-room-btn {
+        width: 100%;
+        padding: 8px;
+        background: transparent;
+        border: 1px dashed #4f545c;
+        border-radius: 4px;
+        color: #b9bbbe;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.17s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+    
+    .create-room-btn:hover {
+        background: rgba(88, 101, 242, 0.1);
+        border-color: #5865f2;
+        color: #5865f2;
+    }
+    
+    .servers-list {
+        flex: 1;
+        overflow-y: auto;
+        margin-top: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    /* Improved server item styling */
+    .server-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        cursor: pointer;
+        transition: all 0.17s ease;
+        position: relative;
+        padding: 8px;
+        border-radius: 4px;
+    }
+    
+    .server-item:hover {
+        background: rgba(79, 84, 92, 0.32);
+    }
+    
+    .server-item.active {
+        background: rgba(88, 101, 242, 0.16);
+    }
+    
+    .server-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: #5865f2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 18px;
+        transition: all 0.17s ease;
+        overflow: hidden;
+        position: relative;
+        flex-shrink: 0;
+    }
+    
+    .server-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .server-item:hover .server-icon {
+        border-radius: 16px;
+    }
+    
+    .server-item.active .server-icon {
+        border-radius: 16px;
+    }
+    
+    .server-name {
+        font-size: 14px;
+        color: #96989d;
+        font-weight: 500;
+        flex: 1;
+    }
+    
+    .server-item.active .server-name {
+        color: #ffffff;
+    }
+    
+    .server-item:hover .server-name {
+        color: #dcddde;
+    }
+    
+    /* Improved context menu */
+    .context-menu {
+        position: fixed;
+        background: #18191c;
+        border-radius: 4px;
+        padding: 6px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+        z-index: 1000;
+        min-width: 188px;
+        animation: fadeIn 0.1s ease;
+    }
+    
+    .context-menu-item {
+        padding: 6px 8px;
+        color: #f23f42;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 2px;
+        transition: all 0.17s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .context-menu-item:hover {
+        background: #ed4245;
+        color: #ffffff;
+    }
+    
+    .chat-area {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #36393f;
+    }
+    
+    /* Improved header */
+    .header { 
+        background: #36393f;
+        border-bottom: 1px solid #202225;
+        padding: 0 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 48px;
+        box-shadow: 0 1px 0 rgba(4,4,5,0.2), 0 1.5px 0 rgba(6,6,7,0.05), 0 2px 0 rgba(4,4,5,0.05);
+    }
+    
+    .header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .header-left::before {
+        content: '#';
+        font-size: 24px;
+        color: #80848e;
+        font-weight: 600;
+    }
+    
+    .header h1 { 
+        font-size: 16px; 
+        font-weight: 600;
+        color: #ffffff;
+    }
+    
+    .online-count {
+        font-size: 12px;
+        color: #b5bac1;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .online-count::before {
+        content: '';
+        width: 8px;
+        height: 8px;
+        background: #23a559;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    
+    /* Improved messages area */
+    .messages { 
+        flex-grow: 1; 
+        overflow-y: auto; 
+        padding: 16px; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 4px; 
+        background: #36393f;
+    }
+    
+    .message { 
+        display: flex; 
+        gap: 16px;
+        padding: 4px 0;
+        position: relative;
+        transition: background 0.06s ease;
+    }
+    
+    .message:hover {
+        background: rgba(4, 4, 5, 0.07);
+    }
+    
+    .message-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #5865f2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 16px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+    
+    .message-content {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .message-header { 
+        font-size: 15px; 
+        font-weight: 500;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #ffffff;
+    }
+    
+    .message-timestamp {
+        font-size: 12px;
+        color: #949ba4;
+        font-weight: 400;
+        margin-left: 4px;
+    }
+    
+    .owner-crown {
+        color: #5865f2;
+        font-size: 18px;
+        display: inline-flex;
+        align-items: center;
+    }
+    
+    .kick-btn {
+        background: transparent;
+        border: 1px solid #ed4245;
+        color: #ed4245;
+        cursor: pointer;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 11px;
+        font-weight: 600;
+        transition: all 0.17s ease;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .kick-btn:hover {
+        background: #ed4245;
+        color: #ffffff;
+    }
+    
+    .message-text { 
+        margin: 0; 
+        word-wrap: break-word;
+        color: #dcddde;
+        font-size: 15px;
+        line-height: 1.375;
+    }
+    
+    .message-text.censored {
+        color: #72767d;
+        font-family: monospace;
+        letter-spacing: 2px;
+    }
+    
+    .input-area { 
+        display: flex; 
+        align-items: center; 
+        gap: 8px;
+        background: #36393f;
+        padding: 0 16px 24px 16px;
+    }
+    
+    .input-wrapper {
+        flex: 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+        background: #40444b;
+        border-radius: 8px;
+        padding: 0 16px;
+    }
+    
+    .input-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: transparent;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition: all 0.17s ease;
+        color: #b5bac1;
+        font-size: 20px;
+    }
+    
+    .input-icon:hover {
+        color: #dcddde;
+    }
+    
+    #messageInput { 
+        flex: 1; 
+        padding: 11px 0; 
+        background: transparent;
+        color: #dcddde; 
+        border: none;
+        font-size: 15px; 
+        font-family: inherit;
+    }
+    
+    #messageInput:focus { 
+        outline: none;
+    }
+    
+    #messageInput::placeholder {
+        color: #6d6f78;
+    }
+    
+    .send-button {
+        background: transparent;
+        color: #b5bac1;
+        border: none;
+        padding: 8px;
+        font-size: 24px;
+        cursor: pointer;
+        transition: all 0.17s ease;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+    }
+    
+    .send-button:hover {
+        color: #dcddde;
+    }
+    
+    #fileInput {
+        display: none;
+    }
+    
+    .message-attachment {
+        margin-top: 8px;
+        max-width: 400px;
+        border-radius: 4px;
+        overflow: hidden;
+        border: 1px solid #2b2d31;
+    }
+    
+    .message-attachment img {
+        width: 100%;
+        height: auto;
+        display: block;
+    }
+    
+    .typing-indicator {
+        padding: 0 16px 8px 72px;
+        font-size: 13px;
+        color: #949ba4;
+        font-weight: 400;
+        height: 24px;
+        font-style: italic;
+    }
+    
+    .typing-indicator.hidden {
+        opacity: 0;
+    }
+    
+    /* Improved warning modal */
+    .warning-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 3000;
+        animation: fadeIn 0.15s ease;
+    }
+    
+    .warning-modal-content {
+        background: #313338;
+        padding: 16px;
+        border-radius: 4px;
+        max-width: 440px;
+        width: 90%;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+        animation: slideUp 0.2s ease;
+    }
+    
+    .warning-modal-content h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #f2f3f5;
+        margin-bottom: 8px;
+    }
+    
+    .warning-modal-content p {
+        font-size: 16px;
+        color: #dbdee1;
+        margin-bottom: 20px;
+        line-height: 1.375;
+    }
+    
+    .warning-modal-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+    
+    .warning-modal-buttons button {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.17s ease;
+    }
+    
+    .warning-confirm {
+        background: #da373c;
+        color: #fff;
+    }
+    
+    .warning-confirm:hover {
+        background: #a12d30;
+    }
+    
+    .warning-cancel {
+        background: transparent;
+        color: #ffffff;
+    }
+    
+    .warning-cancel:hover {
+        text-decoration: underline;
+    }
+    
+    /* Improved room creation modal */
+    .room-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 3000;
+        animation: fadeIn 0.15s ease;
+    }
+    
+    .room-modal-content {
+        background: #313338;
+        padding: 16px;
+        border-radius: 4px;
+        max-width: 440px;
+        width: 90%;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+        animation: slideUp 0.2s ease;
+    }
+    
+    .room-modal-content h3 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #f2f3f5;
+        margin-bottom: 8px;
+    }
+    
+    .room-modal-content p {
+        font-size: 16px;
+        color: #b5bac1;
+        margin-bottom: 16px;
+    }
+    
+    .room-modal-content label {
+        display: block;
+        font-size: 12px;
+        color: #b5bac1;
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-bottom: 8px;
+        margin-top: 16px;
+        letter-spacing: 0.5px;
+    }
+    
+    .room-modal-content input[type="text"],
+    .room-modal-content input[type="password"] {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #1e1f22;
+        border-radius: 3px;
+        background: #1e1f22;
+        color: #dbdee1;
+        font-size: 16px;
+        font-family: inherit;
+        transition: border-color 0.17s ease;
+    }
+    
+    .room-modal-content input:focus {
+        outline: none;
+        border-color: #5865f2;
+    }
+    
+    .room-image-upload {
+        margin-top: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    
+    .room-image-preview {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: #1e1f22;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+        border: 4px solid #2b2d31;
+    }
+    
+    .room-image-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .room-image-preview-text {
+        color: #4e5058;
+        font-size: 32px;
+        font-weight: 700;
+    }
+    
+    .upload-image-btn {
+        padding: 8px 16px;
+        background: #4e5058;
+        border: none;
+        border-radius: 3px;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.17s ease;
+    }
+    
+    .upload-image-btn:hover {
+        background: #6d6f78;
+    }
+    
+    .room-modal-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 24px;
+    }
+    
+    .room-modal-buttons button {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.17s ease;
+    }
+    
+    .room-create {
+        background: #5865f2;
+        color: #fff;
+    }
+    
+    .room-create:hover {
+        background: #4752c4;
+    }
+    
+    .room-cancel {
+        background: transparent;
+        color: #ffffff;
+    }
+    
+    .room-cancel:hover {
+        text-decoration: underline;
+    }
+    
+    /* Improved password modal */
+    .password-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 3000;
+        animation: fadeIn 0.15s ease;
+    }
+    
+    .password-modal-content {
+        background: #313338;
+        padding: 16px;
+        border-radius: 4px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+        animation: slideUp 0.2s ease;
+    }
+    
+    .password-modal-content h3 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #f2f3f5;
+        margin-bottom: 8px;
+    }
+    
+    .password-modal-content p {
+        font-size: 16px;
+        color: #b5bac1;
+        margin-bottom: 16px;
+    }
+    
+    .password-modal-content input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #1e1f22;
+        border-radius: 3px;
+        background: #1e1f22;
+        color: #dbdee1;
+        font-size: 16px;
+        font-family: inherit;
+        margin-bottom: 16px;
+        transition: border-color 0.17s ease;
+    }
+    
+    .password-modal-content input:focus {
+        outline: none;
+        border-color: #5865f2;
+    }
+    
+    .password-modal-buttons {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+    
+    .password-modal-buttons button {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.17s ease;
+    }
+    
+    .password-submit {
+        background: #5865f2;
+        color: #fff;
+    }
+    
+    .password-submit:hover {
+        background: #4752c4;
+    }
+    
+    .password-cancel {
+        background: transparent;
+        color: #ffffff;
+    }
+    
+    .password-cancel:hover {
+        text-decoration: underline;
+    }
+
+    @media(max-width: 768px) { 
+        .sidebar {
+            width: 200px;
+        }
+        
+        .message-attachment {
+            max-width: 280px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<audio id="notificationSound" src="https://cdn.discordapp.com/attachments/1234567890/message.mp3" preload="auto"></audio>
+
+<div class="modal" id="loginModal">
+    <div class="modal-content">
+        <h2 id="authTitle">Welcome to vplaza</h2>
+        <p id="authSubtitle">Choose a username to get started</p>
+        <input type="text" id="usernameInput" placeholder="Enter username" required maxlength="20" autocomplete="off">
+        <!-- Added password input for authentication -->
+        <input type="password" id="passwordInput" placeholder="Enter password" required autocomplete="off" style="width: 100%; padding: 10px; border: 1px solid #202225; border-radius: 3px; background: #202225; color: #dcddde; font-size: 16px; font-family: inherit; margin-bottom: 20px; margin-top: 12px;">
+        <button onclick="handleAuth()">Continue</button>
+        <p style="margin-top: 16px; font-size: 13px; color: #72767d; text-align: center;">
+            <span id="authToggleText">Already have an account?</span>
+            <a href="#" onclick="toggleAuthMode(); return false;" style="color: #5865f2; text-decoration: none; font-weight: 500;">Sign In</a>
+        </p>
+    </div>
+</div>
+
+<div class="container" id="chatContainer" style="display:none;">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <input type="text" class="room-search" placeholder="Enter room code" id="roomSearchInput" autocomplete="off" />
+            <button class="create-room-btn" onclick="showRoomModal()">
+                <ion-icon name="add-circle-outline"></ion-icon>
+                Create a room
+            </button>
+        </div>
+        <div class="servers-list" id="serversList"></div>
+    </div>
+    
+    <div class="chat-area">
+        <div class="header">
+            <div class="header-left">
+                <h1 id="roomName">general</h1>
+            </div>
+            <span class="online-count" id="onlineCount">0 online</span>
+        </div>
+        <div class="messages" id="messages"></div>
+        <div class="typing-indicator hidden" id="typingIndicator"></div>
+        <form class="input-area" onsubmit="return false;">
+            <div class="input-wrapper">
+                <input type="file" id="fileInput" accept="image/*,video/*,.pdf,.doc,.docx" multiple />
+                <button class="input-icon" type="button" title="Attach files" onclick="document.getElementById('fileInput').click()">
+                    <ion-icon name="add-circle-outline"></ion-icon>
+                </button>
+                <input id="messageInput" placeholder="Message #general" type="text" autocomplete="off" />
+            </div>
+            <button type="submit" class="send-button" onclick="sendMessage()">
+                <ion-icon name="send"></ion-icon>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
+<script>
+    const CLIENT_ID = 'aSEKMcR4GsEZONob';
+    const drone = new ScaleDrone(CLIENT_ID);
+    
+    const broadcastChannel = new BroadcastChannel('vplaza_sync');
+    
+    let room;
+    let userName = '';
+    let currentRoom = 'general';
+    let typingTimeout;
+    let pendingAttachments = [];
+    let onlineUsers = new Set();
+    let isSignUpMode = true;
+    
+    let allRooms = JSON.parse(localStorage.getItem('vplaza_all_rooms') || '["general"]');
+    let joinedRooms = [];
+    let roomPasswords = JSON.parse(localStorage.getItem('vplaza_room_passwords') || '{}');
+    let roomImages = JSON.parse(localStorage.getItem('vplaza_room_images') || '{}');
+    let roomOwners = JSON.parse(localStorage.getItem('vplaza_room_owners') || '{}');
+    let kickedUsers = JSON.parse(localStorage.getItem('vplaza_kicked_users') || '{}');
+    let userAccounts = JSON.parse(localStorage.getItem('vplaza_user_accounts') || '{}');
+    
+    broadcastChannel.onmessage = (event) => {
+        const { type, data } = event.data;
+        
+        if (type === 'room_created') {
+            allRooms = JSON.parse(localStorage.getItem('vplaza_all_rooms') || '["general"]');
+            roomPasswords = JSON.parse(localStorage.getItem('vplaza_room_passwords') || '{}');
+            roomImages = JSON.parse(localStorage.getItem('vplaza_room_images') || '{}');
+            renderServers();
+        } else if (type === 'room_joined') {
+            loadJoinedRooms();
+            renderServers();
+        } else if (type === 'user_kicked') {
+            kickedUsers = JSON.parse(localStorage.getItem('vplaza_kicked_users') || '{}');
+            if (data.roomId === currentRoom) {
+                loadMessages(currentRoom);
+            }
+        } else if (type === 'room_image_updated') {
+            roomImages = JSON.parse(localStorage.getItem('vplaza_room_images') || '{}');
+            renderServers();
+        }
+    };
+    
+    function toggleAuthMode() {
+        isSignUpMode = !isSignUpMode;
+        const title = document.getElementById('authTitle');
+        const subtitle = document.getElementById('authSubtitle');
+        const toggleText = document.getElementById('authToggleText');
+        const toggleLink = document.querySelector('#loginModal a');
+        
+        if (isSignUpMode) {
+            title.textContent = 'Welcome to vplaza';
+            subtitle.textContent = 'Choose a username to get started';
+            toggleText.textContent = 'Already have an account?';
+            toggleLink.textContent = 'Sign In';
+        } else {
+            title.textContent = 'Welcome back!';
+            subtitle.textContent = 'Sign in to continue';
+            toggleText.textContent = "Don't have an account?";
+            toggleLink.textContent = 'Sign Up';
+        }
+    }
+    
+    function handleAuth() {
+        const nameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const username = nameInput.value.trim();
+        const password = passwordInput.value.trim();
+        
+        if (!username) {
+            alert('Please enter a username');
+            return;
+        }
+        
+        if (!password) {
+            alert('Please enter a password');
+            return;
+        }
+        
+        if (isSignUpMode) {
+            if (userAccounts[username]) {
+                alert('Username already exists. Please choose a different username or sign in.');
+                return;
+            }
+            
+            userAccounts[username] = password;
+            localStorage.setItem('vplaza_user_accounts', JSON.stringify(userAccounts));
+            userName = username;
+            startChat();
+        } else {
+            if (!userAccounts[username]) {
+                alert('Username does not exist. Please sign up first.');
+                return;
+            }
+            
+            if (userAccounts[username] !== password) {
+                alert('Incorrect password');
+                passwordInput.value = '';
+                return;
+            }
+            
+            userName = username;
+            startChat();
+        }
+    }
+    
+    function startChat() {
+        document.getElementById('loginModal').style.display = 'none';
+        document.getElementById('chatContainer').style.display = 'flex';
+        
+        loadJoinedRooms();
+        renderServers();
+        connectToRoom(currentRoom);
+        loadMessages(currentRoom);
+    }
+    
+    function loadJoinedRooms() {
+        const saved = localStorage.getItem(`vplaza_joined_rooms_${userName}`);
+        joinedRooms = saved ? JSON.parse(saved) : ['general'];
+        
+        if (!joinedRooms.includes('general')) {
+            joinedRooms.unshift('general');
+        }
+    }
+    
+    function saveJoinedRooms() {
+        localStorage.setItem(`vplaza_joined_rooms_${userName}`, JSON.stringify(joinedRooms));
+        broadcastChannel.postMessage({ type: 'room_joined' });
+    }
+    
+    function renderServers() {
+        const serversList = document.getElementById('serversList');
+        serversList.innerHTML = '';
+        
+        joinedRooms.forEach(roomId => {
+            const serverItem = document.createElement('div');
+            serverItem.className = 'server-item' + (roomId === currentRoom ? ' active' : '');
+            serverItem.onclick = () => switchRoom(roomId);
+            
+            if (roomId !== 'general') {
+                serverItem.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    showContextMenu(e.clientX, e.clientY, roomId);
+                };
+            }
+            
+            const serverIcon = document.createElement('div');
+            serverIcon.className = 'server-icon';
+            
+            if (roomImages[roomId]) {
+                const img = document.createElement('img');
+                img.src = roomImages[roomId];
+                img.alt = roomId;
+                img.onerror = () => {
+                    serverIcon.innerHTML = roomId.charAt(0).toUpperCase();
+                };
+                serverIcon.appendChild(img);
+            } else {
+                serverIcon.textContent = roomId.charAt(0).toUpperCase();
+            }
+            
+            const serverName = document.createElement('div');
+            serverName.className = 'server-name';
+            serverName.textContent = roomId;
+            
+            serverItem.appendChild(serverIcon);
+            serverItem.appendChild(serverName);
+            serversList.appendChild(serverItem);
+        });
+    }
+    
+    function switchRoom(roomId) {
+        if (isUserKicked(roomId, userName)) {
+            currentRoom = roomId;
+            document.getElementById('roomName').textContent = '################';
+            document.getElementById('messageInput').disabled = true;
+            document.getElementById('messageInput').placeholder = 'You have been removed from this server';
+            document.getElementById('messages').innerHTML = '';
+            renderServers();
+            return;
+        }
+        
+        currentRoom = roomId;
+        document.getElementById('roomName').textContent = roomId;
+        document.getElementById('messageInput').placeholder = `Message #${roomId}`;
+        document.getElementById('messageInput').disabled = false;
+        document.getElementById('messages').innerHTML = '';
+        
+        connectToRoom(roomId);
+        loadMessages(roomId);
+        renderServers();
+    }
+    
+    function showContextMenu(x, y, roomId) {
+        const existingMenu = document.querySelector('.context-menu');
+        if (existingMenu) existingMenu.remove();
+        
+        const menu = document.createElement('div');
+        menu.className = 'context-menu';
+        menu.style.left = x + 'px';
+        menu.style.top = y + 'px';
+        
+        const leaveItem = document.createElement('div');
+        leaveItem.className = 'context-menu-item';
+        leaveItem.innerHTML = '<ion-icon name="exit-outline"></ion-icon> Leave Server';
+        leaveItem.onclick = () => {
+            showLeaveWarning(roomId);
+            menu.remove();
+        };
+        
+        menu.appendChild(leaveItem);
+        document.body.appendChild(menu);
+        
+        const closeMenu = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        };
+        
+        setTimeout(() => {
+            document.addEventListener('click', closeMenu);
+        }, 10);
+    }
+    
+    function showLeaveWarning(roomId) {
+        const modal = document.createElement('div');
+        modal.className = 'warning-modal';
+        modal.innerHTML = `
+            <div class="warning-modal-content">
+                <h3>Leave '${roomId}'</h3>
+                <p>Are you sure you want to leave <strong>${roomId}</strong>? You won't be able to rejoin without the room code.</p>
+                <div class="warning-modal-buttons">
+                    <button class="warning-cancel" onclick="this.closest('.warning-modal').remove()">Cancel</button>
+                    <button class="warning-confirm" onclick="leaveRoom('${roomId}'); this.closest('.warning-modal').remove()">Leave Server</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    function leaveRoom(roomId) {
+        joinedRooms = joinedRooms.filter(r => r !== roomId);
+        saveJoinedRooms();
+        
+        if (currentRoom === roomId) {
+            switchRoom('general');
+        }
+        
+        renderServers();
+    }
+    
+    function showRoomModal() {
+        const modal = document.createElement('div');
+        modal.className = 'room-modal';
+        modal.id = 'roomModal';
+        modal.innerHTML = `
+            <div class="room-modal-content">
+                <h3>Create a room</h3>
+                <p>Customize your new room</p>
+                <label>ROOM NAME</label>
+                <input type="text" id="newRoomName" placeholder="Enter room name" maxlength="20" autocomplete="off" />
+                <label>ROOM PASSWORD (Optional)</label>
+                <input type="password" id="newRoomPassword" placeholder="Enter password" autocomplete="off" />
+                <label>ROOM IMAGE (Optional)</label>
+                <div class="room-image-upload">
+                    <div class="room-image-preview" id="roomImagePreview">
+                        <span class="room-image-preview-text">?</span>
+                    </div>
+                    <input type="file" id="roomImageInput" accept="image/*" style="display: none;" />
+                    <button class="upload-image-btn" onclick="document.getElementById('roomImageInput').click()">Upload Image</button>
+                </div>
+                <div class="room-modal-buttons">
+                    <button class="room-cancel" onclick="closeRoomModal()">Cancel</button>
+                    <button class="room-create" onclick="createRoom()">Create Room</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('roomImageInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('Image size must be less than 5MB');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const preview = document.getElementById('roomImagePreview');
+                    preview.innerHTML = `<img src="${event.target.result}" alt="Room image" />`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        document.getElementById('newRoomName').focus();
+    }
+    
+    function closeRoomModal() {
+        const modal = document.getElementById('roomModal');
+        if (modal) modal.remove();
+    }
+    
+    function createRoom() {
+        const nameInput = document.getElementById('newRoomName');
+        const passwordInput = document.getElementById('newRoomPassword');
+        const imageInput = document.getElementById('roomImageInput');
+        
+        const roomName = nameInput.value.trim().toLowerCase();
+        const password = passwordInput.value.trim();
+        
+        if (!roomName) {
+            alert('Please enter a room name');
+            return;
+        }
+        
+        if (allRooms.includes(roomName)) {
+            alert('A room with this name already exists');
+            return;
+        }
+        
+        if (password) {
+            roomPasswords[roomName] = password;
+            localStorage.setItem('vplaza_room_passwords', JSON.stringify(roomPasswords));
+        }
+        
+        roomOwners[roomName] = userName;
+        localStorage.setItem('vplaza_room_owners', JSON.stringify(roomOwners));
+        
+        if (imageInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                roomImages[roomName] = event.target.result;
+                localStorage.setItem('vplaza_room_images', JSON.stringify(roomImages));
+                broadcastChannel.postMessage({ type: 'room_image_updated' });
+                finishRoomCreation(roomName);
+            };
+            reader.readAsDataURL(imageInput.files[0]);
+        } else {
+            finishRoomCreation(roomName);
+        }
+    }
+    
+    function finishRoomCreation(roomName) {
+        allRooms.push(roomName);
+        localStorage.setItem('vplaza_all_rooms', JSON.stringify(allRooms));
+        
+        broadcastChannel.postMessage({ 
+            type: 'room_created', 
+            data: { roomName, image: roomImages[roomName] } 
+        });
+        
+        drone.publish({
+            room: 'observable-general',
+            message: {
+                type: 'room_created',
+                roomName: roomName,
+                image: roomImages[roomName],
+                password: roomPasswords[roomName]
+            }
+        });
+        
+        if (!joinedRooms.includes(roomName)) {
+            joinedRooms.push(roomName);
+            saveJoinedRooms();
+        }
+        
+        renderServers();
+        closeRoomModal();
+        switchRoom(roomName);
+    }
+    
+    document.getElementById('roomSearchInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const roomCode = e.target.value.trim().toLowerCase();
+            
+            if (!roomCode) return;
+            
+            if (!allRooms.includes(roomCode)) {
+                alert('Room not found');
+                e.target.value = '';
+                return;
+            }
+            
+            if (joinedRooms.includes(roomCode)) {
+                switchRoom(roomCode);
+                e.target.value = '';
+                return;
+            }
+            
+            if (roomPasswords[roomCode]) {
+                showPasswordPrompt(roomCode);
+            } else {
+                joinedRooms.push(roomCode);
+                saveJoinedRooms();
+                renderServers();
+                switchRoom(roomCode);
+            }
+            
+            e.target.value = '';
+        }
+    });
+    
+    function showPasswordPrompt(roomCode) {
+        const modal = document.createElement('div');
+        modal.className = 'password-modal';
+        modal.innerHTML = `
+            <div class="password-modal-content">
+                <h3>Enter Password</h3>
+                <p>This room requires a password to join</p>
+                <input type="password" id="roomPasswordInput" placeholder="Enter password" autocomplete="off" />
+                <div class="password-modal-buttons">
+                    <button class="password-cancel" onclick="this.closest('.password-modal').remove()">Cancel</button>
+                    <button class="password-submit" onclick="verifyRoomPassword('${roomCode}')">Join</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        document.getElementById('roomPasswordInput').focus();
+        document.getElementById('roomPasswordInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                verifyRoomPassword(roomCode);
+            }
+        });
+    }
+    
+    function verifyRoomPassword(roomCode) {
+        const passwordInput = document.getElementById('roomPasswordInput');
+        const enteredPassword = passwordInput.value.trim();
+        
+        if (roomPasswords[roomCode] === enteredPassword) {
+            joinedRooms.push(roomCode);
+            saveJoinedRooms();
+            renderServers();
+            switchRoom(roomCode);
+            document.querySelector('.password-modal').remove();
+        } else {
+            alert('Incorrect password');
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    }
+    
+    function connectToRoom(roomCode) {
+        if (room) {
+            try { room.unsubscribe(); } catch(e) {}
+        }
+        
+        onlineUsers.clear();
+        
+        room = drone.subscribe(`observable-${roomCode}`);
+        
+        room.on('open', error => {
+            if (error) {
+                console.error('[v0] Room connection error:', error);
+                return;
+            }
+            
+            setRoomOwner(roomCode, userName);
+            
+            setTimeout(() => {
+                drone.publish({ 
+                    room: `observable-${roomCode}`, 
+                    message: { 
+                        type: 'user_join', 
+                        name: userName,
+                        timestamp: Date.now()
+                    } 
+                });
+            }, 500);
+        });
+        
+        room.on('members', members => {
+            onlineUsers.clear();
+            members.forEach(member => {
+                if (member.clientData && member.clientData.name) {
+                    onlineUsers.add(member.clientData.name);
+                }
+            });
+            updateOnlineCount();
+        });
+        
+        room.on('member_join', member => {
+            if (member.clientData && member.clientData.name) {
+                onlineUsers.add(member.clientData.name);
+                updateOnlineCount();
+            }
+        });
+        
+        room.on('member_leave', member => {
+            if (member.clientData && member.clientData.name) {
+                onlineUsers.delete(member.clientData.name);
+                updateOnlineCount();
+            }
+        });
+        
+        room.on('data', (data, member) => {
+            if (!data) return;
+            
+            if (data.type === 'typing') {
+                if (data.name !== userName) {
+                    showTypingIndicator(data.name);
+                }
+            } else if (data.type === 'user_kicked') {
+                if (data.username === userName) {
+                    document.getElementById('roomName').textContent = '################';
+                    document.getElementById('messageInput').disabled = true;
+                    document.getElementById('messageInput').placeholder = 'You have been removed from this server';
+                }
+                loadMessages(currentRoom);
+            } else if (data.type === 'user_join') {
+                if (data.name) {
+                    onlineUsers.add(data.name);
+                    updateOnlineCount();
+                }
+            } else if (data.type === 'room_created') {
+                if (!allRooms.includes(data.roomName)) {
+                    allRooms.push(data.roomName);
+                    localStorage.setItem('vplaza_all_rooms', JSON.stringify(allRooms));
+                }
+                if (data.password) {
+                    roomPasswords[data.roomName] = data.password;
+                    localStorage.setItem('vplaza_room_passwords', JSON.stringify(roomPasswords));
+                }
+                if (data.image) {
+                    roomImages[data.roomName] = data.image;
+                    localStorage.setItem('vplaza_room_images', JSON.stringify(roomImages));
+                    broadcastChannel.postMessage({ type: 'room_image_updated' });
+                }
+            } else if (data.text || data.attachments) {
+                const messageData = {
+                    text: data.text,
+                    name: data.name,
+                    timestamp: data.timestamp,
+                    attachments: data.attachments,
+                    messageId: data.messageId
+                };
+                
+                saveMessage(currentRoom, messageData);
+                addMessageToList(data.text, data.name, data.name === userName, data.timestamp, data.attachments, data.messageId, true);
+            }
+        });
+    }
+    
+    function setRoomOwner(roomId, username) {
+        if (roomId === 'general') return;
+        
+        if (!roomOwners[roomId]) {
+            roomOwners[roomId] = username;
+            localStorage.setItem('vplaza_room_owners', JSON.stringify(roomOwners));
+        }
+    }
+    
+    function isUserKicked(roomId, username) {
+        if (!kickedUsers[roomId]) return false;
+        return kickedUsers[roomId].includes(username);
+    }
+    
+    function kickUser(roomId, username) {
+        if (!kickedUsers[roomId]) {
+            kickedUsers[roomId] = [];
+        }
+        
+        if (!kickedUsers[roomId].includes(username)) {
+            kickedUsers[roomId].push(username);
+            localStorage.setItem('vplaza_kicked_users', JSON.stringify(kickedUsers));
+            
+            drone.publish({
+                room: `observable-${roomId}`,
+                message: {
+                    type: 'user_kicked',
+                    username: username,
+                    timestamp: Date.now()
+                }
+            });
+            
+            broadcastChannel.postMessage({ 
+                type: 'user_kicked', 
+                data: { roomId, username } 
+            });
+            
+            loadMessages(roomId);
+        }
+    }
+    
+    function updateOnlineCount() {
+        const count = onlineUsers.size;
+        document.getElementById('onlineCount').textContent = `${count} online`;
+    }
+    
+    function showTypingIndicator(name) {
+        const indicator = document.getElementById('typingIndicator');
+        indicator.textContent = `${name} is typing...`;
+        indicator.classList.remove('hidden');
+        
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+            indicator.classList.add('hidden');
+        }, 3000);
+    }
+    
+    document.getElementById('messageInput').addEventListener('input', () => {
+        drone.publish({
+            room: `observable-${currentRoom}`,
+            message: {
+                type: 'typing',
+                name: userName
+            }
+        });
+    });
+    
+    document.getElementById('messageInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    function sendMessage() {
+        const msgInput = document.getElementById('messageInput');
+        const text = msgInput.value.trim();
+        
+        if (isUserKicked(currentRoom, userName)) {
+            alert('You have been removed from this server');
+            return;
+        }
+        
+        if (!text && pendingAttachments.length === 0) return;
+        
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        msgInput.value = '';
+        
+        const messageData = { 
+            text, 
+            name: userName, 
+            timestamp,
+            messageId: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            attachments: pendingAttachments.length > 0 ? [...pendingAttachments] : undefined
+        };
+        
+        drone.publish({ room: `observable-${currentRoom}`, message: messageData });
+        pendingAttachments = [];
+    }
+    
+    function loadMessages(roomId) {
+        const messages = JSON.parse(localStorage.getItem(`vplaza_messages_${roomId}`) || '[]');
+        document.getElementById('messages').innerHTML = '';
+        
+        messages.forEach(msg => {
+            addMessageToList(msg.text, msg.name, msg.name === userName, msg.timestamp, msg.attachments, msg.messageId, false);
+        });
+        
+        const messagesDiv = document.getElementById('messages');
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+    
+    function saveMessage(roomId, messageData) {
+        const messages = JSON.parse(localStorage.getItem(`vplaza_messages_${roomId}`) || '[]');
+        messages.push(messageData);
+        
+        if (messages.length > 100) {
+            messages.shift();
+        }
+        
+        localStorage.setItem(`vplaza_messages_${roomId}`, JSON.stringify(messages));
+    }
+    
+    function addMessageToList(text, name, isOwn, timestamp, attachments, messageId, shouldScroll) {
+        const messagesDiv = document.getElementById('messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message';
+        messageDiv.dataset.messageId = messageId;
+        
+        const isKicked = isUserKicked(currentRoom, name);
+        const displayText = isKicked ? '################' : text;
+        const displayName = isKicked ? '################' : name;
+        
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = isKicked ? '#' : name.charAt(0).toUpperCase();
+        
+        const content = document.createElement('div');
+        content.className = 'message-content';
+        
+        const header = document.createElement('div');
+        header.className = 'message-header';
+        header.innerHTML = `
+            <span>${displayName}</span>
+            <span class="message-timestamp">${timestamp}</span>
+        `;
+        
+        if (currentRoom !== 'general' && roomOwners[currentRoom] === name && !isKicked) {
+            const crown = document.createElement('span');
+            crown.className = 'owner-crown';
+            crown.innerHTML = '<ion-icon name="shield"></ion-icon>';
+            header.appendChild(crown);
+        }
+        
+        if (currentRoom !== 'general' && roomOwners[currentRoom] === userName && name !== userName && !isKicked) {
+            const kickBtn = document.createElement('button');
+            kickBtn.className = 'kick-btn';
+            kickBtn.textContent = 'Remove';
+            kickBtn.onclick = () => kickUser(currentRoom, name);
+            header.appendChild(kickBtn);
+        }
+        
+        const textP = document.createElement('p');
+        textP.className = 'message-text' + (isKicked ? ' censored' : '');
+        textP.textContent = displayText;
+        
+        content.appendChild(header);
+        content.appendChild(textP);
+        
+        if (attachments && attachments.length > 0 && !isKicked) {
+            attachments.forEach(att => {
+                const attDiv = document.createElement('div');
+                attDiv.className = 'message-attachment';
+                
+                if (att.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = att.data;
+                    img.alt = att.name;
+                    attDiv.appendChild(img);
+                }
+                
+                content.appendChild(attDiv);
+            });
+        }
+        
+        messageDiv.appendChild(avatar);
+        messageDiv.appendChild(content);
+        messagesDiv.appendChild(messageDiv);
+        
+        if (shouldScroll) {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+    }
+    
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        
+        if (files.length === 0) return;
+        
+        pendingAttachments = [];
+        let loadedCount = 0;
+        
+        files.forEach(file => {
+            if (file.size > 10 * 1024 * 1024) {
+                alert(`File "${file.name}" is too large. Maximum size is 10MB.`);
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                pendingAttachments.push({
+                    name: file.name,
+                    type: file.type,
+                    data: event.target.result
+                });
+                
+                loadedCount++;
+                
+                if (loadedCount === files.length) {
+                    const msgInput = document.getElementById('messageInput');
+                    const text = msgInput.value.trim();
+                    
+                    if (text || pendingAttachments.length > 0) {
+                        sendMessage();
+                    }
+                    e.target.value = '';
+                }
+            };
+            reader.onerror = () => {
+                alert(`Failed to read file "${file.name}"`);
+                loadedCount++;
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+    
+    window.addEventListener('load', () => {
+        document.getElementById('usernameInput').focus();
+    });
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        const passwordInput = document.getElementById('passwordInput');
+        if (passwordInput) {
+            passwordInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAuth();
+                }
+            });
+        }
+    });
+</script>
+</body>
+</html>
