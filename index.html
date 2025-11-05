@@ -1,233 +1,319 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AnuraOS Loading</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clever - The identity platform for education</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-        body {
-            background-color: #2a2a2a;
-            color: white;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            display: flex;
-            justify-content: flex-start;
-            align-items: center;
-            min-height: 100vh;
-            padding-left: 100px;
-            transition: all 1s ease-in-out;
-            position: relative;
-            user-select: none;
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: #1a1a1a;
+      background: linear-gradient(180deg, #ffffff 0%, #f0f4ff 100%);
+      min-height: 100vh;
+    }
 
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 40px;
-            max-width: 600px;
-            transition: opacity 1s ease-in-out;
-            position: relative;
-            z-index: 2;
-            color: #ffffff;
-        }
+    /* Header Styles */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 60px;
+      background: white;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
 
-        .title {
-            font-size: 2.5rem;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
+    .logo {
+      font-size: 32px;
+      font-weight: 700;
+      color: #2563eb;
+    }
 
-        .subtitle {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #ffffff;
-        }
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+    }
 
-        .spinner-container {
-            margin: 60px 0;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 20px;
-        }
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      list-style: none;
+    }
 
-        .progress-counter {
-            font-size: 1.2rem;
-            font-weight: 500;
-            color: #ffffff;
-        }
+    .nav-links a {
+      text-decoration: none;
+      color: #1a1a1a;
+      font-size: 16px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
 
-        .spinner {
-            width: 200px;
-            height: 200px;
-            background-image: url('images/loader/spinner.gif');
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-        }
+    .nav-links a:hover {
+      color: #2563eb;
+    }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+    .dropdown-arrow {
+      font-size: 12px;
+    }
 
-        .progress-text {
-            font-size: 1rem;
-            font-weight: 300;
-            color: #666666;
-            margin-top: 40px;
-        }
+    .login-btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.3s;
+    }
 
-        .completion-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #2a2a2a;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 1s ease-in-out;
-            z-index: 1000;
-        }
+    .login-btn:hover {
+      background: #1d4ed8;
+    }
 
-        .completion-container.show {
-            opacity: 1;
-            visibility: visible;
-        }
+    /* Hero Section */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      padding: 80px 60px;
+      max-width: 1400px;
+      margin: 0 auto;
+      align-items: center;
+    }
 
-        .completion-gif {
-            width: 300px;
-            height: 300px;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-        }
+    .hero-content h1 {
+      font-size: 56px;
+      line-height: 1.2;
+      margin-bottom: 24px;
+      font-weight: 600;
+    }
 
-        .black-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background-color: #000000;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 1s ease-in-out;
-            z-index: 2000;
-        }
+    .hero-content h1 .underline {
+      position: relative;
+      display: inline-block;
+    }
 
-        .black-screen.show {
-            opacity: 1;
-            visibility: visible;
-        }
+    .hero-content h1 .underline::after {
+      content: '';
+      position: absolute;
+      bottom: 8px;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: #f97316;
+    }
 
-        .fade-out {
-            opacity: 0;
-        }
+    .hero-content p {
+      font-size: 18px;
+      line-height: 1.6;
+      color: #4b5563;
+      margin-bottom: 40px;
+      max-width: 500px;
+    }
 
-        .center-loading {
-            justify-content: center;
-            padding-left: 0;
-        }
-    </style>
+    .cta-button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 20px 40px;
+      border-radius: 8px;
+      font-size: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      width: 100%;
+      max-width: 500px;
+      justify-content: space-between;
+      transition: background 0.3s;
+    }
+
+    .cta-button:hover {
+      background: #1d4ed8;
+    }
+
+    .arrow-circle {
+      width: 32px;
+      height: 32px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #2563eb;
+      font-size: 18px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 500px;
+    }
+
+    .card {
+      background: white;
+      padding: 24px 28px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .card span {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .card-arrow {
+      width: 32px;
+      height: 32px;
+      background: #dbeafe;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #2563eb;
+      font-size: 16px;
+    }
+
+    .hero-image {
+      width: 100%;
+      height: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .hero-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    @media (max-width: 1024px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 60px 40px;
+      }
+
+      .hero-content h1 {
+        font-size: 42px;
+      }
+
+      header {
+        padding: 20px 40px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+      }
+
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-content h1 {
+        font-size: 36px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <script>
-        // 🚫 If already visited, skip the loading screen entirely
-        if (localStorage.getItem("anuraos_visited") === "true") {
-            window.location.href = "main/events/nexos/browser-type/browser-tabs.html";
-        }
-    </script>
+  <header>
+    <div class="logo">Clever</div>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="#">Schools <span class="dropdown-arrow">▾</span></a></li>
+        <li><a href="#">Application Partners <span class="dropdown-arrow">▾</span></a></li>
+        <li><a href="#">Apps On Clever</a></li>
+        <li><a href="#">Our Company <span class="dropdown-arrow">▾</span></a></li>
+        <li><a href="#">Help <span class="dropdown-arrow">▾</span></a></li>
+      </ul>
+      <button class="login-btn">
+        <span>👤</span>
+        Log in as a student
+        <span class="dropdown-arrow">▾</span>
+      </button>
+    </nav>
+  </header>
 
-    <div class="white-box"></div>
-    
-    <div class="container">
-        <div>
-            <h1 class="title">Downloading assets</h1>
-            <p class="subtitle">For the best experience, NexOS needs to download required assets.</p>
+  <main class="hero">
+    <div class="hero-content">
+      <h1>
+        The <span class="underline">identity platform</span><br>
+        for education
+      </h1>
+      <p>
+        A unified identity from Clever grants quick access, safeguards student and school data, and accelerates learning.
+      </p>
+      
+      <button class="cta-button">
+        Log in as a student
+        <span class="arrow-circle">→</span>
+      </button>
+
+      <div class="cards">
+        <div class="card">
+          <span>For schools</span>
+          <div class="card-arrow">→</div>
         </div>
-        
-        <div class="spinner-container">
-            <div class="spinner"></div>
-            <div class="progress-counter">0/217</div>
+        <div class="card">
+          <span>For application partners</span>
+          <div class="card-arrow">→</div>
         </div>
+      </div>
     </div>
 
-    <div class="completion-container">
-        <div class="completion-gif"></div>
+    <div class="hero-image">
+      <img src="/placeholder.svg?height=600&width=800" alt="Students using tablets in classroom">
     </div>
+  </main>
 
-    <div class="black-screen"></div>
-    
-    <script>
-        let currentProgress = 0;
-        const totalAssets = 217;
-        const progressCounter = document.querySelector('.progress-counter');
-        const possibleIncrements = [2, 6, 4, 10];
-        
-        function getRandomIncrement() {
-            return possibleIncrements[Math.floor(Math.random() * possibleIncrements.length)];
-        }
-        
-        function updateProgress() {
-            if (currentProgress < totalAssets) {
-                const increment = getRandomIncrement();
-                const newProgress = Math.min(currentProgress + increment, totalAssets);
-                currentProgress = newProgress;
-                progressCounter.textContent = `${currentProgress}/${totalAssets}`;
-                
-                if (currentProgress < totalAssets) {
-                    const delay = Math.random() * 450 + 50;
-                    setTimeout(updateProgress, delay);
-                } else {
-                    setTimeout(startCompletionSequence, 500);
-                }
-            }
-        }
-        
-        setTimeout(updateProgress, 200);
+  <script>
+    // Track which keys are currently pressed
+    const keysPressed = new Set();
 
-        function startCompletionSequence() {
-            const container = document.querySelector('.container');
-            const body = document.body;
-            const completionContainer = document.querySelector('.completion-container');
-            const blackScreen = document.querySelector('.black-screen');
-            const whiteBox = document.querySelector('.white-box');
+    // Listen for keydown events
+    document.addEventListener('keydown', (e) => {
+      keysPressed.add(e.key);
+      
+      // Check if both '.' and ',' are pressed
+      if (keysPressed.has('.') && keysPressed.has(',')) {
+        window.location.href = '/help.html';
+      }
+    });
 
-            container.classList.add('fade-out');
-            whiteBox.classList.add('fade-out');
-            
-            setTimeout(() => {
-                body.classList.add('center-loading');
-                completionContainer.classList.add('show');
-            }, 1000);
-
-            setTimeout(() => {
-                blackScreen.classList.add('show');
-            }, 4000);
-
-            setTimeout(() => {
-                // ✅ Mark as visited so next time it skips
-                localStorage.setItem("anuraos_visited", "true");
-                window.location.href = 'main/events/nexos/browser-type/browser-tabs.html';
-            }, 7000);
-        }
-
-        // Optional: Add click to skip functionality
-        document.addEventListener('click', function() {
-            // Uncomment below to allow skipping manually
-            // startCompletionSequence();
-        });
-    </script>
+    // Listen for keyup events to remove keys from the set
+    document.addEventListener('keyup', (e) => {
+      keysPressed.delete(e.key);
+    });
+  </script>
 </body>
 </html>
