@@ -2,19 +2,22 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- Added user-scalable=no to disable pinch to zoom and viewport-fit=cover for full viewport -->
     <title>NexOS ~ By Eclipse</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="icon" href="eclipse.png" type="image/x-icon" />
     <style>
         @font-face {
             font-family: Satoshi;
-            src: url(/fonts/Satoshi-Regular.otf);
+            src: url(fonts/Satoshi-Regular.otf);
         }
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            /* Added touch-action: none to disable all zoom gestures */
+            touch-action: none;
         }
 
         body {
@@ -48,16 +51,15 @@
         .loading-banner {
             width: 400px;
             height: 200px;
-            background-image: url('/images/loader/nexos (3).png');
+            background-image: url('nexos (3).png');
             background-size: cover;
             background-position: center;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
             transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
 
         .loading-banner.fly-in {
-            transform: scale(3) translateZ(0);
+            transform: scale(1) translateZ(0);
         }
 
         .loading-text {
@@ -265,7 +267,7 @@
             width: 16px;
             height: 16px;
             margin-right: 12px;
-            border-radius: 50px;
+            border-radius: 50%;
             background: transparent;
             display: flex;
             align-items: center;
@@ -280,7 +282,7 @@
         .tab-favicon img {
             width: 16px;
             height: 16px;
-            border-radius: 50px;
+            border-radius: 50%;
         }
 
         .tab-favicon img {
@@ -369,6 +371,8 @@
         .nav-controls {
             display: flex;
             gap: 4px;
+            background-color: #ebe5e5;
+            border-radius: 10px;
         }
 
         .nav-btn {
@@ -382,7 +386,7 @@
             justify-content: center;
             cursor: pointer;
             transition: background 0.15s ease;
-            color: #bdc1c6;
+            color: #000000;
         }
 
         .nav-btn:hover:not(:disabled) {
@@ -420,10 +424,41 @@
 
         .toolbar-icons {
             display: flex;
-            align-items: center;
             gap: 4px;
-            margin-left: 8px;
+            align-items: center;
+            background-color: #ebe5e5;
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
         }
+
+        /* Added zoom control styles */
+        .zoom-controls {
+            display: flex;
+            gap: 4px;
+            margin-left: 2px;
+            padding: 2px;
+            border-left: 1px solid rgba(0, 0, 0, 0.1);
+            background-color: #ebe5e5;
+            border-radius: 10px;
+        }
+
+        .zoom-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .zoom-btn:active {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 50px;
+        }
+        /* </CHANGE> */
 
         .toolbar-btn img {
             width: auto;
@@ -469,7 +504,7 @@
     overflow: hidden;
     transition: margin-right 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     margin-bottom: 50px;
-    margin-right: 5px;
+    margin-right: 2px;
     margin-left: 2px;
     margin-top: 2px;
     border-radius: 15px;
@@ -551,8 +586,8 @@
             opacity: 1;
             display: flex;
             flex-direction: column; /* Hi :)))))))))) */
-            border-bottom-left-radius: 10px;
             margin-bottom: 50px;
+            border-radius: 20px;
             
         }
 
@@ -579,11 +614,6 @@
             margin-bottom: 50px;
         }
 
-        .sidebar.open::before {
-            opacity: 1;
-            transform: scale(1);
-        }
-
         .sidebar.minimized {
             right: -50px;
             transform: translateX(0) scale(0.8);
@@ -605,9 +635,10 @@
             border: 1px solid #e0e0e0;
             border-radius: 8px;
             z-index: 1000;
-            min-width: 160px;
+            min-width: 300px;
             display: none;
             color: #000;
+            height: 400px;
         }
 
         .context-menu.visible {
@@ -792,7 +823,6 @@
             gap: 8px;
             align-items: center;
                         border-bottom-right-radius: 10px;
-            border-bottom-left-radius: 10px;
 
         }
 
@@ -857,8 +887,9 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            border-bottom-left-radius: 10px;
             margin-bottom: 50px;
+            border-bottom-left-radius: 10px;
+
         }
 
         .sidebar-iframe {
@@ -876,7 +907,6 @@
             right: 20px;
             background: #ffffff;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             padding: 16px;
             display: none;
             align-items: center;
@@ -1020,13 +1050,15 @@ body {
   position: fixed;
   bottom: 10px;
   left: 10px;
-  margin-bottom: 5px;
   margin-left: 5px;
-
+  margin-top: 10px;
   display: flex;
   align-items: center;
   gap: 4px;
   color: #000;
+  background-color: #e3e3e3;
+  border-radius: 10px;
+  padding: 5px;
 }
 
 
@@ -1058,7 +1090,6 @@ body {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 16px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
   padding: 10px;
   z-index: 150;
   display: none;
@@ -1069,7 +1100,6 @@ body {
   -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(120%);
   border: 1px solid rgba(255,255,255,0.25);
   border-radius: 20px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.3), inset 0 0 1px rgba(0, 0, 0, 0.4);
   overflow: hidden;
   transition: all 0.3s ease;
   color: #000000;
@@ -1388,7 +1418,6 @@ body {
   position: fixed;
   background-color: #333;
   border-radius: 1px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
   padding: 8px;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1535,42 +1564,40 @@ body {
 }
 
 .date-box {
-  background-color: #2f2f2f77;
-  color: rgb(0, 0, 0);
+  color: #000000;
   padding: 8px 12px;
-  border-top-left-radius: 6px;
-  border-bottom-left-radius: 6px;
-  border-top-right-radius: 20px;
-  border-bottom-right-radius: 20px;
   font-size: 14px;
   display: inline-block;
-  background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
   backdrop-filter: blur(30px) saturate(180%) contrast(120%);
   -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(120%);
-  border: 1px solid rgba(255, 255, 255, 0.166);
-  box-shadow: 0 0 0 1px black;
+  border: 1px solid #000;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
   overflow: hidden;
   transition: all 0.3s ease;
 }
 
 .time-box {
-  background-color: #2f2f2f77;
-  color: rgb(0, 0, 0);
+  color: #000000;
   padding: 8px 12px;
-  border-top-right-radius: 6px;
-  border-bottom-right-radius: 6px;
-  border-top-left-radius: 20px;
-  border-bottom-left-radius: 20px;
   font-size: 14px;
   display: inline-block;
-  background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
   backdrop-filter: blur(30px) saturate(180%) contrast(120%);
   -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(120%);
-  border: 1px solid rgba(255, 255, 255, 0.166);
-  box-shadow: 0 0 0 1px black;
+  border: 1px solid #000;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+  border-top-left-radius: 10px;
+  border-bottom-left-radius: 10px;
   overflow: hidden;
   transition: all 0.3s ease;
 }
+
+
 
 
         .battery-notification.show {
@@ -1746,8 +1773,23 @@ body {
                 <button class="toolbar-btn cloud-btn" id="cloudBtn" title="Weather">
                     <i data-lucide="cloud" width="16" height="16"></i>
                 </button>
+                <button class="toolbar-btn split-btn" id="sidemultitaskaddedbynexorayayayay" title="mutitasck">
+                    <i data-lucide="square-split-horizontal" width="16" height="16"></i>
+                </button>
                 <!--PVPN got rid of half the shit he found annoying :)-->
             </div>
+
+            <!-- Added zoom controls to the right of toolbar-icons -->
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoomOutBtn" title="Zoom Out (Ctrl -)">
+                    <i data-lucide="zoom-out" width="16" height="16"></i>
+                </button>
+                <button class="zoom-btn" id="zoomInBtn" title="Zoom In (Ctrl +)">
+                    <i data-lucide="zoom-in" width="16" height="16"></i>
+                </button>
+            </div>
+            <!-- </CHANGE> -->
+
             <!--pvpn got ridda the menu icon thingy so sry :|-->
         </div>
         <div id="CMDL" hidden>
@@ -1941,6 +1983,68 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.initializeLoadingAnimation();
                 
                 lucide.createIcons();
+                
+                document.addEventListener('wheel', (e) => {
+                  if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                  }
+                }, { passive: false });
+
+                document.addEventListener('keydown', (e) => {
+                  // Ctrl/Cmd + Plus, Minus, 0
+                  if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) {
+                    e.preventDefault();
+                  }
+                  // Also block the numpad versions
+                  if ((e.ctrlKey || e.metaKey) && (e.keyCode === 107 || e.keyCode === 109 || e.keyCode === 96)) {
+                    e.preventDefault();
+                  }
+                }, { passive: false });
+
+                let lastTouchDistance = 0;
+                document.addEventListener('touchmove', (e) => {
+                  if (e.touches.length > 1) {
+                    e.preventDefault();
+                  }
+                }, { passive: false });
+
+                document.addEventListener('touchstart', (e) => {
+                  lastTouchDistance = 0;
+                }, { passive: false });
+
+                document.addEventListener('gesturestart', (e) => {
+                  e.preventDefault();
+                }, { passive: false });
+
+                // Disable double-tap zoom
+                let lastTap = 0;
+                document.addEventListener('touchend', (e) => {
+                  const now = Date.now();
+                  if (now - lastTap <= 500) {
+                    e.preventDefault();
+                  }
+                  lastTap = now;
+                }, { passive: false });
+
+                // Block pinch via pointer events (Chromebook & modern browsers)
+                document.addEventListener('pointerdown', () => {}, { passive: false });
+                document.addEventListener('pointermove', (e) => {
+                  if (e.pointerType === 'touch' && e.isPrimary === false) {
+                    e.preventDefault();
+                  }
+                }, { passive: false });
+
+                // Block trackpad zoom (macOS/Chromebook)
+                document.addEventListener('mousewheel', (e) => {
+                  if (e.ctrlKey || e.metaKey) {
+                    e.preventDefault();
+                  }
+                }, { passive: false });
+
+                // Disable all zoom-related gestures
+                document.addEventListener('zoom', (e) => {
+                  e.preventDefault();
+                }, { passive: false });
             }
 
             initializeLoadingAnimation() {
@@ -1982,8 +2086,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.music = document.getElementById('music');
                 this.movies = document.getElementById('movies');
                 this.aiBtn = document.getElementById('aiBtn');
-                this.cloudBtn = document.getElementById('cloudBtn');
+                this.cloudBtn = document.getElementById('cloudBtn'); /* sidemultitaskaddedbynexorayayayay */
                 this.geforcenow = document.getElementById('geforcenow');
+                this.sidemultitaskaddedbynexorayayayay = document.getElementById('sidemultitaskaddedbynexorayayayay');
                 this.sidebar = document.getElementById('sidebar');
                 this.sidebarTitle = document.getElementById('sidebarTitle');
                 this.sidebarClose = document.getElementById('sidebarClose');
@@ -1996,6 +2101,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.batteryNotification = document.getElementById('batteryNotification');
                 this.batteryIcon = document.getElementById('batteryIcon');
                 this.batteryPercent = document.getElementById('batteryPercent');
+                
+                this.zoomInBtn = document.getElementById('zoomInBtn');
+                this.zoomOutBtn = document.getElementById('zoomOutBtn');
+                this.iframeZoomLevel = 1.0; // Track zoom level for each tab
+                // </CHANGE>
             }
 
             bindEvents() {
@@ -2020,6 +2130,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.movies.addEventListener('click', () => this.handlePhoneClick());
                 this.aiBtn.addEventListener('click', () => this.handleAiClick());
                 this.cloudBtn.addEventListener('click', () => this.handleCloudClick());
+                this.sidemultitaskaddedbynexorayayayay.addEventListener('click', () => this.handleSplitClick());
 
                 document.getElementById('sidebarClose').addEventListener('click', () => {
                     this.closeSidebar();
@@ -2032,6 +2143,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('sidebarFullscreen').addEventListener('click', () => {
                     this.toggleSidebarFullscreen();
                 });
+                
+                this.zoomInBtn.addEventListener('click', () => this.zoomIframe(0.1));
+                this.zoomOutBtn.addEventListener('click', () => this.zoomIframe(-0.1));
+                // </CHANGE>
 
                 this.initializeTabDragging();
 
@@ -2113,6 +2228,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.setActiveToolbarBtn(this.cloudBtn);
             }
 
+            handleSplitClick() {
+                if (!this.restoreSidebar()) {
+                    this.openSidebar('Multitask', 'landingmulti.html');
+                }
+                this.setActiveToolbarBtn(this.sidemultitaskaddedbynexorayayayay);
+            }
             openLastClosedSidebarMinimized() {
                 if (this.lastClosedSidebarApp) {
                     this.sidebarTitle.textContent = this.lastClosedSidebarApp.title;
@@ -2242,11 +2363,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 const tab = {
                     id: tabId,
                     title: 'ermmmm',
-                    url: '/welcomer.html',
+                    url: 'welcomer.html',
                     favicon: null,
                     element: null,
                     iframe: null,
-                    pinned: false
+                    pinned: false,
+                    zoomLevel: 1.0 // Initialize zoom level for the new tab
                 };
 
                 const tabElement = document.createElement('div');
@@ -2448,7 +2570,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const newTabId = this.createNewTab();
                 if (newTabId) {
                     const newTab = this.tabs.get(newTabId);
-                    if (newTab && tab.url !== '/newtab/pages/landing.html') {
+                    if (newTab && tab.url !== 'landing.html') {
                         this.navigate(this.extractOriginalUrl(tab.url));
                     }
                 }
@@ -2996,13 +3118,13 @@ if (exceptionRegex.test(urlLower)) {
 }
 
 if (blockedRegex.test(urlLower)) {
-  this.loadUrl('/search/blocker/profanity/blockedmalware.html');
+  this.loadUrl('blockedmalware.html');
   return;
 }
 
 
                 if (url.toLowerCase() === 'nexos://changelog') {
-                    this.loadUrl('/versions.html');
+                    this.loadUrl('versions.html');
                     return;
                 }
 
@@ -3022,27 +3144,32 @@ if (blockedRegex.test(urlLower)) {
                 }
 
                 if (url.toLowerCase() === 'nexos://information') {
-                    this.loadUrl('/info.html');
+                    this.loadUrl('info.html');
                     return;
                 }
 
                 if (url.toLowerCase() === 'nexos://devs') {
-                    this.loadUrl('/credits.html');
+                    this.loadUrl('credits.html');
                     return;
                 }
 
                 if (url.toLowerCase() === 'nexos://links') {
-                    this.loadUrl('/links.html');
+                    this.loadUrl('links.html');
                     return;
                 }
 
                 if (url.toLowerCase() === 'nexos://dino') {
-                    this.loadUrl('/dino.html');
+                    this.loadUrl('dino.html');
                     return;
                 }
 
                 if (url.toLowerCase() === 'nexos://welcomereset') {
-                    this.loadUrl('/welcomer.html?resetagain');
+                    this.loadUrl('welcomer.html?resetagain');
+                    return;
+                }
+
+                if (url.toLowerCase() === 'nexos://lofi') {
+                    this.loadUrl('chill.html');
                     return;
                 }
 
@@ -3096,7 +3223,7 @@ if (blockedRegex.test(urlLower)) {
                 try {
                     if (!url || url === 'about:blank') return null;
                     
-                    if (url.includes('/newtab/pages/landing.html') ) {
+                    if (url.includes('landing.html') ) {
                         return 'New Tab';
                     }
 
@@ -3449,6 +3576,29 @@ if (blockedRegex.test(urlLower)) {
                 
                 lucide.createIcons();
             }
+
+            zoomIframe(delta) {
+                const currentTab = this.tabs.get(this.activeTabId);
+                if (!currentTab || !currentTab.iframe) return;
+
+                // Initialize zoom level if not set
+                if (currentTab.zoomLevel === undefined) {
+                    currentTab.zoomLevel = 1.0;
+                }
+
+                // Update zoom level (min 0.25, max 3.0)
+                currentTab.zoomLevel = Math.max(0.25, Math.min(3.0, currentTab.zoomLevel + delta));
+
+                // Apply zoom using CSS transform
+                currentTab.iframe.style.transform = `scale(${currentTab.zoomLevel})`;
+                currentTab.iframe.style.transformOrigin = 'top left';
+                
+                // Adjust iframe dimensions to compensate for scaling
+                const scale = currentTab.zoomLevel;
+                currentTab.iframe.style.width = `${100 / scale}%`;
+                currentTab.iframe.style.height = `${100 / scale}%`;
+            }
+            // </CHANGE>
         }
         
         const browser = new nexos();
@@ -4390,7 +4540,7 @@ menu.addEventListener('mouseleave', hideMenu);
 
     <div id="global-layout-options-menu" class="layout-options-menu">
         <div class="layout-option" data-layout="split">
-            <img src="https://i.ibb.co/7NyVMhNx/Screenshot-2025-08-06-2-43-31-PM.png" alt="Split Layout" class="layout-icon split-icon">
+            <img src="/images/design-mode/Screenshot-2025-08-06-2-43-31-PM(1).png" alt="Split Layout" class="layout-icon split-icon">
             <span>Split</span>
         </div>
         <div class="layout-option" data-layout="partial">
@@ -4424,6 +4574,10 @@ menu.addEventListener('mouseleave', hideMenu);
         </div>
 
         <div class="apps-menu-section app-grid-section">
+            <div id="app-grid" class="app-grid">
+            </div>
+        </div>
+    </div>
             <div id="app-grid" class="app-grid">
             </div>
         </div>
