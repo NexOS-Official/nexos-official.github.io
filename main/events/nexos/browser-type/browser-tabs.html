@@ -356,6 +356,68 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
+        /* Added styles for tab hover preview box */
+        .tab-preview {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 300px;
+            background: white;
+            border: 1px solid #d0d0d0;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 12px;
+            z-index: 10001;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .tab-preview.visible {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tab-preview-title {
+            font-family: Satoshi;
+            font-size: 14px;
+            font-weight: 500;
+            color: #3a3a3a;
+            margin-bottom: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tab-preview-url {
+            font-family: Satoshi;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tab-preview-iframe {
+            width: 100%;
+            height: 180px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: #f5f5f5;
+            pointer-events: none;
+        }
+
 .address-bar-container {
     background-color: #ffffff;
     padding: 8px 16px;
@@ -2435,6 +2497,23 @@ document.addEventListener("DOMContentLoaded", () => {
                     this.closeTab(tabId);
                 });
 
+                let hoverTimeout = null;
+                let previewBox = null;
+
+                tabElement.addEventListener('mouseenter', (e) => {
+                    hoverTimeout = setTimeout(() => {
+                        this.showTabPreview(tabId, tabElement);
+                    }, 3000);
+                });
+
+                tabElement.addEventListener('mouseleave', (e) => {
+                    if (hoverTimeout) {
+                        clearTimeout(hoverTimeout);
+                        hoverTimeout = null;
+                    }
+                    this.hideTabPreview(tabId);
+                });
+
                 iframe.addEventListener('load', () => {
                     this.updateTabInfo(tabId);
                     this.hideLoading();
@@ -3597,6 +3676,95 @@ if (blockedRegex.test(urlLower)) {
                 currentTab.iframe.style.height = `${100 / scale}%`;
             }
             // </CHANGE>
+
+            showTabPreview(tabId, tabElement) {
+                const tab = this.tabs.get(tabId);
+                if (!tab) return;
+
+                // Remove any existing preview
+                this.hideTabPreview(tabId);
+
+                // Create preview box
+                const previewBox = document.createElement('div');
+                previewBox.className = 'tab-preview';
+                previewBox.dataset.tabId = tabId;
+
+                // Get tab info
+                const title = tab.title || 'Untitled';
+                const url = this.extractOriginalUrl(tab.currentUrl || tab.url);
+                const truncatedUrl = url.length > 20 ? url.substring(0, 20) + '...' : url;
+
+                // Create preview content
+                previewBox.innerHTML = `
+                    <div class="tab-preview-title">${title}</div>
+                    <div class="tab-preview-url">${truncatedUrl}</div>
+                    <iframe class="tab-preview-iframe" src="${tab.currentUrl || tab.url}"></iframe>
+                `;
+
+                // Position the preview box under the tab
+                tabElement.style.position = 'relative';
+                tabElement.appendChild(previewBox);
+
+                // Show with animation
+                requestAnimationFrame(() => {
+                    previewBox.classList.add('visible');
+                });
+            }
+
+            hideTabPreview(tabId) {
+                const previewBoxes = document.querySelectorAll(`.tab-preview[data-tab-id="${tabId}"]`);
+                previewBoxes.forEach(box => box.remove());
+            }
+            // </CHANGE>
+
+            closeTab(tabId) {
+                if (this.tabs.size <= 1) {
+                    this.showFinalTabNotification();
+                    return;
+                }
+
+                const tabIndex = Array.from(this.tabs.values()).findIndex(t => t.id === tabId);
+                if (tabIndex === -1) return;
+                
+                const tab = Array.from(this.tabs.values())[tabIndex];
+                const wasActive = tab.id === this.activeTabId;
+                
+                if (tab.pinned && this.contextMenuTabId !== tabId) {
+                    return;
+                }
+                
+                tab.element.style.transform = 'translateX(-100%)';
+                tab.element.style.opacity = '0';
+                
+                setTimeout(() => {
+                    tab.element.remove();
+                    tab.iframe.remove();
+                    this.tabs.delete(tabId);
+                    
+                    if (wasActive && this.tabs.size > 0) {
+                        const remainingTabs = Array.from(this.tabs.values());
+                        let newActiveTabId = null;
+
+                        const nextTab = remainingTabs.find(t => t.element.compareDocumentPosition(tab.element) & Node.DOCUMENT_POSITION_FOLLOWING);
+                        if (nextTab) {
+                            newActiveTabId = nextTab.id;
+                        } else {
+                            const prevTab = remainingTabs.find(t => t.element.compareDocumentPosition(tab.element) & Node.DOCUMENT_POSITION_PRECEDING);
+                            if (prevTab) {
+                                newActiveTabId = prevTab.id;
+                            } else if (remainingTabs.length > 0) {
+                                newActiveTabId = remainingTabs[0].id;
+                            }
+                        }
+                        
+                        if (newActiveTabId) {
+                            this.switchToTab(newActiveTabId);
+                        }
+                    }
+                    
+                    this.updateTabSizes();
+                }, 150);
+            }
         }
         
         const browser = new nexos();
