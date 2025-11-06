@@ -359,8 +359,9 @@
         /* Added styles for tab hover preview box */
         .tab-preview {
             position: fixed; /* Changed from absolute to fixed for better positioning control */
-            width: 400px; /* Increased width for better preview */
-            height: 300px; /* Added fixed height */
+            /* Fixed preview box dimensions for proper aspect ratio */
+            width: 320px;
+            height: 240px;
             background: white;
             border: 1px solid #d0d0d0;
             border-radius: 8px;
@@ -369,8 +370,9 @@
             z-index: 10001; /* High z-index but below loading animation (10002) */
             display: none;
             opacity: 0;
-            transition: opacity 0.2s ease, transform 0.2s ease; /* Added smooth animations */
-            transform: translateY(-5px);
+            /* Improved animation timing and easing */
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(8px);
             pointer-events: none;
         }
 
@@ -405,7 +407,8 @@
 
         .tab-preview-iframe-container {
             width: 100%;
-            height: 240px; /* Increased height for better preview */
+            /* Adjusted container height to match new dimensions */
+            height: 180px;
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             background: #f5f5f5;
@@ -417,13 +420,15 @@
             width: 1280px; /* Full desktop width */
             height: 720px; /* Full desktop height */
             border: none;
-            transform: scale(0.3125); /* Scale down to fit (400/1280 = 0.3125) */
+            /* Recalculated scale to fit new container (320/1280 = 0.25) */
+            transform: scale(0.25);
             transform-origin: top left;
             pointer-events: none;
             position: absolute;
             top: 0;
             left: 0;
         }
+
 
 .address-bar-container {
     background-color: #ffffff;
@@ -3722,7 +3727,7 @@ if (blockedRegex.test(urlLower)) {
                 let top = tabRect.bottom + 4;
 
                 // Check right boundary
-                const previewWidth = 400;
+                const previewWidth = 320; // Updated to match the CSS
                 if (left + previewWidth > window.innerWidth) {
                     left = window.innerWidth - previewWidth - 10;
                 }
@@ -3733,7 +3738,7 @@ if (blockedRegex.test(urlLower)) {
                 }
 
                 // Check bottom boundary
-                const previewHeight = 300;
+                const previewHeight = 240; // Updated to match the CSS
                 if (top + previewHeight > window.innerHeight) {
                     // Show above the tab instead
                     top = tabRect.top - previewHeight - 4;
@@ -3757,7 +3762,7 @@ if (blockedRegex.test(urlLower)) {
                 const previewBoxes = document.querySelectorAll(`.tab-preview[data-tab-id="${tabId}"]`);
                 previewBoxes.forEach(box => {
                     box.classList.remove('visible');
-                    setTimeout(() => box.remove(), 200);
+                    setTimeout(() => box.remove(), 300); // Match transition duration
                 });
             }
 
