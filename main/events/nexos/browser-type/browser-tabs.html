@@ -358,35 +358,29 @@
 
         /* Added styles for tab hover preview box */
         .tab-preview {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            width: 300px;
+            position: fixed; /* Changed from absolute to fixed for better positioning control */
+            width: 400px; /* Increased width for better preview */
+            height: 300px; /* Added fixed height */
             background: white;
             border: 1px solid #d0d0d0;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             padding: 12px;
-            z-index: 10001;
+            z-index: 10001; /* High z-index but below loading animation (10002) */
             display: none;
-            margin-top: 4px;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease; /* Added smooth animations */
+            transform: translateY(-5px);
+            pointer-events: none;
         }
 
         .tab-preview.visible {
             display: block;
-            animation: fadeIn 0.2s ease;
+            opacity: 1; /* Fade in animation */
+            transform: translateY(0); /* Slide down animation */
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-5px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+        /* Removed old fadeIn keyframes animation */
 
         .tab-preview-title {
             font-family: Satoshi;
@@ -409,13 +403,26 @@
             text-overflow: ellipsis;
         }
 
-        .tab-preview-iframe {
+        .tab-preview-iframe-container {
             width: 100%;
-            height: 180px;
+            height: 240px; /* Increased height for better preview */
             border: 1px solid #e0e0e0;
             border-radius: 4px;
             background: #f5f5f5;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .tab-preview-iframe {
+            width: 1280px; /* Full desktop width */
+            height: 720px; /* Full desktop height */
+            border: none;
+            transform: scale(0.3125); /* Scale down to fit (400/1280 = 0.3125) */
+            transform-origin: top left;
             pointer-events: none;
+            position: absolute;
+            top: 0;
+            left: 0;
         }
 
 .address-bar-container {
@@ -2501,8 +2508,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 let previewBox = null;
 
                 tabElement.addEventListener('mouseenter', (e) => {
+                    if (this.dragState.isDragging) return;
+                    
                     hoverTimeout = setTimeout(() => {
-                        this.showTabPreview(tabId, tabElement);
+                        if (!this.dragState.isDragging) {
+                            this.showTabPreview(tabId, tabElement);
+                        }
                     }, 3000);
                 });
 
@@ -3681,6 +3692,8 @@ if (blockedRegex.test(urlLower)) {
                 const tab = this.tabs.get(tabId);
                 if (!tab) return;
 
+                if (this.dragState.isDragging) return;
+
                 // Remove any existing preview
                 this.hideTabPreview(tabId);
 
@@ -3694,16 +3707,45 @@ if (blockedRegex.test(urlLower)) {
                 const url = this.extractOriginalUrl(tab.currentUrl || tab.url);
                 const truncatedUrl = url.length > 20 ? url.substring(0, 20) + '...' : url;
 
-                // Create preview content
                 previewBox.innerHTML = `
                     <div class="tab-preview-title">${title}</div>
                     <div class="tab-preview-url">${truncatedUrl}</div>
-                    <iframe class="tab-preview-iframe" src="${tab.currentUrl || tab.url}"></iframe>
+                    <div class="tab-preview-iframe-container">
+                        <iframe class="tab-preview-iframe" src="${tab.currentUrl || tab.url}"></iframe>
+                    </div>
                 `;
 
-                // Position the preview box under the tab
-                tabElement.style.position = 'relative';
-                tabElement.appendChild(previewBox);
+                document.body.appendChild(previewBox);
+
+                const tabRect = tabElement.getBoundingClientRect();
+                let left = tabRect.left;
+                let top = tabRect.bottom + 4;
+
+                // Check right boundary
+                const previewWidth = 400;
+                if (left + previewWidth > window.innerWidth) {
+                    left = window.innerWidth - previewWidth - 10;
+                }
+
+                // Check left boundary
+                if (left < 10) {
+                    left = 10;
+                }
+
+                // Check bottom boundary
+                const previewHeight = 300;
+                if (top + previewHeight > window.innerHeight) {
+                    // Show above the tab instead
+                    top = tabRect.top - previewHeight - 4;
+                }
+
+                // Check top boundary
+                if (top < 10) {
+                    top = 10;
+                }
+
+                previewBox.style.left = `${left}px`;
+                previewBox.style.top = `${top}px`;
 
                 // Show with animation
                 requestAnimationFrame(() => {
@@ -3713,9 +3755,12 @@ if (blockedRegex.test(urlLower)) {
 
             hideTabPreview(tabId) {
                 const previewBoxes = document.querySelectorAll(`.tab-preview[data-tab-id="${tabId}"]`);
-                previewBoxes.forEach(box => box.remove());
+                previewBoxes.forEach(box => {
+                    box.classList.remove('visible');
+                    setTimeout(() => box.remove(), 200);
+                });
             }
-            // </CHANGE>
+
 
             closeTab(tabId) {
                 if (this.tabs.size <= 1) {
