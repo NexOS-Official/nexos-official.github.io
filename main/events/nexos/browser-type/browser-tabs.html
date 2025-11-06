@@ -358,22 +358,20 @@
 
         /* Added styles for tab hover preview box */
         .tab-preview {
-            position: fixed; /* Changed from absolute to fixed for better positioning control */
-            /* Fixed preview box dimensions for proper aspect ratio */
-            width: 320px;
-            height: 250px;
+            position: fixed;
             background: white;
-            border: 1px solid #d0d0d0;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             padding: 12px;
-            z-index: 10001; /* High z-index but below loading animation (10002) */
-            display: none;
-            opacity: 0;
-            /* Improved animation timing and easing */
-            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(8px);
+            /* Updated height from 240px to 250px */
+            width: 320px;
+            height: 250px;
+            z-index: 9998;
             pointer-events: none;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .tab-preview.visible {
@@ -1848,7 +1846,7 @@ body {
                 <button class="toolbar-btn split-btn" id="sidemultitaskaddedbynexorayayayay" title="mutitasck">
                     <i data-lucide="square-split-horizontal" width="16" height="16"></i>
                 </button>
-                <!--PVPN got rid of half the shit he found annoying :)-->
+                <!--PVPN got ridda the menu icon thingy so sry :|-->
             </div>
 
             <!-- Added zoom controls to the right of toolbar-icons -->
@@ -1862,7 +1860,6 @@ body {
             </div>
             <!-- </CHANGE> -->
 
-            <!--pvpn got ridda the menu icon thingy so sry :|-->
         </div>
         <div id="CMDL" hidden>
   <h3>Cloaker</h3>
@@ -2440,7 +2437,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     element: null,
                     iframe: null,
                     pinned: false,
-                    zoomLevel: 1.0 // Initialize zoom level for the new tab
+                    zoomLevel: 1.0, // Initialize zoom level for the new tab
+                    faviconDomain: null, // Added for favicon caching
+                    faviconUrl: null     // Added for favicon caching
                 };
 
                 const tabElement = document.createElement('div');
@@ -3007,7 +3006,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.dragState.tabPositions.clear();
             }
 
-            tryFaviconSources(faviconElement, sources, index) {
+            tryFaviconSources(faviconElement, sources, index, tab = null) {
                 if (index >= sources.length) {
                     faviconElement.innerHTML = '<i data-lucide="globe" width="16" height="16"></i>';
                     lucide.createIcons();
@@ -3020,12 +3019,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 img.style.height = '16px';
                 
                 img.onerror = () => {
-                    this.tryFaviconSources(faviconElement, sources, index + 1);
+                    this.tryFaviconSources(faviconElement, sources, index + 1, tab);
                 };
                 
                 img.onload = () => {
                     faviconElement.innerHTML = '';
                     faviconElement.appendChild(img);
+                    if (tab) {
+                        tab.faviconUrl = sources[index];
+                    }
                 };
             }
 
@@ -3099,8 +3101,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     let currentUrl = newTab.currentUrl || newTab.iframe.src;
                     
                     if (currentUrl && currentUrl !== 'about:blank') {
-                        this.updateTabInfo(tabId);
-                        this.updateFavicon(newTab, currentUrl);
+                        this.updateTabTitle(newTab, this.extractOriginalUrl(currentUrl));
                         this.updateAddressBarDomain(currentUrl);
                         
                         this.addressBar.value = this.extractOriginalUrl(currentUrl);
@@ -3349,7 +3350,10 @@ if (blockedRegex.test(urlLower)) {
                     const currentUrl = tab.currentUrl || tab.url;
                     const originalUrl = this.extractOriginalUrl(tab.url);
                     
-                    this.updateFavicon(tab, originalUrl);
+                    const newDomain = this.extractDomain(originalUrl);
+                    if (newDomain && newDomain !== tab.faviconDomain) {
+                        this.updateFavicon(tab, originalUrl);
+                    }
                     
                     this.updateTabTitle(tab, originalUrl);
                     
@@ -3419,11 +3423,18 @@ if (blockedRegex.test(urlLower)) {
                     return;
                 }
                 
+                const currentDomain = tab.faviconDomain;
+                if (currentDomain === domain && tab.faviconUrl) {
+                    // Favicon already set for this domain, don't touch it
+                    return;
+                }
+                
                 const faviconSources = [
                     `https://www.google.com/s2/favicons?domain=${domain}&sz=16`,
                 ];
                 
-                this.tryFaviconSources(faviconElement, faviconSources, 0);
+                tab.faviconDomain = domain;
+                this.tryFaviconSources(faviconElement, faviconSources, 0, tab);
             }
 
             updateAddressBarDomain(url) {
@@ -3738,7 +3749,7 @@ if (blockedRegex.test(urlLower)) {
                 }
 
                 // Check bottom boundary
-                const previewHeight = 240; // Updated to match the CSS
+                const previewHeight = 250; // Updated to match the CSS (from .tab-preview height)
                 if (top + previewHeight > window.innerHeight) {
                     // Show above the tab instead
                     top = tabRect.top - previewHeight - 4;
