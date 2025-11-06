@@ -756,6 +756,8 @@ const DB_NAME = 'WallpaperDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'wallpapers';
 
+const DEFAULT_BACKGROUND = '/images/backgrounds/blue-carplay-dark-wallpaper.jpeg';
+
 function initDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -927,8 +929,8 @@ window.addEventListener('DOMContentLoaded', async function() {
             }
         });
     } else {
-        document.body.style.backgroundImage = `url('/images/backgrounds/blue-carplay-dark-wallpaper.jpeg')`;
-        const defaultOption = document.querySelector('.bg-option[data-bg="/images/backgrounds/blue-carplay-dark-wallpaper.jpeg"]');
+        document.body.style.backgroundImage = `url('${DEFAULT_BACKGROUND}')`;
+        const defaultOption = document.querySelector(`.bg-option[data-bg="${DEFAULT_BACKGROUND}"]`);
         if (defaultOption) {
             defaultOption.classList.add('selected');
         }
@@ -1170,13 +1172,13 @@ async function deleteSelectedWallpapers() {
     const remainingWallpapers = await getAllWallpapers();
     
     if (remainingWallpapers.length === 0 || backgroundWasDeleted) {
-        document.body.style.backgroundImage = "url('images/microsoft.png')";
-        localStorage.setItem('backgroundImage', 'images/microsoft.png');
+        document.body.style.backgroundImage = `url('${DEFAULT_BACKGROUND}')`;
+        localStorage.setItem('backgroundImage', DEFAULT_BACKGROUND);
         localStorage.removeItem('currentWallpaperId');
         localStorage.setItem('isAnimatedWallpaper', 'false');
         document.body.removeAttribute('data-wallpaper-type');
         
-        const defaultOption = document.querySelector('.bg-option[data-bg="images/microsoft.png"]');
+        const defaultOption = document.querySelector(`.bg-option[data-bg="${DEFAULT_BACKGROUND}"]`);
         if (defaultOption) {
             const allOptions = document.querySelectorAll('.bg-option');
             allOptions.forEach(option => option.classList.remove('selected'));
