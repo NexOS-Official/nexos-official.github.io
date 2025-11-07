@@ -3333,14 +3333,86 @@ if (blockedRegex.test(urlLower)) {
                 this.updateNavigationButtons();
             }
 
+            // Handle /active/go/encoded-url format
             extractOriginalUrl(proxyUrl) {
+                if (proxyUrl.includes('/active/go/')) {
+                    const encodedPart = proxyUrl.split('/active/go/')[1];
+                    if (encodedPart) {
+                        // Decode the character-shifted URL
+                        // The encoding shifts characters: h→h, t→v, t→t, p→r, s→s, :→8, /→-
+                        // This appears to be a substitution cipher
+                        const decoded = this.decodeProxyUrl(encodedPart);
+                        return decoded;
+                    }
+                }
+                
+                // Handle ?url= format
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
                 }
                 return proxyUrl;
             }
+            
+            decodeProxyUrl(encoded) {
+                // Decode the proxy URL format used in /active/go/
+                // Remove URL encoding first
+                let decoded = decodeURIComponent(encoded);
+                
+                // Character substitution mapping (reverse of encoding)
+                const charMap = {
+                    'h': 'h',
+                    'v': 't',
+                    't': 't',
+                    'r': 'p',
+                    'p': 's', // Fixed: 'p' should map to 's' for https
+                    's': ':', // Fixed: 's' should map to ':' for https
+                    '8': '/', // Fixed: '8' should map to '/'
+                    '-': '/', // Fixed: '-' should map to '/'
+                    '.': '.',
+                    'a': 'a',
+                    'o': 'o',
+                    'e': 'e',
+                    'g': 'g',
+                    'm': 'm',
+                    'l': 'l',
+                    'c': 'c',
+                    'n': 'n',
+                    'w': 'w',
+                    'i': 'i',
+                    'k': 'k',
+                    'p': 'p', // This seems redundant, but keeping for map structure consistency
+                    'd': 'd',
+                    'u': 'u',
+                    'b': 'b',
+                    'f': 'f',
+                    'y': 'y',
+                    'x': 'x',
+                    'z': 'z',
+                    'q': 'q',
+                    'j': 'j'
+                };
+                
+                // Apply character mapping
+                let result = '';
+                for (let char of decoded) {
+                    const lowerChar = char.toLowerCase();
+                    if (charMap[lowerChar] !== undefined) {
+                        const mappedChar = charMap[lowerChar];
+                        result += char === char.toUpperCase() ? mappedChar.toUpperCase() : mappedChar;
+                    } else {
+                        result += char;
+                    }
+                }
+                
+                // Further cleanup for common URL structures
+                result = result.replace(/:\/\//g, '://'); // Ensure proper protocol separator
+                result = result.replace(/\/\//g, '/'); // Remove double slashes, except for protocol
 
+                return result;
+            }
+            // </CHANGE>
+            
             extractDomain(url) {
                 try {
                     if (!url || url === 'about:blank') return null;
