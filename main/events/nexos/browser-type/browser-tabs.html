@@ -3333,66 +3333,14 @@ if (blockedRegex.test(urlLower)) {
                 this.updateNavigationButtons();
             }
 
-            // Handle /active/go/encoded-url format
             extractOriginalUrl(proxyUrl) {
-                if (proxyUrl.includes('/active/go/')) {
-                    const encodedPart = proxyUrl.split('/active/go/')[1];
-                    if (encodedPart) {
-                        // Decode the character-shifted URL
-                        // The encoding shifts characters: h→h, t→v, t→t, p→r, s→s, :→8, /→-
-                        // This appears to be a substitution cipher
-                        const decoded = this.decodeProxyUrl(encodedPart);
-                        return decoded;
-                    }
-                }
-                
-                // Handle ?url= format
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
                 }
                 return proxyUrl;
             }
-            
-            decodeProxyUrl(encoded) {
-                // Decode the proxy URL format: alternating character shift cipher
-                // Even positions (0,2,4...): no change
-                // Odd positions (1,3,5...): shift back by 2 in alphabet
-                
-                // First, decode URL encoding (%2F, etc.)
-                let decoded = decodeURIComponent(encoded);
-                
-                let result = '';
-                for (let i = 0; i < decoded.length; i++) {
-                    const char = decoded[i];
-                    
-                    if (i % 2 === 0) {
-                        // Even position: keep as is
-                        result += char;
-                    } else {
-                        // Odd position: shift back by 2
-                        if (/[a-z]/i.test(char)) {
-                            const isUpper = char === char.toUpperCase();
-                            const base = isUpper ? 65 : 97; // 'A' or 'a'
-                            const charCode = char.charCodeAt(0);
-                            const shifted = ((charCode - base - 2 + 26) % 26) + base;
-                            result += String.fromCharCode(shifted);
-                        } else if (char === '8') {
-                            // Special case: 8 → :
-                            result += ':';
-                        } else if (char === '-') {
-                            // Special case: - → /
-                            result += '/';
-                        } else {
-                            result += char;
-                        }
-                    }
-                }
-                
-                return result;
-            }
-            // </CHANGE>
-            
+
             extractDomain(url) {
                 try {
                     if (!url || url === 'about:blank') return null;
@@ -3540,18 +3488,14 @@ if (blockedRegex.test(urlLower)) {
                         const tab = this.tabs.get(tabId);
                         if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank') {
                             this.updateTabInfo(tabId);
-                            // Extract the original URL from the proxy URL
-                            const originalUrl = this.extractOriginalUrl(tab.iframe.src);
-                            this.updateFavicon(tab, originalUrl);
-                            // Always set address bar to the original URL, not the proxy URL
-                            this.addressBar.value = originalUrl;
+                            this.updateFavicon(tab, tab.iframe.src);
+                            this.updateAddressBarDomain(tab.iframe.src);
                         }
                     }
                 }, 1000);
 
                 this.updateIntervals.set(tabId, interval);
             }
-            // </CHANGE>
 
             goBack() {
                 if (!this.activeTabId) return;
