@@ -754,7 +754,7 @@
             bottom: -60px;
             left: 50%;
             transform: translateX(-50%);
-            background: #f1f1f4;
+            background: #f1f3f4;
             border: 1px solid #dadce0;
             border-bottom: none;
             border-radius: 8px 8px 0 0;
@@ -805,7 +805,7 @@
             left: -8px;
             width: 8px;
             height: 8px;
-            background: #f1f1f4;
+            background: #f1f3f4;
             mask-image: radial-gradient(circle at 0 0, transparent 8px, black 0);
             -webkit-mask-image: radial-gradient(circle at 0 0, transparent 8px, black 0);
         }
@@ -817,7 +817,7 @@
             right: -8px;
             width: 8px;
             height: 8px;
-            background: #f1f1f4;
+            background: #f1f3f4;
             mask-image: radial-gradient(circle at 8px 0, transparent 8px, black 0);
             -webkit-mask-image: radial-gradient(circle at 8px 0, transparent 8px, black 0);
         }
@@ -3054,16 +3054,29 @@ document.addEventListener("DOMContentLoaded", () => {
                     tab.currentUrl = currentUrl;
                     
                     if (currentUrl && currentUrl !== 'about:blank') {
+                        // Extract the original URL for display purposes
                         const originalUrl = this.extractOriginalUrl(currentUrl);
                         
                         this.updateTabInfo(tabId);
                         
                         if (this.activeTabId === tabId) {
+                            // Update favicon with original URL
                             this.updateFavicon(tab, originalUrl);
-                            // Always show the clean URL, not the proxy URL
+                            // Set address bar to ONLY the original URL
                             this.addressBar.value = originalUrl;
+                            
+                            // Update security icon
+                            const isSecure = originalUrl.startsWith('https://');
+                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                            
+                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                            if (securityIcon) {
+                                securityIcon.innerHTML = isSecure ? 
+                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                lucide.createIcons();
+                            }
                         }
-                        // </CHANGE>
                         
                         setTimeout(() => {
                             this.updateTabInfo(tabId);
@@ -3073,9 +3086,15 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                         }, 100);
                     }
+                    // </CHANGE>
                 };
                 
                 iframe.addEventListener('load', tab.loadHandler);
+                
+                // liten for navi eventssssssssssssss!!!
+                iframe.addEventListener('beforeunload', () => {
+                    console.log('something happened', tabId);
+                });
             }
 
             switchToTab(tabId) {
@@ -3101,8 +3120,20 @@ document.addEventListener("DOMContentLoaded", () => {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
                         this.updateTabTitle(newTab, originalUrl);
                         this.addressBar.value = originalUrl;
-                        // </CHANGE>
+                        
+                        // Update security icon
+                        const isSecure = originalUrl.startsWith('https://');
+                        this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                        
+                        const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                        if (securityIcon) {
+                            securityIcon.innerHTML = isSecure ? 
+                                '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                            lucide.createIcons();
+                        }
                     }
+                    // </CHANGE>
                 }
             }
 
@@ -3290,10 +3321,7 @@ if (blockedRegex.test(urlLower)) {
                 this.showLoading();
                 tab.url = url;
                 tab.iframe.src = url;
-                
-                const originalUrl = this.extractOriginalUrl(url);
-                this.addressBar.value = originalUrl;
-                // </CHANGE>
+                this.addressBar.value = this.extractOriginalUrl(url);
 
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
@@ -3424,6 +3452,12 @@ if (blockedRegex.test(urlLower)) {
                     return;
                 }
                 
+                const currentDomain = tab.faviconDomain;
+                if (currentDomain === domain && tab.faviconUrl) {
+                    // Favicon already set for this domain, don't touch it
+                    return;
+                }
+                
                 const faviconSources = [
                     `https://www.google.com/s2/favicons?domain=${domain}&sz=16`,
                 ];
@@ -3478,7 +3512,6 @@ if (blockedRegex.test(urlLower)) {
                         tab.url = previousUrl;
                         tab.iframe.src = previousUrl;
                         this.addressBar.value = this.extractOriginalUrl(previousUrl);
-                        // </CHANGE>
                     }
                     
                     this.updateNavigationButtons();
@@ -3500,7 +3533,6 @@ if (blockedRegex.test(urlLower)) {
                         tab.url = nextUrl;
                         tab.iframe.src = nextUrl;
                         this.addressBar.value = this.extractOriginalUrl(nextUrl);
-                        // </CHANGE>
                     }
                     
                     this.updateNavigationButtons();
@@ -3513,13 +3545,7 @@ if (blockedRegex.test(urlLower)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
-                    
-                    const urlToRefresh = tab.currentUrl || tab.iframe.src;
-                    
-                    tab.iframe.src = 'about:blank';
-                    setTimeout(() => {
-                        tab.iframe.src = urlToRefresh;
-                    }, 10);
+                    tab.iframe.src = tab.iframe.src;
                 }
             }
 
@@ -4731,7 +4757,7 @@ function showMenu() {
 function hideMenu() {
   hideTimeout = setTimeout(() => {
     menu.classList.remove('show');
-  }, 300);
+  }, 3000);
 }
 
 container.addEventListener('mouseenter', showMenu);
