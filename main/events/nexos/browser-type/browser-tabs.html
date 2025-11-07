@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>NexOS ~ By Eclipse</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="icon" href="eclipse.png" type="image/x-icon" />
@@ -3355,60 +3355,40 @@ if (blockedRegex.test(urlLower)) {
             }
             
             decodeProxyUrl(encoded) {
-                // Decode the proxy URL format used in /active/go/
-                // Remove URL encoding first
+                // Decode the proxy URL format: alternating character shift cipher
+                // Even positions (0,2,4...): no change
+                // Odd positions (1,3,5...): shift back by 2 in alphabet
+                
+                // First, decode URL encoding (%2F, etc.)
                 let decoded = decodeURIComponent(encoded);
                 
-                // Character substitution mapping (reverse of encoding)
-                const charMap = {
-                    'h': 'h',
-                    'v': 't',
-                    't': 't',
-                    'r': 'p',
-                    'p': 's', // Fixed: 'p' should map to 's' for https
-                    's': ':', // Fixed: 's' should map to ':' for https
-                    '8': '/', // Fixed: '8' should map to '/'
-                    '-': '/', // Fixed: '-' should map to '/'
-                    '.': '.',
-                    'a': 'a',
-                    'o': 'o',
-                    'e': 'e',
-                    'g': 'g',
-                    'm': 'm',
-                    'l': 'l',
-                    'c': 'c',
-                    'n': 'n',
-                    'w': 'w',
-                    'i': 'i',
-                    'k': 'k',
-                    'p': 'p', // This seems redundant, but keeping for map structure consistency
-                    'd': 'd',
-                    'u': 'u',
-                    'b': 'b',
-                    'f': 'f',
-                    'y': 'y',
-                    'x': 'x',
-                    'z': 'z',
-                    'q': 'q',
-                    'j': 'j'
-                };
-                
-                // Apply character mapping
                 let result = '';
-                for (let char of decoded) {
-                    const lowerChar = char.toLowerCase();
-                    if (charMap[lowerChar] !== undefined) {
-                        const mappedChar = charMap[lowerChar];
-                        result += char === char.toUpperCase() ? mappedChar.toUpperCase() : mappedChar;
-                    } else {
+                for (let i = 0; i < decoded.length; i++) {
+                    const char = decoded[i];
+                    
+                    if (i % 2 === 0) {
+                        // Even position: keep as is
                         result += char;
+                    } else {
+                        // Odd position: shift back by 2
+                        if (/[a-z]/i.test(char)) {
+                            const isUpper = char === char.toUpperCase();
+                            const base = isUpper ? 65 : 97; // 'A' or 'a'
+                            const charCode = char.charCodeAt(0);
+                            const shifted = ((charCode - base - 2 + 26) % 26) + base;
+                            result += String.fromCharCode(shifted);
+                        } else if (char === '8') {
+                            // Special case: 8 → :
+                            result += ':';
+                        } else if (char === '-') {
+                            // Special case: - → /
+                            result += '/';
+                        } else {
+                            result += char;
+                        }
                     }
                 }
                 
-                // Further cleanup for common URL structures
-                result = result.replace(/:\/\//g, '://'); // Ensure proper protocol separator
-                result = result.replace(/\/\//g, '/'); // Remove double slashes, except for protocol
-
                 return result;
             }
             // </CHANGE>
