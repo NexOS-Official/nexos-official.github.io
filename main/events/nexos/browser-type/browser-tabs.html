@@ -754,7 +754,7 @@
             bottom: -60px;
             left: 50%;
             transform: translateX(-50%);
-            background: #f1f3f4;
+            background: #f1f1f4;
             border: 1px solid #dadce0;
             border-bottom: none;
             border-radius: 8px 8px 0 0;
@@ -805,7 +805,7 @@
             left: -8px;
             width: 8px;
             height: 8px;
-            background: #f1f3f4;
+            background: #f1f1f4;
             mask-image: radial-gradient(circle at 0 0, transparent 8px, black 0);
             -webkit-mask-image: radial-gradient(circle at 0 0, transparent 8px, black 0);
         }
@@ -817,7 +817,7 @@
             right: -8px;
             width: 8px;
             height: 8px;
-            background: #f1f3f4;
+            background: #f1f1f4;
             mask-image: radial-gradient(circle at 8px 0, transparent 8px, black 0);
             -webkit-mask-image: radial-gradient(circle at 8px 0, transparent 8px, black 0);
         }
@@ -3054,7 +3054,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     tab.currentUrl = currentUrl;
                     
                     if (currentUrl && currentUrl !== 'about:blank') {
-                        // Extract the original URL for display purposes
                         const originalUrl = this.extractOriginalUrl(currentUrl);
                         
                         this.updateTabInfo(tabId);
@@ -3062,8 +3061,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (this.activeTabId === tabId) {
                             // Update favicon with original URL
                             this.updateFavicon(tab, originalUrl);
-                            // Set address bar to ONLY the original URL
+                            // Set address bar input to ONLY the original URL
                             this.addressBar.value = originalUrl;
+                            
+                            // Update the browser's actual address bar using History API
+                            try {
+                                window.history.replaceState({tabId, url: originalUrl}, '', originalUrl);
+                            } catch (e) {
+                                console.log('[v0] Could not update browser URL:', e);
+                            }
                             
                             // Update security icon
                             const isSecure = originalUrl.startsWith('https://');
@@ -3077,6 +3083,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 lucide.createIcons();
                             }
                         }
+                        // </CHANGE>
                         
                         setTimeout(() => {
                             this.updateTabInfo(tabId);
@@ -3086,15 +3093,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                         }, 100);
                     }
-                    // </CHANGE>
                 };
-                
+
                 iframe.addEventListener('load', tab.loadHandler);
-                
-                // liten for navi eventssssssssssssss!!!
-                iframe.addEventListener('beforeunload', () => {
-                    console.log('something happened', tabId);
-                });
             }
 
             switchToTab(tabId) {
@@ -3321,7 +3322,15 @@ if (blockedRegex.test(urlLower)) {
                 this.showLoading();
                 tab.url = url;
                 tab.iframe.src = url;
-                this.addressBar.value = this.extractOriginalUrl(url);
+                const originalUrl = this.extractOriginalUrl(url);
+                this.addressBar.value = originalUrl;
+                
+                try {
+                    window.history.pushState({tabId: this.activeTabId, url: originalUrl}, '', originalUrl);
+                } catch (e) {
+                    console.log('[v0] Could not update browser URL:', e);
+                }
+                // </CHANGE>
 
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
@@ -3511,7 +3520,15 @@ if (blockedRegex.test(urlLower)) {
                     if (tab) {
                         tab.url = previousUrl;
                         tab.iframe.src = previousUrl;
-                        this.addressBar.value = this.extractOriginalUrl(previousUrl);
+                        const originalUrl = this.extractOriginalUrl(previousUrl);
+                        this.addressBar.value = originalUrl;
+                        
+                        try {
+                            window.history.replaceState({tabId: this.activeTabId, url: originalUrl}, '', originalUrl);
+                        } catch (e) {
+                            console.log('[v0] Could not update browser URL:', e);
+                        }
+                        // </CHANGE>
                     }
                     
                     this.updateNavigationButtons();
@@ -3532,7 +3549,15 @@ if (blockedRegex.test(urlLower)) {
                     if (tab) {
                         tab.url = nextUrl;
                         tab.iframe.src = nextUrl;
-                        this.addressBar.value = this.extractOriginalUrl(nextUrl);
+                        const originalUrl = this.extractOriginalUrl(nextUrl);
+                        this.addressBar.value = originalUrl;
+                        
+                        try {
+                            window.history.replaceState({tabId: this.activeTabId, url: originalUrl}, '', originalUrl);
+                        } catch (e) {
+                            console.log('[v0] Could not update browser URL:', e);
+                        }
+                        // </CHANGE>
                     }
                     
                     this.updateNavigationButtons();
@@ -3545,7 +3570,13 @@ if (blockedRegex.test(urlLower)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
-                    tab.iframe.src = tab.iframe.src;
+                    
+                    const urlToRefresh = tab.currentUrl || tab.iframe.src;
+                    
+                    tab.iframe.src = 'about:blank';
+                    setTimeout(() => {
+                        tab.iframe.src = urlToRefresh;
+                    }, 10);
                 }
             }
 
@@ -4757,7 +4788,7 @@ function showMenu() {
 function hideMenu() {
   hideTimeout = setTimeout(() => {
     menu.classList.remove('show');
-  }, 3000);
+  }, 300);
 }
 
 container.addEventListener('mouseenter', showMenu);
