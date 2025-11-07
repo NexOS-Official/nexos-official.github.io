@@ -3042,7 +3042,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
-                    
                     let currentUrl = iframe.src;
                     try {
                         if (iframe.contentWindow && iframe.contentWindow.location) {
@@ -3052,25 +3051,30 @@ document.addEventListener("DOMContentLoaded", () => {
                         currentUrl = iframe.src;
                     }
                     
+                    // Store the proxied URL for internal use
                     tab.currentUrl = currentUrl;
                     
                     if (currentUrl && currentUrl !== 'about:blank') {
+                        // Extract the original URL for display purposes
+                        const originalUrl = this.extractOriginalUrl(currentUrl);
+                        
                         this.updateTabInfo(tabId);
                         
                         if (this.activeTabId === tabId) {
-                            this.updateFavicon(tab, currentUrl);
-                            this.updateAddressBarDomain(currentUrl);
-                            this.addressBar.value = this.extractOriginalUrl(currentUrl);
+                            // Pass original URL for favicon and address bar
+                            this.updateFavicon(tab, originalUrl);
+                            this.addressBar.value = originalUrl;
                         }
                         
                         setTimeout(() => {
                             this.updateTabInfo(tabId);
                             if (this.activeTabId === tabId) {
-                                this.updateFavicon(tab, currentUrl);
-                                this.updateAddressBarDomain(currentUrl);
+                                this.updateFavicon(tab, originalUrl);
+                                this.addressBar.value = originalUrl;
                             }
                         }, 100);
                     }
+                    // </CHANGE>
                 };
                 
                 iframe.addEventListener('load', tab.loadHandler);
@@ -3348,7 +3352,7 @@ if (blockedRegex.test(urlLower)) {
                 try {
                     const iframe = tab.iframe;
                     const currentUrl = tab.currentUrl || tab.url;
-                    const originalUrl = this.extractOriginalUrl(tab.url);
+                    const originalUrl = this.extractOriginalUrl(currentUrl);
                     
                     const newDomain = this.extractDomain(originalUrl);
                     if (newDomain && newDomain !== tab.faviconDomain) {
