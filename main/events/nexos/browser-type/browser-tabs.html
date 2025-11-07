@@ -3059,29 +3059,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         this.updateTabInfo(tabId);
                         
                         if (this.activeTabId === tabId) {
-                            // Update favicon with original URL
                             this.updateFavicon(tab, originalUrl);
-                            // Set address bar input to ONLY the original URL
+                            // Always show the clean URL, not the proxy URL
                             this.addressBar.value = originalUrl;
-                            
-                            // Update the browser's actual address bar using History API
-                            try {
-                                window.history.replaceState({tabId, url: originalUrl}, '', originalUrl);
-                            } catch (e) {
-                                console.log('[v0] Could not update browser URL:', e);
-                            }
-                            
-                            // Update security icon
-                            const isSecure = originalUrl.startsWith('https://');
-                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                            
-                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                            if (securityIcon) {
-                                securityIcon.innerHTML = isSecure ? 
-                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                lucide.createIcons();
-                            }
                         }
                         // </CHANGE>
                         
@@ -3094,7 +3074,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         }, 100);
                     }
                 };
-
+                
                 iframe.addEventListener('load', tab.loadHandler);
             }
 
@@ -3121,20 +3101,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
                         this.updateTabTitle(newTab, originalUrl);
                         this.addressBar.value = originalUrl;
-                        
-                        // Update security icon
-                        const isSecure = originalUrl.startsWith('https://');
-                        this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                        
-                        const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                        if (securityIcon) {
-                            securityIcon.innerHTML = isSecure ? 
-                                '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                            lucide.createIcons();
-                        }
+                        // </CHANGE>
                     }
-                    // </CHANGE>
                 }
             }
 
@@ -3322,14 +3290,9 @@ if (blockedRegex.test(urlLower)) {
                 this.showLoading();
                 tab.url = url;
                 tab.iframe.src = url;
+                
                 const originalUrl = this.extractOriginalUrl(url);
                 this.addressBar.value = originalUrl;
-                
-                try {
-                    window.history.pushState({tabId: this.activeTabId, url: originalUrl}, '', originalUrl);
-                } catch (e) {
-                    console.log('[v0] Could not update browser URL:', e);
-                }
                 // </CHANGE>
 
                 const history = this.history[this.activeTabId];
@@ -3461,12 +3424,6 @@ if (blockedRegex.test(urlLower)) {
                     return;
                 }
                 
-                const currentDomain = tab.faviconDomain;
-                if (currentDomain === domain && tab.faviconUrl) {
-                    // Favicon already set for this domain, don't touch it
-                    return;
-                }
-                
                 const faviconSources = [
                     `https://www.google.com/s2/favicons?domain=${domain}&sz=16`,
                 ];
@@ -3520,14 +3477,7 @@ if (blockedRegex.test(urlLower)) {
                     if (tab) {
                         tab.url = previousUrl;
                         tab.iframe.src = previousUrl;
-                        const originalUrl = this.extractOriginalUrl(previousUrl);
-                        this.addressBar.value = originalUrl;
-                        
-                        try {
-                            window.history.replaceState({tabId: this.activeTabId, url: originalUrl}, '', originalUrl);
-                        } catch (e) {
-                            console.log('[v0] Could not update browser URL:', e);
-                        }
+                        this.addressBar.value = this.extractOriginalUrl(previousUrl);
                         // </CHANGE>
                     }
                     
@@ -3549,14 +3499,7 @@ if (blockedRegex.test(urlLower)) {
                     if (tab) {
                         tab.url = nextUrl;
                         tab.iframe.src = nextUrl;
-                        const originalUrl = this.extractOriginalUrl(nextUrl);
-                        this.addressBar.value = originalUrl;
-                        
-                        try {
-                            window.history.replaceState({tabId: this.activeTabId, url: originalUrl}, '', originalUrl);
-                        } catch (e) {
-                            console.log('[v0] Could not update browser URL:', e);
-                        }
+                        this.addressBar.value = this.extractOriginalUrl(nextUrl);
                         // </CHANGE>
                     }
                     
