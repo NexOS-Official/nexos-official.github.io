@@ -131,6 +131,7 @@
             margin-bottom: 8px;
         }
 
+        /* Added room code icon styling with uploaded image */
         .room-info-icon {
             width: 32px;
             height: 32px;
@@ -141,6 +142,13 @@
             justify-content: center;
             color: white;
             font-weight: 600;
+        }
+
+        .room-info-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
         }
 
         .room-info-text {
@@ -159,6 +167,33 @@
             color: var(--text-primary);
             font-weight: 500;
         }
+
+        /* Added switch room button styling */
+        .room-actions {
+            padding: 16px;
+            border-bottom: 1px solid var(--bg-tertiary);
+        }
+
+        .switch-room-btn {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--brand-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .switch-room-btn:hover {
+            background-color: var(--brand-hover);
+        }
+
 
         /* Theme Toggle */
         .theme-toggle {
@@ -277,6 +312,7 @@
 
         .message-content {
             flex: 1;
+            /* Added min-width: 0 to fix text wrapping in flex container */
             min-width: 0;
         }
 
@@ -299,11 +335,15 @@
             font-weight: 400;
         }
 
+        /* Enhanced text wrapping to handle long strings of characters */
         .message-text {
             font-size: 16px;
             line-height: 1.375;
             color: var(--text-primary);
             word-wrap: break-word;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            white-space: pre-wrap;
         }
 
         .message-text a {
@@ -653,14 +693,23 @@
                     </div>
                 </div>
                 <div class="room-info-item">
+                    <!-- Updated room code icon to use the provided image -->
                     <div class="room-info-icon">
-                        <i class="fas fa-hashtag"></i>
+                        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202025-11-06%207.38.05%20PM-b9qj6JyYlS6FjiKxa36YV4abShkwsV.png" alt="Room">
                     </div>
                     <div class="room-info-text">
                         <div class="room-info-label">Room Code</div>
                         <div class="room-info-value" id="roomCodeSidebar">-</div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Added switch room button section -->
+            <div class="room-actions">
+                <button class="switch-room-btn" onclick="switchRoom()">
+                    <i class="fas fa-door-open"></i>
+                    Switch Room
+                </button>
             </div>
 
             <div class="theme-toggle">
@@ -774,6 +823,28 @@
             }
         });
 
+        function switchRoom() {
+            // Unsubscribe from current room
+            if (room) {
+                try {
+                    room.unsubscribe();
+                } catch (e) {
+                    console.error('Error unsubscribing:', e);
+                }
+            }
+
+            // Clear messages
+            document.getElementById('messagesContainer').innerHTML = '';
+
+            // Show modal
+            document.getElementById('joinModal').classList.remove('hidden');
+            document.getElementById('appContainer').classList.add('hidden');
+
+            // Keep username and profile pic, just clear room code
+            document.getElementById('roomCodeInput').value = '';
+            document.getElementById('roomCodeInput').focus();
+        }
+
         // Join Room
         function joinRoom() {
             userName = document.getElementById('usernameInput').value.trim();
@@ -797,7 +868,9 @@
             document.getElementById('roomCodeSidebar').textContent = roomCode;
             document.getElementById('chatHeaderTitle').textContent = 'general';
 
-            userProfiles[userName] = userProfilePic;
+            if (userProfilePic) {
+                userProfiles[userName] = userProfilePic;
+            }
 
             // Load saved messages
             loadSavedMessages();
@@ -836,7 +909,7 @@
                         message: {
                             type: 'join',
                             name: userName,
-                            profilePic: userProfilePic
+                            profilePic: userProfilePic || ''
                         }
                     });
                 }, 500);
@@ -846,7 +919,9 @@
                 if (!data) return;
 
                 if (data.type === 'join') {
-                    userProfiles[data.name] = data.profilePic;
+                    if (data.profilePic) {
+                        userProfiles[data.name] = data.profilePic;
+                    }
                     addSystemMessage(`${data.name} joined the chat`);
                 } else if (data.text) {
                     if (!userProfiles[data.name] && data.profilePic) {
@@ -875,7 +950,7 @@
                     text: text,
                     name: userName,
                     timestamp: timestamp,
-                    profilePic: userProfiles[userName]
+                    profilePic: userProfiles[userName] || ''
                 }
             });
         }
