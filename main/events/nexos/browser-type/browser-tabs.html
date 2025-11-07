@@ -2166,7 +2166,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.sidebarFullscreen = document.getElementById('sidebarFullscreen');
                 this.isSidebarFullscreen = false;
                 this.isContentBlurred = false;
-                //pvpn got ridda sun icon bc i would rather stick with nexos light mode.
+                //pvpn got rid of sun icon bc i would rather stick with nexos light mode.
                 this.batteryNotification = document.getElementById('batteryNotification');
                 this.batteryIcon = document.getElementById('batteryIcon');
                 this.batteryPercent = document.getElementById('batteryPercent');
@@ -3051,7 +3051,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         currentUrl = iframe.src;
                     }
                     
-                    // Store the proxied URL for internal use
                     tab.currentUrl = currentUrl;
                     
                     if (currentUrl && currentUrl !== 'about:blank') {
@@ -3061,9 +3060,22 @@ document.addEventListener("DOMContentLoaded", () => {
                         this.updateTabInfo(tabId);
                         
                         if (this.activeTabId === tabId) {
-                            // Pass original URL for favicon and address bar
+                            // Update favicon with original URL
                             this.updateFavicon(tab, originalUrl);
+                            // Set address bar to ONLY the original URL
                             this.addressBar.value = originalUrl;
+                            
+                            // Update security icon
+                            const isSecure = originalUrl.startsWith('https://');
+                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                            
+                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                            if (securityIcon) {
+                                securityIcon.innerHTML = isSecure ? 
+                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                lucide.createIcons();
+                            }
                         }
                         
                         setTimeout(() => {
@@ -3105,11 +3117,23 @@ document.addEventListener("DOMContentLoaded", () => {
                     let currentUrl = newTab.currentUrl || newTab.iframe.src;
                     
                     if (currentUrl && currentUrl !== 'about:blank') {
-                        this.updateTabTitle(newTab, this.extractOriginalUrl(currentUrl));
-                        this.updateAddressBarDomain(currentUrl);
+                        const originalUrl = this.extractOriginalUrl(currentUrl);
+                        this.updateTabTitle(newTab, originalUrl);
+                        this.addressBar.value = originalUrl;
                         
-                        this.addressBar.value = this.extractOriginalUrl(currentUrl);
+                        // Update security icon
+                        const isSecure = originalUrl.startsWith('https://');
+                        this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                        
+                        const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                        if (securityIcon) {
+                            securityIcon.innerHTML = isSecure ? 
+                                '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                            lucide.createIcons();
+                        }
                     }
+                    // </CHANGE>
                 }
             }
 
@@ -3443,22 +3467,6 @@ if (blockedRegex.test(urlLower)) {
             }
 
             updateAddressBarDomain(url) {
-                const domain = this.extractDomain(url);
-                if (domain && this.addressBar) {
-                    const originalUrl = this.extractOriginalUrl(url);
-                    this.addressBar.value = originalUrl;
-                    
-                    const isSecure = originalUrl.startsWith('https://');
-                    this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                    
-                    const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                    if (securityIcon) {
-                        securityIcon.innerHTML = isSecure ? 
-                            '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                            '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                        lucide.createIcons();
-                    }
-                }
             }
 
             setupIframeLoadHandler(iframe, tabId) {
@@ -3723,18 +3731,24 @@ if (blockedRegex.test(urlLower)) {
                 previewBox.className = 'tab-preview';
                 previewBox.dataset.tabId = tabId;
 
-                // Get tab info
                 const title = tab.title || 'Untitled';
                 const url = this.extractOriginalUrl(tab.currentUrl || tab.url);
-                const truncatedUrl = url.length > 20 ? url.substring(0, 20) + '...' : url;
+                const truncatedUrl = url.length > 40 ? url.substring(0, 40) + '...' : url;
+
+                const previewIframeContainer = document.createElement('div');
+                previewIframeContainer.className = 'tab-preview-iframe-container';
+                
+                // Try to capture the actual iframe content by cloning it
+                const clonedIframe = tab.iframe.cloneNode(true);
+                clonedIframe.className = 'tab-preview-iframe';
+                previewIframeContainer.appendChild(clonedIframe);
 
                 previewBox.innerHTML = `
                     <div class="tab-preview-title">${title}</div>
                     <div class="tab-preview-url">${truncatedUrl}</div>
-                    <div class="tab-preview-iframe-container">
-                        <iframe class="tab-preview-iframe" src="${tab.currentUrl || tab.url}"></iframe>
-                    </div>
                 `;
+                previewBox.appendChild(previewIframeContainer);
+                // </CHANGE>
 
                 document.body.appendChild(previewBox);
 
