@@ -2106,10 +2106,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="sidebar-header">
                 <div class="sidebar-title" id="sidebarTitle">Sidebar</div>
                 <div class="sidebar-actions">
-                    <!-- CHANGE: Added minimize button back -->
-                    <button class="sidebar-btn" id="sidebarMinimize" title="Minimize">
-                        <i data-lucide="minus" width="16" height="16"></i>
-                    </button>
                     <button class="sidebar-btn" id="sidebarFullscreen" title="Toggle fullscreen">
                         <i data-lucide="maximize-2" width="16" height="16"></i>
                     </button>
@@ -2255,13 +2251,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.sidebarIframe = document.getElementById('sidebarIframe');
                 this.sidebarContent = document.getElementById('sidebarContent');
                 this.sidebarFullscreen = document.getElementById('sidebarFullscreen');
-                // CHANGE: Added minimize button reference
-                this.sidebarMinimize = document.getElementById('sidebarMinimize');
                 this.isSidebarFullscreen = false;
                 this.isContentBlurred = false;
-                // CHANGE Added multi-sidebar management
-                this.openSidebarApps = []; // Array to track all open sidebar apps
-                this.currentSidebarIndex = 0; // Currently visible sidebar app
                 //pvpn got rid of sun icon bc i would rather stick with nexos light mode.
                 this.batteryNotification = document.getElementById('batteryNotification');
                 this.batteryIcon = document.getElementById('batteryIcon');
@@ -2304,13 +2295,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('sidebarClose').addEventListener('click', () => {
                     this.closeSidebar();
                 });
-                
-                // CHANGE Added dropdown toggle listener
-                this.sidebarTitle.addEventListener('click', (e) => {
-                    if (this.openSidebarApps.length > 1) {
-                        this.toggleSidebarDropdown(e);
-                    }
-                });
 
                 document.getElementById('sidebarNewTab').addEventListener('click', () => {
                     this.openSidebarInNewTab();
@@ -2319,8 +2303,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('sidebarFullscreen').addEventListener('click', () => {
                     this.toggleSidebarFullscreen();
                 });
-                // CHANGE: Added minimize button event listener
-                this.sidebarMinimize.addEventListener('click', () => this.minimizeSidebar());
                 
                 this.zoomInBtn.addEventListener('click', () => this.zoomIframe(0.1));
                 this.zoomOutBtn.addEventListener('click', () => this.zoomIframe(-0.1));
@@ -2461,251 +2443,58 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             handleHeadphonesClick() {
-                // CHANGE Updated to support multi-sidebar
                 if (!this.restoreSidebar()) {
-                    this.addOrSwitchSidebar('Music', '/main/events/sidebar/apps/music.html');
+                    this.openSidebar('Music', '/main/events/sidebar/apps/music.html');
                 }
                 this.setActiveToolbarBtn(this.music);
             }
 
             handlePhoneClick() {
                 if (!this.restoreSidebar()) {
-                    this.addOrSwitchSidebar('Streaming', '/main/events/sidebar/apps/movie.html');
+                    this.openSidebar('Streaming', '/main/events/sidebar/apps/movie.html');
                 }
                 this.setActiveToolbarBtn(this.movies);
             }
 
             handleGeforceClick() {
                 if (!this.restoreSidebar()) {
-                    this.addOrSwitchSidebar('Notifications', '/main/events/sidebar/apps/announcements.html');
+                    this.openSidebar('Notifications', '/main/events/sidebar/apps/announcements.html');
                 }
                 this.setActiveToolbarBtn(this.geforcenow);
             }
 
             handleAiClick() {
                 if (!this.restoreSidebar()) {
-                    this.addOrSwitchSidebar('Tasks', '/main/events/sidebar/apps/tasks/tasks.html');
+                    this.openSidebar('Tasks', '/main/events/sidebar/apps/tasks.html');
                 }
                 this.setActiveToolbarBtn(this.aiBtn);
             }
 
             handleCloudClick() {
                 if (!this.restoreSidebar()) {
-                    this.addOrSwitchSidebar('Weather', '/main/events/sidebar/apps/weather.html');
+                    this.openSidebar('Weather', '/main/events/sidebar/apps/weather.html');
                 }
                 this.setActiveToolbarBtn(this.cloudBtn);
             }
 
             handleSplitClick() {
                 if (!this.restoreSidebar()) {
-                    this.addOrSwitchSidebar('Multitask', '/main/events/sidebar/apps/multi.html');
+                    this.openSidebar('Multitask', '/main/events/sidebar/apps/multi.html');
                 }
                 this.setActiveToolbarBtn(this.sidemultitaskaddedbynexorayayayay);
             }
-            
-            // CHANGE New method to handle multi-sidebar functionality
-            addOrSwitchSidebar(title, url) {
-                // Check if this app is already open
-                const existingIndex = this.openSidebarApps.findIndex(app => app.url === url);
-                
-                if (existingIndex !== -1) {
-                    // Switch to existing app
-                    this.switchToSidebarApp(existingIndex);
-                } else {
-                    // Add new app to the stack
-                    const newApp = {
-                        title: title,
-                        url: url,
-                        iframe: document.createElement('iframe')
-                    };
-                    newApp.iframe.className = 'sidebar-iframe';
-                    newApp.iframe.src = url;
-                    newApp.iframe.style.display = 'none';
-                    
-                    this.openSidebarApps.push(newApp);
-                    this.currentSidebarIndex = this.openSidebarApps.length - 1;
-                    
-                    // Clear existing iframes and add all
-                    this.sidebarContent.innerHTML = '';
-                    this.openSidebarApps.forEach(app => {
-                        this.sidebarContent.appendChild(app.iframe);
-                    });
-                    
-                    this.showCurrentSidebarApp();
-                    this.updateSidebarTitle();
-                    
-                    // Open sidebar if not already open
-                    this.contentArea.classList.add('sidebar-open');
-                    if (this.isSidebarFullscreen) {
-                        this.contentArea.classList.add('sidebar-fullscreen');
-                    }
-                    this.sidebar.classList.add('open');
-                    this.sidebar.classList.remove('minimized');
-                }
-            }
-            
-            // CHANGE Show the currently selected sidebar app
-            showCurrentSidebarApp() {
-                this.openSidebarApps.forEach((app, index) => {
-                    app.iframe.style.display = index === this.currentSidebarIndex ? 'block' : 'none';
-                });
-            }
-            
-            // CHANGE Update sidebar title with dropdown indicator
-            updateSidebarTitle() {
-                if (this.openSidebarApps.length > 0) {
-                    const currentApp = this.openSidebarApps[this.currentSidebarIndex];
-                    // CHANGE Updated to make title clickable and show dropdown arrow
-                    if (this.openSidebarApps.length > 1) {
-                        this.sidebarTitle.innerHTML = currentApp.title + ' <span style="font-size: 12px; opacity: 0.7;">▼</span>';
-                        this.sidebarTitle.style.cursor = 'pointer';
-                    } else {
-                        this.sidebarTitle.textContent = currentApp.title;
-                        this.sidebarTitle.style.cursor = 'default';
-                    }
-                }
-            }
-            
-            // CHANGE Switch to a specific sidebar app by index
-            switchToSidebarApp(index) {
-                if (index >= 0 && index < this.openSidebarApps.length) {
-                    this.currentSidebarIndex = index;
-                    this.showCurrentSidebarApp();
-                    this.updateSidebarTitle();
-                }
-            }
-            
-            // CHANGE Toggle dropdown menu for switching between sidebar apps
-            toggleSidebarDropdown(e) {
-                e.stopPropagation();
-                
-                // Remove existing dropdown if any
-                const existingDropdown = document.getElementById('sidebarDropdown');
-                if (existingDropdown) {
-                    existingDropdown.remove();
-                    return;
-                }
-                
-                // Create dropdown menu
-                const dropdown = document.createElement('div');
-                dropdown.id = 'sidebarDropdown';
-                dropdown.style.cssText = `
-                    position: absolute;
-                    top: 45px;
-                    left: 10px;
-                    right: 10px;
-                    background: rgba(30, 30, 30, 0.98);
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    border-radius: 8px;
-                    padding: 8px;
-                    z-index: 10000;
-                    max-height: 300px;
-                    overflow-y: auto;
-                    backdrop-filter: blur(10px);
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                `;
-                
-                this.openSidebarApps.forEach((app, index) => {
-                    const item = document.createElement('div');
-                    item.style.cssText = `
-                        padding: 10px 12px;
-                        margin: 4px 0;
-                        border-radius: 6px;
-                        cursor: pointer;
-                        transition: background 0.2s;
-                        color: ${index === this.currentSidebarIndex ? '#4a9eff' : '#fff'};
-                        font-weight: ${index === this.currentSidebarIndex ? '600' : '400'};
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    `;
-                    
-                    const titleSpan = document.createElement('span');
-                    titleSpan.textContent = app.title;
-                    item.appendChild(titleSpan);
-                    
-                    // Add close button for each app
-                    const closeBtn = document.createElement('span');
-                    closeBtn.textContent = '✕';
-                    closeBtn.style.cssText = `
-                        font-size: 14px;
-                        opacity: 0.7;
-                        padding: 2px 6px;
-                        border-radius: 4px;
-                    `;
-                    closeBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.closeSidebarApp(index);
-                        dropdown.remove();
-                    });
-                    item.appendChild(closeBtn);
-                    
-                    item.addEventListener('mouseenter', () => {
-                        if (index !== this.currentSidebarIndex) {
-                            item.style.background = 'rgba(255, 255, 255, 0.1)';
-                        }
-                    });
-                    
-                    item.addEventListener('mouseleave', () => {
-                        item.style.background = 'transparent';
-                    });
-                    
-                    item.addEventListener('click', () => {
-                        this.switchToSidebarApp(index);
-                        dropdown.remove();
-                    });
-                    
-                    dropdown.appendChild(item);
-                });
-                
-                this.sidebar.appendChild(dropdown);
-                
-                // Close dropdown when clicking outside
-                setTimeout(() => {
-                    document.addEventListener('click', function closeDropdown() {
-                        const existingDropdown = document.getElementById('sidebarDropdown');
-                        if (existingDropdown) {
-                            existingDropdown.remove();
-                        }
-                        document.removeEventListener('click', closeDropdown);
-                    });
-                }, 0);
-            }
-            
-            // CHANGE Close a specific sidebar app
-            closeSidebarApp(index) {
-                if (index >= 0 && index < this.openSidebarApps.length) {
-                    // Remove the app from the array
-                    this.openSidebarApps.splice(index, 1);
-                    
-                    // Adjust current index if necessary
-                    if (this.currentSidebarIndex >= this.openSidebarApps.length) {
-                        this.currentSidebarIndex = Math.max(0, this.openSidebarApps.length - 1);
-                    } else if (index < this.currentSidebarIndex) {
-                        this.currentSidebarIndex--;
-                    }
-                    
-                    // If no apps left, close the sidebar completely
-                    if (this.openSidebarApps.length === 0) {
-                        this.closeSidebar();
-                    } else {
-                        // Rebuild the sidebar content
-                        this.sidebarContent.innerHTML = '';
-                        this.openSidebarApps.forEach(app => {
-                            this.sidebarContent.appendChild(app.iframe);
-                        });
-                        this.showCurrentSidebarApp();
-                        this.updateSidebarTitle();
-                    }
-                }
-            }
-            
             openLastClosedSidebarMinimized() {
                 if (this.lastClosedSidebarApp) {
-                    // CHANGE Use new multi-sidebar method
-                    this.addOrSwitchSidebar(this.lastClosedSidebarApp.title, this.lastClosedSidebarApp.url);
+                    this.sidebarTitle.textContent = this.lastClosedSidebarApp.title;
+                    this.sidebarContent.classList.add('loading');
+                    this.sidebarIframe.src = this.lastClosedSidebarApp.url;
+                    
                     this.sidebar.classList.add('minimized');
                     this.sidebar.classList.remove('open');
+                    
+                    setTimeout(() => {
+                        this.sidebarContent.classList.remove('loading');
+                    }, 800);
                 } else {
                     this.handleAiClick();
                     this.minimizeSidebar();
@@ -2713,23 +2502,29 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             openSidebar(title, url) {
-                // CHANGE Deprecated - now uses addOrSwitchSidebar
-                this.addOrSwitchSidebar(title, url);
+                this.sidebarTitle.textContent = title;
+                this.sidebarContent.classList.add('loading');
+                this.sidebarIframe.src = url;
+                
+                this.contentArea.classList.add('sidebar-open');
+                if (this.isSidebarFullscreen) {
+                    this.contentArea.classList.add('sidebar-fullscreen');
+                }
+                this.sidebar.classList.add('open');
+                this.sidebar.classList.remove('minimized');
+                
+                setTimeout(() => {
+                    this.sidebarContent.classList.remove('loading');
+                }, 800);
             }
 
             closeSidebar() {
-                // CHANGE Store last closed app if any exist
-                if (this.openSidebarApps.length > 0) {
-                    const currentApp = this.openSidebarApps[this.currentSidebarIndex];
+                if (this.sidebarIframe.src && this.sidebarIframe.src !== 'about:blank') {
                     this.lastClosedSidebarApp = {
-                        title: currentApp.title,
-                        url: currentApp.url
+                        title: this.sidebarTitle.textContent,
+                        url: this.sidebarIframe.src
                     };
                 }
-                
-                // Clear all open apps
-                this.openSidebarApps = [];
-                this.currentSidebarIndex = 0;
                 
                 this.contentArea.classList.remove('sidebar-open');
                 this.contentArea.classList.remove('sidebar-fullscreen');
@@ -2738,11 +2533,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.clearActiveToolbarBtn();
                 
                 setTimeout(() => {
-                    this.sidebarContent.innerHTML = '';
+                    this.sidebarIframe.src = 'about:blank';
                 }, 400);
             }
 
-            // CHANGE Re-added minimize functionality
             minimizeSidebar() {
                 this.contentArea.classList.remove('sidebar-open');
                 this.contentArea.classList.remove('sidebar-fullscreen');
@@ -4099,6 +3893,54 @@ if (blockedRegex.test(urlLower)) {
                 if (displayElement) {
                     displayElement.textContent = `${Math.round(zoomLevel)}%`;
                 }
+            }
+            closeTab(tabId) {
+                if (this.tabs.size <= 1) {
+                    this.showFinalTabNotification();
+                    return;
+                }
+
+                const tabIndex = Array.from(this.tabs.values()).findIndex(t => t.id === tabId);
+                if (tabIndex === -1) return;
+                
+                const tab = Array.from(this.tabs.values())[tabIndex];
+                const wasActive = tab.id === this.activeTabId;
+                
+                if (tab.pinned && this.contextMenuTabId !== tabId) {
+                    return;
+                }
+                
+                tab.element.style.transform = 'translateX(-100%)';
+                tab.element.style.opacity = '0';
+                
+                setTimeout(() => {
+                    tab.element.remove();
+                    tab.iframe.remove();
+                    this.tabs.delete(tabId);
+                    
+                    if (wasActive && this.tabs.size > 0) {
+                        const remainingTabs = Array.from(this.tabs.values());
+                        let newActiveTabId = null;
+
+                        const nextTab = remainingTabs.find(t => t.element.compareDocumentPosition(tab.element) & Node.DOCUMENT_POSITION_FOLLOWING);
+                        if (nextTab) {
+                            newActiveTabId = nextTab.id;
+                        } else {
+                            const prevTab = remainingTabs.find(t => t.element.compareDocumentPosition(tab.element) & Node.DOCUMENT_POSITION_PRECEDING);
+                            if (prevTab) {
+                                newActiveTabId = prevTab.id;
+                            } else if (remainingTabs.length > 0) {
+                                newActiveTabId = remainingTabs[0].id;
+                            }
+                        }
+                        
+                        if (newActiveTabId) {
+                            this.switchToTab(newActiveTabId);
+                        }
+                    }
+                    
+                    this.updateTabSizes();
+                }, 150);
             }
         }
         
