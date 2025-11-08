@@ -530,6 +530,127 @@
         }
         /* </CHANGE> */
 
+        /* Added menu button and dropdown styles */
+        .menu-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .menu-btn:active {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 50px;
+        }
+
+        .browser-menu {
+            position: fixed;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            z-index: 10000;
+            min-width: 320px;
+            display: none;
+            color: #fff;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            padding: 8px 0;
+            /* Add max constraints to keep menu within viewport */
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .browser-menu.visible {
+            display: block;
+        }
+
+        .browser-menu-item {
+            padding: 10px 16px;
+            font-size: 14px;
+            color: #ffffff;
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .browser-menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .browser-menu-item i {
+            flex-shrink: 0;
+        }
+
+        .browser-menu-item .menu-label {
+            flex: 1;
+        }
+
+        .browser-menu-item .menu-shortcut {
+            font-size: 11px;
+            color: #888;
+            margin-left: auto;
+        }
+
+        .browser-menu-separator {
+            height: 1px;
+            background: #333;
+            margin: 6px 0;
+        }
+
+        .zoom-section {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            gap: 12px;
+        }
+
+        .zoom-section-label {
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .zoom-section-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .zoom-menu-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .zoom-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .zoom-level-display {
+            color: #fff;
+            font-size: 13px;
+            min-width: 50px;
+            text-align: center;
+        }
+        /* </CHANGE> */
+
         .toolbar-btn img {
             width: auto;
             height: 15px;
@@ -1857,11 +1978,16 @@ body {
                 <button class="zoom-btn" id="zoomInBtn" title="Zoom In (Ctrl +)">
                     <i data-lucide="zoom-in" width="16" height="16"></i>
                 </button>
+                <!-- Added three-dots menu button -->
+                <button class="menu-btn" id="menuBtn" title="Menu">
+                    <i data-lucide="more-vertical" width="16" height="16"></i>
+                </button>
+                <!-- </CHANGE> -->
             </div>
             <!-- </CHANGE> -->
 
         </div>
-        <div id="CMDL" hidden>
+<div id="CMDL" hidden>
   <h3>Cloaker</h3>
   <input id="Tabtutle" type="text" placeholder="tab cloak title"><br><br>
   <input id="finput" type="file" accept="image/*" style="display:none;">
@@ -1993,6 +2119,55 @@ document.addEventListener("DOMContentLoaded", () => {
             </button>
         </div>
 
+        <!-- Added browser menu dropdown -->
+        <div class="browser-menu" id="browserMenu">
+            <button class="browser-menu-item" id="newTabMenuItem">
+                <i data-lucide="folder-open" width="18" height="18"></i>
+                <span class="menu-label">Open New Tab</span>
+                <span class="menu-shortcut">Alt + T</span>
+            </button>
+            <button class="browser-menu-item" id="newWindowMenuItem">
+                <i data-lucide="square" width="18" height="18"></i>
+                <span class="menu-label">Open New Window</span>
+                <span class="menu-shortcut">Alt + N</span>
+            </button>
+            <button class="browser-menu-item" id="blankWindowMenuItem">
+                <i data-lucide="file-question" width="18" height="18"></i>
+                <span class="menu-label">Open About:Blank Window</span>
+                <span class="menu-shortcut">Alt + Shift + N</span>
+            </button>
+            <div class="browser-menu-separator"></div>
+            <div class="zoom-section">
+                <span class="zoom-section-label">Zoom</span>
+                <div class="zoom-section-controls">
+                    <button class="zoom-menu-btn" id="zoomOutMenuBtn">
+                        <i data-lucide="minus" width="16" height="16"></i>
+                    </button>
+                    <span class="zoom-level-display" id="zoomLevelDisplay">100%</span>
+                    <button class="zoom-menu-btn" id="zoomInMenuBtn">
+                        <i data-lucide="plus" width="16" height="16"></i>
+                    </button>
+                    <button class="zoom-menu-btn" id="fullscreenMenuBtn">
+                        <i data-lucide="maximize" width="16" height="16"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="browser-menu-separator"></div>
+            <!-- Removed bookmarks, history, extensions, inspect, and settings. Kept only Games and Panic -->
+            <button class="browser-menu-item" id="gamesMenuItem">
+                <i data-lucide="gamepad-2" width="18" height="18"></i>
+                <span class="menu-label">Games</span>
+                <span class="menu-shortcut">Alt + Shift + G</span>
+            </button>
+            <div class="browser-menu-separator"></div>
+            <button class="browser-menu-item" id="panicMenuItem">
+                <i data-lucide="log-out" width="18" height="18"></i>
+                <span class="menu-label">Panic</span>
+                <span class="menu-shortcut">-</span>
+            </button>
+        </div>
+        <!-- </CHANGE> -->
+
         <div class="final-tab-notification" id="finalTabNotification">
             Can't close the final tab!
         </div>
@@ -2031,7 +2206,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>
 
     <script>
-        class nexos {
+        class Browser {
             constructor() {
                 this.tabs = new Map();
                 this.activeTabId = null;
@@ -2175,6 +2350,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.zoomOutBtn = document.getElementById('zoomOutBtn');
                 this.iframeZoomLevel = 1.0; // Track zoom level for each tab
                 // </CHANGE>
+
+                // Initialize menu button and menu elements
+                this.menuBtn = document.getElementById('menuBtn');
+                this.browserMenu = document.getElementById('browserMenu');
+                this.zoomLevelDisplay = document.getElementById('zoomLevelDisplay');
+                this.zoomOutMenuBtn = document.getElementById('zoomOutMenuBtn');
+                this.zoomInMenuBtn = document.getElementById('zoomInMenuBtn');
+                this.fullscreenMenuBtn = document.getElementById('fullscreenMenuBtn');
+                // </CHANGE>
             }
 
             bindEvents() {
@@ -2216,6 +2400,114 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.zoomInBtn.addEventListener('click', () => this.zoomIframe(0.1));
                 this.zoomOutBtn.addEventListener('click', () => this.zoomIframe(-0.1));
                 // </CHANGE>
+
+                // Add menu button and menu functionality
+                this.menuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const rect = this.menuBtn.getBoundingClientRect();
+                    
+                    let left = rect.left - 250;
+                    let top = rect.bottom + 5;
+                    
+                    // Adjust if menu would go off-screen
+                    const menuWidth = 320;
+                    const menuHeight = 300; // Approximate height
+                    
+                    if (left < 10) left = 10;
+                    if (left + menuWidth > window.innerWidth - 10) {
+                        left = window.innerWidth - menuWidth - 10;
+                    }
+                    if (top + menuHeight > window.innerHeight - 10) {
+                        top = rect.top - menuHeight - 5;
+                    }
+                    if (top < 10) top = 10;
+                    
+                    this.browserMenu.style.left = `${left}px`;
+                    this.browserMenu.style.top = `${top}px`;
+                    this.browserMenu.classList.toggle('visible');
+                    this.updateZoomDisplay();
+                });
+
+                // Close menu when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!this.browserMenu.contains(e.target) && e.target !== this.menuBtn) {
+                        this.browserMenu.classList.remove('visible');
+                    }
+                });
+
+                // Menu item handlers
+                document.getElementById('newTabMenuItem').addEventListener('click', () => {
+                    this.createNewTab();
+                    this.browserMenu.classList.remove('visible');
+                });
+
+                document.getElementById('newWindowMenuItem').addEventListener('click', () => {
+                    window.open(window.location.href, '_blank');
+                    this.browserMenu.classList.remove('visible');
+                });
+
+                document.getElementById('blankWindowMenuItem').addEventListener('click', () => {
+                    window.open('about:blank', '_blank');
+                    this.browserMenu.classList.remove('visible');
+                });
+
+                document.getElementById('gamesMenuItem').addEventListener('click', () => {
+                    const activeTab = this.tabs.get(this.activeTabId);
+                    if (activeTab && activeTab.iframe) {
+                        activeTab.iframe.src = '/pages/games/';
+                        this.updateAddressBar();
+                    }
+                    this.browserMenu.classList.remove('visible');
+                });
+
+                document.getElementById('panicMenuItem').addEventListener('click', () => {
+                    window.location.href = 'https://google.com';
+                });
+
+                // Zoom controls in menu
+                this.zoomOutMenuBtn.addEventListener('click', () => {
+                    this.zoomIframe(-0.1);
+                });
+
+                this.zoomInMenuBtn.addEventListener('click', () => {
+                    this.zoomIframe(0.1);
+                });
+
+                this.fullscreenMenuBtn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen();
+                    } else {
+                        document.exitFullscreen();
+                    }
+                    this.browserMenu.classList.remove('visible');
+                });
+                
+                document.addEventListener('keydown', (e) => {
+                    // Alt + T - New Tab
+                    if (e.altKey && e.key.toLowerCase() === 't') {
+                        e.preventDefault();
+                        this.createNewTab();
+                    }
+                    // Alt + N - New Window
+                    if (e.altKey && e.key.toLowerCase() === 'n' && !e.shiftKey) {
+                        e.preventDefault();
+                        window.open(window.location.href, '_blank');
+                    }
+                    // Alt + Shift + N - About:Blank
+                    if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'n') {
+                        e.preventDefault();
+                        window.open('about:blank', '_blank');
+                    }
+                    // Alt + Shift + G - Games
+                    if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'g') {
+                        e.preventDefault();
+                        const activeTab = this.tabs.get(this.activeTabId);
+                        if (activeTab && activeTab.iframe) {
+                            activeTab.iframe.src = '/pages/games/';
+                            this.updateAddressBar();
+                        }
+                    }
+                });
 
                 this.initializeTabDragging();
 
@@ -3714,6 +4006,20 @@ if (blockedRegex.test(urlLower)) {
                 const scale = currentTab.zoomLevel;
                 currentTab.iframe.style.width = `${100 / scale}%`;
                 currentTab.iframe.style.height = `${100 / scale}%`;
+
+                this.updateZoomDisplay();
+                // </CHANGE>
+            }
+
+            updateZoomDisplay() {
+                const currentTab = this.tabs.get(this.activeTabId);
+                if (!currentTab) return;
+                
+                const zoomLevel = (currentTab.zoomLevel || 1.0) * 100;
+                const displayElement = document.getElementById('zoomLevelDisplay');
+                if (displayElement) {
+                    displayElement.textContent = `${Math.round(zoomLevel)}%`;
+                }
             }
             // </CHANGE>
 
@@ -3847,7 +4153,7 @@ if (blockedRegex.test(urlLower)) {
             }
         }
         
-        const browser = new nexos();
+        const browser = new Browser();
         lucide.createIcons();
 
         document.addEventListener("DOMContentLoaded", () => {
