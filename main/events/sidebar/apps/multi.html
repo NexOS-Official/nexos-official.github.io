@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: url('flower.jpeg') center/cover no-repeat;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1;
+        }
+
+        .time-container {
+            margin-bottom: 80px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .time-container.hidden {
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
+        }
+
+        .date {
+            font-size: 18px;
+            font-weight: 900;
+            color: white;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .time {
+            font-size: 120px;
+            font-weight: 900;
+            color: white;
+            letter-spacing: -2px;
+            text-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+            line-height: 1;
+        }
+
+        .search-container {
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+            z-index: 2;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .search-container.hidden {
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 18px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            outline: none;
+            transition: all 0.3s ease;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
+        }
+
+        .search-input:focus {
+            background: rgba(255, 255, 255, 0.35);
+            box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .content-area {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 120px;
+            overflow: hidden;
+            background: #ffffff;
+            z-index: 998;
+            display: none;
+        }
+
+        .content-area.active {
+            display: block;
+        }
+
+        .tab-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .tab-bar-container {
+            position: fixed;
+            bottom: 52px;
+            left: 0;
+            right: 0;
+            background: rgba(240, 240, 245, 0.98);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            padding: 8px 8px 8px 8px;
+            z-index: 1000;
+            border-top: 0.5px solid rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .tab-bar-container.active {
+            display: block;
+        }
+
+        .tab-bar {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 4px 0;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        .tab-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 12px;
+            height: 36px;
+            background: transparent;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            min-width: 120px;
+            max-width: 240px;
+            flex: 1;
+            transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab.sliding {
+            transition: none;
+            z-index: 10000;
+        }
+
+        .tab.active {
+            background: #ffffff;
+            z-index: 3;
+        }
+
+        .tab.active::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: -11.9px;
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+            mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+            -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: -12px;
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+            mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+            -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+        }
+
+        .tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.65);
+        }
+
+        .tab:hover:not(.active)::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: -11.5px;
+            width: 12px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.65);
+            mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+            -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+        }
+
+        .tab:hover:not(.active)::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: -12px;
+            width: 12px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.65);
+            mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+            -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+        }
+
+        .tab-favicon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            border-radius: 3px;
+            background: #f0f0f0;
+        }
+
+        .tab-title {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tab-close {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: background 0.2s;
+        }
+
+        .tab-close:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-close::before {
+            content: '×';
+            font-size: 18px;
+            color: #666;
+            line-height: 1;
+        }
+
+        .new-tab-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-left: 4px;
+            margin-bottom: 5px;
+        }
+
+        .new-tab-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .new-tab-btn::before {
+            content: '+';
+            font-size: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .address-bar-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            padding: 8px 12px 20px 12px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            z-index: 1001;
+        }
+
+        .address-bar-container.active {
+            display: flex;
+        }
+
+        .nav-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .nav-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.9);
+            transform: scale(1.05);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .address-input-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: rgba(211, 204, 204, 0.8);
+            border-radius: 12px;
+            padding: 0 12px;
+            height: 36px;
+        }
+
+        .address-favicon {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .address-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            outline: none;
+            font-size: 14px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            color: #333;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .time {
+                font-size: 96px;
+            }
+
+            .date {
+                font-size: 16px;
+            }
+
+            .search-input {
+                font-size: 15px;
+                padding: 16px 22px;
+            }
+
+            .tab {
+                min-width: 100px;
+                max-width: 180px;
+            }
+
+            .tab-bar-container {
+                padding: 6px 6px 6px 6px;
+                bottom: 48px;
+            }
+
+            .address-input {
+                font-size: 13px;
+            }
+
+            .content-area {
+                bottom: 100px;
+            }
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="time-container" id="timeContainer">
+        <div class="date" id="date"></div>
+        <div class="time" id="time"></div>
+    </div>
+
+    <div class="search-container" id="searchContainer">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search">
+    </div>
+
+    <div class="content-area" id="contentArea"></div>
+
+    <div class="tab-bar-container" id="tabBarContainer">
+        <div class="tab-bar" id="tabBar">
+            <button class="new-tab-btn" id="newTabBtn"></button>
+        </div>
+    </div>
+
+    <div class="address-bar-container" id="addressBarContainer">
+        <div class="nav-controls">
+            <button class="nav-btn" id="backBtn" disabled>←</button>
+            <button class="nav-btn" id="forwardBtn" disabled>→</button>
+        </div>
+        
+        <div class="address-input-wrapper">
+            <img class="address-favicon" id="addressFavicon" src="favicon2.png" alt="">
+            <input type="text" class="address-input" id="addressInput" placeholder="Search or enter address">
+        </div>
+    
+    <script>
+        function updateTime() {
+            const timeElement = document.getElementById("time");
+            const dateElement = document.getElementById("date");
+            const now = new Date();
+            
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            const dayName = days[now.getDay()];
+            const monthName = months[now.getMonth()];
+            const date = now.getDate();
+            
+            dateElement.textContent = `${dayName}, ${monthName} ${date}`;
+            
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const formattedTime = `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+
+            timeElement.textContent = formattedTime;
+        }
+
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        const searchInput = document.getElementById("searchInput");
+
+        searchInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                let query = searchInput.value.trim();
+                if (!query) return;
+
+                let finalURL = "";
+
+                if (query.startsWith("https://") || query.startsWith("http://")) {
+                    finalURL = `/active/embed.html?url=${encodeURIComponent(query)}`;
+                } else if (query.includes(".") && !query.includes(" ")) {
+                    finalURL = `/active/embed.html?url=${encodeURIComponent("https://" + query)}`;
+                } else {
+                    finalURL = `/active/embed.html?url=${encodeURIComponent("https://www.google.com/search?q=" + encodeURIComponent(query))}`;
+                }
+
+                tabManager.navigateActiveTab(finalURL);
+                searchInput.value = '';
+            }
+        });
+
+        class TabManager {
+            constructor() {
+                this.tabs = new Map();
+                this.activeTabId = null;
+                this.tabCounter = 0;
+                this.tabBar = document.getElementById('tabBar');
+                this.newTabBtn = document.getElementById('newTabBtn');
+                this.contentArea = document.getElementById('contentArea');
+                this.tabBarContainer = document.getElementById('tabBarContainer');
+                this.addressBarContainer = document.getElementById('addressBarContainer');
+                this.timeContainer = document.getElementById('timeContainer');
+                this.searchContainer = document.getElementById('searchContainer');
+                this.addressInput = document.getElementById('addressInput');
+                this.addressFavicon = document.getElementById('addressFavicon');
+                this.backBtn = document.getElementById('backBtn');
+                this.forwardBtn = document.getElementById('forwardBtn');
+                
+                this.initializeEvents();
+                this.createNewTab();
+            }
+
+            initializeEvents() {
+                this.newTabBtn.addEventListener('click', () => this.createNewTab());
+
+                this.addressInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        let input = this.addressInput.value.trim();
+                        if (!input) return;
+
+                        let finalURL = "";
+
+                        if (input.startsWith("https://") || input.startsWith("http://")) {
+                            finalURL = `/active/embed.html?url=${encodeURIComponent(input)}`;
+                        } else if (input.includes(".") && !input.includes(" ")) {
+                            finalURL = `/active/embed.html?url=${encodeURIComponent("https://" + input)}`;
+                        } else {
+                            finalURL = `/active/embed.html?url=${encodeURIComponent("https://www.google.com/search?q=" + encodeURIComponent(input))}`;
+                        }
+
+                        this.navigateActiveTab(finalURL);
+                    }
+                });
+
+                this.backBtn.addEventListener('click', () => this.goBack());
+                this.forwardBtn.addEventListener('click', () => this.goForward());
+            }
+
+            createNewTab() {
+                if (this.tabs.size >= 10) return;
+
+                const tabId = ++this.tabCounter;
+                
+                const tabElement = document.createElement('div');
+                tabElement.className = 'tab';
+                tabElement.dataset.tabId = tabId;
+                
+                tabElement.innerHTML = `
+                    <img class="tab-favicon" src="favicon2.png" alt="">
+                    <div class="tab-title">New Tab</div>
+                    <div class="tab-close"></div>
+                `;
+
+                this.tabBar.insertBefore(tabElement, this.newTabBtn);
+
+                const contentElement = document.createElement('div');
+                contentElement.className = 'tab-content';
+                contentElement.dataset.tabId = tabId;
+                this.contentArea.appendChild(contentElement);
+
+                const tab = {
+                    id: tabId,
+                    title: 'New Tab',
+                    url: 'landing2.html',
+                    favicon: 'favicon2.png',
+                    element: tabElement,
+                    contentElement: contentElement,
+                    history: [],
+                    historyIndex: -1,
+                    iframe: null
+                };
+
+                this.tabs.set(tabId, tab);
+
+                tabElement.addEventListener('click', (e) => {
+                    if (!e.target.closest('.tab-close')) {
+                        this.switchToTab(tabId);
+                    }
+                });
+
+                tabElement.querySelector('.tab-close').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.closeTab(tabId);
+                });
+
+                this.switchToTab(tabId);
+                this.navigateActiveTab('landing2.html');
+            }
+
+            switchToTab(tabId) {
+                if (this.activeTabId === tabId) return;
+
+                this.contentArea.classList.add('active');
+                this.tabBarContainer.classList.add('active');
+                this.addressBarContainer.classList.add('active');
+                this.timeContainer.classList.add('hidden');
+                this.searchContainer.classList.add('hidden');
+
+                if (this.activeTabId) {
+                    const currentTab = this.tabs.get(this.activeTabId);
+                    if (currentTab) {
+                        currentTab.element.classList.remove('active');
+                        currentTab.contentElement.classList.remove('active');
+                    }
+                }
+
+                const newTab = this.tabs.get(tabId);
+                if (newTab) {
+                    this.activeTabId = tabId;
+                    newTab.element.classList.add('active');
+                    newTab.contentElement.classList.add('active');
+                    
+                    this.updateAddressBar(newTab);
+                    this.updateNavigationButtons(newTab);
+                }
+            }
+
+            navigateActiveTab(url) {
+                const tab = this.tabs.get(this.activeTabId);
+                if (!tab) return;
+
+                let finalURL = url.trim();
+
+                if (tab.iframe) {
+                    tab.iframe.remove();
+                }
+
+                const iframe = document.createElement('iframe');
+                iframe.src = finalURL;
+                iframe.sandbox = 'allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox';
+                tab.contentElement.appendChild(iframe);
+                tab.iframe = iframe;
+
+                tab.history = tab.history.slice(0, tab.historyIndex + 1);
+                tab.history.push({
+                    url: finalURL,
+                    title: 'Loading...',
+                    favicon: 'favicon2.png'
+                });
+                tab.historyIndex++;
+
+                tab.url = finalURL;
+                this.updateAddressBar(tab);
+                this.updateNavigationButtons(tab);
+                    
+                    try {
+                        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        const title = iframeDoc.title || 'Untitled';
+                        
+                        let favicon = 'favicon2.png';
+                        const faviconLink = iframeDoc.querySelector('link[rel*="icon"]');
+                        if (faviconLink) {
+                            const faviconHref = faviconLink.href;
+                            if (faviconHref && faviconHref.startsWith('http')) {
+                                favicon = faviconHref;
+                            } else if (faviconHref) {
+                                const baseURL = new URL(iframe.src);
+                                favicon = new URL(faviconHref, baseURL.origin).href;
+                            }
+                        }
+
+                        tab.title = title;
+                        tab.favicon = favicon;
+                        tab.element.querySelector('.tab-title').textContent = title;
+                        tab.element.querySelector('.tab-favicon').src = favicon;
+                        
+                        if (tab.history[tab.historyIndex]) {
+                            tab.history[tab.historyIndex].title = title;
+                            tab.history[tab.historyIndex].favicon = favicon;
+                        }
+
+                        this.updateAddressBar(tab);
+                    } catch (e) {
+                        console.log('[v0] Cross-origin iframe, cannot access title/favicon');
+                    }
+                }
+
+            updateAddressBar(tab) {
+                this.addressInput.value = tab.url;
+                this.addressFavicon.src = tab.favicon;
+            }
+
+            updateNavigationButtons(tab) {
+                this.backBtn.disabled = tab.historyIndex <= 0;
+                this.forwardBtn.disabled = tab.historyIndex >= tab.history.length - 1;
+            }
+
+            goBack() {
+                const tab = this.tabs.get(this.activeTabId);
+                if (!tab || tab.historyIndex <= 0) return;
+
+                tab.historyIndex--;
+                const historyItem = tab.history[tab.historyIndex];
+                
+                if (tab.iframe) {
+                    tab.iframe.src = historyItem.url;
+                }
+
+                tab.url = historyItem.url;
+                tab.title = historyItem.title;
+                tab.favicon = historyItem.favicon;
+
+                tab.element.querySelector('.tab-title').textContent = historyItem.title;
+                tab.element.querySelector('.tab-favicon').src = historyItem.favicon;
+
+                this.updateAddressBar(tab);
+                this.updateNavigationButtons(tab);
+            }
+
+            goForward() {
+                const tab = this.tabs.get(this.activeTabId);
+                if (!tab || tab.historyIndex >= tab.history.length - 1) return;
+
+                tab.historyIndex++;
+                const historyItem = tab.history[tab.historyIndex];
+                
+                if (tab.iframe) {
+                    tab.iframe.src = historyItem.url;
+                }
+
+                tab.url = historyItem.url;
+                tab.title = historyItem.title;
+                tab.favicon = historyItem.favicon;
+
+                tab.element.querySelector('.tab-title').textContent = historyItem.title;
+                tab.element.querySelector('.tab-favicon').src = historyItem.favicon;
+
+                this.updateAddressBar(tab);
+                this.updateNavigationButtons(tab);
+            }
+
+            closeTab(tabId) {
+                if (this.tabs.size <= 1) return;
+
+                const tab = this.tabs.get(tabId);
+                if (!tab) return;
+
+                const wasActive = tab.id === this.activeTabId;
+
+                tab.element.style.transition = 'transform 0.15s, opacity 0.15s';
+                tab.element.style.transform = 'translateY(20px)';
+                tab.element.style.opacity = '0';
+
+                setTimeout(() => {
+                    tab.element.remove();
+                    tab.contentElement.remove();
+                    this.tabs.delete(tabId);
+
+                    if (wasActive && this.tabs.size > 0) {
+                        const remainingTabs = Array.from(this.tabs.values());
+                        this.switchToTab(remainingTabs[remainingTabs.length - 1].id);
+                    } else if (this.tabs.size === 0) {
+                        this.contentArea.classList.remove('active');
+                        this.tabBarContainer.classList.remove('active');
+                        this.addressBarContainer.classList.remove('active');
+                        this.timeContainer.classList.remove('hidden');
+                        this.searchContainer.classList.remove('hidden');
+                    }
+                }, 150);
+            }
+        }
+
+        const tabManager = new TabManager();
+    </script>
+</body>
+</html>
