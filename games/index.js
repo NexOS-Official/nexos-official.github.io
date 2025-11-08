@@ -1,68 +1,117 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const searchInput = document.getElementById("searchInput")
-  const gamesGrid = document.getElementById("gamesGrid")
-  const gameCards = document.querySelectorAll(".game-card")
+const searchInput = document.querySelector('.search-bar');
+const gameCards = document.querySelectorAll('.game-card');
+const noResultsMessage = document.getElementById('noResultsMessage');
 
-  searchInput.addEventListener("input", function () {
-    const searchTerm = this.value.toLowerCase().trim()
+function filterGames(query) {
+  const lowerQuery = query.toLowerCase();
+  let resultsFound = false;
 
-    gameCards.forEach((card) => {
-      const gameTitle = card.querySelector("h3").textContent.toLowerCase()
-      const gameDescription = card.querySelector("a").textContent.toLowerCase()
+  gameCards.forEach(card => {
+    const text = card.textContent.toLowerCase();
+    if (text.includes(lowerQuery)) {
+      card.style.display = '';
+      resultsFound = true;
+    } else {
+      card.style.display = 'none';
+    }
+  });
 
-      // Search for complete words and phrases
-      const titleWords = gameTitle.split(/\s+/)
-      const descWords = gameDescription.split(/\s+/)
-      const searchWords = searchTerm.split(/\s+/)
+  noResultsMessage.style.display = resultsFound ? 'none' : 'flex';
+}
 
-      let matches = false
+searchInput.addEventListener('input', () => {
+  const query = searchInput.value.trim();
 
-      if (searchTerm === "") {
-        matches = true
+  if (query) {
+    window.history.replaceState(null, '', `#search=${encodeURIComponent(query)}`);
+  } else {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }
+
+  filterGames(query);
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const searchTerm = params.get('search') || '';
+
+  const decodedTerm = decodeURIComponent(searchTerm);
+  searchInput.value = decodedTerm;
+  filterGames(decodedTerm);
+});
+
+window.addEventListener('hashchange', () => {
+  const hash = window.location.hash.substring(1);
+  const params = new URLSearchParams(hash);
+  const searchTerm = params.get('search') || '';
+
+  const decodedTerm = decodeURIComponent(searchTerm);
+  searchInput.value = decodedTerm;
+  filterGames(decodedTerm);
+});
+
+
+document.addEventListener('DOMContentLoaded', function() {
+  const cursorFollow = document.createElement('div');
+  cursorFollow.classList.add('cursor-follow');
+  document.body.appendChild(cursorFollow);
+
+  let mouseX = 0;
+  let mouseY = 0;
+  let cursorX = 0;
+  let cursorY = 0;
+
+  document.addEventListener('mousemove', function(e) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  function animateCursor() {
+    const speed = 0.15;
+    cursorX += (mouseX - cursorX) * speed;
+    cursorY += (mouseY - cursorY) * speed;
+
+    cursorFollow.style.left = cursorX + 'px';
+    cursorFollow.style.top = cursorY + 'px';
+
+    requestAnimationFrame(animateCursor);
+  }
+
+  animateCursor();
+
+    card.addEventListener('mouseleave', function() {
+      document.body.classList.remove('game-hover');
+      cursorFollow.style.opacity = '0';
+      cursorFollow.style.width = '300px';
+      cursorFollow.style.height = '300px';
+    });
+
+    card.addEventListener('click', () => {
+      const url = card.getAttribute('data-url');
+      if (url) {
+        window.location.href = url;
+      }
+    });
+  });
+
+  searchInput.addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    let resultsFound = false;
+
+    gameCards.forEach(card => {
+      const title = card.querySelector('h3').textContent.toLowerCase();
+      if (title.includes(query)) {
+        card.style.display = '';
+        resultsFound = true;
       } else {
-        // Check if search term matches any complete words or if title/description contains the full search phrase
-        matches = searchWords.every(
-          (searchWord) =>
-            titleWords.some((word) => word.includes(searchWord)) ||
-            descWords.some((word) => word.includes(searchWord)) ||
-            gameTitle.includes(searchTerm) ||
-            gameDescription.includes(searchTerm),
-        )
+        card.style.display = 'none';
       }
+    });
 
-      if (matches) {
-        card.style.display = "block"
-        card.classList.add("fade-in")
-      } else {
-        card.style.display = "none"
-        card.classList.remove("fade-in")
-      }
-    })
-  })
-
-  // Game card click functionality
-  gameCards.forEach((card) => {
-    card.addEventListener("click", function () {
-      const gameUrl = this.getAttribute("data-url")
-
-      if (gameUrl) {
-        // Add loading state
-        this.classList.add("loading")
-
-        // Simulate loading delay
-        setTimeout(() => {
-          window.location.href = gameUrl
-        }, 500)
-      }
-    })
-  })
-
-  // Add fade-in animation to all cards on load
-  setTimeout(() => {
-    gameCards.forEach((card, index) => {
-      setTimeout(() => {
-        card.classList.add("fade-in")
-      }, index * 50)
-    })
-  }, 100)
-})
+    if (!resultsFound && query !== '') {
+      noResultsMessage.style.display = 'flex';
+    } else {
+      noResultsMessage.style.display = 'none';
+    }
+  });
