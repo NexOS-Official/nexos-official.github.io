@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3222,20 +3223,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
-                    let currentUrl = iframe.src;
-                    try {
-                        if (iframe.contentWindow && iframe.contentWindow.location) {
-                            currentUrl = iframe.contentWindow.location.href;
-                        }
-                    } catch (e) {
-                        currentUrl = iframe.src;
-                    }
+                    // Extract the original URL from the proxy format (/active/embed.html?url=...)
+                    const originalUrl = this.extractOriginalUrl(tab.url);
                     
-                    tab.currentUrl = currentUrl;
+                    // Store this as the current URL (the clean version)
+                    tab.currentUrl = originalUrl;
                     
-                    if (currentUrl && currentUrl !== 'about:blank') {
-                        const originalUrl = this.extractOriginalUrl(currentUrl);
-                        
+                    if (originalUrl && originalUrl !== 'about:blank') {
                         this.updateTabInfo(tabId);
                         
                         if (this.activeTabId === tabId) {
