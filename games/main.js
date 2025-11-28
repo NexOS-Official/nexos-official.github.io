@@ -1,117 +1,48 @@
-const searchInput = document.querySelector('.search-bar');
-const gameCards = document.querySelectorAll('.game-card');
-const noResultsMessage = document.getElementById('noResultsMessage');
-
-function filterGames(query) {
-  const lowerQuery = query.toLowerCase();
-  let resultsFound = false;
-
-  gameCards.forEach(card => {
-    const text = card.textContent.toLowerCase();
-    if (text.includes(lowerQuery)) {
-      card.style.display = '';
-      resultsFound = true;
-    } else {
-      card.style.display = 'none';
-    }
-  });
-
-  noResultsMessage.style.display = resultsFound ? 'none' : 'flex';
+const MAX_REFRESHES = 10;
+const WINDOW_MS = 5000;
+let reloads = JSON.parse(localStorage.getItem("relog") || "[]");
+const now = Date.now();
+reloads = reloads.filter(t => now - t <= WINDOW_MS);
+reloads.push(now);
+localStorage.setItem("relog", JSON.stringify(reloads));
+if (reloads.length > MAX_REFRESHES) {
+    document.body.style.overflow = "hidden";
+    document.getElementById("oops-you-did-it-again").style.display = "flex";
+    document.getElementById("bigggbrocont").style.display = "none";
 }
-
-searchInput.addEventListener('input', () => {
-  const query = searchInput.value.trim();
-
-  if (query) {
-    window.history.replaceState(null, '', `#search=${encodeURIComponent(query)}`);
-  } else {
-    window.history.replaceState(null, '', window.location.pathname + window.location.search);
-  }
-
-  filterGames(query);
+function openPage(url) {
+    window.location.href = url;
+}
+const cards = document.querySelectorAll('.foldarcad');
+cards.forEach(card => {
+    const img = card.querySelector('img');
+    card.addEventListener('mousemove', e => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const px = x / rect.width * 100;
+        const py = y / rect.height * 100;
+        img.style.transformOrigin = `${px}% ${py}%`;
+        img.style.transform = 'scale(1.2)';
+    });
+    card.addEventListener('mouseleave', () => {
+        img.style.transformOrigin = 'center center';
+        img.style.transform = 'scale(1)';
+    });
 });
 
-window.addEventListener('DOMContentLoaded', () => {
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-  const searchTerm = params.get('search') || '';
-
-  const decodedTerm = decodeURIComponent(searchTerm);
-  searchInput.value = decodedTerm;
-  filterGames(decodedTerm);
+const bigHeader = document.querySelector('.biggggggggggggggggggtopgame');
+const bigImg = bigHeader.querySelector('img');
+bigHeader.addEventListener('mousemove', e => {
+    const rect = bigHeader.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const px = x / rect.width * 100;
+    const py = y / rect.height * 100;
+    bigImg.style.transformOrigin = `${px}% ${py}%`;
+    bigImg.style.transform = 'scale(1.05)';
 });
-
-window.addEventListener('hashchange', () => {
-  const hash = window.location.hash.substring(1);
-  const params = new URLSearchParams(hash);
-  const searchTerm = params.get('search') || '';
-
-  const decodedTerm = decodeURIComponent(searchTerm);
-  searchInput.value = decodedTerm;
-  filterGames(decodedTerm);
+bigHeader.addEventListener('mouseleave', () => {
+    bigImg.style.transformOrigin = 'center center';
+    bigImg.style.transform = 'scale(1)';
 });
-
-
-document.addEventListener('DOMContentLoaded', function() {
-  const cursorFollow = document.createElement('div');
-  cursorFollow.classList.add('cursor-follow');
-  document.body.appendChild(cursorFollow);
-
-  let mouseX = 0;
-  let mouseY = 0;
-  let cursorX = 0;
-  let cursorY = 0;
-
-  document.addEventListener('mousemove', function(e) {
-    mouseX = e.clientX;
-    mouseY = e.clientY;
-  });
-
-  function animateCursor() {
-    const speed = 0.15;
-    cursorX += (mouseX - cursorX) * speed;
-    cursorY += (mouseY - cursorY) * speed;
-
-    cursorFollow.style.left = cursorX + 'px';
-    cursorFollow.style.top = cursorY + 'px';
-
-    requestAnimationFrame(animateCursor);
-  }
-
-  animateCursor();
-
-    card.addEventListener('mouseleave', function() {
-      document.body.classList.remove('game-hover');
-      cursorFollow.style.opacity = '0';
-      cursorFollow.style.width = '300px';
-      cursorFollow.style.height = '300px';
-    });
-
-    card.addEventListener('click', () => {
-      const url = card.getAttribute('data-url');
-      if (url) {
-        window.location.href = url;
-      }
-    });
-  });
-
-  searchInput.addEventListener('input', function() {
-    const query = this.value.toLowerCase();
-    let resultsFound = false;
-
-    gameCards.forEach(card => {
-      const title = card.querySelector('h3').textContent.toLowerCase();
-      if (title.includes(query)) {
-        card.style.display = '';
-        resultsFound = true;
-      } else {
-        card.style.display = 'none';
-      }
-    });
-
-    if (!resultsFound && query !== '') {
-      noResultsMessage.style.display = 'flex';
-    } else {
-      noResultsMessage.style.display = 'none';
-    }
-  });
