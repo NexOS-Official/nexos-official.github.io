@@ -13,13 +13,17 @@ if (reloads.length > MAX_REFRESHES) {
 function openPage(url) {
   document.body.style.transition = "opacity 0.3s ease"
   document.body.style.opacity = "0"
-
   setTimeout(() => {
     window.location.href = url
   }, 300)
 }
-const cards = document.querySelectorAll(".foldarcad")
-cards.forEach((card) => {
+const folderCards = document.querySelectorAll(".foldarcad")
+
+folderCards.forEach((card, i) => {
+  card.style.animationDelay = `${i * 140}ms`
+})
+
+folderCards.forEach((card) => {
   const img = card.querySelector("img")
   card.addEventListener("mousemove", (e) => {
     const rect = card.getBoundingClientRect()
@@ -35,9 +39,9 @@ cards.forEach((card) => {
     img.style.transform = "scale(1)"
   })
 })
-
 const bigHeader = document.querySelector(".biggggggggggggggggggtopgame")
 const bigImg = bigHeader.querySelector("img")
+
 bigHeader.addEventListener("mousemove", (e) => {
   const rect = bigHeader.getBoundingClientRect()
   const x = e.clientX - rect.left
@@ -47,6 +51,7 @@ bigHeader.addEventListener("mousemove", (e) => {
   bigImg.style.transformOrigin = `${px}% ${py}%`
   bigImg.style.transform = "scale(1.05)"
 })
+
 bigHeader.addEventListener("mouseleave", () => {
   bigImg.style.transformOrigin = "center center"
   bigImg.style.transform = "scale(1)"
