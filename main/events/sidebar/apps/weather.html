@@ -19,8 +19,6 @@
             font-family: 'Poppins', sans-serif;
             font-weight: 500;
         }
-
-        /* Accessibility improvements */
         a, button, input {
             transition: all 0.2s ease;
         }
@@ -33,8 +31,6 @@
         [role="button"] {
             cursor: pointer;
         }
-
-        /* Weather effect styles */
         .weather-effect {
             position: fixed;
             top: 0;
@@ -47,7 +43,6 @@
             transition: opacity 1.5s ease-in-out;
         }
 
-        /* Rain effect */
         #rain-effect {
             background-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.2) 100%);
         }
@@ -64,7 +59,6 @@
             to { background-position: 0 20px; }
         }
 
-        /* Sun effect */
         #sun-effect::before {
             content: '';
             position: absolute;
@@ -81,7 +75,6 @@
             to { transform: scale(1.2); opacity: 1; }
         }
 
-        /* Stars effect */
         #stars-effect {
             background-image: radial-gradient(2px 2px at 20px 30px, rgba(255, 255, 255, 0.9), rgba(0, 0, 0, 0)),
                              radial-gradient(2px 2px at 40px 70px, rgba(255, 255, 255, 0.9), rgba(0, 0, 0, 0)),
@@ -98,7 +91,6 @@
             to { background-position: 600px 600px; }
         }
 
-        /* Clouds effect */
         #clouds-effect::before {
             content: '';
             position: absolute;
@@ -255,7 +247,6 @@
             color: rgba(255, 255, 255, 0.7);
         }
 
-        /* Tooltip styles */
         .tooltip {
             position: relative;
         }
@@ -421,7 +412,6 @@
             animation: spin 1s linear infinite;
         }
 
-        /* Card animations and effects */
         .main-data, .detail-card, .forecast-day, header {
             transition: all 0.3s ease-in-out;
             transform: translateY(20px);
@@ -496,7 +486,6 @@
         <div class="loading-spinner"></div>
     </div>
 
-    <!-- Weather effect elements -->
     <div id="rain-effect" class="weather-effect"></div>
     <div id="sun-effect" class="weather-effect"></div>
     <div id="stars-effect" class="weather-effect"></div>
@@ -552,18 +541,12 @@
         </div>
 
         <div class="forecast" id="forecast-container">
-            <!-- Forecast days will be inserted here by JavaScript -->
         </div>
     </div>
 
     <script>
-        // API Key for Visual Crossing
         const API_KEY = '7NZUY6FCX5CTDC6Y9MXED4ZQ7';
-
-        // Default location
-        let currentLocation = 'ashburn';
-
-        // DOM Elements
+        let currentLocation = 'N/A';
         const temperatureElement = document.getElementById('temperature');
         const locationElement = document.getElementById('location');
         const dateTimeElement = document.getElementById('date-time');
@@ -577,8 +560,6 @@
         const searchInput = document.getElementById('search-input');
         const loadingElement = document.querySelector('.loading');
         const errorElement = document.getElementById('error');
-
-        // Weather condition to background image mapping
         const backgroundImages = {
             'clear': 'linear-gradient(135deg, #1e90ff 0%, #77c6ff 100%)',
             'sunny': 'linear-gradient(135deg, #3498db 0%, #87CEEB 50%, #add8e6 100%)',
@@ -588,8 +569,6 @@
             'snow': 'linear-gradient(135deg, #8AA8D2 0%, #A2B7D8 50%, #c5d5e8 100%)',
             'night': 'linear-gradient(135deg, #0f2027 0%, #1A2C42 50%, #2C3E50 100%)'
         };
-
-        // Weather icons mapping using Ionicons
         const weatherIcons = {
             'clear-day': '<ion-icon name="sunny"></ion-icon>',
             'clear-night': '<ion-icon name="moon"></ion-icon>',
@@ -606,11 +585,8 @@
             'thunder-showers-night': '<ion-icon name="thunderstorm"></ion-icon>'
         };
 
-        // Initialize the app
         window.addEventListener('load', () => {
             fetchWeatherData(currentLocation);
-
-            // Search functionality
             searchInput.addEventListener('keyup', (e) => {
                 if (e.key === 'Enter') {
                     currentLocation = e.target.value.trim();
@@ -619,8 +595,6 @@
                     }
                 }
             });
-
-            // Geolocation button functionality
             const locationBtn = document.getElementById('location-btn');
             locationBtn.addEventListener('click', () => {
                 if (navigator.geolocation) {
@@ -643,12 +617,10 @@
                 }
             });
 
-            // Auto-refresh weather data every 30 minutes
             setInterval(() => {
                 fetchWeatherData(currentLocation);
             }, 30 * 60 * 1000);
 
-            // Add keyboard navigation support
             document.addEventListener('keydown', (e) => {
                 if (e.key === '/') {
                     e.preventDefault();
@@ -657,19 +629,15 @@
             });
         });
 
-        // Fetch weather data from Visual Crossing API
         async function fetchWeatherData(location) {
             showLoading(true);
             hideError();
 
             try {
-                // Encode location string to handle spaces and special characters
                 const encodedLocation = encodeURIComponent(location);
                 const url = `https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${encodedLocation}?unitGroup=us&key=${API_KEY}&contentType=json`;
-
-                // Set a timeout for the fetch request
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
 
                 const response = await fetch(url, { signal: controller.signal });
                 clearTimeout(timeoutId);
@@ -681,7 +649,6 @@
                 const data = await response.json();
                 updateWeatherUI(data);
 
-                // Update the document title with the current temperature and location
                 document.title = `${Math.round(data.currentConditions.temp)}°F | ${data.resolvedAddress} | Vweather`;
 
             } catch (error) {
@@ -692,13 +659,9 @@
             }
         }
 
-        // Update the UI with weather data
         function updateWeatherUI(data) {
-            // Update current weather
             const current = data.currentConditions;
             const location = data.resolvedAddress;
-
-            // Check if all data is available and add fallbacks
             const temp = current.temp !== undefined ? Math.round(current.temp) : '--';
             const feelslike = current.feelslike !== undefined ? Math.round(current.feelslike) : '--';
             const humidity = current.humidity !== undefined ? current.humidity : '--';
@@ -714,25 +677,19 @@
             windSpeedElement.textContent = `${windspeed} mph`;
             uvIndexElement.textContent = uvindex;
 
-            // Set weather icon with fallback
             currentIconElement.innerHTML = weatherIcons[current.icon] || '<ion-icon name="sunny"></ion-icon>';
 
-            // Update background image based on weather condition and time
             updateBackgroundImage(current.icon, current.datetime);
 
-            // Update forecast - make sure data exists before updating
             if (data.days && data.days.length > 1) {
-                updateForecast(data.days.slice(1, 8)); // Next 7 days
+                updateForecast(data.days.slice(1, 8));
             } else {
                 forecastContainer.innerHTML = '<p style="text-align: center; width: 100%;">Forecast data unavailable</p>';
             }
         }
 
-        // Update background image based on weather and time
         function updateBackgroundImage(icon, datetime) {
             let backgroundKey = 'clear';
-
-            // Hide all weather effects first
             document.getElementById('rain-effect').style.opacity = 0;
             document.getElementById('sun-effect').style.opacity = 0;
             document.getElementById('stars-effect').style.opacity = 0;
@@ -757,11 +714,9 @@
                 document.getElementById('clouds-effect').style.opacity = 0.8;
             }
 
-            // Set background image
             document.body.style.background = backgroundImages[backgroundKey] || backgroundImages['clear'];
         }
 
-        // Update forecast section
         function updateForecast(days) {
             forecastContainer.innerHTML = '';
 
@@ -788,7 +743,6 @@
             });
         }
 
-        // Helper function to format date and time
         function formatDateTime(date) {
             const options = {
                 weekday: 'long',
@@ -801,23 +755,19 @@
             return date.toLocaleDateString('en-US', options);
         }
 
-        // Helper function to format day for forecast
         function formatDay(date) {
             const options = { weekday: 'short', month: 'short', day: 'numeric' };
             return date.toLocaleDateString('en-US', options);
         }
 
-        // Show/hide loading spinner
         function showLoading(show) {
             loadingElement.style.display = show ? 'flex' : 'none';
         }
 
-        // Show/hide error message
         function showError(message = 'Something went wrong. Please try again.') {
             errorElement.textContent = message;
             errorElement.style.display = 'block';
 
-            // Hide error after 5 seconds
             setTimeout(() => {
                 errorElement.style.display = 'none';
             }, 5000);
