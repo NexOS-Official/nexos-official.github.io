@@ -21,7 +21,6 @@
             min-height: 100vh;
         }
 
-        /* Added full page video background */
         .page-video-bg {
             position: fixed;
             top: 0;
@@ -240,7 +239,6 @@
             background: rgba(248, 249, 250, 0.8);
         }
 
-        /* Added collapsed timer display in header */
         .focus-header-timer {
             font-size: 14px;
             color: #5f6368;
@@ -263,7 +261,6 @@
             position: relative;
         }
 
-        /* Fixed collapsed state to properly hide content */
         .focus-content.collapsed {
             max-height: 0;
             padding: 0 20px;
@@ -572,7 +569,6 @@
     </style>
 </head>
 <body>
-    <!-- Added full page video background -->
     <video class="page-video-bg" autoplay muted loop>
         <source src="/main/events/sidebar/apps/tasks/images/lofi.mp4" type="video/mp4">
     </video>
@@ -600,7 +596,6 @@
                 <div class="focus-title">
                     <i data-lucide="target" class="focus-icon"></i>
                     <span>Focus</span>
-                    <!-- Added timer display in header for collapsed state -->
                     <span class="focus-header-timer" id="focusHeaderTimer"></span>
                 </div>
                 <div class="dropdown-arrow" id="focusDropdownArrow"></div>
@@ -705,7 +700,6 @@
             focusTimer = setInterval(() => {
                 if (focusSeconds === 0) {
                     if (focusMinutes === 0) {
-                        // Timer finished
                         stopTimer();
                         showTimerComplete();
                         return;
@@ -735,7 +729,6 @@
                 stopMusic();
             }
             
-            // Reset timer
             focusMinutes = parseInt(document.getElementById('timerText').textContent.split(' ')[0]) || 25;
             focusSeconds = 0;
             updateTimerDisplay();
@@ -779,7 +772,6 @@
             timerText.textContent = 'Complete!';
             timerSubtitle.textContent = 'Great focus session';
             
-            // Reset after 3 seconds
             setTimeout(() => {
                 focusMinutes = 25;
                 focusSeconds = 0;
@@ -805,12 +797,10 @@
             musicBtn.classList.add('active');
             musicBtnText.textContent = 'Playing';
             
-            // Fade in the current track
             const currentAudio = audioElements[currentTrack];
             currentAudio.volume = 0;
             currentAudio.play();
             
-            // Smooth fade in
             let volume = 0;
             const fadeIn = setInterval(() => {
                 volume += 0.05;
@@ -830,7 +820,6 @@
             musicBtn.classList.remove('active');
             musicBtnText.textContent = 'Play Lofi';
             
-            // Fade out current track
             const currentAudio = audioElements[currentTrack];
             let volume = currentAudio.volume;
             const fadeOut = setInterval(() => {
@@ -988,7 +977,6 @@
                 saveEvents();
                 renderCalendar();
                 
-                // Update modal if it's open for this date
                 const modal = document.getElementById('eventModal');
                 if (modal.style.display === 'block') {
                     showEventModal(dateKey);
@@ -1058,7 +1046,6 @@
             
             calendarGrid.innerHTML = '';
             
-            // Day headers
             const dayHeaders = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
             dayHeaders.forEach(day => {
                 const dayHeader = document.createElement('div');
@@ -1067,14 +1054,12 @@
                 calendarGrid.appendChild(dayHeader);
             });
             
-            // Get first day of month and number of days
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const daysInPrevMonth = new Date(year, month, 0).getDate();
             
             const today = new Date();
             
-            // Previous month days
             for (let i = firstDay - 1; i >= 0; i--) {
                 const day = daysInPrevMonth - i;
                 const dateKey = new Date(year, month - 1, day).toISOString().split('T')[0];
@@ -1082,12 +1067,10 @@
                 calendarGrid.appendChild(dayElement);
             }
             
-            // Current month days
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateKey = new Date(year, month, day).toISOString().split('T')[0];
                 const dayElement = createDayElement(day, dateKey, false);
                 
-                // Check if it's today
                 if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
                     dayElement.classList.add('today');
                 }
@@ -1095,9 +1078,8 @@
                 calendarGrid.appendChild(dayElement);
             }
             
-            // Next month days
-            const totalCells = calendarGrid.children.length - 7; // Subtract day headers
-            const remainingCells = 42 - totalCells; // 6 rows × 7 days
+            const totalCells = calendarGrid.children.length - 7;
+            const remainingCells = 42 - totalCells;
             for (let day = 1; day <= remainingCells; day++) {
                 const dateKey = new Date(year, month + 1, day).toISOString().split('T')[0];
                 const dayElement = createDayElement(day, dateKey, true);
@@ -1109,15 +1091,12 @@
             const dayElement = document.createElement('div');
             dayElement.className = `calendar-day ${isOtherMonth ? 'other-month' : ''}`;
             dayElement.textContent = day;
-            
-            // Add drag and drop handlers
             dayElement.ondragover = handleDragOver;
             dayElement.ondragleave = handleDragLeave;
             dayElement.ondrop = (e) => handleDrop(e, dateKey);
             
             dayElement.onclick = () => showEventModal(dateKey);
             
-            // Add event indicators
             if (events[dateKey] && events[dateKey].length > 0) {
                 events[dateKey].forEach(event => {
                     const indicator = document.createElement('div');
@@ -1147,7 +1126,6 @@
             updateTimerDisplay();
         }
 
-        // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('eventModal');
             if (event.target === modal) {
@@ -1155,7 +1133,6 @@
             }
         }
 
-        // Initialize
         initializeAudio();
         renderTasks();
         renderCalendar();
