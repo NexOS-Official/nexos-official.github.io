@@ -1,10 +1,1 @@
-self.__uv$config = {
-    prefix: '/active/go/',
-    bare:'https://math-challenge-cources.atamanco.eu/bare/',
-    encodeUrl: Ultraviolet.codec.xor.encode,
-    decodeUrl: Ultraviolet.codec.xor.decode,
-    handler: '/active/uv/uv.handler.js',
-    bundle: '/active/uv/uv.bundle.js',
-    config: '/active/uv/uv.config.js',
-    sw: '/active/uv/uv.sw.js',
-};
+(() => { let uvPfx = "/uv/"; let loc = self.location.pathname.includes(uvPfx) ? self.location.pathname.substring( 0, self.location.pathname.indexOf(uvPfx), ) : self.location.pathname.substring( 0, self.location.pathname.lastIndexOf("/"), ); self.__uv$config = { prefix: loc + uvPfx + "service/", encodeUrl: Ultraviolet.codec.xor.encode, decodeUrl: Ultraviolet.codec.xor.decode, handler: loc + uvPfx + "uv.handler.js", client: loc + uvPfx + "uv.client.js", bundle: loc + uvPfx + "uv.bundle.js", config: loc + uvPfx + "uv.config.js", sw: loc + uvPfx + "uv.sw.js", stockSW: loc + uvPfx + "sw.js", loc: loc, }; })();
