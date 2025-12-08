@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Untitled document - Docs</title>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500;700&family=Roboto+Mono&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    :root {
+      --docs-blue: #1a73e8;
+      --docs-blue-hover: #1765cc;
+      --docs-icon: #5f6368;
+      --docs-icon-hover: #202124;
+      --docs-border: #dadce0;
+      --docs-bg: #f1f3f4;
+      --docs-surface: #fff;
+      --docs-text: #202124;
+      --docs-text-secondary: #5f6368;
+      --toolbar-bg: #edf2fa;
+      --ruler-bg: #fff;
+    }
+
+    body {
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--docs-bg);
+      color: var(--docs-text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .header {
+      background: var(--docs-surface);
+      padding: 8px 16px 0;
+      border-bottom: 1px solid var(--docs-border);
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .docs-icon {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .docs-icon svg { width: 40px; height: 40px; }
+
+    .doc-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .doc-title-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .doc-title {
+      font-size: 18px;
+      font-family: 'Google Sans', 'Roboto', sans-serif;
+      font-weight: 400;
+      border: none;
+      background: transparent;
+      outline: none;
+      padding: 2px 4px;
+      border-radius: 4px;
+      min-width: 150px;
+      max-width: 400px;
+    }
+
+    .doc-title:hover { background: #f1f3f4; }
+    .doc-title:focus { background: #e8f0fe; }
+
+    .star-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--docs-icon);
+    }
+
+    .star-btn:hover { background: #f1f3f4; }
+    .star-btn.active { color: #fbbc04; }
+    .star-btn svg { width: 18px; height: 18px; }
+
+    .menu-bar {
+      display: flex;
+      gap: 2px;
+      font-size: 14px;
+      padding: 2px 0;
+    }
+
+    .menu-item {
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      position: relative;
+      color: var(--docs-text);
+      font-weight: 400;
+      user-select: none;
+    }
+
+    .menu-item:hover { background: #f1f3f4; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .share-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 24px;
+      height: 36px;
+      background: #c2e7ff;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #001d35;
+      font-family: 'Google Sans', sans-serif;
+    }
+
+    .share-btn:hover { background: #a8d8ff; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    .share-btn svg { width: 18px; height: 18px; }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ea4335 25%, #fbbc05 25%, #fbbc05 50%, #34a853 50%, #34a853 75%, #4285f4 75%);
+      cursor: pointer;
+    }
+
+    .toolbar {
+      background: var(--toolbar-bg);
+      padding: 4px 12px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      border-bottom: 1px solid var(--docs-border);
+      flex-wrap: nowrap;
+      overflow-x: auto;
+    }
+
+    .toolbar::-webkit-scrollbar { height: 0; }
+
+    .tool-btn {
+      min-width: 30px;
+      height: 30px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--docs-icon);
+      padding: 0 4px;
+    }
+
+    .tool-btn:hover { background: #d3e3fd; }
+    .tool-btn.active { background: #c2dbff; color: var(--docs-blue); }
+    .tool-btn svg { width: 18px; height: 18px; }
+    .tool-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .tool-separator {
+      width: 1px;
+      height: 20px;
+      background: #c7c7c7;
+      margin: 0 4px;
+    }
+
+    .tool-select {
+      height: 30px;
+      padding: 0 8px;
+      padding-right: 20px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 4px center;
+      font-size: 14px;
+      color: var(--docs-text);
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      font-family: inherit;
+    }
+
+    .tool-select:hover { background-color: #d3e3fd; }
+    .tool-select:focus { border-color: var(--docs-blue); background-color: #fff; }
+
+    .zoom-select { width: 65px; }
+    .style-select { width: 110px; }
+    .font-select { width: 110px; }
+
+    .font-size-control {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      background: transparent;
+    }
+
+    .font-size-control:hover { background: #d3e3fd; }
+
+    .font-size-btn {
+      width: 24px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--docs-icon);
+      font-size: 16px;
+      font-weight: 300;
+    }
+
+    .font-size-btn:hover { background: #c2dbff; }
+
+    .font-size-input {
+      width: 32px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      text-align: center;
+      font-size: 13px;
+      color: var(--docs-text);
+      outline: none;
+    }
+
+    .color-tool {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .color-tool:hover { background: #d3e3fd; }
+    .color-tool svg { width: 18px; height: 14px; }
+    .color-bar { height: 3px; width: 18px; margin-top: 1px; border-radius: 1px; }
+    .color-input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+
+    .ruler-container {
+      background: var(--docs-bg);
+      padding: 0 88px;
+      position: relative;
+      height: 24px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .ruler {
+      height: 14px;
+      background: var(--ruler-bg);
+      border: 1px solid var(--docs-border);
+      border-top: none;
+      display: flex;
+      position: relative;
+      width: 816px;
+      font-size: 10px;
+      color: var(--docs-icon);
+    }
+
+    .ruler-marks {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 1px;
+    }
+
+    .ruler-mark {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 9px;
+      color: var(--docs-text-secondary);
+    }
+
+    .ruler-mark span { margin-top: -2px; }
+    .ruler-tick { width: 1px; height: 6px; background: var(--docs-border); }
+    .ruler-tick.major { height: 10px; }
+
+    .main-container {
+      display: flex;
+      height: calc(100vh - 140px);
+    }
+
+    .editor-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 0 60px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .page {
+      width: 816px;
+      min-height: 1056px;
+      background: var(--docs-surface);
+      box-shadow: 0 0 0 1px var(--docs-border), 0 2px 10px rgba(0,0,0,0.08);
+      padding: 96px 96px;
+      position: relative;
+    }
+
+    .editor {
+      outline: none;
+      min-height: 800px;
+      font-size: 11pt;
+      line-height: 1.5;
+      color: var(--docs-text);
+      font-family: 'Arial', sans-serif;
+    }
+
+    .editor:empty:before { content: ''; }
+    .editor h1 { font-size: 20pt; margin: 24px 0 6px; font-weight: 700; }
+    .editor h2 { font-size: 16pt; margin: 18px 0 6px; font-weight: 700; }
+    .editor h3 { font-size: 14pt; margin: 14px 0 4px; font-weight: 700; }
+    .editor p { margin: 0 0 12px; }
+    .editor ul, .editor ol { margin: 0 0 12px 36px; }
+    .editor li { margin: 4px 0; }
+    .editor blockquote { border-left: 4px solid #dadce0; margin: 12px 0; padding: 0 16px; color: var(--docs-text-secondary); }
+    .editor pre { background: #f8f9fa; border: 1px solid var(--docs-border); padding: 12px; border-radius: 4px; font-family: 'Roboto Mono', monospace; font-size: 10pt; overflow-x: auto; margin: 12px 0; }
+    .editor a { color: #1a0dab; }
+    .editor img { max-width: 100%; margin: 8px 0; cursor: pointer; }
+    .editor hr { border: none; border-top: 1px solid var(--docs-border); margin: 24px 0; }
+    .editor table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+    .editor th, .editor td { border: 1px solid #000; padding: 6px 10px; text-align: left; }
+
+    .quick-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .quick-action {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border: 1px solid var(--docs-border);
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--docs-text);
+      background: var(--docs-surface);
+    }
+
+    .quick-action:hover { background: #f1f3f4; }
+    .quick-action svg { width: 16px; height: 16px; color: var(--docs-icon); }
+
+    .dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: var(--docs-surface);
+      border: none;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px 2px rgba(60,64,67,0.15);
+      min-width: 280px;
+      padding: 8px 0;
+      display: none;
+      z-index: 1000;
+    }
+
+    .dropdown.show { display: block; }
+
+    .dropdown-item {
+      padding: 6px 24px 6px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
+      color: var(--docs-text);
+    }
+
+    .dropdown-item:hover { background: #f1f3f4; }
+    .dropdown-item svg { width: 18px; height: 18px; color: var(--docs-icon); }
+    .dropdown-item .shortcut { margin-left: auto; color: var(--docs-text-secondary); font-size: 12px; }
+    .dropdown-divider { height: 1px; background: var(--docs-border); margin: 8px 0; }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: var(--docs-surface);
+      border-radius: 8px;
+      padding: 24px;
+      width: 480px;
+      max-width: 90%;
+    }
+
+    .modal h3 {
+      font-size: 16px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      font-family: 'Google Sans', sans-serif;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--docs-border);
+      border-radius: 4px;
+      font-size: 14px;
+      margin-bottom: 12px;
+      outline: none;
+    }
+
+    .modal-input:focus { border-color: var(--docs-blue); }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 20px;
+    }
+
+    .modal-btn {
+      padding: 8px 24px;
+      border-radius: 4px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: 'Google Sans', sans-serif;
+    }
+
+    .modal-btn.cancel { background: transparent; color: var(--docs-blue); }
+    .modal-btn.cancel:hover { background: #f1f3f4; }
+    .modal-btn.primary { background: var(--docs-blue); color: #fff; }
+    .modal-btn.primary:hover { background: var(--docs-blue-hover); }
+
+    .upload-area {
+      border: 2px dashed var(--docs-border);
+      border-radius: 8px;
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 16px;
+      transition: all 0.2s;
+    }
+
+    .upload-area:hover, .upload-area.drag-over { border-color: var(--docs-blue); background: #e8f0fe; }
+    .upload-area svg { width: 48px; height: 48px; color: var(--docs-icon); margin-bottom: 12px; }
+    .upload-area p { color: var(--docs-text-secondary); font-size: 14px; }
+    .upload-area .browse-link { color: var(--docs-blue); cursor: pointer; }
+    .upload-area .browse-link:hover { text-decoration: underline; }
+
+    .status-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--docs-surface);
+      border-top: 1px solid var(--docs-border);
+      padding: 4px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--docs-text-secondary);
+      z-index: 100;
+    }
+
+    .status-left { display: flex; gap: 16px; }
+    .status-right { display: flex; gap: 8px; align-items: center; }
+
+    .zoom-controls { display: flex; align-items: center; gap: 4px; }
+
+    .zoom-btn {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--docs-icon);
+    }
+
+    .zoom-btn:hover { background: #f1f3f4; }
+
+    .context-menu {
+      position: fixed;
+      background: var(--docs-surface);
+      border-radius: 4px;
+      box-shadow: 0 2px 6px 2px rgba(60,64,67,0.15);
+      min-width: 200px;
+      padding: 8px 0;
+      display: none;
+      z-index: 2000;
+    }
+
+    .context-menu.show { display: block; }
+
+    .find-bar {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: var(--docs-surface);
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      padding: 12px;
+      display: none;
+      z-index: 1000;
+      width: 320px;
+    }
+
+    .find-bar.show { display: block; }
+    .find-bar input { width: 100%; padding: 8px; border: 1px solid var(--docs-border); border-radius: 4px; outline: none; font-size: 14px; }
+    .find-bar input:focus { border-color: var(--docs-blue); }
+    .find-bar-actions { display: flex; gap: 4px; margin-top: 8px; justify-content: flex-end; }
+
+    .toast {
+      position: fixed;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #323232;
+      color: #fff;
+      padding: 14px 24px;
+      border-radius: 28px;
+      font-size: 14px;
+      font-family: 'Google Sans', sans-serif;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 3000;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    @media print {
+      .header, .toolbar, .ruler-container, .status-bar { display: none !important; }
+      .main-container { height: auto; }
+      .editor-scroll { padding: 0; overflow: visible; }
+      .page { box-shadow: none; margin: 0; padding: 0.5in; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-top">
+      <div class="docs-icon">
+        <svg viewBox="0 0 48 48" fill="none">
+          <path d="M7 2H33L41 10V46H7V2Z" fill="#4285f4"/>
+          <path d="M33 2L41 10H33V2Z" fill="#a1c2fa"/>
+          <path d="M13 22H35V24H13V22ZM13 28H35V30H13V28ZM13 34H27V36H13V34Z" fill="#fff"/>
+        </svg>
+      </div>
+      
+      <div class="doc-info">
+        <div class="doc-title-row">
+          <input type="text" class="doc-title" value="Untitled document" id="docTitle">
+          <button class="star-btn" onclick="toggleStar()" title="Star">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="starIcon">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
+        </div>
+        
+        <div class="menu-bar">
+          <div class="menu-item" onclick="toggleDropdown('fileMenu')">File
+            <div class="dropdown" id="fileMenu">
+              <div class="dropdown-item" onclick="newDoc()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                New <span class="shortcut">Ctrl+N</span>
+              </div>
+              <div class="dropdown-item" onclick="openDoc()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                Open <span class="shortcut">Ctrl+O</span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="saveDoc()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+                Save <span class="shortcut">Ctrl+S</span>
+              </div>
+              <div class="dropdown-item" onclick="exportHTML()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download as HTML
+              </div>
+              <div class="dropdown-item" onclick="exportText()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Download as Plain Text
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="window.print()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print <span class="shortcut">Ctrl+P</span>
+              </div>
+            </div>
+          </div>
+          <div class="menu-item" onclick="toggleDropdown('editMenu')">Edit
+            <div class="dropdown" id="editMenu">
+              <div class="dropdown-item" onclick="execCmd('undo')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                Undo <span class="shortcut">Ctrl+Z</span>
+              </div>
+              <div class="dropdown-item" onclick="execCmd('redo')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Redo <span class="shortcut">Ctrl+Y</span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="execCmd('cut')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+                Cut <span class="shortcut">Ctrl+X</span>
+              </div>
+              <div class="dropdown-item" onclick="execCmd('copy')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy <span class="shortcut">Ctrl+C</span>
+              </div>
+              <div class="dropdown-item" onclick="doPaste()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+                Paste <span class="shortcut">Ctrl+V</span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="execCmd('selectAll')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                Select all <span class="shortcut">Ctrl+A</span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="showFindBar()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                Find and replace <span class="shortcut">Ctrl+H</span>
+              </div>
+            </div>
+          </div>
+          <div class="menu-item" onclick="toggleDropdown('viewMenu')">View
+            <div class="dropdown" id="viewMenu">
+              <div class="dropdown-item" onclick="setZoom(50)">50%</div>
+              <div class="dropdown-item" onclick="setZoom(75)">75%</div>
+              <div class="dropdown-item" onclick="setZoom(100)">100%</div>
+              <div class="dropdown-item" onclick="setZoom(125)">125%</div>
+              <div class="dropdown-item" onclick="setZoom(150)">150%</div>
+              <div class="dropdown-item" onclick="setZoom(200)">200%</div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="toggleFullscreen()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                Fullscreen
+              </div>
+            </div>
+          </div>
+          <div class="menu-item" onclick="toggleDropdown('insertMenu')">Insert
+            <div class="dropdown" id="insertMenu">
+              <div class="dropdown-item" onclick="showImageModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Image
+              </div>
+              <div class="dropdown-item" onclick="insertTable()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+                Table
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="execCmd('insertHorizontalRule')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Horizontal line
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="showLinkModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                Link <span class="shortcut">Ctrl+K</span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="insertSpecialChar()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><text x="6" y="17" font-size="14" fill="currentColor">Ω</text></svg>
+                Special characters
+              </div>
+              <div class="dropdown-item" onclick="insertDate()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Date
+              </div>
+            </div>
+          </div>
+          <div class="menu-item" onclick="toggleDropdown('formatMenu')">Format
+            <div class="dropdown" id="formatMenu">
+              <div class="dropdown-item" onclick="execCmd('bold')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
+                Bold <span class="shortcut">Ctrl+B</span>
+              </div>
+              <div class="dropdown-item" onclick="execCmd('italic')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+                Italic <span class="shortcut">Ctrl+I</span>
+              </div>
+              <div class="dropdown-item" onclick="execCmd('underline')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
+                Underline <span class="shortcut">Ctrl+U</span>
+              </div>
+              <div class="dropdown-item" onclick="execCmd('strikeThrough')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4H9a3 3 0 0 0 0 6h6"/><path d="M8 20h7a3 3 0 0 0 0-6H8"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
+                Strikethrough
+              </div>
+              <div class="dropdown-divider"></div>
+              <div class="dropdown-item" onclick="execCmd('removeFormat')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+                Clear formatting <span class="shortcut">Ctrl+\</span>
+              </div>
+            </div>
+          </div>
+          <div class="menu-item" onclick="toggleDropdown('toolsMenu')">Tools
+            <div class="dropdown" id="toolsMenu">
+              <div class="dropdown-item" onclick="wordCount()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                Word count <span class="shortcut">Ctrl+Shift+C</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="header-right">
+        <button class="share-btn" onclick="shareDoc()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Share
+        </button>
+        <div class="avatar"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button class="tool-btn" onclick="execCmd('undo')" title="Undo (Ctrl+Z)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+    </button>
+    <button class="tool-btn" onclick="execCmd('redo')" title="Redo (Ctrl+Y)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
+    <button class="tool-btn" onclick="window.print()" title="Print (Ctrl+P)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    </button>
+    
+    <div class="tool-separator"></div>
+    
+    <select class="tool-select zoom-select" onchange="setZoom(this.value)" title="Zoom" id="zoomSelect">
+      <option value="50">50%</option>
+      <option value="75">75%</option>
+      <option value="100" selected>100%</option>
+      <option value="125">125%</option>
+      <option value="150">150%</option>
+      <option value="200">200%</option>
+    </select>
+    
+    <div class="tool-separator"></div>
+    
+    <select class="tool-select style-select" onchange="setStyle(this.value)" title="Styles" id="styleSelect">
+      <option value="p">Normal text</option>
+      <option value="h1">Heading 1</option>
+      <option value="h2">Heading 2</option>
+      <option value="h3">Heading 3</option>
+    </select>
+    
+    <div class="tool-separator"></div>
+    
+    <select class="tool-select font-select" onchange="execCmdArg('fontName', this.value)" title="Font" id="fontSelect">
+      <option value="Arial">Arial</option>
+      <option value="Times New Roman">Times New Roman</option>
+      <option value="Georgia">Georgia</option>
+      <option value="Verdana">Verdana</option>
+      <option value="Courier New">Courier New</option>
+      <option value="Comic Sans MS">Comic Sans MS</option>
+      <option value="Impact">Impact</option>
+      <option value="Trebuchet MS">Trebuchet MS</option>
+    </select>
+    
+    <div class="tool-separator"></div>
+    
+    <div class="font-size-control">
+      <button class="font-size-btn" onclick="changeFontSize(-1)">−</button>
+      <input type="text" class="font-size-input" value="11" id="fontSizeInput" onchange="setFontSize(this.value)">
+      <button class="font-size-btn" onclick="changeFontSize(1)">+</button>
+    </div>
+    
+    <div class="tool-separator"></div>
+    
+    <button class="tool-btn" onclick="execCmd('bold')" title="Bold (Ctrl+B)" id="boldBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
+    </button>
+    <button class="tool-btn" onclick="execCmd('italic')" title="Italic (Ctrl+I)" id="italicBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+    </button>
+    <button class="tool-btn" onclick="execCmd('underline')" title="Underline (Ctrl+U)" id="underlineBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
+    </button>
+    
+    <div class="color-tool" title="Text color">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16"/><path d="m6 16 6-12 6 12"/><path d="M8 12h8"/></svg>
+      <div class="color-bar" style="background: #000" id="textColorBar"></div>
+      <input type="color" class="color-input" value="#000000" onchange="setTextColor(this.value)" id="textColorPicker">
+    </div>
+    
+    <div class="color-tool" title="Highlight color">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>
+      <div class="color-bar" style="background: #ffff00" id="highlightColorBar"></div>
+      <input type="color" class="color-input" value="#ffff00" onchange="setHighlightColor(this.value)" id="highlightColorPicker">
+    </div>
+    
+    <div class="tool-separator"></div>
+    
+    <button class="tool-btn" onclick="showLinkModal()" title="Insert link (Ctrl+K)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    </button>
+    <button class="tool-btn" onclick="showImageModal()" title="Insert image">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    </button>
+    
+    <div class="tool-separator"></div>
+    
+    <button class="tool-btn" onclick="execCmd('justifyLeft')" title="Left align">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+    </button>
+    <button class="tool-btn" onclick="execCmd('justifyCenter')" title="Center align">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="10" x2="6" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="18" y1="18" x2="6" y2="18"/></svg>
+    </button>
+    <button class="tool-btn" onclick="execCmd('justifyRight')" title="Right align">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="7" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+    </button>
+    
+    <div class="tool-separator"></div>
+    
+    <button class="tool-btn" onclick="execCmd('insertUnorderedList')" title="Bulleted list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>
+    </button>
+    <button class="tool-btn" onclick="execCmd('insertOrderedList')" title="Numbered list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><text x="3" y="8" font-size="8" fill="currentColor">1</text><text x="3" y="14" font-size="8" fill="currentColor">2</text><text x="3" y="20" font-size="8" fill="currentColor">3</text></svg>
+    </button>
+    
+    <div class="tool-separator"></div>
+    
+    <button class="tool-btn" onclick="execCmd('outdent')" title="Decrease indent">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 8 3 12 7 16"/><line x1="21" y1="12" x2="11" y2="12"/><line x1="21" y1="6" x2="11" y2="6"/><line x1="21" y1="18" x2="11" y2="18"/></svg>
+    </button>
+    <button class="tool-btn" onclick="execCmd('indent')" title="Increase indent">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 8 7 12 3 16"/><line x1="21" y1="12" x2="11" y2="12"/><line x1="21" y1="6" x2="11" y2="6"/><line x1="21" y1="18" x2="11" y2="18"/></svg>
+    </button>
+    
+    <div class="tool-separator"></div>
+    
+    <button class="tool-btn" onclick="execCmd('removeFormat')" title="Clear formatting">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+    </button>
+  </div>
+
+  <div class="ruler-container">
+    <div class="ruler">
+      <div class="ruler-marks">
+        <div class="ruler-mark"><div class="ruler-tick major"></div><span>1</span></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick major"></div><span>2</span></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick major"></div><span>3</span></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick major"></div><span>4</span></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick major"></div><span>5</span></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick major"></div><span>6</span></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick"></div></div>
+        <div class="ruler-mark"><div class="ruler-tick major"></div><span>7</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="editor-scroll" id="editorScroll">
+      <div class="page" id="page">
+        <div class="quick-actions" id="quickActions">
+          <div class="quick-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            Templates
+          </div>
+          <div class="quick-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Meeting notes
+          </div>
+          <div class="quick-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Email draft
+          </div>
+          <div class="quick-action">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            More
+          </div>
+        </div>
+        <div class="editor" id="editor" contenteditable="true" spellcheck="true"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="linkModal">
+    <div class="modal">
+      <h3>Insert link</h3>
+      <input type="text" class="modal-input" id="linkText" placeholder="Text to display">
+      <input type="url" class="modal-input" id="linkUrl" placeholder="Link">
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal('linkModal')">Cancel</button>
+        <button class="modal-btn primary" onclick="insertLink()">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="imageModal">
+    <div class="modal">
+      <h3>Insert image</h3>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('imageUpload').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <p>Drag an image here or <span class="browse-link">browse</span></p>
+      </div>
+      <input type="file" id="imageUpload" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+      <p style="text-align:center;color:#5f6368;font-size:13px;margin:12px 0;">or paste an image URL</p>
+      <input type="url" class="modal-input" id="imageUrl" placeholder="https://example.com/image.jpg">
+      <div class="modal-actions">
+        <button class="modal-btn cancel" onclick="closeModal('imageModal')">Cancel</button>
+        <button class="modal-btn primary" onclick="insertImageFromUrl()">Insert</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="context-menu" id="contextMenu">
+    <div class="dropdown-item" onclick="execCmd('cut')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/></svg>
+      Cut
+    </div>
+    <div class="dropdown-item" onclick="execCmd('copy')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      Copy
+    </div>
+    <div class="dropdown-item" onclick="doPaste()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+      Paste
+    </div>
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item" onclick="execCmd('bold')">Bold</div>
+    <div class="dropdown-item" onclick="execCmd('italic')">Italic</div>
+    <div class="dropdown-item" onclick="execCmd('underline')">Underline</div>
+  </div>
+
+  <div class="find-bar" id="findBar">
+    <input type="text" placeholder="Find in document..." id="findInput" onkeyup="doFind()">
+    <input type="text" placeholder="Replace with..." id="replaceInput" style="margin-top:8px;">
+    <div class="find-bar-actions">
+      <button class="modal-btn cancel" onclick="hideFindBar()">Close</button>
+      <button class="modal-btn cancel" onclick="doReplace()">Replace</button>
+      <button class="modal-btn primary" onclick="doReplaceAll()">Replace all</button>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-left">
+      <span id="wordCount">Words: 0</span>
+      <span id="charCount">Characters: 0</span>
+    </div>
+    <div class="status-right">
+      <span id="saveStatus">All changes saved in Drive</span>
+      <div class="zoom-controls">
+        <button class="zoom-btn" onclick="setZoom(currentZoom - 10)">−</button>
+        <span id="zoomValue">100%</span>
+        <button class="zoom-btn" onclick="setZoom(currentZoom + 10)">+</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Copied to clipboard</div>
+
+  <input type="file" id="fileInput" accept=".html,.htm,.txt,.doc,.docx" style="display:none;" onchange="handleFileOpen(event)">
+
+  <script>
+    const editor = document.getElementById('editor');
+    const docTitle = document.getElementById('docTitle');
+    const quickActions = document.getElementById('quickActions');
+    let currentZoom = 100;
+    let saveTimeout;
+    let isStarred = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadFromStorage();
+      updateStats();
+      setupDragDrop();
+      setupPasteImage();
+      editor.focus();
+    });
+
+    function execCmd(command) {
+      document.execCommand(command, false, null);
+      editor.focus();
+      updateToolbarState();
+      autoSave();
+    }
+
+    function execCmdArg(command, arg) {
+      document.execCommand(command, false, arg);
+      editor.focus();
+      updateToolbarState();
+      autoSave();
+    }
+
+    function setStyle(tag) {
+      document.execCommand('formatBlock', false, tag);
+      editor.focus();
+      autoSave();
+    }
+
+    let currentFontSize = 11;
+    
+    function changeFontSize(delta) {
+      currentFontSize = Math.max(6, Math.min(96, currentFontSize + delta));
+      document.getElementById('fontSizeInput').value = currentFontSize;
+      document.execCommand('fontSize', false, '7');
+      const fontElements = editor.querySelectorAll('font[size="7"]');
+      fontElements.forEach(el => {
+        el.removeAttribute('size');
+        el.style.fontSize = currentFontSize + 'pt';
+      });
+      autoSave();
+    }
+
+    function setFontSize(size) {
+      currentFontSize = parseInt(size) || 11;
+      document.getElementById('fontSizeInput').value = currentFontSize;
+      changeFontSize(0);
+    }
+
+    function setTextColor(color) {
+      document.getElementById('textColorBar').style.background = color;
+      document.execCommand('foreColor', false, color);
+      autoSave();
+    }
+
+    function setHighlightColor(color) {
+      document.getElementById('highlightColorBar').style.background = color;
+      document.execCommand('hiliteColor', false, color);
+      autoSave();
+    }
+
+    function updateToolbarState() {
+      document.getElementById('boldBtn').classList.toggle('active', document.queryCommandState('bold'));
+      document.getElementById('italicBtn').classList.toggle('active', document.queryCommandState('italic'));
+      document.getElementById('underlineBtn').classList.toggle('active', document.queryCommandState('underline'));
+    }
+
+    editor.addEventListener('input', () => {
+      updateStats();
+      autoSave();
+      hideQuickActions();
+    });
+
+    editor.addEventListener('mouseup', updateToolbarState);
+    editor.addEventListener('keyup', updateToolbarState);
+    editor.addEventListener('focus', hideQuickActions);
+
+    function hideQuickActions() {
+      if (editor.innerText.trim().length > 0) {
+        quickActions.style.display = 'none';
+      }
+    }
+
+    function updateStats() {
+      const text = editor.innerText || '';
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const chars = text.length;
+      document.getElementById('wordCount').textContent = `Words: ${words.toLocaleString()}`;
+      document.getElementById('charCount').textContent = `Characters: ${chars.toLocaleString()}`;
+    }
+
+    function toggleDropdown(id) {
+      const dropdown = document.getElementById(id);
+      const isOpen = dropdown.classList.contains('show');
+      document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
+      if (!isOpen) dropdown.classList.add('show');
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.menu-item')) {
+        document.querySelectorAll('.dropdown').forEach(d => d.classList.remove('show'));
+      }
+    });
+
+    function toggleStar() {
+      isStarred = !isStarred;
+      const starIcon = document.getElementById('starIcon');
+      const starBtn = document.querySelector('.star-btn');
+      starBtn.classList.toggle('active', isStarred);
+      starIcon.setAttribute('fill', isStarred ? 'currentColor' : 'none');
+    }
+
+    function showLinkModal() {
+      const selection = window.getSelection();
+      document.getElementById('linkText').value = selection.toString();
+      document.getElementById('linkModal').classList.add('show');
+      document.getElementById('linkUrl').focus();
+    }
+
+    function showImageModal() {
+      document.getElementById('imageModal').classList.add('show');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+      editor.focus();
+    }
+
+    function insertLink() {
+      const text = document.getElementById('linkText').value;
+      const url = document.getElementById('linkUrl').value;
+      if (url) {
+        const html = `<a href="${url}" target="_blank">${text || url}</a>`;
+        document.execCommand('insertHTML', false, html);
+      }
+      closeModal('linkModal');
+      document.getElementById('linkText').value = '';
+      document.getElementById('linkUrl').value = '';
+      autoSave();
+    }
+
+    function setupDragDrop() {
+      const uploadArea = document.getElementById('uploadArea');
+      
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+      });
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, () => uploadArea.classList.add('drag-over'));
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('drag-over'));
+      });
+
+      uploadArea.addEventListener('drop', handleDrop);
+      editor.addEventListener('drop', handleEditorDrop);
+    }
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    function handleDrop(e) {
+      const files = e.dataTransfer.files;
+      if (files.length > 0 && files[0].type.startsWith('image/')) {
+        insertImageFile(files[0]);
+        closeModal('imageModal');
+      }
+    }
+
+    function handleEditorDrop(e) {
+      const files = e.dataTransfer.files;
+      if (files.length > 0 && files[0].type.startsWith('image/')) {
+        e.preventDefault();
+        insertImageFile(files[0]);
+      }
+    }
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (file) {
+        insertImageFile(file);
+        closeModal('imageModal');
+      }
+    }
+
+    function insertImageFile(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = `<img src="${e.target.result}" alt="Uploaded image" style="max-width:100%;">`;
+        document.execCommand('insertHTML', false, img);
+        autoSave();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function insertImageFromUrl() {
+      const url = document.getElementById('imageUrl').value;
+      if (url) {
+        const img = `<img src="${url}" alt="Image" style="max-width:100%;">`;
+        document.execCommand('insertHTML', false, img);
+        autoSave();
+      }
+      closeModal('imageModal');
+      document.getElementById('imageUrl').value = '';
+    }
+
+    function setupPasteImage() {
+      editor.addEventListener('paste', (e) => {
+        const items = e.clipboardData.items;
+        for (let item of items) {
+          if (item.type.startsWith('image/')) {
+            e.preventDefault();
+            const file = item.getAsFile();
+            insertImageFile(file);
+            return;
+          }
+        }
+      });
+    }
+
+    function insertTable() {
+      const html = `<table><tr><td>Cell 1</td><td>Cell 2</td><td>Cell 3</td></tr><tr><td>Cell 4</td><td>Cell 5</td><td>Cell 6</td></tr><tr><td>Cell 7</td><td>Cell 8</td><td>Cell 9</td></tr></table><p></p>`;
+      document.execCommand('insertHTML', false, html);
+      autoSave();
+    }
+
+    function insertDate() {
+      const date = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.execCommand('insertText', false, date);
+      autoSave();
+    }
+
+    function insertSpecialChar() {
+      const char = prompt('Enter special character or unicode:');
+      if (char) document.execCommand('insertText', false, char);
+    }
+
+    function newDoc() {
+      if (confirm('Create a new document? Unsaved changes will be lost.')) {
+        editor.innerHTML = '';
+        docTitle.value = 'Untitled document';
+        document.title = 'Untitled document - Docs';
+        quickActions.style.display = 'flex';
+        localStorage.removeItem('gdocs_content');
+        localStorage.removeItem('gdocs_title');
+        updateStats();
+      }
+    }
+
+    function openDoc() {
+      document.getElementById('fileInput').click();
+    }
+
+    function handleFileOpen(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          editor.innerHTML = file.name.endsWith('.txt') ? ev.target.result.replace(/\n/g, '<br>') : ev.target.result;
+          docTitle.value = file.name.replace(/\.[^/.]+$/, '');
+          document.title = docTitle.value + ' - Docs';
+          quickActions.style.display = 'none';
+          updateStats();
+        };
+        reader.readAsText(file);
+      }
+    }
+
+    function saveDoc() {
+      const blob = new Blob([editor.innerHTML], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${docTitle.value || 'document'}.html`;
+      a.click();
+    }
+
+    function exportHTML() {
+      const fullHTML = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${docTitle.value}</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #000;padding:8px;}</style></head><body>${editor.innerHTML}</body></html>`;
+      const blob = new Blob([fullHTML], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${docTitle.value || 'document'}.html`;
+      a.click();
+    }
+
+    function exportText() {
+      const blob = new Blob([editor.innerText], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${docTitle.value || 'document'}.txt`;
+      a.click();
+    }
+
+    function autoSave() {
+      clearTimeout(saveTimeout);
+      document.getElementById('saveStatus').textContent = 'Saving...';
+      saveTimeout = setTimeout(() => {
+        localStorage.setItem('gdocs_content', editor.innerHTML);
+        localStorage.setItem('gdocs_title', docTitle.value);
+        document.getElementById('saveStatus').textContent = 'All changes saved in Drive';
+      }, 1000);
+    }
+
+    function loadFromStorage() {
+      const savedContent = localStorage.getItem('gdocs_content');
+      const savedTitle = localStorage.getItem('gdocs_title');
+      if (savedContent) {
+        editor.innerHTML = savedContent;
+        quickActions.style.display = 'none';
+      }
+      if (savedTitle) {
+        docTitle.value = savedTitle;
+        document.title = savedTitle + ' - Docs';
+      }
+    }
+
+    docTitle.addEventListener('input', () => {
+      document.title = (docTitle.value || 'Untitled document') + ' - Docs';
+      autoSave();
+    });
+
+    function setZoom(value) {
+      currentZoom = Math.max(25, Math.min(200, parseInt(value)));
+      document.getElementById('page').style.transform = `scale(${currentZoom / 100})`;
+      document.getElementById('page').style.transformOrigin = 'top center';
+      document.getElementById('zoomValue').textContent = `${currentZoom}%`;
+      document.getElementById('zoomSelect').value = currentZoom;
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function shareDoc() {
+      const text = editor.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Copied to clipboard');
+      }).catch(() => {
+        showToast('Failed to copy');
+      });
+    }
+
+    function showFindBar() {
+      document.getElementById('findBar').classList.add('show');
+      document.getElementById('findInput').focus();
+    }
+
+    function hideFindBar() {
+      document.getElementById('findBar').classList.remove('show');
+      editor.focus();
+    }
+
+    function doFind() {
+      const query = document.getElementById('findInput').value;
+      if (query) window.find(query);
+    }
+
+    function doReplace() {
+      const find = document.getElementById('findInput').value;
+      const replace = document.getElementById('replaceInput').value;
+      if (find && window.getSelection().toString() === find) {
+        document.execCommand('insertText', false, replace);
+      }
+      doFind();
+    }
+
+    function doReplaceAll() {
+      const find = document.getElementById('findInput').value;
+      const replace = document.getElementById('replaceInput').value;
+      if (find) {
+        editor.innerHTML = editor.innerHTML.split(find).join(replace);
+        autoSave();
+      }
+    }
+
+    editor.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      const menu = document.getElementById('contextMenu');
+      menu.style.left = e.pageX + 'px';
+      menu.style.top = e.pageY + 'px';
+      menu.classList.add('show');
+    });
+
+    document.addEventListener('click', () => {
+      document.getElementById('contextMenu').classList.remove('show');
+    });
+
+    function doPaste() {
+      navigator.clipboard.readText().then(text => {
+        document.execCommand('insertText', false, text);
+      }).catch(() => {
+        alert('Use Ctrl+V to paste');
+      });
+    }
+
+    function wordCount() {
+      const text = editor.innerText || '';
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const chars = text.length;
+      const charsNoSpaces = text.replace(/\s/g, '').length;
+      alert(`Words: ${words}\nCharacters: ${chars}\nCharacters (no spaces): ${charsNoSpaces}`);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod) {
+        switch (e.key.toLowerCase()) {
+          case 's': e.preventDefault(); saveDoc(); break;
+          case 'k': e.preventDefault(); showLinkModal(); break;
+          case 'n': if (!e.shiftKey) { e.preventDefault(); newDoc(); } break;
+          case 'o': e.preventDefault(); openDoc(); break;
+          case 'h': e.preventDefault(); showFindBar(); break;
+          case 'b': e.preventDefault(); execCmd('bold'); break;
+          case 'i': e.preventDefault(); execCmd('italic'); break;
+          case 'u': e.preventDefault(); execCmd('underline'); break;
+          case '\\': e.preventDefault(); execCmd('removeFormat'); break;
+        }
+      }
+      if (e.key === 'Escape') {
+        hideFindBar();
+        closeModal('linkModal');
+        closeModal('imageModal');
+      }
+    });
+  </script>
+</body>
+</html>
