@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vplaza Chat</title>
+  <title>NexOS - Eclipse Chat</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
@@ -547,6 +547,21 @@
       color: var(--text-secondary);
     }
 
+    /* Added styles for sidebar context menu */
+    .context-menu-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
+    .context-menu-item.danger {
+      color: #c5221f;
+    }
+
+    .context-menu-item.danger svg {
+      color: #c5221f;
+    }
+
     /* Modal */
     .modal-overlay {
       position: fixed;
@@ -787,8 +802,8 @@
   <!-- Login Screen -->
   <div class="login-screen" id="loginScreen">
     <div class="login-card">
-      <h1>Welcome to Vplaza</h1>
-      <p>Enter your name to start chatting</p>
+      <h1>Welcome to NexOS</h1>
+      <p>Enter a display name to start chatting</p>
       <form id="loginForm">
         <input type="text" id="usernameInput" placeholder="Your display name" maxlength="20" autocomplete="off" required>
         <button type="submit">Continue</button>
@@ -862,13 +877,33 @@
     </div>
   </div>
 
-  <!-- Context Menu -->
+  <!-- Context Menu for Messages -->
   <div class="context-menu" id="contextMenu">
     <div class="context-menu-item" id="dmMenuItem">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
       <span>Send direct message</span>
+    </div>
+  </div>
+
+  <!-- Added context menu for sidebar chat items -->
+  <div class="context-menu" id="chatContextMenu">
+    <div class="context-menu-item" id="renameChatItem">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      <span>Rename chat</span>
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item danger" id="leaveChatItem">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      <span>Leave chat</span>
     </div>
   </div>
 
@@ -933,9 +968,20 @@
     </div>
   </div>
 
+  <!-- Added rename modal -->
+  <div class="modal" id="renameChatModal">
+    <h3>Rename Chat</h3>
+    <label>Display Name (only you will see this)</label>
+    <input type="text" id="renameChatInput" placeholder="Enter new name" maxlength="30">
+    <div class="modal-buttons">
+      <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn modal-btn-primary" id="renameChatConfirm">Rename</button>
+    </div>
+  </div>
+
   <script>
     const CLIENT_ID = 'aSEKMcR4GsEZONob';
-    const PUBLIC_ROOM = 'Vplaza';
+    const PUBLIC_ROOM = 'NexOS';
     const NOTIFICATION_ROOM = 'VplazaNotifications';
     
     let drone;
@@ -952,11 +998,15 @@
       public: { type: 'public', name: 'Public Chat', messages: [] },
     };
 
+    let chatNicknames = {};
+
     // Pending invitations
     let pendingDMInvite = null;
     let pendingGroupInvite = null;
     
     let groupInviteMembers = [];
+
+    let chatContextTarget = null;
 
     const COLORS = [
       '#ea4335', '#fbbc04', '#34a853', '#4285f4', '#ab47bc',
@@ -975,11 +1025,19 @@
       return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
 
-    function generateCode() {
+    function generateCode(type) {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       let code = '';
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < 27; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      // Add suffix based on type
+      if (type === 'room') {
+        code += 'ROOM';
+      } else if (type === 'group') {
+        code += '_GC';
+      } else {
+        code += '_DM';
       }
       return code;
     }
@@ -998,18 +1056,36 @@
     function loadChats() {
       const saved = localStorage.getItem('vplaza_chats');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        // Merge with default public chat
+        const parsed = JSON.JSON.parse(saved);
         chats = { public: { type: 'public', name: 'Public Chat', messages: [] }, ...parsed };
-        // Preserve public messages if they exist
         if (parsed.public && parsed.public.messages) {
           chats.public.messages = parsed.public.messages;
         }
+      }
+      const savedNicknames = localStorage.getItem('vplaza_nicknames');
+      if (savedNicknames) {
+        chatNicknames = JSON.parse(savedNicknames);
       }
     }
 
     function saveChats() {
       localStorage.setItem('vplaza_chats', JSON.stringify(chats));
+    }
+
+    function saveNicknames() {
+      localStorage.setItem('vplaza_nicknames', JSON.stringify(chatNicknames));
+    }
+
+    function getChatDisplayName(chatId) {
+      if (chatNicknames[chatId]) {
+        return chatNicknames[chatId];
+      }
+      const chat = chats[chatId];
+      if (!chat) return 'Unknown';
+      if (chat.type === 'dm') return chat.partner;
+      if (chat.type === 'group') return chat.name;
+      if (chat.type === 'room') return chat.name || 'Private Room';
+      return chat.name || 'Public Chat';
     }
 
     // Find existing DM with user
@@ -1071,7 +1147,7 @@
 
       // Public section
       publicChats.forEach(chat => {
-        chatList.appendChild(createChatItem(chat.id, chat.name, '🌐', getLastMessage(chat), null));
+        chatList.appendChild(createChatItem(chat.id, getChatDisplayName(chat.id), '🌐', getLastMessage(chat), null));
       });
 
       // DMs section
@@ -1081,7 +1157,7 @@
         section.innerHTML = '<div class="chat-section-title">Direct Messages</div>';
         chatList.appendChild(section);
         dmChats.forEach(chat => {
-          chatList.appendChild(createChatItem(chat.id, chat.partner, null, getLastMessage(chat), 'dm'));
+          chatList.appendChild(createChatItem(chat.id, getChatDisplayName(chat.id), null, getLastMessage(chat), 'dm'));
         });
       }
 
@@ -1092,7 +1168,7 @@
         section.innerHTML = '<div class="chat-section-title">Groups</div>';
         chatList.appendChild(section);
         groupChats.forEach(chat => {
-          chatList.appendChild(createChatItem(chat.id, chat.name, null, getLastMessage(chat), 'group'));
+          chatList.appendChild(createChatItem(chat.id, getChatDisplayName(chat.id), null, getLastMessage(chat), 'group'));
         });
       }
 
@@ -1103,7 +1179,7 @@
         section.innerHTML = '<div class="chat-section-title">Private Rooms</div>';
         chatList.appendChild(section);
         roomChats.forEach(chat => {
-          chatList.appendChild(createChatItem(chat.id, chat.name, null, getLastMessage(chat), 'room'));
+          chatList.appendChild(createChatItem(chat.id, getChatDisplayName(chat.id), null, getLastMessage(chat), 'room'));
         });
       }
     }
@@ -1138,7 +1214,76 @@
       `;
 
       item.addEventListener('click', () => switchChat(id));
+      
+      if (id !== 'public') {
+        item.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          chatContextTarget = id;
+          showChatContextMenu(e.pageX, e.pageY);
+        });
+      }
+      
       return item;
+    }
+
+    function showChatContextMenu(x, y) {
+      const menu = document.getElementById('chatContextMenu');
+      if (x + 180 > window.innerWidth) x = window.innerWidth - 190;
+      if (y + 100 > window.innerHeight) y = window.innerHeight - 110;
+      menu.style.left = x + 'px';
+      menu.style.top = y + 'px';
+      menu.classList.add('show');
+    }
+
+    function renameChat() {
+      if (!chatContextTarget) return;
+      document.getElementById('renameChatInput').value = getChatDisplayName(chatContextTarget);
+      document.getElementById('chatContextMenu').classList.remove('show');
+      showModal('renameChatModal');
+    }
+
+    function confirmRenameChat() {
+      if (!chatContextTarget) return;
+      const newName = document.getElementById('renameChatInput').value.trim();
+      if (newName) {
+        chatNicknames[chatContextTarget] = newName;
+        saveNicknames();
+        renderChatList();
+        // Update header if currently viewing this chat
+        if (currentChat === chatContextTarget) {
+          document.getElementById('chatTitle').textContent = newName;
+        }
+      }
+      closeModal();
+      chatContextTarget = null;
+    }
+
+    function leaveChat() {
+      if (!chatContextTarget || chatContextTarget === 'public') return;
+      
+      const chatId = chatContextTarget;
+      document.getElementById('chatContextMenu').classList.remove('show');
+      
+      // Remove from active rooms
+      if (activeRooms[chatId]) {
+        delete activeRooms[chatId];
+      }
+      
+      // Remove from chats
+      delete chats[chatId];
+      delete chatNicknames[chatId];
+      saveChats();
+      saveNicknames();
+      
+      // Switch to public if we were viewing this chat
+      if (currentChat === chatId) {
+        switchChat('public');
+      } else {
+        renderChatList();
+      }
+      
+      showToast('Left the chat');
+      chatContextTarget = null;
     }
 
     function subscribeToRoom(roomCode, chatId) {
@@ -1160,7 +1305,6 @@
         } else if (data.text) {
           const isSelf = member.id === drone.clientId;
           
-          // Save message to chat
           if (chats[chatId]) {
             chats[chatId].messages.push({
               text: data.text,
@@ -1168,7 +1312,7 @@
               timestamp: data.timestamp
             });
             saveChats();
-            renderChatList();
+            renderChatList(); // Update preview in sidebar
           }
           
           // Only add to UI if viewing this chat
@@ -1199,7 +1343,7 @@
         chatAvatar.style.background = '#e8f0fe';
         chatAvatar.innerHTML = '🌐';
         chatAvatar.style.fontSize = '20px';
-        chatTitle.textContent = 'Public Chat';
+        chatTitle.textContent = getChatDisplayName('public');
         chatSubtitle.textContent = 'Everyone can see these messages';
         
         // Subscribe to public room
@@ -1208,17 +1352,19 @@
         const chat = chats[chatId];
         if (!chat) return;
 
+        const displayName = getChatDisplayName(chatId);
+
         if (chat.type === 'dm') {
           chatAvatar.style.background = getColor(chat.partner);
           chatAvatar.innerHTML = getInitials(chat.partner);
           chatAvatar.style.fontSize = '16px';
-          chatTitle.textContent = chat.partner;
+          chatTitle.textContent = displayName;
           chatSubtitle.textContent = 'Private conversation';
         } else if (chat.type === 'group') {
-          chatAvatar.style.background = getColor(chat.name);
-          chatAvatar.innerHTML = getInitials(chat.name);
+          chatAvatar.style.background = getColor(displayName);
+          chatAvatar.innerHTML = getInitials(displayName);
           chatAvatar.style.fontSize = '16px';
-          chatTitle.textContent = chat.name;
+          chatTitle.textContent = displayName;
           chatSubtitle.textContent = 'Group chat';
           copyBtn.style.display = 'flex';
           copyBtn.onclick = () => {
@@ -1226,10 +1372,10 @@
             showToast('Group code copied!');
           };
         } else if (chat.type === 'room') {
-          chatAvatar.style.background = getColor(chat.name);
+          chatAvatar.style.background = getColor(displayName);
           chatAvatar.innerHTML = '🔒';
           chatAvatar.style.fontSize = '18px';
-          chatTitle.textContent = chat.name;
+          chatTitle.textContent = displayName;
           chatSubtitle.textContent = 'Private room';
           copyBtn.style.display = 'flex';
           copyBtn.onclick = () => {
@@ -1372,7 +1518,7 @@
         return;
       }
 
-      const dmRoomCode = generateCode();
+      const dmRoomCode = generateCode('dm');
       
       // Create DM locally
       chats[dmRoomCode] = { type: 'dm', partner: targetUser, messages: [] };
@@ -1463,7 +1609,7 @@
         return;
       }
 
-      const groupCode = generateCode();
+      const groupCode = generateCode('group');
       chats[groupCode] = { type: 'group', name: name, messages: [] };
       saveChats();
       renderChatList();
@@ -1539,7 +1685,7 @@
       const name = document.getElementById('roomNameInput').value.trim();
       if (!name) return;
 
-      const roomCode = generateCode();
+      const roomCode = generateCode('room');
       chats[roomCode] = { type: 'room', name: name, messages: [] };
       saveChats();
       renderChatList();
@@ -1565,8 +1711,17 @@
         return;
       }
 
-      // Create placeholder - will determine type from messages or just use room
-      chats[code] = { type: 'room', name: 'Private Room', messages: [] };
+      let chatType = 'room';
+      let chatName = 'Private Room';
+      if (code.endsWith('_GC')) {
+        chatType = 'group';
+        chatName = 'Group Chat';
+      } else if (code.endsWith('ROOM')) {
+        chatType = 'room';
+        chatName = 'Private Room';
+      }
+
+      chats[code] = { type: chatType, name: chatName, messages: [] };
       saveChats();
       renderChatList();
       
@@ -1636,13 +1791,15 @@
       }
     });
 
-    // Context menu - only show in public chat
+    // Context menu for messages - only show DM option in public chat
     const contextMenu = document.getElementById('contextMenu');
     let contextTarget = null;
 
     document.getElementById('messagesContainer').addEventListener('contextmenu', (e) => {
       const message = e.target.closest('.message');
       if (!message || message.classList.contains('self')) return;
+      
+      if (currentChat !== 'public') return;
       
       e.preventDefault();
       const sender = message.dataset.sender;
@@ -1668,9 +1825,17 @@
       contextMenu.classList.remove('show');
     });
 
+    document.getElementById('renameChatItem').addEventListener('click', renameChat);
+    document.getElementById('leaveChatItem').addEventListener('click', leaveChat);
+    document.getElementById('renameChatConfirm').addEventListener('click', confirmRenameChat);
+
     document.addEventListener('click', (e) => {
       if (!contextMenu.contains(e.target)) {
         contextMenu.classList.remove('show');
+      }
+      const chatContextMenu = document.getElementById('chatContextMenu');
+      if (!chatContextMenu.contains(e.target)) {
+        chatContextMenu.classList.remove('show');
       }
     });
 
