@@ -7,7 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-  <!-- Added ScaleDrone CDN for real-time messaging -->
   <script src="https://cdn.scaledrone.com/scaledrone.min.js"></script>
   <style>
     * {
@@ -139,6 +138,35 @@
       color: var(--text);
     }
 
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      transition: background 0.15s;
+    }
+
+    .icon-btn:hover {
+      background: var(--bg-secondary);
+    }
+
+    .icon-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
     .user-info {
       display: flex;
       align-items: center;
@@ -162,6 +190,20 @@
       color: white;
     }
 
+    /* Chat sections */
+    .chat-section {
+      padding: 8px 12px;
+    }
+
+    .chat-section-title {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px 8px 4px;
+    }
+
     .chat-list {
       flex: 1;
       overflow-y: auto;
@@ -171,10 +213,11 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 12px 20px;
+      padding: 10px 12px;
       cursor: pointer;
       transition: background 0.15s;
-      border-left: 3px solid transparent;
+      border-radius: 12px;
+      margin: 2px 8px;
     }
 
     .chat-item:hover {
@@ -183,17 +226,16 @@
 
     .chat-item.active {
       background: var(--primary-light);
-      border-left-color: var(--primary);
     }
 
     .chat-item-avatar {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 500;
       color: white;
       flex-shrink: 0;
@@ -214,13 +256,26 @@
       gap: 6px;
     }
 
-    .private-badge {
+    .badge {
       font-size: 10px;
-      background: var(--primary-light);
-      color: var(--primary);
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: 500;
+    }
+
+    .badge-dm {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .badge-group {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .badge-room {
+      background: #fef7e0;
+      color: #b06000;
     }
 
     .chat-item-preview {
@@ -229,6 +284,17 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .unread-badge {
+      background: var(--primary);
+      color: white;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 7px;
+      border-radius: 10px;
+      min-width: 20px;
+      text-align: center;
     }
 
     /* Main Chat Area */
@@ -258,6 +324,10 @@
       font-size: 16px;
       font-weight: 500;
       color: white;
+    }
+
+    .chat-header-info {
+      flex: 1;
     }
 
     .chat-header-info h3 {
@@ -290,14 +360,8 @@
     }
 
     @keyframes messageIn {
-      from {
-        opacity: 0;
-        transform: translateY(8px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .message.self {
@@ -379,7 +443,7 @@
     }
 
     .system-message span {
-      background: var(--bg-secondary);
+      background: var(--surface);
       color: var(--text-secondary);
       font-size: 12px;
       padding: 6px 16px;
@@ -411,10 +475,6 @@
       padding: 8px 0;
       outline: none;
       color: var(--text);
-    }
-
-    .message-input-wrapper input::placeholder {
-      color: var(--text-secondary);
     }
 
     .send-btn {
@@ -462,14 +522,8 @@
     }
 
     @keyframes menuIn {
-      from {
-        opacity: 0;
-        transform: scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: scale(1);
-      }
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
     }
 
     .context-menu-item {
@@ -493,8 +547,23 @@
       color: var(--text-secondary);
     }
 
-    /* DM Invitation Modal */
-    .dm-invitation {
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 1999;
+      display: none;
+    }
+
+    .modal-overlay.show {
+      display: block;
+    }
+
+    .modal {
       position: fixed;
       top: 50%;
       left: 50%;
@@ -504,42 +573,65 @@
       box-shadow: 0 4px 24px rgba(0,0,0,0.15);
       padding: 24px;
       z-index: 2000;
-      min-width: 320px;
+      min-width: 360px;
+      max-width: 90vw;
+      display: none;
       animation: modalIn 0.2s ease-out;
     }
 
-    @keyframes modalIn {
-      from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.95);
-      }
-      to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-      }
+    .modal.show {
+      display: block;
     }
 
-    .dm-invitation h3 {
+    @keyframes modalIn {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+
+    .modal h3 {
       font-family: 'Google Sans', sans-serif;
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 500;
       color: var(--text);
-      margin-bottom: 8px;
+      margin-bottom: 16px;
     }
 
-    .dm-invitation p {
+    .modal p {
       color: var(--text-secondary);
       font-size: 14px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
-    .dm-invitation-buttons {
+    .modal label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 16px;
+      outline: none;
+    }
+
+    .modal input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
+
+    .modal-buttons {
       display: flex;
       gap: 12px;
       justify-content: flex-end;
     }
 
-    .dm-invitation button {
+    .modal-btn {
       padding: 10px 20px;
       border: none;
       border-radius: 20px;
@@ -549,58 +641,42 @@
       transition: background 0.2s;
     }
 
-    .dm-accept {
+    .modal-btn-primary {
       background: var(--primary);
       color: white;
     }
 
-    .dm-accept:hover {
+    .modal-btn-primary:hover {
       background: #1557b0;
     }
 
-    .dm-decline {
+    .modal-btn-secondary {
       background: var(--bg-secondary);
       color: var(--text);
     }
 
-    .dm-decline:hover {
+    .modal-btn-secondary:hover {
       background: #e8eaed;
     }
 
-    .dm-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.3);
-      z-index: 1999;
-    }
-
-    /* Toast Notification */
+    /* Toast */
     .toast {
       position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--surface);
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #323232;
+      color: white;
       border-radius: 8px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
-      padding: 12px 20px;
+      padding: 12px 24px;
       font-size: 14px;
-      color: var(--text);
-      z-index: 1000;
+      z-index: 3000;
       animation: toastIn 0.3s ease-out;
     }
 
     @keyframes toastIn {
-      from {
-        opacity: 0;
-        transform: translateY(-10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      from { opacity: 0; transform: translate(-50%, 10px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
     }
 
     /* Empty State */
@@ -633,22 +709,10 @@
     }
 
     /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #dadce0;
-      border-radius: 3px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #bdc1c6;
-    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #dadce0; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #bdc1c6; }
 
     /* Mobile */
     @media (max-width: 768px) {
@@ -658,18 +722,9 @@
         z-index: 10;
         height: 100%;
       }
-
-      .sidebar.hidden {
-        display: none;
-      }
-
-      .chat-main {
-        width: 100%;
-      }
-
-      .back-btn {
-        display: flex;
-      }
+      .sidebar.hidden { display: none; }
+      .chat-main { width: 100%; }
+      .back-btn { display: flex; }
     }
 
     .back-btn {
@@ -710,9 +765,25 @@
     <div class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <h2>Chats</h2>
-        <div class="user-info">
-          <div class="user-avatar-small" id="headerAvatar"></div>
-          <span id="headerUsername"></span>
+        <div class="header-actions">
+          <button class="icon-btn" id="newGroupBtn" title="Create group chat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="newRoomBtn" title="Create private room">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </button>
+          <button class="icon-btn" id="joinRoomBtn" title="Join private room">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+            </svg>
+          </button>
         </div>
       </div>
       <div class="chat-list" id="chatList"></div>
@@ -731,6 +802,12 @@
           <h3 id="chatTitle">Public Chat</h3>
           <p id="chatSubtitle">Everyone can see these messages</p>
         </div>
+        <button class="icon-btn" id="copyRoomCodeBtn" title="Copy room code" style="display: none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
       </div>
 
       <div class="messages-container" id="messagesContainer"></div>
@@ -758,17 +835,74 @@
     </div>
   </div>
 
+  <!-- Modal Overlay -->
+  <div class="modal-overlay" id="modalOverlay"></div>
+
+  <!-- Create Group Modal -->
+  <div class="modal" id="createGroupModal">
+    <h3>Create Group Chat</h3>
+    <label>Group Name</label>
+    <input type="text" id="groupNameInput" placeholder="Enter group name" maxlength="30">
+    <div class="modal-buttons">
+      <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn modal-btn-primary" id="createGroupConfirm">Create</button>
+    </div>
+  </div>
+
+  <!-- Create Room Modal -->
+  <div class="modal" id="createRoomModal">
+    <h3>Create Private Room</h3>
+    <p>A unique code will be generated that you can share with others to join.</p>
+    <label>Room Name</label>
+    <input type="text" id="roomNameInput" placeholder="Enter room name" maxlength="30">
+    <div class="modal-buttons">
+      <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn modal-btn-primary" id="createRoomConfirm">Create</button>
+    </div>
+  </div>
+
+  <!-- Join Room Modal -->
+  <div class="modal" id="joinRoomModal">
+    <h3>Join Private Room</h3>
+    <p>Enter the room code shared with you to join.</p>
+    <label>Room Code</label>
+    <input type="text" id="joinRoomCodeInput" placeholder="Paste room code here">
+    <div class="modal-buttons">
+      <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn modal-btn-primary" id="joinRoomConfirm">Join</button>
+    </div>
+  </div>
+
+  <!-- DM Invitation Modal -->
+  <div class="modal" id="dmInviteModal">
+    <h3>Direct Message Request</h3>
+    <p id="dmInviteText"></p>
+    <div class="modal-buttons">
+      <button class="modal-btn modal-btn-secondary" id="dmDeclineBtn">Decline</button>
+      <button class="modal-btn modal-btn-primary" id="dmAcceptBtn">Accept</button>
+    </div>
+  </div>
+
   <script>
     const CLIENT_ID = 'aSEKMcR4GsEZONob';
     const PUBLIC_ROOM = 'Vplaza';
+    const NOTIFICATION_ROOM = 'VplazaNotifications';
     
     let drone;
-    let currentRoom;
+    let publicRoom;
+    let notificationRoom;
+    let currentChatRoom;
     let currentUser = '';
     let currentChat = 'public';
-    let dmChats = {};
+    
+    // Chat storage
+    let chats = {
+      public: { type: 'public', name: 'Public Chat', messages: [] },
+    };
 
-    // Avatar colors
+    // Pending DM invitations
+    let pendingDMInvite = null;
+
     const COLORS = [
       '#ea4335', '#fbbc04', '#34a853', '#4285f4', '#ab47bc',
       '#00acc1', '#ff7043', '#9e9d24', '#5c6bc0', '#f06292'
@@ -786,7 +920,7 @@
       return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     }
 
-    function generateDMCode() {
+    function generateCode() {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       let code = '';
       for (let i = 0; i < 30; i++) {
@@ -796,8 +930,7 @@
     }
 
     function formatTime(date) {
-      if (!date) return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return new Date(date || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
     function escapeHtml(text) {
@@ -806,69 +939,139 @@
       return div.innerHTML;
     }
 
-    // Load DM chats from localStorage
-    function loadDMChats() {
-      dmChats = JSON.parse(localStorage.getItem('vplaza_dm_chats') || '{}');
+    // Storage
+    function loadChats() {
+      const saved = localStorage.getItem('vplaza_chats');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Merge with default public chat
+        chats = { public: { type: 'public', name: 'Public Chat', messages: [] }, ...parsed };
+      }
     }
 
-    function saveDMChats() {
-      localStorage.setItem('vplaza_dm_chats', JSON.stringify(dmChats));
+    function saveChats() {
+      localStorage.setItem('vplaza_chats', JSON.stringify(chats));
     }
 
-    // UI functions
-    function showChat() {
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('chatApp').classList.add('active');
+    // Find existing DM with user
+    function findExistingDM(username) {
+      for (const [chatId, chat] of Object.entries(chats)) {
+        if (chat.type === 'dm' && chat.partner === username) {
+          return chatId;
+        }
+      }
+      return null;
+    }
+
+    // Toast
+    function showToast(message) {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
       
-      const avatar = document.getElementById('headerAvatar');
-      avatar.style.background = getColor(currentUser);
-      avatar.textContent = getInitials(currentUser);
-      document.getElementById('headerUsername').textContent = currentUser;
-
-      renderChatList();
-      switchChat('public');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
     }
 
+    // Modal
+    function showModal(modalId) {
+      document.getElementById('modalOverlay').classList.add('show');
+      document.getElementById(modalId).classList.add('show');
+    }
+
+    function closeModal() {
+      document.getElementById('modalOverlay').classList.remove('show');
+      document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+    }
+
+    // Chat List
     function renderChatList() {
       const chatList = document.getElementById('chatList');
       chatList.innerHTML = '';
 
-      // Public chat
-      const publicItem = createChatItem('public', 'Public Chat', '🌐', 'Chat with everyone', false);
-      chatList.appendChild(publicItem);
+      // Group chats by type
+      const publicChats = [];
+      const dmChats = [];
+      const groupChats = [];
+      const roomChats = [];
 
-      // DM chats
-      Object.keys(dmChats).forEach(chatId => {
-        const chat = dmChats[chatId];
-        const otherUser = chat.partner || 'Unknown';
-        const lastMsg = chat.messages && chat.messages.length > 0 
-          ? chat.messages[chat.messages.length - 1] 
-          : null;
-        const preview = lastMsg 
-          ? lastMsg.text.slice(0, 30) + (lastMsg.text.length > 30 ? '...' : '') 
-          : 'No messages yet';
-        
-        const item = createChatItem(chatId, otherUser, null, preview, true);
-        chatList.appendChild(item);
+      Object.entries(chats).forEach(([id, chat]) => {
+        if (id === 'public') publicChats.push({ id, ...chat });
+        else if (chat.type === 'dm') dmChats.push({ id, ...chat });
+        else if (chat.type === 'group') groupChats.push({ id, ...chat });
+        else if (chat.type === 'room') roomChats.push({ id, ...chat });
       });
+
+      // Public section
+      publicChats.forEach(chat => {
+        chatList.appendChild(createChatItem(chat.id, chat.name, '🌐', getLastMessage(chat), null));
+      });
+
+      // DMs section
+      if (dmChats.length > 0) {
+        const section = document.createElement('div');
+        section.className = 'chat-section';
+        section.innerHTML = '<div class="chat-section-title">Direct Messages</div>';
+        chatList.appendChild(section);
+        dmChats.forEach(chat => {
+          chatList.appendChild(createChatItem(chat.id, chat.partner, null, getLastMessage(chat), 'dm'));
+        });
+      }
+
+      // Groups section
+      if (groupChats.length > 0) {
+        const section = document.createElement('div');
+        section.className = 'chat-section';
+        section.innerHTML = '<div class="chat-section-title">Groups</div>';
+        chatList.appendChild(section);
+        groupChats.forEach(chat => {
+          chatList.appendChild(createChatItem(chat.id, chat.name, null, getLastMessage(chat), 'group'));
+        });
+      }
+
+      // Rooms section
+      if (roomChats.length > 0) {
+        const section = document.createElement('div');
+        section.className = 'chat-section';
+        section.innerHTML = '<div class="chat-section-title">Private Rooms</div>';
+        chatList.appendChild(section);
+        roomChats.forEach(chat => {
+          chatList.appendChild(createChatItem(chat.id, chat.name, null, getLastMessage(chat), 'room'));
+        });
+      }
     }
 
-    function createChatItem(id, name, emoji, preview, isPrivate) {
+    function getLastMessage(chat) {
+      if (!chat.messages || chat.messages.length === 0) return 'No messages yet';
+      const last = chat.messages[chat.messages.length - 1];
+      const preview = last.text.slice(0, 30) + (last.text.length > 30 ? '...' : '');
+      return last.sender === currentUser ? `You: ${preview}` : preview;
+    }
+
+    function createChatItem(id, name, emoji, preview, badgeType) {
       const item = document.createElement('div');
       item.className = 'chat-item' + (currentChat === id ? ' active' : '');
       item.dataset.chatId = id;
 
       const avatarHtml = emoji 
-        ? `<div class="chat-item-avatar" style="background: #e8f0fe; font-size: 24px;">${emoji}</div>`
+        ? `<div class="chat-item-avatar" style="background: #e8f0fe; font-size: 22px;">${emoji}</div>`
         : `<div class="chat-item-avatar" style="background: ${getColor(name)}">${getInitials(name)}</div>`;
 
-      const privateBadge = isPrivate ? '<span class="private-badge">Private</span>' : '';
+      let badge = '';
+      if (badgeType === 'dm') badge = '<span class="badge badge-dm">DM</span>';
+      else if (badgeType === 'group') badge = '<span class="badge badge-group">Group</span>';
+      else if (badgeType === 'room') badge = '<span class="badge badge-room">Room</span>';
 
       item.innerHTML = `
         ${avatarHtml}
         <div class="chat-item-content">
-          <div class="chat-item-name">${name} ${privateBadge}</div>
-          <div class="chat-item-preview">${preview}</div>
+          <div class="chat-item-name">${escapeHtml(name)} ${badge}</div>
+          <div class="chat-item-preview">${escapeHtml(preview)}</div>
         </div>
       `;
 
@@ -876,6 +1079,7 @@
       return item;
     }
 
+    // Switch Chat
     function switchChat(chatId) {
       currentChat = chatId;
       renderChatList();
@@ -884,6 +1088,10 @@
       const chatTitle = document.getElementById('chatTitle');
       const chatSubtitle = document.getElementById('chatSubtitle');
       const container = document.getElementById('messagesContainer');
+      const copyBtn = document.getElementById('copyRoomCodeBtn');
+
+      container.innerHTML = '';
+      copyBtn.style.display = 'none';
 
       if (chatId === 'public') {
         chatAvatar.style.background = '#e8f0fe';
@@ -891,30 +1099,51 @@
         chatAvatar.style.fontSize = '20px';
         chatTitle.textContent = 'Public Chat';
         chatSubtitle.textContent = 'Everyone can see these messages';
-        container.innerHTML = '';
-        connectToRoom(PUBLIC_ROOM);
       } else {
-        const chat = dmChats[chatId];
-        if (chat) {
-          const otherUser = chat.partner || 'Unknown';
-          chatAvatar.style.background = getColor(otherUser);
-          chatAvatar.innerHTML = getInitials(otherUser);
+        const chat = chats[chatId];
+        if (!chat) return;
+
+        if (chat.type === 'dm') {
+          chatAvatar.style.background = getColor(chat.partner);
+          chatAvatar.innerHTML = getInitials(chat.partner);
           chatAvatar.style.fontSize = '16px';
-          chatTitle.textContent = otherUser;
+          chatTitle.textContent = chat.partner;
           chatSubtitle.textContent = 'Private conversation';
-          container.innerHTML = '';
-          
-          // Render saved messages first
-          if (chat.messages) {
-            chat.messages.forEach(msg => {
-              addMessageToUI(msg.text, msg.sender, msg.sender === currentUser, msg.timestamp);
-            });
-          }
-          
-          // Connect to the private room
-          connectToRoom(chatId);
+        } else if (chat.type === 'group') {
+          chatAvatar.style.background = getColor(chat.name);
+          chatAvatar.innerHTML = getInitials(chat.name);
+          chatAvatar.style.fontSize = '16px';
+          chatTitle.textContent = chat.name;
+          chatSubtitle.textContent = 'Group chat';
+          copyBtn.style.display = 'flex';
+          copyBtn.onclick = () => {
+            navigator.clipboard.writeText(chatId);
+            showToast('Group code copied!');
+          };
+        } else if (chat.type === 'room') {
+          chatAvatar.style.background = getColor(chat.name);
+          chatAvatar.innerHTML = '🔒';
+          chatAvatar.style.fontSize = '18px';
+          chatTitle.textContent = chat.name;
+          chatSubtitle.textContent = 'Private room';
+          copyBtn.style.display = 'flex';
+          copyBtn.onclick = () => {
+            navigator.clipboard.writeText(chatId);
+            showToast('Room code copied!');
+          };
         }
       }
+
+      // Render saved messages
+      const chat = chats[chatId];
+      if (chat && chat.messages) {
+        chat.messages.forEach(msg => {
+          addMessageToUI(msg.text, msg.sender, msg.sender === currentUser, msg.timestamp, false);
+        });
+      }
+
+      // Connect to room
+      connectToChatRoom(chatId === 'public' ? PUBLIC_ROOM : chatId);
 
       // Mobile: hide sidebar
       if (window.innerWidth <= 768) {
@@ -922,21 +1151,19 @@
       }
     }
 
-    function addMessageToUI(text, sender, isSelf, timestamp) {
+    // Messages
+    function addMessageToUI(text, sender, isSelf, timestamp, animate = true) {
       const container = document.getElementById('messagesContainer');
-      
-      // Remove empty state if exists
-      const emptyState = container.querySelector('.empty-state');
-      if (emptyState) emptyState.remove();
 
       const msgDiv = document.createElement('div');
       msgDiv.className = 'message' + (isSelf ? ' self' : '');
+      if (!animate) msgDiv.style.animation = 'none';
       msgDiv.dataset.sender = sender;
 
       msgDiv.innerHTML = `
         <div class="message-avatar" style="background: ${getColor(sender)}">${getInitials(sender)}</div>
         <div class="message-content">
-          <div class="message-sender">${sender}</div>
+          <div class="message-sender">${escapeHtml(sender)}</div>
           <div class="message-bubble">${escapeHtml(text)}</div>
           <div class="message-time">${formatTime(timestamp)}</div>
         </div>
@@ -950,85 +1177,91 @@
       const container = document.getElementById('messagesContainer');
       const msgDiv = document.createElement('div');
       msgDiv.className = 'system-message';
-      msgDiv.innerHTML = `<span>${text}</span>`;
+      msgDiv.innerHTML = `<span>${escapeHtml(text)}</span>`;
       container.appendChild(msgDiv);
       container.scrollTop = container.scrollHeight;
     }
 
-    function showToast(message) {
-      const toast = document.createElement('div');
-      toast.className = 'toast';
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-10px)';
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
-    }
-
-    // ScaleDrone connection
-    function connectToRoom(roomCode) {
-      if (currentRoom) {
-        try { currentRoom.unsubscribe(); } catch(e) {}
+    // ScaleDrone
+    function connectToChatRoom(roomCode) {
+      if (currentChatRoom) {
+        try { currentChatRoom.unsubscribe(); } catch(e) {}
       }
 
-      currentRoom = drone.subscribe(`observable-${roomCode}`);
+      currentChatRoom = drone.subscribe(`observable-${roomCode}`);
 
-      currentRoom.on('error', error => {
-        console.error('Room error:', error);
-      });
+      currentChatRoom.on('error', error => console.error('Room error:', error));
 
-      currentRoom.on('open', error => {
-        if (error) {
-          console.error('Room open error:', error);
-          return;
-        }
-        // Announce join only in public room
-        if (roomCode === PUBLIC_ROOM) {
-          setTimeout(() => {
-            drone.publish({
-              room: `observable-${roomCode}`,
-              message: { type: 'join', name: currentUser }
-            });
-          }, 500);
-        }
-      });
-
-      currentRoom.on('data', (data, member) => {
+      currentChatRoom.on('data', (data, member) => {
         if (!data) return;
 
-        if (data.type === 'join') {
-          if (data.name !== currentUser && currentChat === 'public') {
-            showSystemMessage(`${data.name} joined the chat`);
-          }
-        } else if (data.type === 'dm_invitation') {
-          if (data.to === currentUser) {
-            showDMInvitation(data.from, data.roomCode);
-          }
-        } else if (data.type === 'dm_accepted') {
-          if (data.to === currentUser) {
-            showToast(`${data.from} accepted your DM request`);
-          }
-        } else if (data.type === 'dm_declined') {
-          if (data.to === currentUser) {
-            showToast(`${data.from} declined your DM request`);
-          }
+        if (data.type === 'join' && data.name !== currentUser) {
+          showSystemMessage(`${data.name} joined`);
         } else if (data.text) {
           const isSelf = member.id === drone.clientId;
           addMessageToUI(data.text, data.name, isSelf, data.timestamp);
           
-          // Save message to DM chat
-          if (currentChat !== 'public' && dmChats[currentChat]) {
-            dmChats[currentChat].messages.push({
+          // Save message
+          const chatId = roomCode === PUBLIC_ROOM ? 'public' : roomCode;
+          if (chats[chatId]) {
+            chats[chatId].messages.push({
               text: data.text,
               sender: data.name,
               timestamp: data.timestamp
             });
-            saveDMChats();
+            saveChats();
             renderChatList();
           }
         }
+      });
+    }
+
+    function connectToNotificationRoom() {
+      notificationRoom = drone.subscribe(`observable-${NOTIFICATION_ROOM}-${currentUser.replace(/\s/g, '_')}`);
+      
+      notificationRoom.on('data', (data) => {
+        if (!data) return;
+
+        if (data.type === 'dm_invitation' && data.to === currentUser) {
+          // Check if DM already exists
+          const existingDM = findExistingDM(data.from);
+          if (existingDM) {
+            // Just notify the sender we already have a DM
+            sendNotification(data.from, {
+              type: 'dm_exists',
+              from: currentUser,
+              to: data.from,
+              roomCode: existingDM
+            });
+            showToast(`${data.from} tried to DM you - opening existing chat`);
+            switchChat(existingDM);
+          } else {
+            // Show invitation
+            pendingDMInvite = { from: data.from, roomCode: data.roomCode };
+            document.getElementById('dmInviteText').innerHTML = `<strong>${escapeHtml(data.from)}</strong> wants to start a private conversation with you.`;
+            showModal('dmInviteModal');
+          }
+        } else if (data.type === 'dm_accepted' && data.to === currentUser) {
+          showToast(`${data.from} accepted your DM`);
+          if (!chats[data.roomCode]) {
+            chats[data.roomCode] = { type: 'dm', partner: data.from, messages: [] };
+            saveChats();
+            renderChatList();
+          }
+          switchChat(data.roomCode);
+        } else if (data.type === 'dm_declined' && data.to === currentUser) {
+          showToast(`${data.from} declined your DM request`);
+        } else if (data.type === 'dm_exists' && data.to === currentUser) {
+          showToast(`You already have a DM with ${data.from}`);
+          switchChat(data.roomCode);
+        }
+      });
+    }
+
+    function sendNotification(targetUser, data) {
+      drone.publish({
+        room: `observable-${NOTIFICATION_ROOM}-${targetUser.replace(/\s/g, '_')}`,
+        message: data
       });
     }
 
@@ -1048,97 +1281,132 @@
       });
     }
 
-    // DM functions
-    function sendDMInvitation(targetUser) {
-      const dmRoomCode = generateDMCode();
+    // DM Functions
+    function startDM(targetUser) {
+      // Check for existing DM
+      const existingDM = findExistingDM(targetUser);
+      if (existingDM) {
+        showToast(`Opening existing chat with ${targetUser}`);
+        switchChat(existingDM);
+        return;
+      }
+
+      const dmRoomCode = generateCode();
       
-      drone.publish({
-        room: `observable-${PUBLIC_ROOM}`,
-        message: {
-          type: 'dm_invitation',
-          from: currentUser,
-          to: targetUser,
-          roomCode: dmRoomCode
-        }
+      // Create DM locally
+      chats[dmRoomCode] = { type: 'dm', partner: targetUser, messages: [] };
+      saveChats();
+      renderChatList();
+
+      // Send invitation via notification channel
+      sendNotification(targetUser, {
+        type: 'dm_invitation',
+        from: currentUser,
+        to: targetUser,
+        roomCode: dmRoomCode
       });
 
-      // Create DM chat locally
-      dmChats[dmRoomCode] = {
-        partner: targetUser,
-        messages: []
-      };
-      saveDMChats();
-      renderChatList();
       switchChat(dmRoomCode);
+      showToast(`DM request sent to ${targetUser}`);
     }
 
-    function showDMInvitation(fromUser, roomCode) {
-      const overlay = document.createElement('div');
-      overlay.className = 'dm-overlay';
-      
-      const invitation = document.createElement('div');
-      invitation.className = 'dm-invitation';
-      invitation.innerHTML = `
-        <h3>Direct Message Request</h3>
-        <p><strong>${fromUser}</strong> wants to start a private conversation with you.</p>
-        <div class="dm-invitation-buttons">
-          <button class="dm-decline" onclick="declineDM('${fromUser}', '${roomCode}')">Decline</button>
-          <button class="dm-accept" onclick="acceptDM('${fromUser}', '${roomCode}')">Accept</button>
-        </div>
-      `;
+    function acceptDM() {
+      closeModal();
+      if (!pendingDMInvite) return;
 
-      document.body.appendChild(overlay);
-      document.body.appendChild(invitation);
+      const { from, roomCode } = pendingDMInvite;
 
-      // Auto-remove after 30 seconds
-      setTimeout(() => {
-        if (document.body.contains(invitation)) {
-          overlay.remove();
-          invitation.remove();
-        }
-      }, 30000);
-    }
-
-    function acceptDM(partner, roomCode) {
-      // Remove invitation UI
-      document.querySelectorAll('.dm-invitation, .dm-overlay').forEach(el => el.remove());
-
-      // Create DM chat locally
-      dmChats[roomCode] = {
-        partner: partner,
-        messages: []
-      };
-      saveDMChats();
+      // Create DM locally
+      chats[roomCode] = { type: 'dm', partner: from, messages: [] };
+      saveChats();
       renderChatList();
-      switchChat(roomCode);
 
-      // Notify the other user
-      setTimeout(() => {
-        drone.publish({
-          room: `observable-${roomCode}`,
-          message: {
-            type: 'dm_accepted',
-            from: currentUser,
-            to: partner
-          }
-        });
-      }, 500);
-    }
-
-    function declineDM(partner, roomCode) {
-      document.querySelectorAll('.dm-invitation, .dm-overlay').forEach(el => el.remove());
-
-      drone.publish({
-        room: `observable-${PUBLIC_ROOM}`,
-        message: {
-          type: 'dm_declined',
-          from: currentUser,
-          to: partner
-        }
+      // Notify sender
+      sendNotification(from, {
+        type: 'dm_accepted',
+        from: currentUser,
+        to: from,
+        roomCode: roomCode
       });
+
+      switchChat(roomCode);
+      pendingDMInvite = null;
     }
 
-    // Event listeners
+    function declineDM() {
+      closeModal();
+      if (!pendingDMInvite) return;
+
+      sendNotification(pendingDMInvite.from, {
+        type: 'dm_declined',
+        from: currentUser,
+        to: pendingDMInvite.from
+      });
+
+      pendingDMInvite = null;
+    }
+
+    // Group Functions
+    function createGroup() {
+      const name = document.getElementById('groupNameInput').value.trim();
+      if (!name) return;
+
+      const groupCode = generateCode();
+      chats[groupCode] = { type: 'group', name: name, messages: [] };
+      saveChats();
+      renderChatList();
+      closeModal();
+      document.getElementById('groupNameInput').value = '';
+      switchChat(groupCode);
+      showToast('Group created! Share the code to invite others.');
+    }
+
+    // Room Functions
+    function createRoom() {
+      const name = document.getElementById('roomNameInput').value.trim();
+      if (!name) return;
+
+      const roomCode = generateCode();
+      chats[roomCode] = { type: 'room', name: name, messages: [] };
+      saveChats();
+      renderChatList();
+      closeModal();
+      document.getElementById('roomNameInput').value = '';
+      switchChat(roomCode);
+      showToast('Private room created! Share the code to invite others.');
+    }
+
+    function joinRoom() {
+      const code = document.getElementById('joinRoomCodeInput').value.trim();
+      if (!code) return;
+
+      // Check if already in this chat
+      if (chats[code]) {
+        switchChat(code);
+        closeModal();
+        document.getElementById('joinRoomCodeInput').value = '';
+        return;
+      }
+
+      // Create placeholder - will get real name from messages
+      chats[code] = { type: 'room', name: 'Private Room', messages: [] };
+      saveChats();
+      renderChatList();
+      closeModal();
+      document.getElementById('joinRoomCodeInput').value = '';
+      switchChat(code);
+    }
+
+    // Show app
+    function showChat() {
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('chatApp').classList.add('active');
+      
+      renderChatList();
+      switchChat('public');
+    }
+
+    // Event Listeners
     document.getElementById('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const name = document.getElementById('usernameInput').value.trim();
@@ -1150,7 +1418,6 @@
       currentUser = name;
       localStorage.setItem('vplaza_username', currentUser);
       
-      // Initialize ScaleDrone
       drone = new ScaleDrone(CLIENT_ID);
       drone.on('open', error => {
         if (error) {
@@ -1158,6 +1425,7 @@
           alert('Error connecting to chat server.');
           return;
         }
+        connectToNotificationRoom();
         showChat();
       });
     });
@@ -1169,7 +1437,7 @@
       input.value = '';
     });
 
-    // Context menu for DM
+    // Context menu
     const contextMenu = document.getElementById('contextMenu');
     let contextTarget = null;
 
@@ -1183,11 +1451,8 @@
 
       contextTarget = sender;
       
-      // Position menu
       let x = e.pageX;
       let y = e.pageY;
-      
-      // Keep menu in viewport
       if (x + 180 > window.innerWidth) x = window.innerWidth - 190;
       if (y + 50 > window.innerHeight) y = window.innerHeight - 60;
       
@@ -1198,7 +1463,7 @@
 
     document.getElementById('dmMenuItem').addEventListener('click', () => {
       if (contextTarget) {
-        sendDMInvitation(contextTarget);
+        startDM(contextTarget);
         contextTarget = null;
       }
       contextMenu.classList.remove('show');
@@ -1210,13 +1475,24 @@
       }
     });
 
+    // Modal buttons
+    document.getElementById('modalOverlay').addEventListener('click', closeModal);
+    document.getElementById('newGroupBtn').addEventListener('click', () => showModal('createGroupModal'));
+    document.getElementById('newRoomBtn').addEventListener('click', () => showModal('createRoomModal'));
+    document.getElementById('joinRoomBtn').addEventListener('click', () => showModal('joinRoomModal'));
+    document.getElementById('createGroupConfirm').addEventListener('click', createGroup);
+    document.getElementById('createRoomConfirm').addEventListener('click', createRoom);
+    document.getElementById('joinRoomConfirm').addEventListener('click', joinRoom);
+    document.getElementById('dmAcceptBtn').addEventListener('click', acceptDM);
+    document.getElementById('dmDeclineBtn').addEventListener('click', declineDM);
+
     // Mobile back button
     document.getElementById('backBtn').addEventListener('click', () => {
       document.getElementById('sidebar').classList.remove('hidden');
     });
 
     // Initialize
-    loadDMChats();
+    loadChats();
     const savedUser = localStorage.getItem('vplaza_username');
     if (savedUser) {
       currentUser = savedUser;
@@ -1226,6 +1502,7 @@
           console.error('ScaleDrone error:', error);
           return;
         }
+        connectToNotificationRoom();
         showChat();
       });
     }
