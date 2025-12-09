@@ -1411,11 +1411,17 @@
       if (!animate) msgDiv.style.animation = 'none';
       msgDiv.dataset.sender = sender;
 
+      // Format text with markdown support for bold (**text**) and italic (_text_)
+      let formattedText = escapeHtml(text);
+      formattedText = formattedText.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      formattedText = formattedText.replace(/_(.+?)_/g, '<em>$1</em>');
+      formattedText = formattedText.replace(/\n/g, '<br>');
+
       msgDiv.innerHTML = `
         <div class="message-avatar" style="background: ${getColor(sender)}">${getInitials(sender)}</div>
         <div class="message-content">
           <div class="message-sender">${escapeHtml(sender)}</div>
-          <div class="message-bubble">${escapeHtml(text)}</div>
+          <div class="message-bubble">${formattedText}</div>
           <div class="message-time">${formatTime(timestamp)}</div>
         </div>
       `;
@@ -1617,8 +1623,8 @@
       // Subscribe to the group room
       subscribeToRoom(groupCode, groupCode);
       
-      // Send invitations to all members
       groupInviteMembers.forEach(member => {
+        // Send the notification (for the modal popup)
         sendNotification(member, {
           type: 'group_invitation',
           from: currentUser,
@@ -1626,11 +1632,55 @@
           roomCode: groupCode,
           groupName: name
         });
+        
+        // Also send a DM with the invite link
+        // Check for existing DM or create one
+        let dmRoomCode = findExistingDM(member);
+        if (!dmRoomCode) {
+          dmRoomCode = generateCode('dm');
+          chats[dmRoomCode] = { type: 'dm', partner: member, messages: [] };
+          saveChats();
+          renderChatList();
+          subscribeToRoom(dmRoomCode, dmRoomCode);
+          
+          // Send DM invitation so they can see the chat too
+          sendNotification(member, {
+            type: 'dm_invitation',
+            from: currentUser,
+            to: member,
+            roomCode: dmRoomCode
+          });
+        }
+        
+        // Send the group invite message in the DM
+        const inviteMessage = `**${currentUser} has invited you to join a group chat!**\n_${groupCode}_`;
+        const timestamp = new Date().toISOString();
+        
+        // Save message locally
+        if (chats[dmRoomCode]) {
+          chats[dmRoomCode].messages.push({
+            text: inviteMessage,
+            sender: currentUser,
+            timestamp: timestamp
+          });
+          saveChats();
+        }
+        
+        // Send via Scaledrone
+        drone.publish({
+          room: `observable-${dmRoomCode}`,
+          message: {
+            text: inviteMessage,
+            name: currentUser,
+            timestamp: timestamp
+          }
+        });
       });
 
       closeModal();
       document.getElementById('groupNameInput').value = '';
       document.getElementById('memberInput').value = '';
+      groupInviteMembers = []; // Clear the members array after creating
       switchChat(groupCode);
       
       if (groupInviteMembers.length > 0) {
