@@ -659,6 +659,43 @@
       background: #e8eaed;
     }
 
+    /* Member tags for group creation */
+    .member-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+      min-height: 32px;
+    }
+
+    .member-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 4px 10px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .member-tag button {
+      background: none;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0;
+      display: flex;
+      align-items: center;
+    }
+
+    .member-tag button:hover {
+      color: #1557b0;
+    }
+
     /* Toast */
     .toast {
       position: fixed;
@@ -779,7 +816,7 @@
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
           </button>
-          <button class="icon-btn" id="joinRoomBtn" title="Join private room">
+          <button class="icon-btn" id="joinRoomBtn" title="Join room/group">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
             </svg>
@@ -843,9 +880,12 @@
     <h3>Create Group Chat</h3>
     <label>Group Name</label>
     <input type="text" id="groupNameInput" placeholder="Enter group name" maxlength="30">
+    <label>Invite Members (by display name)</label>
+    <div class="member-tags" id="memberTags"></div>
+    <input type="text" id="memberInput" placeholder="Type a name and press Enter">
     <div class="modal-buttons">
       <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
-      <button class="modal-btn modal-btn-primary" id="createGroupConfirm">Create</button>
+      <button class="modal-btn modal-btn-primary" id="createGroupConfirm">Create & Invite</button>
     </div>
   </div>
 
@@ -863,10 +903,10 @@
 
   <!-- Join Room Modal -->
   <div class="modal" id="joinRoomModal">
-    <h3>Join Private Room</h3>
-    <p>Enter the room code shared with you to join.</p>
-    <label>Room Code</label>
-    <input type="text" id="joinRoomCodeInput" placeholder="Paste room code here">
+    <h3>Join Room or Group</h3>
+    <p>Enter the code shared with you to join.</p>
+    <label>Room/Group Code</label>
+    <input type="text" id="joinRoomCodeInput" placeholder="Paste code here">
     <div class="modal-buttons">
       <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancel</button>
       <button class="modal-btn modal-btn-primary" id="joinRoomConfirm">Join</button>
@@ -883,6 +923,16 @@
     </div>
   </div>
 
+  <!-- Group Invitation Modal -->
+  <div class="modal" id="groupInviteModal">
+    <h3>Group Chat Invitation</h3>
+    <p id="groupInviteText"></p>
+    <div class="modal-buttons">
+      <button class="modal-btn modal-btn-secondary" id="groupDeclineBtn">Decline</button>
+      <button class="modal-btn modal-btn-primary" id="groupAcceptBtn">Join Group</button>
+    </div>
+  </div>
+
   <script>
     const CLIENT_ID = 'aSEKMcR4GsEZONob';
     const PUBLIC_ROOM = 'Vplaza';
@@ -895,13 +945,18 @@
     let currentUser = '';
     let currentChat = 'public';
     
+    let activeRooms = {};
+    
     // Chat storage
     let chats = {
       public: { type: 'public', name: 'Public Chat', messages: [] },
     };
 
-    // Pending DM invitations
+    // Pending invitations
     let pendingDMInvite = null;
+    let pendingGroupInvite = null;
+    
+    let groupInviteMembers = [];
 
     const COLORS = [
       '#ea4335', '#fbbc04', '#34a853', '#4285f4', '#ab47bc',
@@ -946,6 +1001,10 @@
         const parsed = JSON.parse(saved);
         // Merge with default public chat
         chats = { public: { type: 'public', name: 'Public Chat', messages: [] }, ...parsed };
+        // Preserve public messages if they exist
+        if (parsed.public && parsed.public.messages) {
+          chats.public.messages = parsed.public.messages;
+        }
       }
     }
 
@@ -987,6 +1046,9 @@
     function closeModal() {
       document.getElementById('modalOverlay').classList.remove('show');
       document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
+      // Reset group members
+      groupInviteMembers = [];
+      renderMemberTags();
     }
 
     // Chat List
@@ -1079,6 +1141,46 @@
       return item;
     }
 
+    function subscribeToRoom(roomCode, chatId) {
+      if (activeRooms[roomCode]) return activeRooms[roomCode];
+      
+      const room = drone.subscribe(`observable-${roomCode}`);
+      activeRooms[roomCode] = room;
+
+      room.on('error', error => console.error('Room error:', error));
+
+      room.on('data', (data, member) => {
+        if (!data) return;
+
+        if (data.type === 'join' && data.name !== currentUser) {
+          // Only show join message if viewing this chat
+          if (currentChat === chatId) {
+            showSystemMessage(`${data.name} joined`);
+          }
+        } else if (data.text) {
+          const isSelf = member.id === drone.clientId;
+          
+          // Save message to chat
+          if (chats[chatId]) {
+            chats[chatId].messages.push({
+              text: data.text,
+              sender: data.name,
+              timestamp: data.timestamp
+            });
+            saveChats();
+            renderChatList();
+          }
+          
+          // Only add to UI if viewing this chat
+          if (currentChat === chatId) {
+            addMessageToUI(data.text, data.name, isSelf, data.timestamp);
+          }
+        }
+      });
+
+      return room;
+    }
+
     // Switch Chat
     function switchChat(chatId) {
       currentChat = chatId;
@@ -1099,6 +1201,9 @@
         chatAvatar.style.fontSize = '20px';
         chatTitle.textContent = 'Public Chat';
         chatSubtitle.textContent = 'Everyone can see these messages';
+        
+        // Subscribe to public room
+        subscribeToRoom(PUBLIC_ROOM, 'public');
       } else {
         const chat = chats[chatId];
         if (!chat) return;
@@ -1132,6 +1237,9 @@
             showToast('Room code copied!');
           };
         }
+        
+        // Subscribe to this chat's room
+        subscribeToRoom(chatId, chatId);
       }
 
       // Render saved messages
@@ -1141,9 +1249,6 @@
           addMessageToUI(msg.text, msg.sender, msg.sender === currentUser, msg.timestamp, false);
         });
       }
-
-      // Connect to room
-      connectToChatRoom(chatId === 'public' ? PUBLIC_ROOM : chatId);
 
       // Mobile: hide sidebar
       if (window.innerWidth <= 768) {
@@ -1182,40 +1287,6 @@
       container.scrollTop = container.scrollHeight;
     }
 
-    // ScaleDrone
-    function connectToChatRoom(roomCode) {
-      if (currentChatRoom) {
-        try { currentChatRoom.unsubscribe(); } catch(e) {}
-      }
-
-      currentChatRoom = drone.subscribe(`observable-${roomCode}`);
-
-      currentChatRoom.on('error', error => console.error('Room error:', error));
-
-      currentChatRoom.on('data', (data, member) => {
-        if (!data) return;
-
-        if (data.type === 'join' && data.name !== currentUser) {
-          showSystemMessage(`${data.name} joined`);
-        } else if (data.text) {
-          const isSelf = member.id === drone.clientId;
-          addMessageToUI(data.text, data.name, isSelf, data.timestamp);
-          
-          // Save message
-          const chatId = roomCode === PUBLIC_ROOM ? 'public' : roomCode;
-          if (chats[chatId]) {
-            chats[chatId].messages.push({
-              text: data.text,
-              sender: data.name,
-              timestamp: data.timestamp
-            });
-            saveChats();
-            renderChatList();
-          }
-        }
-      });
-    }
-
     function connectToNotificationRoom() {
       notificationRoom = drone.subscribe(`observable-${NOTIFICATION_ROOM}-${currentUser.replace(/\s/g, '_')}`);
       
@@ -1226,7 +1297,7 @@
           // Check if DM already exists
           const existingDM = findExistingDM(data.from);
           if (existingDM) {
-            // Just notify the sender we already have a DM
+            // Notify sender we already have a DM and switch to it
             sendNotification(data.from, {
               type: 'dm_exists',
               from: currentUser,
@@ -1236,7 +1307,7 @@
             showToast(`${data.from} tried to DM you - opening existing chat`);
             switchChat(existingDM);
           } else {
-            // Show invitation
+            // Show invitation modal
             pendingDMInvite = { from: data.from, roomCode: data.roomCode };
             document.getElementById('dmInviteText').innerHTML = `<strong>${escapeHtml(data.from)}</strong> wants to start a private conversation with you.`;
             showModal('dmInviteModal');
@@ -1248,12 +1319,22 @@
             saveChats();
             renderChatList();
           }
-          switchChat(data.roomCode);
+          // Subscribe to the DM room
+          subscribeToRoom(data.roomCode, data.roomCode);
         } else if (data.type === 'dm_declined' && data.to === currentUser) {
           showToast(`${data.from} declined your DM request`);
         } else if (data.type === 'dm_exists' && data.to === currentUser) {
           showToast(`You already have a DM with ${data.from}`);
           switchChat(data.roomCode);
+        } else if (data.type === 'group_invitation' && data.to === currentUser) {
+          // Show group invite modal
+          pendingGroupInvite = { from: data.from, roomCode: data.roomCode, groupName: data.groupName };
+          document.getElementById('groupInviteText').innerHTML = `<strong>${escapeHtml(data.from)}</strong> invited you to join <strong>${escapeHtml(data.groupName)}</strong>`;
+          showModal('groupInviteModal');
+        } else if (data.type === 'group_accepted' && data.to === currentUser) {
+          showToast(`${data.from} joined the group`);
+        } else if (data.type === 'group_declined' && data.to === currentUser) {
+          showToast(`${data.from} declined the group invite`);
         }
       });
     }
@@ -1297,6 +1378,9 @@
       chats[dmRoomCode] = { type: 'dm', partner: targetUser, messages: [] };
       saveChats();
       renderChatList();
+      
+      // Subscribe to the DM room
+      subscribeToRoom(dmRoomCode, dmRoomCode);
 
       // Send invitation via notification channel
       sendNotification(targetUser, {
@@ -1320,6 +1404,9 @@
       chats[roomCode] = { type: 'dm', partner: from, messages: [] };
       saveChats();
       renderChatList();
+      
+      // Subscribe to the DM room
+      subscribeToRoom(roomCode, roomCode);
 
       // Notify sender
       sendNotification(from, {
@@ -1346,19 +1433,105 @@
       pendingDMInvite = null;
     }
 
-    // Group Functions
+    function renderMemberTags() {
+      const container = document.getElementById('memberTags');
+      container.innerHTML = '';
+      groupInviteMembers.forEach((member, index) => {
+        const tag = document.createElement('span');
+        tag.className = 'member-tag';
+        tag.innerHTML = `${escapeHtml(member)} <button type="button" onclick="removeMember(${index})">&times;</button>`;
+        container.appendChild(tag);
+      });
+    }
+
+    function addMember(name) {
+      name = name.trim();
+      if (!name || name === currentUser || groupInviteMembers.includes(name)) return;
+      groupInviteMembers.push(name);
+      renderMemberTags();
+    }
+
+    function removeMember(index) {
+      groupInviteMembers.splice(index, 1);
+      renderMemberTags();
+    }
+
     function createGroup() {
       const name = document.getElementById('groupNameInput').value.trim();
-      if (!name) return;
+      if (!name) {
+        showToast('Please enter a group name');
+        return;
+      }
 
       const groupCode = generateCode();
       chats[groupCode] = { type: 'group', name: name, messages: [] };
       saveChats();
       renderChatList();
+      
+      // Subscribe to the group room
+      subscribeToRoom(groupCode, groupCode);
+      
+      // Send invitations to all members
+      groupInviteMembers.forEach(member => {
+        sendNotification(member, {
+          type: 'group_invitation',
+          from: currentUser,
+          to: member,
+          roomCode: groupCode,
+          groupName: name
+        });
+      });
+
       closeModal();
       document.getElementById('groupNameInput').value = '';
+      document.getElementById('memberInput').value = '';
       switchChat(groupCode);
-      showToast('Group created! Share the code to invite others.');
+      
+      if (groupInviteMembers.length > 0) {
+        showToast(`Group created! Invites sent to ${groupInviteMembers.length} user(s)`);
+      } else {
+        showToast('Group created! Share the code to invite others.');
+      }
+    }
+
+    function acceptGroupInvite() {
+      closeModal();
+      if (!pendingGroupInvite) return;
+
+      const { from, roomCode, groupName } = pendingGroupInvite;
+
+      // Create group locally
+      chats[roomCode] = { type: 'group', name: groupName, messages: [] };
+      saveChats();
+      renderChatList();
+      
+      // Subscribe to the group room
+      subscribeToRoom(roomCode, roomCode);
+
+      // Notify sender
+      sendNotification(from, {
+        type: 'group_accepted',
+        from: currentUser,
+        to: from,
+        roomCode: roomCode
+      });
+
+      switchChat(roomCode);
+      showToast(`You joined ${groupName}`);
+      pendingGroupInvite = null;
+    }
+
+    function declineGroupInvite() {
+      closeModal();
+      if (!pendingGroupInvite) return;
+
+      sendNotification(pendingGroupInvite.from, {
+        type: 'group_declined',
+        from: currentUser,
+        to: pendingGroupInvite.from
+      });
+
+      pendingGroupInvite = null;
     }
 
     // Room Functions
@@ -1370,6 +1543,10 @@
       chats[roomCode] = { type: 'room', name: name, messages: [] };
       saveChats();
       renderChatList();
+      
+      // Subscribe to the room
+      subscribeToRoom(roomCode, roomCode);
+      
       closeModal();
       document.getElementById('roomNameInput').value = '';
       switchChat(roomCode);
@@ -1388,10 +1565,14 @@
         return;
       }
 
-      // Create placeholder - will get real name from messages
+      // Create placeholder - will determine type from messages or just use room
       chats[code] = { type: 'room', name: 'Private Room', messages: [] };
       saveChats();
       renderChatList();
+      
+      // Subscribe to the room
+      subscribeToRoom(code, code);
+      
       closeModal();
       document.getElementById('joinRoomCodeInput').value = '';
       switchChat(code);
@@ -1401,6 +1582,15 @@
     function showChat() {
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('chatApp').classList.add('active');
+      
+      subscribeToRoom(PUBLIC_ROOM, 'public');
+      
+      // Also subscribe to all saved chats so we receive messages
+      Object.keys(chats).forEach(chatId => {
+        if (chatId !== 'public') {
+          subscribeToRoom(chatId, chatId);
+        }
+      });
       
       renderChatList();
       switchChat('public');
@@ -1437,13 +1627,22 @@
       input.value = '';
     });
 
-    // Context menu
+    document.getElementById('memberInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const input = e.target;
+        addMember(input.value);
+        input.value = '';
+      }
+    });
+
+    // Context menu - only show in public chat
     const contextMenu = document.getElementById('contextMenu');
     let contextTarget = null;
 
     document.getElementById('messagesContainer').addEventListener('contextmenu', (e) => {
       const message = e.target.closest('.message');
-      if (!message || message.classList.contains('self') || currentChat !== 'public') return;
+      if (!message || message.classList.contains('self')) return;
       
       e.preventDefault();
       const sender = message.dataset.sender;
@@ -1485,6 +1684,8 @@
     document.getElementById('joinRoomConfirm').addEventListener('click', joinRoom);
     document.getElementById('dmAcceptBtn').addEventListener('click', acceptDM);
     document.getElementById('dmDeclineBtn').addEventListener('click', declineDM);
+    document.getElementById('groupAcceptBtn').addEventListener('click', acceptGroupInvite);
+    document.getElementById('groupDeclineBtn').addEventListener('click', declineGroupInvite);
 
     // Mobile back button
     document.getElementById('backBtn').addEventListener('click', () => {
