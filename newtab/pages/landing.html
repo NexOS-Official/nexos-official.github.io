@@ -109,7 +109,6 @@ body[data-wallpaper-type="animated"] {
     user-select: none;
 }
 
-/*  Updated search container to match clock widget width (700px) with media queries */
 .search-container {
   width: 700px;
   max-width: 700px;
@@ -133,7 +132,6 @@ body[data-wallpaper-type="animated"] {
   max-width: 750px;
 }
 
-/*  Added media queries to ensure search container matches clock widget on all screen sizes */
 @media (max-width: 768px) {
   .search-container {
     width: 90%;
@@ -197,7 +195,6 @@ body[data-wallpaper-type="animated"] {
   font-weight: 300;
 }
 
-/*  Updated search button to display icon instead of text */
 .search-button {
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
@@ -222,7 +219,6 @@ body[data-wallpaper-type="animated"] {
   border-color: rgba(255,255,255,0.2);
 }
 
-/*  Added styling for search icon inside button */
 .search-button ion-icon {
   font-size: 20px;
   color: #ffffff;
@@ -250,7 +246,6 @@ body[data-wallpaper-type="animated"] {
   z-index: 10;
 }
 
-/*  Added media query for clock widget to match responsive behavior */
 @media (max-width: 768px) {
   .clock-widget {
     width: 90%;
@@ -663,9 +658,34 @@ body[data-wallpaper-type="animated"] {
     cursor: not-allowed;
     opacity: 0.5;
 }
+
+.toast {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #323232;
+    color: #fff;
+    padding: 14px 24px;
+    border-radius: 28px;
+    font-size: 14px;
+    font-family: 'Google Sans', 'Poppins', sans-serif;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 3000;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(30px);
+    opacity: 1;
+}
+
 </style>
 </head>
 <body>
+
+<div class="toast" id="toast">New tab successful</div>
 
 <div class="clock-widget">
     <div class="clock-date" id="clockDate">30 Tue</div>
@@ -746,6 +766,17 @@ body[data-wallpaper-type="animated"] {
 </div>
 
 <script>
+function showToast() {
+    const toast = document.getElementById('toast');
+    toast.classList.add('show');
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+window.addEventListener('DOMContentLoaded', showToast);
+
 let db;
 const DB_NAME = 'WallpaperDB';
 const DB_VERSION = 1;
