@@ -3561,11 +3561,46 @@ if (blockedRegex.test(urlLower)) {
                     return;
                 }
 
-                if (url.toLowerCase() === 'about:blank') {
-    const newTab = window.open('about:blank', '_blank');
-          if (newTab) {
-        newTab.location.href = window.location.href;
-                   }
+                function openInBlank() {
+    let url = document.getElementById('urlInput').value.trim();
+    let tabTitle = document.getElementById('tabTitle').value.trim() || 'Loading...';
+
+    if (url.toLowerCase() === 'about:blank') {
+        const newTab = window.open('about:blank');
+        if (newTab) {
+            newTab.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${tabTitle}</title>
+                    <style>
+                        body, html {
+                            margin: 0;
+                            padding: 0;
+                            width: 100%;
+                            height: 100%;
+                            overflow: hidden;
+                        }
+                        iframe {
+                            border: none;
+                            width: 100%;
+                            height: 100%;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <iframe src="${window.location.href}"></iframe>
+                </body>
+                </html>
+            `);
+            newTab.document.close();
+        } else {
+            alert('Popup blocked! Please allow popups for this site.');
+        }
+    } else {
+        window.location.href = url;
+    }
+}
                     
                  window.location.href = 'https://www.google.com';
                  return;
