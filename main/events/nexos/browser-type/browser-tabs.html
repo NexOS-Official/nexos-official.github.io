@@ -78,6 +78,63 @@
             transition: opacity 0.8s ease-out;
         }
 
+        /* Added toast notification styles positioned above right side of taskbar */
+        .site-toast {
+            position: fixed;
+            bottom: 60px;
+            right: 20px;
+            background: #323232;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 28px;
+            font-size: 14px;
+            font-family: 'Google Sans', 'Poppins', Satoshi, sans-serif;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transform: translateY(100px);
+            transition: all 0.3s ease;
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 350px;
+            pointer-events: none;
+        }
+
+        .site-toast.show {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .site-toast:hover {
+            opacity: 0;
+            transform: translateY(100px);
+            pointer-events: none;
+        }
+        
+        .site-toast.dismissing {
+            /* added dismissing state for click/hover dismiss */
+            opacity: 0;
+            transform: translateY(100px);
+            pointer-events: none;
+        }
+        /* END toast notification styles */
+
+        .site-toast-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .site-toast-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        /* END toast notification styles */
+
         .browser-container {
             height: 100vh;
             display: flex;
@@ -1199,11 +1256,15 @@ body {
   object-fit: contain;
 }
 
-.taskbar-right {
-  gap: 10px;
-  font-size: 14px;
-  color: #ffffff;
-}
+/* CHANGE START */
+        .taskbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+/* CHANGE END */
 
 .taskbar-right .icon {
   width: 20px;
@@ -1728,39 +1789,41 @@ body {
   cursor: nwse-resize;
 }
 
-.date-box {
-  color: #000000;
-  padding: 8px 12px;
-  font-size: 14px;
-  display: inline-block;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
-  backdrop-filter: blur(30px) saturate(180%) contrast(120%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(120%);
-  border: 1px solid #000;
-  border-top-left-radius: 4px;
-  border-bottom-left-radius: 4px;
-  border-top-right-radius: 10px;
-  border-bottom-right-radius: 10px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
+        .date-box {
+          color: #000000;
+          padding: 8px 12px;
+          font-size: 14px;
+          display: inline-block;
+          background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+          backdrop-filter: blur(30px) saturate(180%) contrast(120%);
+          -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(120%);
+          border: 1px solid #000;
+          border-top-left-radius: 4px;
+          border-bottom-left-radius: 4px;
+          border-top-right-radius: 10px;
+          border-bottom-right-radius: 10px;
+          overflow: hidden;
+          transition: all 0.3s ease;
+          font-weight: normal;
+        }
 
-.time-box {
-  color: #000000;
-  padding: 8px 12px;
-  font-size: 14px;
-  display: inline-block;
-  background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
-  backdrop-filter: blur(30px) saturate(180%) contrast(120%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(120%);
-  border: 1px solid #000;
-  border-top-right-radius: 4px;
-  border-bottom-right-radius: 4px;
-  border-top-left-radius: 10px;
-  border-bottom-left-radius: 10px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
+        .time-box {
+          color: #000000;
+          padding: 8px 12px;
+          font-size: 14px;
+          display: inline-block;
+          background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+          backdrop-filter: blur(30px) saturate(180%) contrast(120%);
+          -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(120%);
+          border: 1px solid #000;
+          border-top-right-radius: 4px;
+          border-bottom-right-radius: 4px;
+          border-top-left-radius: 10px;
+          border-bottom-left-radius: 10px;
+          overflow: hidden;
+          transition: all 0.3s ease;
+          font-weight: normal;
+        }
 
 
 
@@ -2190,6 +2253,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.updateIntervals = new Map();
                 this.batteryNotificationShown = false;
                 this.battery = null;
+                this.toastTimeout = null; // Added for toast notification
                 
                 this.initializeElements();
                 this.bindEvents();
@@ -2322,6 +2386,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.fullscreenMenuBtn = document.getElementById('fullscreenMenuBtn');
                 this.aiMenuBtn = document.getElementById('aiMenuBtn');
                 this.aiMenuModal = document.getElementById('aiMenuModal');
+                this.siteToast = document.getElementById('siteToast');
+                this.siteToastIcon = document.getElementById('toastIcon');
+                this.siteToastText = document.getElementById('toastText');
             }
 
             bindEvents() {
@@ -3332,6 +3399,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                     '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
                             }
+                            
+                            this.showSiteToast(tab, originalUrl);
                         }
                         
                         setTimeout(() => {
@@ -3662,6 +3731,7 @@ if (blockedRegex.test(urlLower)) {
 
             updateTabTitle(tab, url) {
                 const domain = this.extractDomain(url);
+                const previousTitle = tab.title;
                 
                 try {
                     const iframe = tab.iframe;
@@ -3684,6 +3754,10 @@ if (blockedRegex.test(urlLower)) {
                 if (titleElement) {
                     titleElement.textContent = tab.title;
                     titleElement.title = tab.title;
+                }
+                
+                if (previousTitle && previousTitle !== tab.title && this.activeTabId && this.tabs.get(this.activeTabId) === tab) {
+                    this.showSiteToast(tab, url);
                 }
             }
 
@@ -3989,53 +4063,52 @@ if (blockedRegex.test(urlLower)) {
                     displayElement.textContent = `${Math.round(zoomLevel)}%`;
                 }
             }
-            closeTab(tabId) {
-                if (this.tabs.size <= 1) {
-                    this.showFinalTabNotification();
-                    return;
-                }
 
-                const tabIndex = Array.from(this.tabs.values()).findIndex(t => t.id === tabId);
-                if (tabIndex === -1) return;
+            showSiteToast(tab, url) {
+                const toast = document.getElementById('siteToast');
+                const toastIcon = document.getElementById('toastIcon');
+                const toastText = document.getElementById('toastText');
                 
-                const tab = Array.from(this.tabs.values())[tabIndex];
-                const wasActive = tab.id === this.activeTabId;
+                if (!toast || !toastIcon || !toastText) return;
                 
-                if (tab.pinned && this.contextMenuTabId !== tabId) {
-                    return;
+                // Clear any existing timeout
+                if (this.toastTimeout) {
+                    clearTimeout(this.toastTimeout);
                 }
                 
-                tab.element.style.transform = 'translateX(-100%)';
-                tab.element.style.opacity = '0';
+                const dismissToast = () => {
+                    toast.classList.remove('show');
+                    toast.removeEventListener('click', dismissToast);
+                    toast.removeEventListener('mouseenter', dismissToast);
+                };
+                
+                // Hide first if already showing
+                toast.classList.remove('show');
                 
                 setTimeout(() => {
-                    tab.element.remove();
-                    tab.iframe.remove();
-                    this.tabs.delete(tabId);
-                    
-                    if (wasActive && this.tabs.size > 0) {
-                        const remainingTabs = Array.from(this.tabs.values());
-                        let newActiveTabId = null;
-
-                        const nextTab = remainingTabs.find(t => t.element.compareDocumentPosition(tab.element) & Node.DOCUMENT_POSITION_FOLLOWING);
-                        if (nextTab) {
-                            newActiveTabId = nextTab.id;
-                        } else {
-                            const prevTab = remainingTabs.find(t => t.element.compareDocumentPosition(tab.element) & Node.DOCUMENT_POSITION_PRECEDING);
-                            if (prevTab) {
-                                newActiveTabId = prevTab.id;
-                            } else if (remainingTabs.length > 0) {
-                                newActiveTabId = remainingTabs[0].id;
-                            }
-                        }
-                        
-                        if (newActiveTabId) {
-                            this.switchToTab(newActiveTabId);
-                        }
+                    // Get favicon
+                    const faviconImg = tab.element.querySelector('.tab-favicon img');
+                    if (faviconImg && faviconImg.src) {
+                        toastIcon.src = faviconImg.src;
+                        toastIcon.style.display = 'block';
+                    } else {
+                        toastIcon.style.display = 'none';
                     }
                     
-                    this.updateTabSizes();
-                }, 150);
+                    const displayText = tab.title || this.extractDomain(url) || 'New page';
+                    toastText.textContent = displayText + ' was successfully loaded';
+                    
+                    // Show toast
+                    toast.classList.add('show');
+                    
+                    toast.addEventListener('mouseenter', dismissToast);
+                    toast.addEventListener('click', dismissToast);
+                    
+                    // Auto hide after 3 seconds
+                    this.toastTimeout = setTimeout(() => {
+                        toast.classList.remove('show');
+                    }, 3000);
+                }, 50);
             }
         }
         
@@ -4169,28 +4242,51 @@ if (blockedRegex.test(urlLower)) {
     splitOccupancy: { left: null, right: null },
 
     createWindowElement(app) {
-      const windowEl = windowTemplate.cloneNode(true)
-      windowEl.id = `window-${app.id}`
-      windowEl.dataset.appId = app.id
-      windowEl.style.display = "flex"
-      windowEl.style.zIndex = this.activeZIndex++
+      const windowEl = document.createElement('div');
+      windowEl.id = `window-${app.id}`;
+      windowEl.className = 'window';
+      windowEl.dataset.appId = app.id;
+      windowEl.style.display = "flex";
+      windowEl.style.zIndex = this.activeZIndex++;
 
-      const titleEl = windowEl.querySelector(".window-title")
-      titleEl.textContent = app.name
+      windowEl.innerHTML = `
+        <div class="window-header">
+          <div class="window-controls">
+            <button class="window-control-button minimize-button" aria-label="Minimize">
+              <i data-lucide="minus" class="window-control-icon"></i>
+            </button>
+            <button class="window-control-button maximize-button" aria-label="Maximize">
+              <i data-lucide="square" class="window-control-icon"></i>
+            </button>
+            <button class="window-control-button close-button" aria-label="Close">
+              <i data-lucide="x" class="window-control-icon"></i>
+            </button>
+          </div>
+          <div class="window-title">${app.name}</div>
+        </div>
+        <div class="window-content">
+            <iframe src="${app.url || 'about:blank'}" class="window-iframe" title="${app.name} window"></iframe>
+        </div>
+        <div class="resize-handle top-left"></div>
+        <div class="resize-handle top"></div>
+        <div class="resize-handle top-right"></div>
+        <div class="resize-handle left"></div>
+        <div class="resize-handle right"></div>
+        <div class="resize-handle bottom-left"></div>
+        <div class="resize-handle bottom"></div>
+        <div class="resize-handle bottom-right"></div>
+      `;
 
-      const iframeEl = windowEl.querySelector(".window-iframe")
-      iframeEl.src = app.url || "about:blank"
+      windowsContainer.appendChild(windowEl);
 
-      windowsContainer.appendChild(windowEl)
-
-      const initialWidth = 800
-      const initialHeight = 600
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
-      windowEl.style.width = `${initialWidth}px`
-      windowEl.style.height = `${initialHeight}px`
-      windowEl.style.left = `${(viewportWidth - initialWidth) / 2}px`
-      windowEl.style.top = `${(viewportHeight - initialHeight) / 2}px`
+      const initialWidth = 800;
+      const initialHeight = 600;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      windowEl.style.width = `${initialWidth}px`;
+      windowEl.style.height = `${initialHeight}px`;
+      windowEl.style.left = `${(viewportWidth - initialWidth) / 2}px`;
+      windowEl.style.top = `${(viewportHeight - initialHeight) / 2}px`;
 
       this.openWindows.set(app.id, {
         element: windowEl,
@@ -4207,87 +4303,87 @@ if (blockedRegex.test(urlLower)) {
           lastHeight: initialHeight,
           currentLayout: "float",
         },
-      })
+      });
 
-      this.setupWindowInteractions(windowEl, app.id)
-      this.bringToFront(app.id)
-      this.updateTaskbarIcon(app.id, true)
-      this.updateTaskbarVisibility()
+      this.setupWindowInteractions(windowEl, app.id);
+      this.bringToFront(app.id);
+      this.updateTaskbarIcon(app.id, true);
+      this.updateTaskbarVisibility();
 
-      return windowEl
+      return windowEl;
     },
 
     openApp(appId) {
-      const app = apps.find((a) => a.id === appId)
+      const app = apps.find((a) => a.id === appId);
       if (!app) {
-        console.warn(`No more. this shtuff is gone.`)
-        return
+        console.warn(`No such app found: ${appId}`);
+        return;
       }
 
       if (this.openWindows.has(appId)) {
-        const windowData = this.openWindows.get(appId)
+        const windowData = this.openWindows.get(appId);
         if (windowData.state.minimized) {
-          this.restoreWindow(appId)
+          this.restoreWindow(appId);
         }
-        this.bringToFront(appId)
+        this.bringToFront(appId);
       } else {
-        this.createWindowElement(app)
+        this.createWindowElement(app);
       }
-      appsMenu.classList.remove("show")
-      appsMenu.style.display = "none"
+      appsMenu.classList.remove("show");
+      appsMenu.style.display = "none";
     },
 
     minimizeWindow(appId) {
-      const windowData = this.openWindows.get(appId)
+      const windowData = this.openWindows.get(appId);
       if (windowData) {
-        windowData.element.classList.add("minimized")
-        windowData.state.minimized = true
-        this.updateTaskbarIcon(appId, true)
+        windowData.element.classList.add("minimized");
+        windowData.state.minimized = true;
+        this.updateTaskbarIcon(appId, true);
         windowData.element.addEventListener(
           "transitionend",
           function handler() {
-            windowData.element.style.visibility = "hidden"
-            windowData.element.removeEventListener("transitionend", handler)
+            windowData.element.style.visibility = "hidden";
+            windowData.element.removeEventListener("transitionend", handler);
           },
           { once: true },
-        )
-        this.updateTaskbarVisibility()
+        );
+        this.updateTaskbarVisibility();
       }
     },
 
     restoreWindow(appId) {
-      const windowData = this.openWindows.get(appId)
+      const windowData = this.openWindows.get(appId);
       if (windowData) {
-        windowData.element.style.visibility = "visible"
+        windowData.element.style.visibility = "visible";
         requestAnimationFrame(() => {
-          windowData.element.classList.remove("minimized")
-          windowData.state.minimized = false
-          this.bringToFront(appId)
-          this.updateTaskbarIcon(appId, true)
-        })
-        this.updateTaskbarVisibility()
+          windowData.element.classList.remove("minimized");
+          windowData.state.minimized = false;
+          this.bringToFront(appId);
+          this.updateTaskbarIcon(appId, true);
+        });
+        this.updateTaskbarVisibility();
       }
     },
 
     closeWindow(appId) {
-      const windowData = this.openWindows.get(appId)
+      const windowData = this.openWindows.get(appId);
       if (windowData) {
-        if (this.splitOccupancy.left === appId) this.splitOccupancy.left = null
-        if (this.splitOccupancy.right === appId) this.splitOccupancy.right = null
+        if (this.splitOccupancy.left === appId) this.splitOccupancy.left = null;
+        if (this.splitOccupancy.right === appId) this.splitOccupancy.right = null;
 
-        windowData.element.remove()
-        this.openWindows.delete(appId)
-        this.updateTaskbarIcon(appId, false)
-        this.updateTaskbarVisibility()
+        windowData.element.remove();
+        this.openWindows.delete(appId);
+        this.updateTaskbarIcon(appId, false);
+        this.updateTaskbarVisibility();
       }
     },
 
     setWindowLayout(appId, layoutType) {
-      const windowData = this.openWindows.get(appId)
-      if (!windowData) return
+      const windowData = this.openWindows.get(appId);
+      if (!windowData) return;
 
-      const el = windowData.element
-      const state = windowData.state
+      const el = windowData.element;
+      const state = windowData.state;
 
       if (
         !state.maximized &&
@@ -4296,492 +4392,499 @@ if (blockedRegex.test(urlLower)) {
         !el.classList.contains("partial-left") &&
         !el.classList.contains("partial-right")
       ) {
-        state.lastX = el.offsetLeft
-        state.lastY = el.offsetTop
-        state.lastWidth = el.offsetWidth
-        state.lastHeight = el.offsetHeight
+        state.lastX = el.offsetLeft;
+        state.lastY = el.offsetTop;
+        state.lastWidth = el.offsetWidth;
+        state.lastHeight = el.offsetHeight;
       }
 
-      el.classList.remove("maximized", "split-left", "split-right", "partial-left", "partial-right")
-      state.maximized = false
+      el.classList.remove("maximized", "split-left", "split-right", "partial-left", "partial-right");
+      state.maximized = false;
 
-      if (this.splitOccupancy.left === appId) this.splitOccupancy.left = null
-      if (this.splitOccupancy.right === appId) this.splitOccupancy.right = null
+      if (this.splitOccupancy.left === appId) this.splitOccupancy.left = null;
+      if (this.splitOccupancy.right === appId) this.splitOccupancy.right = null;
 
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
 
       switch (layoutType) {
         case "full":
-          el.style.left = ""
-          el.style.top = ""
-          el.style.width = ""
-          el.style.height = ""
-          el.classList.add("maximized")
-          state.maximized = true
-          state.currentLayout = "full"
-          break
+          el.style.left = "";
+          el.style.top = "";
+          el.style.width = "";
+          el.style.height = "";
+          el.classList.add("maximized");
+          state.maximized = true;
+          state.currentLayout = "full";
+          break;
         case "split":
           if (!this.splitOccupancy.left) {
-            el.style.left = ""
-            el.style.top = ""
-            el.style.width = ""
-            el.style.height = ""
-            el.classList.add("split-left")
-            this.splitOccupancy.left = appId
-            state.currentLayout = "split-left"
+            el.style.left = "";
+            el.style.top = "";
+            el.style.width = "";
+            el.style.height = "";
+            el.classList.add("split-left");
+            this.splitOccupancy.left = appId;
+            state.currentLayout = "split-left";
           } else if (!this.splitOccupancy.right) {
-            el.style.left = ""
-            el.style.top = ""
-            el.style.width = ""
-            el.style.height = ""
-            el.classList.add("split-right")
-            this.splitOccupancy.right = appId
-            state.currentLayout = "split-right"
+            el.style.left = "";
+            el.style.top = "";
+            el.style.width = "";
+            el.style.height = "";
+            el.classList.add("split-right");
+            this.splitOccupancy.right = appId;
+            state.currentLayout = "split-right";
           } else {
-            this.setWindowLayout(appId, "float")
-            return
+            this.setWindowLayout(appId, "float");
+            return;
           }
-          break
+          break;
         case "partial":
           if (!this.splitOccupancy.left) {
-            el.style.left = ""
-            el.style.top = ""
-            el.style.width = ""
-            el.style.height = ""
-            el.classList.add("partial-left")
-            this.splitOccupancy.left = appId
-            state.currentLayout = "partial-left"
+            el.style.left = "";
+            el.style.top = "";
+            el.style.width = "";
+            el.style.height = "";
+            el.classList.add("partial-left");
+            this.splitOccupancy.left = appId;
+            state.currentLayout = "partial-left";
           } else if (!this.splitOccupancy.right) {
-            el.style.left = ""
-            el.style.top = ""
-            el.style.width = ""
-            el.style.height = ""
-            el.classList.add("partial-right")
-            this.splitOccupancy.right = appId
-            state.currentLayout = "partial-right"
+            el.style.left = "";
+            el.style.top = "";
+            el.style.width = "";
+            el.style.height = "";
+            el.classList.add("partial-right");
+            this.splitOccupancy.right = appId;
+            state.currentLayout = "partial-right";
           } else {
-            this.setWindowLayout(appId, "float")
-            return
+            this.setWindowLayout(appId, "float");
+            return;
           }
-          break
+          break;
         case "float":
-          el.style.width = `${Math.min(state.lastWidth, viewportWidth * 0.7)}px`
-          el.style.height = `${Math.min(state.lastHeight, viewportHeight * 0.7)}px`
-          el.style.left = `${state.lastX}px`
-          el.style.top = `${state.lastY}px`
-          state.currentLayout = "float"
-          break
+          el.style.width = `${Math.min(state.lastWidth, viewportWidth * 0.7)}px`;
+          el.style.height = `${Math.min(state.lastHeight, viewportHeight * 0.7)}px`;
+          el.style.left = `${state.lastX}px`;
+          el.style.top = `${state.lastY}px`;
+          state.currentLayout = "float";
+          break;
         case "restore":
         default:
-          el.style.width = `${state.lastWidth}px`
-          el.style.height = `${state.lastHeight}px`
-          el.style.left = `${state.lastX}px`
-          el.style.top = `${state.lastY}px`
-          state.currentLayout = "float"
-          break
+          el.style.width = `${state.lastWidth}px`;
+          el.style.height = `${state.lastHeight}px`;
+          el.style.left = `${state.lastX}px`;
+          el.style.top = `${state.lastY}px`;
+          state.currentLayout = "float";
+          break;
       }
-      this.bringToFront(appId)
+      this.bringToFront(appId);
     },
 
     bringToFront(appId) {
-      const windowData = this.openWindows.get(appId)
+      const windowData = this.openWindows.get(appId);
       if (windowData) {
-        let maxZ = 0
+        let maxZ = 0;
         this.openWindows.forEach((data) => {
           if (data.element.style.zIndex > maxZ) {
-            maxZ = Number.parseInt(data.element.style.zIndex)
+            maxZ = Number.parseInt(data.element.style.zIndex);
           }
-        })
+        });
         if (Number.parseInt(windowData.element.style.zIndex) !== maxZ) {
-          windowData.element.style.zIndex = maxZ + 1
+          windowData.element.style.zIndex = maxZ + 1;
         }
       }
     },
 
     updateTaskbarIcon(appId, isActive) {
-      const taskbarIcon = document.querySelector(`.taskbar-app-icon[data-app-id="${appId}"]`)
+      const taskbarIcon = document.querySelector(`.taskbar-app-icon[data-app-id="${appId}"]`);
       if (taskbarIcon) {
         if (isActive) {
-          taskbarIcon.classList.add("active")
+          taskbarIcon.classList.add("active");
         } else {
-          taskbarIcon.classList.remove("active")
+          taskbarIcon.classList.remove("active");
         }
       }
     },
 
     updateTaskbarVisibility() {
-      const openWindowCount = Array.from(this.openWindows.values()).filter((w) => !w.state.minimized).length
-      const isAppsMenuOpen = appsMenu.classList.contains("show")
+      const openWindowCount = Array.from(this.openWindows.values()).filter((w) => !w.state.minimized).length;
+      const isAppsMenuOpen = appsMenu.classList.contains("show");
 
       if (openWindowCount === 0 || isAppsMenuOpen) {
-        taskbar.classList.remove("hidden")
+        taskbar.classList.remove("hidden");
       } else {
-        taskbar.classList.add("hidden")
+        taskbar.classList.add("hidden");
       }
     },
 
     setupWindowInteractions(windowEl, appId) {
-      const header = windowEl.querySelector(".window-header")
-      const minimizeBtn = windowEl.querySelector(".minimize-button")
-      const maximizeBtn = windowEl.querySelector(".maximize-button")
-      const closeBtn = windowEl.querySelector(".close-button")
-      const resizeHandles = windowEl.querySelectorAll(".resize-handle")
+      const header = windowEl.querySelector(".window-header");
+      const minimizeBtn = windowEl.querySelector(".minimize-button");
+      const maximizeBtn = windowEl.querySelector(".maximize-button");
+      const closeBtn = windowEl.querySelector(".close-button");
+      const resizeHandles = windowEl.querySelectorAll(".resize-handle");
 
-      windowEl.addEventListener("mousedown", () => this.bringToFront(appId))
+      windowEl.addEventListener("mousedown", () => this.bringToFront(appId));
 
-      let isDragging = false
-      let offsetX, offsetY
+      let isDragging = false;
+      let offsetX, offsetY;
 
       header.addEventListener("mousedown", (e) => {
         if (e.button === 0 && !e.target.closest(".window-control-button")) {
-          isDragging = true
-          header.classList.add("dragging")
-          dragOverlay.style.display = "block"
-          offsetX = e.clientX - windowEl.offsetLeft
-          offsetY = e.clientY - windowEl.offsetTop
-          windowEl.style.transition = "none"
-          this.setWindowLayout(appId, "restore")
+          isDragging = true;
+          header.classList.add("dragging");
+          dragOverlay.style.display = "block";
+          offsetX = e.clientX - windowEl.offsetLeft;
+          offsetY = e.clientY - windowEl.offsetTop;
+          windowEl.style.transition = "none";
+          this.setWindowLayout(appId, "restore");
         }
-      })
+      });
 
       document.addEventListener("mousemove", (e) => {
-        if (!isDragging) return
+        if (!isDragging) return;
 
-        const viewportWidth = window.innerWidth
-        const viewportHeight = window.innerHeight
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
 
-        let newX = e.clientX - offsetX
-        let newY = e.clientY - offsetY
+        let newX = e.clientX - offsetX;
+        let newY = e.clientY - offsetY;
 
-        newX = Math.max(0, Math.min(newX, viewportWidth - windowEl.offsetWidth))
-        newY = Math.max(0, Math.min(newY, viewportHeight - windowEl.offsetHeight))
+        newX = Math.max(0, Math.min(newX, viewportWidth - windowEl.offsetWidth));
+        newY = Math.max(0, Math.min(newY, viewportHeight - windowEl.offsetHeight));
 
-        windowEl.style.left = `${newX}px`
-        windowEl.style.top = `${newY}px`
-      })
+        windowEl.style.left = `${newX}px`;
+        windowEl.style.top = `${newY}px`;
+      });
 
       document.addEventListener("mouseup", () => {
         if (isDragging) {
-          isDragging = false
-          header.classList.remove("dragging")
-          dragOverlay.style.display = "none"
-          windowEl.style.transition = ""
-          const windowData = this.openWindows.get(appId)
+          isDragging = false;
+          header.classList.remove("dragging");
+          dragOverlay.style.display = "none";
+          windowEl.style.transition = "";
+          const windowData = this.openWindows.get(appId);
           if (windowData) {
-            windowData.state.x = windowEl.offsetLeft
-            windowData.state.y = windowEl.offsetTop
-            windowData.state.lastX = windowEl.offsetLeft
-            windowData.state.lastY = windowEl.offsetTop
+            windowData.state.x = windowEl.offsetLeft;
+            windowData.state.y = windowEl.offsetTop;
+            windowData.state.lastX = windowEl.offsetLeft;
+            windowData.state.lastY = windowEl.offsetTop;
           }
         }
-      })
+      });
 
-      let isResizing = false
-      let startX, startY, startWidth, startHeight, startLeft, startTop, resizeDirection
+      let isResizing = false;
+      let startX, startY, startWidth, startHeight, startLeft, startTop, resizeDirection;
 
       resizeHandles.forEach((handle) => {
         handle.addEventListener("mousedown", (e) => {
-          e.stopPropagation()
-          isResizing = true
-          startX = e.clientX
-          startY = e.clientY
-          startWidth = windowEl.offsetWidth
-          startHeight = windowEl.offsetHeight
-          startLeft = windowEl.offsetLeft
-          startTop = windowEl.offsetTop
-          resizeDirection = handle.classList.item(1)
-          windowEl.style.transition = "none"
-          this.setWindowLayout(appId, "restore")
-        })
-      })
+          e.stopPropagation();
+          isResizing = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          startWidth = windowEl.offsetWidth;
+          startHeight = windowEl.offsetHeight;
+          startLeft = windowEl.offsetLeft;
+          startTop = windowEl.offsetTop;
+          resizeDirection = handle.classList.item(1);
+          windowEl.style.transition = "none";
+          this.setWindowLayout(appId, "restore");
+        });
+      });
 
       document.addEventListener("mousemove", (e) => {
-        if (!isResizing) return
+        if (!isResizing) return;
 
-        const dx = e.clientX - startX
-        const dy = e.clientY - startY
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
 
-        let newWidth = startWidth
-        let newHeight = startHeight
-        let newLeft = startLeft
-        let newTop = startTop
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+        let newLeft = startLeft;
+        let newTop = startTop;
 
         switch (resizeDirection) {
           case "top-left":
-            newWidth = startWidth - dx
-            newHeight = startHeight - dy
-            newLeft = startLeft + dx
-            newTop = startTop + dy
-            break
+            newWidth = startWidth - dx;
+            newHeight = startHeight - dy;
+            newLeft = startLeft + dx;
+            newTop = startTop + dy;
+            break;
           case "top-right":
-            newWidth = startWidth + dx
-            newHeight = startHeight - dy
-            newTop = startTop + dy
-            break
+            newWidth = startWidth + dx;
+            newHeight = startHeight - dy;
+            newTop = startTop + dy;
+            break;
           case "bottom-left":
-            newWidth = startWidth - dx
-            newHeight = startHeight + dy
-            newLeft = startLeft + dx
-            break
+            newWidth = startWidth - dx;
+            newHeight = startHeight + dy;
+            newLeft = startLeft + dx;
+            break;
           case "bottom-right":
-            newWidth = startWidth + dx
-            newHeight = startHeight + dy
-            break
+            newWidth = startWidth + dx;
+            newHeight = startHeight + dy;
+            break;
           case "top":
-            newHeight = startHeight - dy
-            newTop = startTop + dy
-            break
+            newHeight = startHeight - dy;
+            newTop = startTop + dy;
+            break;
           case "bottom":
-            newHeight = startHeight + dy
-            break
+            newHeight = startHeight + dy;
+            break;
           case "left":
-            newWidth = startWidth - dx
-            newLeft = startLeft + dx
-            break
+            newWidth = startWidth - dx;
+            newLeft = startLeft + dx;
+            break;
           case "right":
-            newWidth = startWidth + dx
-            break
+            newWidth = startWidth + dx;
+            break;
         }
 
-        const viewportWidth = window.innerWidth
-        const viewportHeight = window.innerHeight
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
 
         if (newWidth < this.minWindowWidth) {
-          newWidth = this.minWindowWidth
+          newWidth = this.minWindowWidth;
           if (resizeDirection.includes("left")) {
-            newLeft = startLeft + startWidth - newWidth
+            newLeft = startLeft + startWidth - newWidth;
           }
         }
         if (newLeft < 0) {
-          newWidth += newLeft
-          newLeft = 0
+          newWidth += newLeft;
+          newLeft = 0;
         }
         if (newLeft + newWidth > viewportWidth) {
-          newWidth = viewportWidth - newLeft
+          newWidth = viewportWidth - newLeft;
         }
 
         if (newHeight < this.minWindowHeight) {
-          newHeight = this.minWindowHeight
+          newHeight = this.minWindowHeight;
           if (resizeDirection.includes("top")) {
-            newTop = startTop + startHeight - newHeight
+            newTop = startTop + startHeight - newHeight;
           }
         }
         if (newTop < 0) {
-          newHeight += newTop
-          newTop = 0
+          newHeight += newTop;
+          newTop = 0;
         }
         if (newTop + newHeight > viewportHeight) {
-          newHeight = viewportHeight - newTop
+          newHeight = viewportHeight - newTop;
         }
 
-        windowEl.style.width = `${newWidth}px`
-        windowEl.style.height = `${newHeight}px`
-        windowEl.style.left = `${newLeft}px`
-        windowEl.style.top = `${newTop}px`
-      })
+        windowEl.style.width = `${newWidth}px`;
+        windowEl.style.height = `${newHeight}px`;
+        windowEl.style.left = `${newLeft}px`;
+        windowEl.style.top = `${newTop}px`;
+      });
 
       document.addEventListener("mouseup", () => {
         if (isResizing) {
-          isResizing = false
-          windowEl.style.transition = ""
-          const windowData = this.openWindows.get(appId)
+          isResizing = false;
+          windowEl.style.transition = "";
+          const windowData = this.openWindows.get(appId);
           if (windowData) {
-            windowData.state.width = windowEl.offsetWidth
-            windowData.state.height = windowEl.offsetHeight
-            windowData.state.x = windowEl.offsetLeft
-            windowData.state.y = windowEl.offsetTop
-            windowData.state.lastWidth = windowEl.offsetWidth
-            windowData.state.lastHeight = windowEl.offsetHeight
-            windowData.state.lastX = windowEl.offsetLeft
-            windowData.state.lastY = windowEl.offsetTop
+            windowData.state.width = windowEl.offsetWidth;
+            windowData.state.height = windowEl.offsetHeight;
+            windowData.state.x = windowEl.offsetLeft;
+            windowData.state.y = windowEl.offsetTop;
+            windowData.state.lastWidth = windowEl.offsetWidth;
+            windowData.state.lastHeight = windowEl.offsetHeight;
+            windowData.state.lastX = windowEl.offsetLeft;
+            windowData.state.lastY = windowEl.offsetTop;
           }
         }
-      })
+      });
 
-      let maximizeHoverTimeout
+      let maximizeHoverTimeout;
       maximizeBtn.addEventListener("mouseenter", () => {
         maximizeHoverTimeout = setTimeout(() => {
-          const rect = maximizeBtn.getBoundingClientRect()
-          globalLayoutOptionsMenu.style.left = `${rect.left + rect.width / 2 - globalLayoutOptionsMenu.offsetWidth / 2}px`
-          globalLayoutOptionsMenu.style.top = `${rect.top - globalLayoutOptionsMenu.offsetHeight - 8}px`
-          globalLayoutOptionsMenu.classList.add("show")
-          this.currentActiveWindowId = appId
-        }, 1000)
-      })
+          const rect = maximizeBtn.getBoundingClientRect();
+          globalLayoutOptionsMenu.style.left = `${rect.left + rect.width / 2 - globalLayoutOptionsMenu.offsetWidth / 2}px`;
+          globalLayoutOptionsMenu.style.top = `${rect.top - globalLayoutOptionsMenu.offsetHeight - 8}px`;
+          globalLayoutOptionsMenu.classList.add("show");
+          this.currentActiveWindowId = appId;
+        }, 1000);
+      });
 
       maximizeBtn.addEventListener("mouseleave", () => {
-        clearTimeout(maximizeHoverTimeout)
+        clearTimeout(maximizeHoverTimeout);
         if (!globalLayoutOptionsMenu.matches(":hover")) {
-          globalLayoutOptionsMenu.classList.remove("show")
-          this.currentActiveWindowId = null
+          globalLayoutOptionsMenu.classList.remove("show");
+          this.currentActiveWindowId = null;
         }
-      })
+      });
 
       header.addEventListener("dblclick", () => {
-        const windowData = this.openWindows.get(appId)
+        const windowData = this.openWindows.get(appId);
         if (windowData) {
-          this.setWindowLayout(appId, windowData.state.maximized ? "restore" : "full")
+          this.setWindowLayout(appId, windowData.state.maximized ? "restore" : "full");
         }
-      })
+      });
+
+      minimizeBtn.addEventListener("click", () => this.minimizeWindow(appId));
+      maximizeBtn.addEventListener("click", () => {
+          const windowData = this.openWindows.get(appId);
+          this.setWindowLayout(appId, windowData.state.maximized ? "restore" : "full");
+      });
+      closeBtn.addEventListener("click", () => this.closeWindow(appId));
     },
-  }
+  };
 
   const populateTaskbarApps = () => {
-    const pinnedApps = apps.filter((app) => app.pinned)
+    const pinnedApps = apps.filter((app) => app.pinned);
     pinnedApps.forEach((app) => {
-      const appIconWrapper = document.createElement("div")
-      appIconWrapper.classList.add("app-icon-wrapper", "taskbar-app-icon")
-      appIconWrapper.dataset.appId = app.id
+      const appIconWrapper = document.createElement("div");
+      appIconWrapper.classList.add("app-icon-wrapper", "taskbar-app-icon");
+      appIconWrapper.dataset.appId = app.id;
 
-      const imgEl = document.createElement("img")
-      imgEl.src = app.icon
-      imgEl.alt = app.name
-      imgEl.classList.add("app-icon-img")
-      appIconWrapper.appendChild(imgEl)
+      const imgEl = document.createElement("img");
+      imgEl.src = app.icon;
+      imgEl.alt = app.name;
+      imgEl.classList.add("app-icon-img");
+      appIconWrapper.appendChild(imgEl);
 
-      const indicator = document.createElement("div")
-      indicator.classList.add("minimized-indicator")
-      appIconWrapper.appendChild(indicator)
+      const indicator = document.createElement("div");
+      indicator.classList.add("minimized-indicator");
+      appIconWrapper.appendChild(indicator);
 
-      appIconWrapper.addEventListener("click", () => windowManager.openApp(app.id))
-      taskbarAppsContainer.appendChild(appIconWrapper)
-    })
-  }
+      appIconWrapper.addEventListener("click", () => windowManager.openApp(app.id));
+      taskbarAppsContainer.appendChild(appIconWrapper);
+    });
+  };
 
   const populateAppsGrid = (filter = "") => {
-    appGrid.innerHTML = ""
-    const filteredApps = apps.filter((app) => app.name.toLowerCase().includes(filter.toLowerCase()))
+    appGrid.innerHTML = "";
+    const filteredApps = apps.filter((app) => app.name.toLowerCase().includes(filter.toLowerCase()));
 
     filteredApps.forEach((app) => {
-      const appItem = document.createElement("div")
-      appItem.classList.add("app-item")
-      appItem.dataset.appName = app.name
+      const appItem = document.createElement("div");
+      appItem.classList.add("app-item");
+      appItem.dataset.appName = app.name;
 
-      const iconWrapper = document.createElement("div")
-      iconWrapper.classList.add("app-item-icon-wrapper")
+      const iconWrapper = document.createElement("div");
+      iconWrapper.classList.add("app-item-icon-wrapper");
 
-      const imgEl = document.createElement("img")
-      imgEl.src = app.icon
-      imgEl.alt = app.name
-      imgEl.classList.add("app-item-img")
-      iconWrapper.appendChild(imgEl)
+      const imgEl = document.createElement("img");
+      imgEl.src = app.icon;
+      imgEl.alt = app.name;
+      imgEl.classList.add("app-item-img");
+      iconWrapper.appendChild(imgEl);
 
-      const label = document.createElement("div")
-      label.classList.add("app-item-label")
-      label.textContent = app.name
+      const label = document.createElement("div");
+      label.classList.add("app-item-label");
+      label.textContent = app.name;
 
-      appItem.appendChild(iconWrapper)
-      appItem.appendChild(label)
+      appItem.appendChild(iconWrapper);
+      appItem.appendChild(label);
 
-      appItem.addEventListener("click", () => windowManager.openApp(app.id))
-      appGrid.appendChild(appItem)
-    })
-  }
+      appItem.addEventListener("click", () => windowManager.openApp(app.id));
+      appGrid.appendChild(appItem);
+    });
+  };
 
   const updateDateTime = () => {
-    const now = new Date()
-    currentTimeElement.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true })
-    currentDateElement.textContent = now.toLocaleDateString([], { month: "short", day: "numeric" })
-  }
-  updateDateTime()
-  setInterval(updateDateTime, 1000)
+    const now = new Date();
+    currentTimeElement.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+    currentDateElement.textContent = now.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
+  updateDateTime();
+  setInterval(updateDateTime, 1000);
 
   const updateBatteryStatus = () => {
     if ("getBattery" in navigator) {
       navigator
         .getBattery()
         .then((battery) => {
-          const level = Math.round(battery.level * 100)
-          const isCharging = battery.charging
+          const level = Math.round(battery.level * 100);
+          const isCharging = battery.charging;
 
-          batteryLevelElement.textContent = `${level}%`
+          batteryLevelElement.textContent = `${level}%`;
 
-          let iconName = "battery"
+          let iconName = "battery";
           if (isCharging) {
-            iconName = "battery-charging"
+            iconName = "battery-charging";
           } else if (level > 75) {
-            iconName = "battery-full"
+            iconName = "battery-full";
           } else if (level > 50) {
-            iconName = "battery-medium"
+            iconName = "battery-medium";
           } else if (level > 25) {
-            iconName = "battery-low"
+            iconName = "battery-low";
           } else {
-            iconName = "battery-empty"
+            iconName = "battery-empty";
           }
 
-          batteryIconElement.setAttribute("data-lucide", iconName)
-          window.lucide.createIcons({ icons: { [iconName]: window.lucide.icons[iconName] }, attrs: { class: "icon" } })
+          batteryIconElement.setAttribute("data-lucide", iconName);
+          window.lucide.createIcons({ icons: { [iconName]: window.lucide.icons[iconName] }, attrs: { class: "icon" } });
         })
         .catch((error) => {
-          console.error("Error accessing battery status:", error)
-          batteryLevelElement.textContent = ""
-          batteryIconElement.style.display = "none"
-        })
+          console.error("Error accessing battery status:", error);
+          batteryLevelElement.textContent = "";
+          batteryIconElement.style.display = "none";
+        });
     } else {
-      console.warn("Battery Status API is not supported in this browser.")
-      batteryLevelElement.textContent = ""
-      batteryIconElement.style.display = "none"
+      console.warn("Battery Status API is not supported in this browser.");
+      batteryLevelElement.textContent = "";
+      batteryIconElement.style.display = "none";
     }
-  }
-  updateBatteryStatus()
+  };
+  updateBatteryStatus();
   if ("getBattery" in navigator) {
     navigator.getBattery().then((battery) => {
-      battery.addEventListener("levelchange", updateBatteryStatus)
-      battery.addEventListener("chargingchange", updateBatteryStatus)
-    })
+      battery.addEventListener("levelchange", updateBatteryStatus);
+      battery.addEventListener("chargingchange", updateBatteryStatus);
+    });
   }
 
   document.body.addEventListener("contextmenu", (event) => {
-    event.preventDefault()
-    contextMenu.style.left = `${event.clientX}px`
-    contextMenu.style.top = `${event.clientY}px`
-    contextMenu.style.display = "block"
-  })
+    event.preventDefault();
+    contextMenu.style.left = `${event.clientX}px`;
+    contextMenu.style.top = `${event.clientY}px`;
+    contextMenu.style.display = "block";
+  });
 
   document.addEventListener("click", () => {
-    contextMenu.style.display = "none"
-    globalLayoutOptionsMenu.classList.remove("show")
-    windowManager.currentActiveWindowId = null
-  })
+    contextMenu.style.display = "none";
+    globalLayoutOptionsMenu.classList.remove("show");
+    windowManager.currentActiveWindowId = null;
+  });
 
   contextMenu.addEventListener("click", (event) => {
-    event.stopPropagation()
-    const action = event.target.dataset.action
+    event.stopPropagation();
+    const action = event.target.dataset.action;
     if (action === "display-settings") {
-      alert("Opening Display Settings...")
+      alert("Opening Display Settings...");
     } else if (action === "personalize") {
-      alert("Opening Personalization options...")
+      alert("Opening Personalization options...");
     } else if (action === "open-terminal") {
-      windowManager.openApp("terminal")
+      windowManager.openApp("terminal");
     }
-    contextMenu.style.display = "none"
-  })
+    contextMenu.style.display = "none";
+  });
 
   launcherButton.addEventListener("click", (event) => {
-    event.stopPropagation()
+    event.stopPropagation();
     if (appsMenu.classList.contains("show")) {
-      appsMenu.classList.remove("show")
+      appsMenu.classList.remove("show");
       appsMenu.addEventListener(
         "transitionend",
         function handler() {
-          appsMenu.style.display = "none"
-          appsMenu.removeEventListener("transitionend", handler)
-          windowManager.updateTaskbarVisibility()
+          appsMenu.style.display = "none";
+          appsMenu.removeEventListener("transitionend", handler);
+          windowManager.updateTaskbarVisibility();
         },
         { once: true },
-      )
+      );
     } else {
-      appsMenu.style.display = "flex"
+      appsMenu.style.display = "flex";
       requestAnimationFrame(() => {
-        appsMenu.classList.add("show")
-        windowManager.updateTaskbarVisibility()
-      })
-      appSearchInput.value = ""
-      populateAppsGrid()
-      appSearchInput.focus()
+        appsMenu.classList.add("show");
+        windowManager.updateTaskbarVisibility();
+      });
+      appSearchInput.value = "";
+      populateAppsGrid();
+      appSearchInput.focus();
     }
-  })
+  });
 
   document.addEventListener("click", (event) => {
     if (
@@ -4789,48 +4892,48 @@ if (blockedRegex.test(urlLower)) {
       !appsMenu.contains(event.target) &&
       !launcherButton.contains(event.target)
     ) {
-      appsMenu.classList.remove("show")
+      appsMenu.classList.remove("show");
       appsMenu.addEventListener(
         "transitionend",
         function handler() {
-          appsMenu.style.display = "none"
-          appsMenu.removeEventListener("transitionend", handler)
-          windowManager.updateTaskbarVisibility()
+          appsMenu.style.display = "none";
+          appsMenu.removeEventListener("transitionend", handler);
+          windowManager.updateTaskbarVisibility();
         },
         { once: true },
-      )
+      );
     }
-  })
+  });
 
   appsMenu.addEventListener("click", (event) => {
-    event.stopPropagation()
-  })
+    event.stopPropagation();
+  });
 
   appSearchInput.addEventListener("input", (event) => {
-    populateAppsGrid(event.target.value)
-  })
+    populateAppsGrid(event.target.value);
+  });
 
   globalLayoutOptionsMenu.addEventListener("mouseleave", () => {
-    globalLayoutOptionsMenu.classList.remove("show")
-    windowManager.currentActiveWindowId = null
-  })
+    globalLayoutOptionsMenu.classList.remove("show");
+    windowManager.currentActiveWindowId = null;
+  });
 
   globalLayoutOptions.forEach((option) => {
     option.addEventListener("click", (e) => {
-      e.stopPropagation()
-      const layout = option.dataset.layout
+      e.stopPropagation();
+      const layout = option.dataset.layout;
       if (windowManager.currentActiveWindowId) {
-        windowManager.setWindowLayout(windowManager.currentActiveWindowId, layout)
+        windowManager.setWindowLayout(windowManager.currentActiveWindowId, layout);
       }
-      globalLayoutOptionsMenu.classList.remove("show")
-      windowManager.currentActiveWindowId = null
-    })
-  })
+      globalLayoutOptionsMenu.classList.remove("show");
+      windowManager.currentActiveWindowId = null;
+    });
+  });
 
-  populateTaskbarApps()
-  populateAppsGrid()
-  windowManager.updateTaskbarVisibility()
-})
+  populateTaskbarApps();
+  populateAppsGrid();
+  windowManager.updateTaskbarVisibility();
+});
 
 document.addEventListener("contextmenu", function (e) {
   e.preventDefault();
@@ -4870,13 +4973,13 @@ document.addEventListener("click", () => {
 });
 
 window.addEventListener("load", () => {
-  setTimeout(() => {
-    const loader = document.getElementById("loader");
+  const loader = document.getElementById("loader");
+  if (loader) {
     loader.classList.add("hidden");
 
     const content = document.getElementById("main-content");
-    content.style.display = "block";
-  }, 3000);
+    if (content) content.style.display = "block";
+  }
 });
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -4950,7 +5053,14 @@ menu.addEventListener('mouseenter', showMenu);
 menu.addEventListener('mouseleave', hideMenu);
         
     </script>
-        <div id="taskbar" class="taskbar">
+    
+    <!-- Toast notification element - positioned above right side of taskbar -->
+    <div class="site-toast" id="siteToast">
+        <img src="/placeholder.svg" alt="" class="site-toast-icon" id="toastIcon">
+        <span class="site-toast-text" id="toastText"></span>
+    </div>
+
+    <div id="taskbar" class="taskbar">
         <div class="taskbar-left">
         </div>
 
@@ -5007,15 +5117,5 @@ menu.addEventListener('mouseleave', hideMenu);
             </div>
         </div>
     </div>
-            <div id="app-grid" class="app-grid">
-            </div>
-        </div>
-    </div>
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('../sw.js')
-    .then(() => console.log('Service Worker Registered'));
-}
-</script>
 </body>
 </html>
