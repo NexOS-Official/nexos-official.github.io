@@ -77,8 +77,6 @@
             opacity: 0.8;
             transition: opacity 0.8s ease-out;
         }
-
-        /* Added toast notification styles positioned above right side of taskbar */
         .site-toast {
             position: fixed;
             bottom: 60px;
@@ -114,13 +112,10 @@
         }
         
         .site-toast.dismissing {
-            /* added dismissing state for click/hover dismiss */
             opacity: 0;
             transform: translateY(100px);
             pointer-events: none;
         }
-        /* END toast notification styles */
-
         .site-toast-icon {
             width: 20px;
             height: 20px;
@@ -133,7 +128,6 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        /* END toast notification styles */
 
         .browser-container {
             height: 100vh;
@@ -1256,7 +1250,6 @@ body {
   object-fit: contain;
 }
 
-/* CHANGE START */
         .taskbar-right {
             display: flex;
             gap: 10px;
@@ -1264,7 +1257,6 @@ body {
             font-size: 12px;
             font-weight: 600;
         }
-/* CHANGE END */
 
 .taskbar-right .icon {
   width: 20px;
@@ -2253,7 +2245,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.updateIntervals = new Map();
                 this.batteryNotificationShown = false;
                 this.battery = null;
-                this.toastTimeout = null; // Added for toast notification
+                this.toastTimeout = null;
                 
                 this.initializeElements();
                 this.bindEvents();
@@ -4071,7 +4063,6 @@ if (blockedRegex.test(urlLower)) {
                 
                 if (!toast || !toastIcon || !toastText) return;
                 
-                // Clear any existing timeout
                 if (this.toastTimeout) {
                     clearTimeout(this.toastTimeout);
                 }
@@ -4082,11 +4073,9 @@ if (blockedRegex.test(urlLower)) {
                     toast.removeEventListener('mouseenter', dismissToast);
                 };
                 
-                // Hide first if already showing
                 toast.classList.remove('show');
                 
                 setTimeout(() => {
-                    // Get favicon
                     const faviconImg = tab.element.querySelector('.tab-favicon img');
                     if (faviconImg && faviconImg.src) {
                         toastIcon.src = faviconImg.src;
@@ -4098,13 +4087,11 @@ if (blockedRegex.test(urlLower)) {
                     const displayText = tab.title || this.extractDomain(url) || 'New page';
                     toastText.textContent = displayText + ' was successfully loaded';
                     
-                    // Show toast
                     toast.classList.add('show');
                     
                     toast.addEventListener('mouseenter', dismissToast);
                     toast.addEventListener('click', dismissToast);
                     
-                    // Auto hide after 3 seconds
                     this.toastTimeout = setTimeout(() => {
                         toast.classList.remove('show');
                     }, 3000);
