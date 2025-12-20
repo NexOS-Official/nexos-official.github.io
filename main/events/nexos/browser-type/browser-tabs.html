@@ -2161,10 +2161,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="menu-label">Open New Window</span>
                 <span class="menu-shortcut">Alt + N</span>
             </button>
+            <button class="browser-menu-item" id="openDevsAddedByLeah">
+                <i data-lucide="contact-round" width="18" height="18"></i>
+                <span class="menu-label">Credits</span>
+                <span class="menu-shortcut">Alt + Shift + C</span>
+            </button>
             <button class="browser-menu-item" id="blankWindowMenuItem">
                 <i data-lucide="file-question" width="18" height="18"></i>
                 <span class="menu-label">Open About:Blank Window</span>
-                <span class="menu-shortcut">Alt + Shift + N</span>
             </button>
             <div class="browser-menu-separator"></div>
             <div class="zoom-section">
@@ -2487,6 +2491,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     this.browserMenu.classList.remove('visible');
                 });
 
+                document.getElementById('openDevsAddedByLeah').addEventListener('click', () => {
+                    const activeTab = this.tabs.get(this.activeTabId);
+                    if (activeTab && activeTab.iframe) {
+                        activeTab.iframe.src = '/credits.html';
+                        this.updateAddressBar();
+                    }
+                    this.browserMenu.classList.remove('visible');
+                });
+
                 document.getElementById('panicMenuItem').addEventListener('click', () => {
                     window.location.href = 'https://google.com';
                 });
@@ -2526,6 +2539,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         const activeTab = this.tabs.get(this.activeTabId);
                         if (activeTab && activeTab.iframe) {
                             activeTab.iframe.src = '/games';
+                            this.updateAddressBar();
+                        }
+                    }
+                    // this one was leah btw
+                    if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+                        e.preventDefault();
+                        const activeTab = this.tabs.get(this.activeTabId);
+                        if (activeTab && activeTab.iframe) {
+                            activeTab.iframe.src = '/credits.html';
                             this.updateAddressBar();
                         }
                     }
@@ -5041,7 +5063,6 @@ menu.addEventListener('mouseleave', hideMenu);
         
     </script>
     
-    <!-- Toast notification element - positioned above right side of taskbar -->
     <div class="site-toast" id="siteToast">
         <img src="/placeholder.svg" alt="" class="site-toast-icon" id="toastIcon">
         <span class="site-toast-text" id="toastText"></span>
