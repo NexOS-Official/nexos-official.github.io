@@ -789,13 +789,13 @@ function initDB() {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
         
         request.onerror = () => {
-            console.error('[v0] IndexedDB error:', request.error);
+            console.error('IndexedDB error:', request.error);
             reject(request.error);
         };
         
         request.onsuccess = () => {
             db = request.result;
-            console.log('[v0] IndexedDB initialized successfully');
+            console.log('IndexedDB initialized successfully');
             resolve(db);
         };
         
@@ -804,7 +804,7 @@ function initDB() {
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
                 objectStore.createIndex('timestamp', 'timestamp', { unique: false });
-                console.log('[v0] Object store created');
+                console.log('Object store created');
             }
         };
     });
@@ -817,12 +817,12 @@ function saveWallpaperToDB(wallpaper) {
         const request = objectStore.add(wallpaper);
         
         request.onsuccess = () => {
-            console.log('[v0] Wallpaper saved to IndexedDB:', wallpaper.id);
+            console.log('Wallpaper saved to IndexedDB:', wallpaper.id);
             resolve(wallpaper.id);
         };
         
         request.onerror = () => {
-            console.error('[v0] Error saving wallpaper:', request.error);
+            console.error('Error saving wallpaper:', request.error);
             reject(request.error);
         };
     });
@@ -835,12 +835,12 @@ function getAllWallpapers() {
         const request = objectStore.getAll();
         
         request.onsuccess = () => {
-            console.log('[v0] Retrieved wallpapers:', request.result.length);
+            console.log('Retrieved wallpapers:', request.result.length);
             resolve(request.result);
         };
         
         request.onerror = () => {
-            console.error('[v0] Error getting wallpapers:', request.error);
+            console.error('Error getting wallpapers:', request.error);
             reject(request.error);
         };
     });
@@ -853,12 +853,12 @@ function deleteWallpaperFromDB(id) {
         const request = objectStore.delete(id);
         
         request.onsuccess = () => {
-            console.log('[v0] Wallpaper deleted from IndexedDB:', id);
+            console.log('Wallpaper deleted from IndexedDB:', id);
             resolve();
         };
         
         request.onerror = () => {
-            console.error('[v0] Error deleting wallpaper:', request.error);
+            console.error('Error deleting wallpaper:', request.error);
             reject(request.error);
         };
     });
@@ -1041,9 +1041,9 @@ async function handleFileSelect(event) {
                     
                     await saveWallpaperToDB(wallpaper);
                     successCount++;
-                    console.log('[v0] Uploaded:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+                    console.log('Uploaded:', file.name, 'Size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
                 } catch (error) {
-                    console.error('[v0] Error uploading file:', file.name, error);
+                    console.error('Error uploading file:', file.name, error);
                 }
             }
         }
