@@ -1,58 +1,42 @@
-const MAX_REFRESHES = 10
-const WINDOW_MS = 5000
-let reloads = JSON.parse(localStorage.getItem("relog") || "[]")
-const now = Date.now()
-reloads = reloads.filter((t) => now - t <= WINDOW_MS)
-reloads.push(now)
-localStorage.setItem("relog", JSON.stringify(reloads))
-if (reloads.length > MAX_REFRESHES) {
-  document.body.style.overflow = "hidden"
-  document.getElementById("oops-you-did-it-again").style.display = "flex"
-  document.getElementById("bigggbrocont").style.display = "none"
-}
-function openPage(url) {
-  document.body.style.transition = "opacity 0.3s ease"
-  document.body.style.opacity = "0"
-  setTimeout(() => {
-    window.location.href = url
-  }, 300)
-}
-const folderCards = document.querySelectorAll(".foldarcad")
+const svgthingssotheiconsfrombootstrapwork = document.querySelectorAll('.sidebahhhhhhhforthegameiconstuffsotheycanfindgenresofgames i');
+const thesearecardstoholdgames = document.querySelectorAll('.foldarcads');
 
-folderCards.forEach((card, i) => {
-  card.style.animationDelay = `${i * 140}ms`
-})
+svgthingssotheiconsfrombootstrapwork.forEach(svgthing => {
+    svgthing.addEventListener('click', () => {
+        svgthingssotheiconsfrombootstrapwork.forEach(sv => sv.classList.remove('active'));
+        svgthing.classList.add('active');
 
-folderCards.forEach((card) => {
-  const img = card.querySelector("img")
-  card.addEventListener("mousemove", (e) => {
-    const rect = card.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const px = (x / rect.width) * 100
-    const py = (y / rect.height) * 100
-    img.style.transformOrigin = `${px}% ${py}%`
-    img.style.transform = "scale(1.2)"
-  })
-  card.addEventListener("mouseleave", () => {
-    img.style.transformOrigin = "center center"
-    img.style.transform = "scale(1)"
-  })
-})
-const bigHeader = document.querySelector(".biggggggggggggggggggtopgame")
-const bigImg = bigHeader.querySelector("img")
+        const filterTag = svgthing.getAttribute('title').toLowerCase().trim();
 
-bigHeader.addEventListener("mousemove", (e) => {
-  const rect = bigHeader.getBoundingClientRect()
-  const x = e.clientX - rect.left
-  const y = e.clientY - rect.top
-  const px = (x / rect.width) * 100
-  const py = (y / rect.height) * 100
-  bigImg.style.transformOrigin = `${px}% ${py}%`
-  bigImg.style.transform = "scale(1.05)"
-})
+        thesearecardstoholdgames.forEach(thesearecard => {
+            const tags = thesearecard.getAttribute('data-tags').toLowerCase();
+            thesearecard.style.display = (tags.includes(filterTag) || filterTag === 'all') ? 'block' : 'none';
+        });
+    });
+});
 
-bigHeader.addEventListener("mouseleave", () => {
-  bigImg.style.transformOrigin = "center center"
-  bigImg.style.transform = "scale(1)"
-})
+thesearecardstoholdgames.forEach(thesearecard => {
+    thesearecard.addEventListener('click', () => {
+        const url = thesearecard.getAttribute('data-url');
+        if (url) {
+            window.location.href = url;
+        }
+    });
+});
+
+thesearecardstoholdgames.forEach(thesearecard => {
+    const img = thesearecard.querySelector('img');
+    thesearecard.addEventListener('mousemove', e => {
+        const rect = thesearecard.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const px = (x / rect.width) * 100;
+        const py = (y / rect.height) * 100;
+        img.style.transformOrigin = `${px}% ${py}%`;
+        img.style.transform = 'scale(1.2)';
+    });
+    thesearecard.addEventListener('mouseleave', () => {
+        img.style.transformOrigin = 'center center';
+        img.style.transform = 'scale(1)';
+    });
+});
