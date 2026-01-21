@@ -1,6 +1,8 @@
-const svgthingssotheiconsfrombootstrapwork = document.querySelectorAll('.sidebahhhhhhhforthegameiconstuffsotheycanfindgenresofgames i');
-const thesearecardstoholdgames = document.querySelectorAll('.foldarcads');
+const svgthingssotheiconsfrombootstrapwork =
+document.querySelectorAll('.sidebahhhhhhhforthegameiconstuffsotheycanfindgenresofgames i');
 
+const thesearecardstoholdgames =
+document.querySelectorAll('.foldarcads');
 svgthingssotheiconsfrombootstrapwork.forEach(svgthing => {
     svgthing.addEventListener('click', () => {
         svgthingssotheiconsfrombootstrapwork.forEach(sv => sv.classList.remove('active'));
@@ -8,35 +10,36 @@ svgthingssotheiconsfrombootstrapwork.forEach(svgthing => {
 
         const filterTag = svgthing.getAttribute('title').toLowerCase().trim();
 
-        thesearecardstoholdgames.forEach(thesearecard => {
-            const tags = thesearecard.getAttribute('data-tags').toLowerCase();
-            thesearecard.style.display = (tags.includes(filterTag) || filterTag === 'all') ? 'block' : 'none';
+        thesearecardstoholdgames.forEach(card => {
+            const tags = card.getAttribute('data-tags').toLowerCase();
+            card.style.display =
+            (tags.includes(filterTag) || filterTag === 'all') ? 'block' : 'none';
         });
     });
 });
-
-thesearecardstoholdgames.forEach(thesearecard => {
-    thesearecard.addEventListener('click', () => {
-        const url = thesearecard.getAttribute('data-url');
-        if (url) {
-            window.location.href = url;
-        }
+thesearecardstoholdgames.forEach(card => {
+    card.addEventListener('click', () => {
+        const url = card.getAttribute('data-url');
+        if (url) window.location.href = url;
     });
 });
-
-thesearecardstoholdgames.forEach(thesearecard => {
-    const img = thesearecard.querySelector('img');
-    thesearecard.addEventListener('mousemove', e => {
-        const rect = thesearecard.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const px = (x / rect.width) * 100;
-        const py = (y / rect.height) * 100;
-        img.style.transformOrigin = `${px}% ${py}%`;
+thesearecardstoholdgames.forEach(card => {
+    const img = card.querySelector('img');
+    card.addEventListener('mousemove', e => {
+        const rect = card.getBoundingClientRect();
+        img.style.transformOrigin =
+        `${(e.clientX - rect.left) / rect.width * 100}% ${(e.clientY - rect.top) / rect.height * 100}%`;
         img.style.transform = 'scale(1.2)';
     });
-    thesearecard.addEventListener('mouseleave', () => {
-        img.style.transformOrigin = 'center center';
+    card.addEventListener('mouseleave', () => {
         img.style.transform = 'scale(1)';
+    });
+});
+const searchInput = document.getElementById('searchforthejstofindwithtitle');
+searchInput.addEventListener('input', () => {
+    const query = searchInput.value.toLowerCase().trim();
+    thesearecardstoholdgames.forEach(card => {
+        const title = card.querySelector('img').getAttribute('title').toLowerCase();
+        card.style.display = title.includes(query) ? 'block' : 'none';
     });
 });
