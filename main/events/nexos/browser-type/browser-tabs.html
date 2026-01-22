@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2523,41 +2522,47 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 
                 document.addEventListener('keydown', (e) => {
-                    if (e.altKey && e.key.toLowerCase() === 't') {
+                    const tag = document.activeElement?.tagName;
+                    if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return;
+                                
+                    const key = e.key.toLowerCase();
+                                
+                    if (e.altKey && key === 't') {
                         e.preventDefault();
                         this.createNewTab();
-                    }
-                    if (e.altKey && e.key.toLowerCase() === 'n' && !e.shiftKey) {
+                    
+                    } else if (e.altKey && key === 'n' && !e.shiftKey) {
                         e.preventDefault();
                         window.open(window.location.href, '_blank');
-                    }
-                    if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'n') {
+                    
+                    } else if (e.altKey && e.shiftKey && key === 'n') {
                         e.preventDefault();
                         window.open('about:blank', '_blank');
-                    }
-                    if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'g') {
+                    
+                    } else if (e.altKey && e.shiftKey && key === 'g') {
                         e.preventDefault();
-                        const activeTab = this.tabs.get(this.activeTabId);
-                        if (activeTab && activeTab.iframe) {
-                            activeTab.iframe.src = '/games';
+                        const tab = this.tabs.get(this.activeTabId);
+                        if (tab?.iframe) {
+                            tab.iframe.src = '/games';
                             this.updateAddressBar();
                         }
-                    }
-                    // this one was leah btw
-                    if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'c') {
+                    
+                    } else if (e.altKey && e.shiftKey && key === 'c') {
                         e.preventDefault();
-                        const activeTab = this.tabs.get(this.activeTabId);
-                        if (activeTab && activeTab.iframe) {
-                            activeTab.iframe.src = '/credits.html';
+                        const tab = this.tabs.get(this.activeTabId);
+                        if (tab?.iframe) {
+                            tab.iframe.src = '/credits.html';
                             this.updateAddressBar();
                         }
-                    }
-                    if (e.altKey && e.key.toLowerCase() === 'w') {
+                    
+                    } else if (e.altKey && key === 'w') {
                         e.preventDefault();
-
-                        if (this.activeTabId) {
-                            this.closeTab(this.activeTabId);
-                        }
+                        if (this.activeTabId) this.closeTab(this.activeTabId);
+                    }
+                    if (e.altKey && e.key.toLowerCase() === 'x') {
+                        e.preventDefault();
+                        const tab = this.tabs.get(this.activeTabId);
+                        if (tab?.iframe) tab.iframe.src = 'about:blank';
                     }
                 });
 
