@@ -1,71 +1,130 @@
-
-<link rel="icon" href="/headset.png">
-
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>NexOSMusic</title>
-	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-	<link rel="stylesheet" href="styles.css">
-	<script src="https://www.youtube.com/iframe_api"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>NexOSMusic</title>
+    <link rel="icon" href="/headset.png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 
 <body>
-	<div id="app">
-		<header>
-			<input type="text" id="search-bar" placeholder="Search for music...">
-			<button id="search-button">
-				<i class="bi bi-search"></i>
-			</button>
-			<button id="toggle-video-button">
-				<i class="bi bi-tv"></i>
-			</button>
-		</header>
+    <div id="app">
+        <!-- Top Navigation Bar -->
+        <header class="top-bar">
+            <div class="logo">
+                <i class="bi bi-soundwave"></i>
+                <span>NexOS</span>
+            </div>
+            <div class="header-actions">
+                <button id="toggle-video-button" class="icon-btn" title="Toggle Video">
+                    <i class="bi bi-tv"></i>
+                </button>
+            </div>
+        </header>
 
-		<div class="tabs">
-			<button class="tab-button active" data-tab="all">Search</button>
-			<button class="tab-button" data-tab="liked">Favorites</button>
-		</div>
+        <!-- Search Section -->
+        <div class="search-section">
+            <div class="search-container">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" id="search-bar" placeholder="What do you want to listen to?">
+                <button id="search-button" class="search-btn">
+                    <i class="bi bi-arrow-right"></i>
+                </button>
+            </div>
+        </div>
 
-		<main>
-			<div id="placeholder">
-				<i class="bi bi-file-earmark-music"></i>
-			</div>
-			<div id="placeholder-text">
-				<p>Search to get started</p>
-			</div>
-			<section id="trending"></section>
-			<section id="search-results" class="hidden"></section>
-			<section id="liked-songs" class="hidden"></section>
-		</main>
-		<footer>
-			<div id="player-controls">
-				<div>
-					<button id="prev" onclick="playPrevious()"><i class="bi bi-skip-start"></i></button>
-					<button id="play" onclick="togglePlayPause()"><i class="bi bi-play-fill"></i></button>
-					<button id="next" onclick="playNext()"><i class="bi bi-skip-end"></i></button>
-					<button id="loop" onclick="toggleLoop()"><i class="bi bi-arrow-repeat"></i></button>
-				</div>
-				<div id="scrub-bar" onclick="seekTo(event)">
-					<div id="scrub-bar-progress"></div>
-				</div>
-				<div id="time-display">
-					<span id="current-time">0:00</span>
-					<span id="duration-time">0:00</span>
-				</div>
-			</div>
-			<button id="toggle-ui-button">
-				<i class="bi bi-eye"></i>
-			</button>
-		</footer>
-		<div id="video-container" class="hidden">
-			<div id="youtube-player"></div>
-		</div>
-	</div>
-	<script>
+        <!-- Tab Navigation -->
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="all">
+                <i class="bi bi-search"></i>
+                <span>Search</span>
+            </button>
+            <button class="tab-button" data-tab="liked">
+                <i class="bi bi-heart-fill"></i>
+                <span>Favorites</span>
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Placeholder State -->
+            <div id="placeholder" class="placeholder-container">
+                <div class="placeholder-icon">
+                    <i class="bi bi-music-note-beamed"></i>
+                </div>
+                <div id="placeholder-text">
+                    <h2>Search for music</h2>
+                    <p>Find your favorite songs, artists, and albums</p>
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <section id="search-results" class="song-list hidden"></section>
+
+            <!-- Liked Songs -->
+            <section id="liked-songs" class="song-list hidden"></section>
+        </main>
+
+        <!-- Now Playing Bar -->
+        <footer class="now-playing-bar">
+            <div class="player-wrapper">
+                <!-- Track Info -->
+                <div class="track-info">
+                    <div class="track-thumbnail">
+                        <i class="bi bi-music-note"></i>
+                    </div>
+                    <div class="track-details">
+                        <span class="track-name">Not Playing</span>
+                        <span class="track-artist">Select a song</span>
+                    </div>
+                </div>
+
+                <!-- Player Controls -->
+                <div id="player-controls">
+                    <div class="controls-row">
+                        <button id="prev" onclick="playPrevious()" class="control-btn">
+                            <i class="bi bi-skip-start-fill"></i>
+                        </button>
+                        <button id="play" onclick="togglePlayPause()" class="control-btn play-btn">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                        <button id="next" onclick="playNext()" class="control-btn">
+                            <i class="bi bi-skip-end-fill"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="progress-container">
+                        <span id="current-time" class="time">0:00</span>
+                        <div id="scrub-bar" onclick="seekTo(event)">
+                            <div id="scrub-bar-progress"></div>
+                        </div>
+                        <span id="duration-time" class="time">0:00</span>
+                    </div>
+                </div>
+
+                <!-- Extra Controls -->
+                <div class="extra-controls">
+                    <button id="loop" onclick="toggleLoop()" class="control-btn small">
+                        <i class="bi bi-repeat"></i>
+                    </button>
+                    <button id="toggle-ui-button" class="control-btn small">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Video Container (Hidden) -->
+        <div id="video-container" class="hidden">
+            <div id="youtube-player"></div>
+        </div>
+    </div>
+
+    <script>
         let API_KEYS = [];
         let currentApiKeyIndex = 0;
         let player;
@@ -77,6 +136,7 @@
         let likedSongs = [];
         let isVideoHidden = false;
         let isUIHidden = false;
+        let currentTrack = { title: 'Not Playing', artist: 'Select a song' };
 
         function loadLikedSongs() {
             const saved = localStorage.getItem('likedSongs');
@@ -95,7 +155,12 @@
             localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
         }
 
-        // Initialize everything
+        function updateTrackInfo(title, artist) {
+            currentTrack = { title, artist };
+            document.querySelector('.track-name').textContent = title || 'Not Playing';
+            document.querySelector('.track-artist').textContent = artist || 'Select a song';
+        }
+
         function init() {
             loadLikedSongs();
             setupEventListeners();
@@ -104,8 +169,6 @@
             addApiKey('AIzaSyBAnLAEwYssI3Oe3uaYfdEOPpzs-TVqHoM');
             addApiKey('AIzaSyBQAZ7-zXoAFYBBDp9Amddor0WAooSjUaM');
             addApiKey('AIzaSyCXizLEzfyVQESntn97HwtYA3yhxbjDeso');
-
-            document.getElementById('search-bar').placeholder = "Search for music...";
         }
 
         function setupEventListeners() {
@@ -120,7 +183,6 @@
             });
 
             document.getElementById('toggle-video-button').addEventListener('click', toggleVideoVisibility);
-
             document.getElementById('toggle-ui-button').addEventListener('click', toggleUIVisibility);
 
             document.querySelectorAll('.tab-button').forEach(tab => {
@@ -132,14 +194,11 @@
 
                     document.getElementById('search-results').classList.add('hidden');
                     document.getElementById('liked-songs').classList.add('hidden');
-
                     document.getElementById('placeholder').classList.add('hidden');
-                    document.getElementById('placeholder-text').classList.add('hidden');
 
                     if (tabName === 'all') {
                         if (!currentSearchResults || currentSearchResults.length === 0) {
                             document.getElementById('placeholder').classList.remove('hidden');
-                            document.getElementById('placeholder-text').classList.remove('hidden');
                         } else {
                             document.getElementById('search-results').classList.remove('hidden');
                         }
@@ -163,10 +222,6 @@
             return API_KEYS[currentApiKeyIndex];
         }
 
-        function isMusicVideo(video) {
-            return true;
-        }
-
         function searchMusic(query) {
             if (!query || query.trim() === '') return;
 
@@ -174,12 +229,13 @@
             if (!apiKey) return;
 
             const searchResults = document.getElementById('search-results');
-            searchResults.innerHTML = '<div class="loading">Searching for music...</div>';
+            searchResults.innerHTML = '<div class="loading"><div class="spinner"></div><span>Searching...</span></div>';
             searchResults.classList.remove('hidden');
 
             document.querySelectorAll('.tab-button').forEach(tab => tab.classList.remove('active'));
             document.querySelector('[data-tab="all"]').classList.add('active');
             document.getElementById('liked-songs').classList.add('hidden');
+            document.getElementById('placeholder').classList.add('hidden');
 
             currentVideoIndex = -1;
 
@@ -188,51 +244,43 @@
                 query.toLowerCase().includes(artist)
             );
 
-            let searchQuery;
-
-            if (isSpecialArtistSearch) {
-                searchQuery = query;
-            } else {
-                searchQuery = `${query} music`;
-            }
+            let searchQuery = isSpecialArtistSearch ? query : `${query} music`;
 
             const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${searchQuery}&key=${apiKey}&videoCategoryId=10&maxResults=50`;
 
             fetch(url)
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Network error: ${response.status}`);
-                    }
+                    if (!response.ok) throw new Error(`Network error: ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
                     const results = document.getElementById('search-results');
-                    const placeholder = document.getElementById('placeholder');
-                    const placeholderText = document.getElementById('placeholder-text');
-
-                    placeholder.classList.add('hidden');
-                    placeholderText.classList.add('hidden');
-
                     currentSearchResults = data.items;
                     results.innerHTML = '';
 
                     if (currentSearchResults.length === 0) {
-                        results.innerHTML = '<div class="no-results">No music found. Try another search.</div>';
+                        results.innerHTML = '<div class="empty-state"><i class="bi bi-music-note-list"></i><p>No music found. Try another search.</p></div>';
                         return;
                     }
 
                     currentSearchResults.forEach((video, index) => {
                         const div = document.createElement('div');
-                        div.classList.add('search-result-item');
+                        div.classList.add('song-item');
 
                         const isLiked = likedSongs.some(song => song.id === video.id.videoId);
                         const likeIcon = isLiked ? 'bi-heart-fill' : 'bi-heart';
                         const likeClass = isLiked ? 'liked' : '';
 
                         div.innerHTML = `
+                            <div class="song-thumbnail">
+                                <img src="https://img.youtube.com/vi/${video.id.videoId}/mqdefault.jpg" alt="${video.snippet.title}">
+                                <div class="play-overlay">
+                                    <i class="bi bi-play-fill"></i>
+                                </div>
+                            </div>
                             <div class="song-info">
-                                <div class="song-title">${video.snippet.title}</div>
-                                <div class="song-artist">${video.snippet.channelTitle}</div>
+                                <span class="song-title">${video.snippet.title}</span>
+                                <span class="song-artist">${video.snippet.channelTitle}</span>
                             </div>
                             <button class="like-button ${likeClass}" data-id="${video.id.videoId}" data-index="${index}">
                                 <i class="bi ${likeIcon}"></i>
@@ -242,6 +290,7 @@
                         div.addEventListener('click', function(e) {
                             if (e.target.closest('.like-button')) return;
                             playVideo(video.id.videoId, index);
+                            updateTrackInfo(video.snippet.title, video.snippet.channelTitle);
                         });
 
                         div.querySelector('.like-button').addEventListener('click', function(e) {
@@ -255,7 +304,7 @@
                 .catch((error) => {
                     console.error('Search error:', error);
                     document.getElementById('search-results').innerHTML =
-                        '<div class="no-results">Error searching. Please try again.</div>';
+                        '<div class="empty-state"><i class="bi bi-exclamation-circle"></i><p>Error searching. Please try again.</p></div>';
 
                     if (API_KEYS.length > 1) {
                         currentApiKeyIndex = (currentApiKeyIndex + 1) % API_KEYS.length;
@@ -272,16 +321,18 @@
 
             const likedIndex = likedSongs.findIndex(song => song.id === videoId);
 
-            let title, artist;
+            let title, artist, thumbnail;
 
             if (video && video.snippet) {
                 title = video.snippet.title;
                 artist = video.snippet.channelTitle;
+                thumbnail = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
             } else {
-                const songItem = button.closest('.search-result-item');
+                const songItem = button.closest('.song-item');
                 if (songItem) {
                     title = songItem.querySelector('.song-title').textContent;
                     artist = songItem.querySelector('.song-artist').textContent;
+                    thumbnail = songItem.querySelector('.song-thumbnail img')?.src || '';
                 } else {
                     console.error("Could not find song details");
                     return;
@@ -289,11 +340,7 @@
             }
 
             if (likedIndex === -1) {
-                likedSongs.push({
-                    id: videoId,
-                    title: title,
-                    artist: artist
-                });
+                likedSongs.push({ id: videoId, title, artist, thumbnail });
                 button.classList.add('liked');
                 button.innerHTML = '<i class="bi bi-heart-fill"></i>';
             } else {
@@ -311,34 +358,37 @@
         }
 
         function updateLikedSongsTab() {
-            const likedTab = document.querySelector('[data-tab="liked"]');
-            likedTab.textContent = likedSongs.length > 0 ? `Liked Songs (${likedSongs.length})` : 'Liked Songs';
+            const likedTab = document.querySelector('[data-tab="liked"] span');
+            likedTab.textContent = likedSongs.length > 0 ? `Favorites (${likedSongs.length})` : 'Favorites';
         }
 
         function updateLikedSongsList() {
             const likedSongsSection = document.getElementById('liked-songs');
             likedSongsSection.innerHTML = '';
 
-            document.getElementById('placeholder').classList.add('hidden');
-            document.getElementById('placeholder-text').classList.add('hidden');
-
             if (likedSongs.length === 0) {
-                likedSongsSection.innerHTML = '<div class="no-results">No liked songs yet. Heart some songs to add them here.</div>';
+                likedSongsSection.innerHTML = '<div class="empty-state"><i class="bi bi-heart"></i><h3>Songs you like will appear here</h3><p>Save songs by tapping the heart icon</p></div>';
                 return;
             }
 
             likedSongs.forEach((song, idx) => {
                 const div = document.createElement('div');
-                div.classList.add('search-result-item');
+                div.classList.add('song-item');
 
                 if (currentVideoIndex === idx && document.querySelector('[data-tab="liked"].active')) {
                     div.classList.add('now-playing');
                 }
 
                 div.innerHTML = `
+                    <div class="song-thumbnail">
+                        <img src="${song.thumbnail || `https://img.youtube.com/vi/${song.id}/mqdefault.jpg`}" alt="${song.title}">
+                        <div class="play-overlay">
+                            <i class="bi bi-play-fill"></i>
+                        </div>
+                    </div>
                     <div class="song-info">
-                        <div class="song-title">${song.title}</div>
-                        <div class="song-artist">${song.artist}</div>
+                        <span class="song-title">${song.title}</span>
+                        <span class="song-artist">${song.artist}</span>
                     </div>
                     <button class="like-button liked" data-id="${song.id}">
                         <i class="bi bi-heart-fill"></i>
@@ -348,6 +398,7 @@
                 div.addEventListener('click', function(e) {
                     if (e.target.closest('.like-button')) return;
                     playVideo(song.id, idx);
+                    updateTrackInfo(song.title, song.artist);
                 });
 
                 div.querySelector('.like-button').addEventListener('click', function(e) {
@@ -391,11 +442,9 @@
                 return;
             }
 
-            console.log(`Playing video: ${videoId}, index: ${index}`);
-
             document.getElementById('video-container').classList.remove('hidden');
 
-            document.querySelectorAll('.search-result-item').forEach(item => {
+            document.querySelectorAll('.song-item').forEach(item => {
                 item.classList.remove('now-playing');
             });
 
@@ -403,12 +452,12 @@
             let songItems;
 
             if (currentTab === 'all') {
-                songItems = document.querySelectorAll('#search-results .search-result-item');
+                songItems = document.querySelectorAll('#search-results .song-item');
                 if (songItems.length > index) {
                     songItems[index].classList.add('now-playing');
                 }
             } else if (currentTab === 'liked') {
-                songItems = document.querySelectorAll('#liked-songs .search-result-item');
+                songItems = document.querySelectorAll('#liked-songs .song-item');
                 songItems.forEach(item => {
                     const likeButton = item.querySelector('.like-button');
                     if (likeButton && likeButton.getAttribute('data-id') === videoId) {
@@ -433,10 +482,6 @@
                 updatePlayButton();
             } catch (error) {
                 console.error("Error playing video:", error);
-                const iframe = document.querySelector('#youtube-player iframe');
-                if (iframe) {
-                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0`;
-                }
             }
         }
 
@@ -447,6 +492,7 @@
                 if (currentVideoIndex === -1 || !currentSearchResults || currentVideoIndex >= currentSearchResults.length - 1) {
                     if (currentSearchResults && currentSearchResults.length > 0) {
                         playVideo(currentSearchResults[0].id.videoId, 0);
+                        updateTrackInfo(currentSearchResults[0].snippet.title, currentSearchResults[0].snippet.channelTitle);
                     }
                     return;
                 }
@@ -454,6 +500,7 @@
                 currentVideoIndex++;
                 const nextVideo = currentSearchResults[currentVideoIndex];
                 playVideo(nextVideo.id.videoId, currentVideoIndex);
+                updateTrackInfo(nextVideo.snippet.title, nextVideo.snippet.channelTitle);
             }
             else if (activeTab === 'liked') {
                 if (likedSongs.length === 0) return;
@@ -464,6 +511,7 @@
                 }
 
                 playVideo(likedSongs[nextIndex].id, nextIndex);
+                updateTrackInfo(likedSongs[nextIndex].title, likedSongs[nextIndex].artist);
             }
         }
 
@@ -475,6 +523,7 @@
                     if (currentSearchResults && currentSearchResults.length > 0) {
                         const lastIndex = currentSearchResults.length - 1;
                         playVideo(currentSearchResults[lastIndex].id.videoId, lastIndex);
+                        updateTrackInfo(currentSearchResults[lastIndex].snippet.title, currentSearchResults[lastIndex].snippet.channelTitle);
                     }
                     return;
                 }
@@ -482,6 +531,7 @@
                 currentVideoIndex--;
                 const prevVideo = currentSearchResults[currentVideoIndex];
                 playVideo(prevVideo.id.videoId, currentVideoIndex);
+                updateTrackInfo(prevVideo.snippet.title, prevVideo.snippet.channelTitle);
             }
             else if (activeTab === 'liked') {
                 if (likedSongs.length === 0) return;
@@ -492,6 +542,7 @@
                 }
 
                 playVideo(likedSongs[prevIndex].id, prevIndex);
+                updateTrackInfo(likedSongs[prevIndex].title, likedSongs[prevIndex].artist);
             }
         }
 
@@ -520,16 +571,12 @@
                 isPlaying = true;
                 updatePlayButton();
 
-                // Clear any existing interval
                 if (scrubInterval) clearInterval(scrubInterval);
-                // Start a new interval for updating the progress bar
                 scrubInterval = setInterval(updateScrubBar, 500);
-            }
-            else if (event.data == YT.PlayerState.PAUSED) {
+            } else if (event.data == YT.PlayerState.PAUSED) {
                 isPlaying = false;
                 updatePlayButton();
-            }
-            else if (event.data == YT.PlayerState.ENDED) {
+            } else if (event.data == YT.PlayerState.ENDED) {
                 if (isLooping) {
                     player.seekTo(0);
                     player.playVideo();
@@ -540,48 +587,32 @@
         }
 
         function onPlayerError(event) {
-            console.error("Video error:", event.data);
-
-            const errorMessages = {
-                2: "Invalid parameter",
-                5: "HTML5 player error",
-                100: "Video not found or removed",
-                101: "Video cannot be played in embedded players",
-                150: "Video cannot be played in embedded players"
-            };
-
-            console.log(`Error ${event.data}: ${errorMessages[event.data] || "Unknown error"}`);
-
-            if (event.data === 101 || event.data === 150) {
-                playNext();
-            }
+            console.error('Player error:', event.data);
+            playNext();
         }
 
         function updateScrubBar() {
             if (!player || !isPlayerReady) return;
 
             try {
-                const currentTime = player.getCurrentTime() || 0;
-                const duration = player.getDuration() || 0;
+                const currentTime = player.getCurrentTime();
+                const duration = player.getDuration();
 
                 if (duration > 0) {
                     const progress = (currentTime / duration) * 100;
-                    document.getElementById('scrub-bar-progress').style.width = progress + '%';
-
-                    // Update the time display
-                    const currentMinutes = Math.floor(currentTime / 60);
-                    const currentSeconds = Math.floor(currentTime % 60);
-                    document.getElementById('current-time').textContent =
-                        `${currentMinutes}:${currentSeconds < 10 ? '0' + currentSeconds : currentSeconds}`;
-
-                    const durationMinutes = Math.floor(duration / 60);
-                    const durationSeconds = Math.floor(duration % 60);
-                    document.getElementById('duration-time').textContent =
-                        `${durationMinutes}:${durationSeconds < 10 ? '0' + durationSeconds : durationSeconds}`;
+                    document.getElementById('scrub-bar-progress').style.width = `${progress}%`;
+                    document.getElementById('current-time').textContent = formatTime(currentTime);
+                    document.getElementById('duration-time').textContent = formatTime(duration);
                 }
             } catch (e) {
-                console.error("Error updating scrub bar:", e);
+                console.error('Error updating scrub bar:', e);
             }
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
         }
 
         function seekTo(event) {
@@ -591,66 +622,48 @@
             const rect = scrubBar.getBoundingClientRect();
             const clickX = event.clientX - rect.left;
             const percentage = clickX / rect.width;
-            const newTime = percentage * player.getDuration();
+            const duration = player.getDuration();
 
-            player.seekTo(newTime);
+            player.seekTo(duration * percentage, true);
         }
 
         function toggleLoop() {
             isLooping = !isLooping;
-            const loopButton = document.getElementById('loop');
-
-            if (isLooping) {
-                loopButton.classList.add('loop-active');
-            } else {
-                loopButton.classList.remove('loop-active');
-            }
+            const loopBtn = document.getElementById('loop');
+            loopBtn.classList.toggle('active', isLooping);
         }
 
         function toggleVideoVisibility() {
             isVideoHidden = !isVideoHidden;
-
             const videoContainer = document.getElementById('video-container');
+            const toggleBtn = document.getElementById('toggle-video-button');
+
             if (isVideoHidden) {
-                videoContainer.classList.add('hidden');
+                videoContainer.style.opacity = '0';
+                toggleBtn.classList.add('active');
             } else {
-                videoContainer.classList.remove('hidden');
+                videoContainer.style.opacity = '1';
+                toggleBtn.classList.remove('active');
             }
         }
 
         function toggleUIVisibility() {
             isUIHidden = !isUIHidden;
-
-            // Elements to toggle
-            const header = document.querySelector('header');
-            const tabs = document.querySelector('.tabs');
-            const main = document.querySelector('main');
-            const playerControls = document.getElementById('player-controls');
+            const app = document.getElementById('app');
+            const toggleBtn = document.getElementById('toggle-ui-button');
 
             if (isUIHidden) {
-                header.classList.add('hidden');
-                tabs.classList.add('hidden');
-                main.classList.add('hidden');
-                playerControls.classList.add('hidden');
-
-                document.getElementById('video-container').classList.remove('hidden');
-                isVideoHidden = false;
-
-                document.querySelector('#toggle-ui-button i').classList.remove('bi-eye');
-                document.querySelector('#toggle-ui-button i').classList.add('bi-eye-slash');
+                app.classList.add('ui-hidden');
+                toggleBtn.classList.add('active');
             } else {
-                header.classList.remove('hidden');
-                tabs.classList.remove('hidden');
-                main.classList.remove('hidden');
-                playerControls.classList.remove('hidden');
-
-                document.querySelector('#toggle-ui-button i').classList.remove('bi-eye-slash');
-                document.querySelector('#toggle-ui-button i').classList.add('bi-eye');
+                app.classList.remove('ui-hidden');
+                toggleBtn.classList.remove('active');
             }
         }
 
+        // Initialize on page load
         document.addEventListener('DOMContentLoaded', init);
-	</script>
+    </script>
 </body>
 
 </html>
