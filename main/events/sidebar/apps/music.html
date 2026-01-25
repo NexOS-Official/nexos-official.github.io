@@ -1,55 +1,656 @@
+
+<link rel="icon" href="/headset.png">
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Coming Soon</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
-    body {
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #f5f5f5;
-      font-family: "Georgia", serif;
-      color: #222;
-    }
-
-    .content {
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      font-weight: normal;
-      letter-spacing: 1px;
-      margin-bottom: 10px;
-    }
-
-    p {
-      color: #555;
-      font-size: 1rem;
-    }
-  </style>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>NexOSMusic</title>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+	<link rel="stylesheet" href="styles.css">
+	<script src="https://www.youtube.com/iframe_api"></script>
 </head>
-<body>
-  <div class="content">
-    <h1>Coming Soon</h1>
-    <p>We’re working on something new.</p>
-  </div>
 
-  <script>
-    document.body.style.opacity = 0;
-    window.onload = () => {
-      document.body.style.transition = "opacity 1s ease";
-      document.body.style.opacity = 1;
-    };
-  </script>
+<body>
+	<div id="app">
+		<header>
+			<input type="text" id="search-bar" placeholder="Search for music...">
+			<button id="search-button">
+				<i class="bi bi-search"></i>
+			</button>
+			<button id="toggle-video-button">
+				<i class="bi bi-tv"></i>
+			</button>
+		</header>
+
+		<div class="tabs">
+			<button class="tab-button active" data-tab="all">All Songs</button>
+			<button class="tab-button" data-tab="liked">Liked Songs</button>
+		</div>
+
+		<main>
+			<div id="placeholder">
+				<i class="bi bi-file-earmark-music"></i>
+			</div>
+			<div id="placeholder-text">
+				<p>Search to get started</p>
+			</div>
+			<section id="trending"></section>
+			<section id="search-results" class="hidden"></section>
+			<section id="liked-songs" class="hidden"></section>
+		</main>
+		<footer>
+			<div id="player-controls">
+				<div>
+					<button id="prev" onclick="playPrevious()"><i class="bi bi-skip-start"></i></button>
+					<button id="play" onclick="togglePlayPause()"><i class="bi bi-play-fill"></i></button>
+					<button id="next" onclick="playNext()"><i class="bi bi-skip-end"></i></button>
+					<button id="loop" onclick="toggleLoop()"><i class="bi bi-arrow-repeat"></i></button>
+				</div>
+				<div id="scrub-bar" onclick="seekTo(event)">
+					<div id="scrub-bar-progress"></div>
+				</div>
+				<div id="time-display">
+					<span id="current-time">0:00</span>
+					<span id="duration-time">0:00</span>
+				</div>
+			</div>
+			<button id="toggle-ui-button">
+				<i class="bi bi-eye"></i>
+			</button>
+		</footer>
+		<div id="video-container" class="hidden">
+			<div id="youtube-player"></div>
+		</div>
+	</div>
+	<script>
+        let API_KEYS = [];
+        let currentApiKeyIndex = 0;
+        let player;
+        let isPlayerReady = false;
+        let isPlaying = false;
+        let isLooping = false;
+        let currentSearchResults = [];
+        let currentVideoIndex = -1;
+        let likedSongs = [];
+        let isVideoHidden = false;
+        let isUIHidden = false;
+
+        function loadLikedSongs() {
+            const saved = localStorage.getItem('likedSongs');
+            if (saved) {
+                try {
+                    likedSongs = JSON.parse(saved);
+                    updateLikedSongsTab();
+                } catch (e) {
+                    console.error('Error loading liked songs:', e);
+                    likedSongs = [];
+                }
+            }
+        }
+
+        function saveLikedSongs() {
+            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+        }
+
+        // Initialize everything
+        function init() {
+            loadLikedSongs();
+            setupEventListeners();
+            addApiKey('AIzaSyBs0_UbSzQsAIBWsV01mVGCUOzN26eGW_c');
+            addApiKey('AIzaSyCTmTfQK8Vp8DnRw4XsLkC-T7_a08tHNmk');
+            addApiKey('AIzaSyBAnLAEwYssI3Oe3uaYfdEOPpzs-TVqHoM');
+            addApiKey('AIzaSyBQAZ7-zXoAFYBBDp9Amddor0WAooSjUaM');
+            addApiKey('AIzaSyCXizLEzfyVQESntn97HwtYA3yhxbjDeso');
+
+            document.getElementById('search-bar').placeholder = "Search for music...";
+        }
+
+        function setupEventListeners() {
+            document.getElementById('search-bar').addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    searchMusic(e.target.value);
+                }
+            });
+
+            document.getElementById('search-button').addEventListener('click', () => {
+                searchMusic(document.getElementById('search-bar').value);
+            });
+
+            document.getElementById('toggle-video-button').addEventListener('click', toggleVideoVisibility);
+
+            document.getElementById('toggle-ui-button').addEventListener('click', toggleUIVisibility);
+
+            document.querySelectorAll('.tab-button').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+
+                    document.querySelectorAll('.tab-button').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+
+                    document.getElementById('search-results').classList.add('hidden');
+                    document.getElementById('liked-songs').classList.add('hidden');
+
+                    document.getElementById('placeholder').classList.add('hidden');
+                    document.getElementById('placeholder-text').classList.add('hidden');
+
+                    if (tabName === 'all') {
+                        if (!currentSearchResults || currentSearchResults.length === 0) {
+                            document.getElementById('placeholder').classList.remove('hidden');
+                            document.getElementById('placeholder-text').classList.remove('hidden');
+                        } else {
+                            document.getElementById('search-results').classList.remove('hidden');
+                        }
+                    } else if (tabName === 'liked') {
+                        updateLikedSongsList();
+                        document.getElementById('liked-songs').classList.remove('hidden');
+                    }
+                });
+            });
+        }
+
+        function addApiKey(key) {
+            API_KEYS.push(key);
+        }
+
+        function getApiKey() {
+            if (API_KEYS.length === 0) {
+                console.error("No API keys available.");
+                return null;
+            }
+            return API_KEYS[currentApiKeyIndex];
+        }
+
+        function isMusicVideo(video) {
+            return true;
+        }
+
+        function searchMusic(query) {
+            if (!query || query.trim() === '') return;
+
+            const apiKey = getApiKey();
+            if (!apiKey) return;
+
+            const searchResults = document.getElementById('search-results');
+            searchResults.innerHTML = '<div class="loading">Searching for music...</div>';
+            searchResults.classList.remove('hidden');
+
+            document.querySelectorAll('.tab-button').forEach(tab => tab.classList.remove('active'));
+            document.querySelector('[data-tab="all"]').classList.add('active');
+            document.getElementById('liked-songs').classList.add('hidden');
+
+            currentVideoIndex = -1;
+
+            const specialArtists = ["nessa barrett", "nessabarrett"];
+            let isSpecialArtistSearch = specialArtists.some(artist =>
+                query.toLowerCase().includes(artist)
+            );
+
+            let searchQuery;
+
+            if (isSpecialArtistSearch) {
+                searchQuery = query;
+            } else {
+                searchQuery = `${query} music`;
+            }
+
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${searchQuery}&key=${apiKey}&videoCategoryId=10&maxResults=50`;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network error: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const results = document.getElementById('search-results');
+                    const placeholder = document.getElementById('placeholder');
+                    const placeholderText = document.getElementById('placeholder-text');
+
+                    placeholder.classList.add('hidden');
+                    placeholderText.classList.add('hidden');
+
+                    currentSearchResults = data.items;
+                    results.innerHTML = '';
+
+                    if (currentSearchResults.length === 0) {
+                        results.innerHTML = '<div class="no-results">No music found. Try another search.</div>';
+                        return;
+                    }
+
+                    currentSearchResults.forEach((video, index) => {
+                        const div = document.createElement('div');
+                        div.classList.add('search-result-item');
+
+                        const isLiked = likedSongs.some(song => song.id === video.id.videoId);
+                        const likeIcon = isLiked ? 'bi-heart-fill' : 'bi-heart';
+                        const likeClass = isLiked ? 'liked' : '';
+
+                        div.innerHTML = `
+                            <div class="song-info">
+                                <div class="song-title">${video.snippet.title}</div>
+                                <div class="song-artist">${video.snippet.channelTitle}</div>
+                            </div>
+                            <button class="like-button ${likeClass}" data-id="${video.id.videoId}" data-index="${index}">
+                                <i class="bi ${likeIcon}"></i>
+                            </button>
+                        `;
+
+                        div.addEventListener('click', function(e) {
+                            if (e.target.closest('.like-button')) return;
+                            playVideo(video.id.videoId, index);
+                        });
+
+                        div.querySelector('.like-button').addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            toggleLike(this, video);
+                        });
+
+                        results.appendChild(div);
+                    });
+                })
+                .catch((error) => {
+                    console.error('Search error:', error);
+                    document.getElementById('search-results').innerHTML =
+                        '<div class="no-results">Error searching. Please try again.</div>';
+
+                    if (API_KEYS.length > 1) {
+                        currentApiKeyIndex = (currentApiKeyIndex + 1) % API_KEYS.length;
+                        searchMusic(query);
+                    }
+                });
+        }
+
+        function toggleLike(button, video) {
+            if (!button) return;
+
+            const videoId = button.getAttribute('data-id');
+            if (!videoId) return;
+
+            const likedIndex = likedSongs.findIndex(song => song.id === videoId);
+
+            let title, artist;
+
+            if (video && video.snippet) {
+                title = video.snippet.title;
+                artist = video.snippet.channelTitle;
+            } else {
+                const songItem = button.closest('.search-result-item');
+                if (songItem) {
+                    title = songItem.querySelector('.song-title').textContent;
+                    artist = songItem.querySelector('.song-artist').textContent;
+                } else {
+                    console.error("Could not find song details");
+                    return;
+                }
+            }
+
+            if (likedIndex === -1) {
+                likedSongs.push({
+                    id: videoId,
+                    title: title,
+                    artist: artist
+                });
+                button.classList.add('liked');
+                button.innerHTML = '<i class="bi bi-heart-fill"></i>';
+            } else {
+                likedSongs.splice(likedIndex, 1);
+                button.classList.remove('liked');
+                button.innerHTML = '<i class="bi bi-heart"></i>';
+
+                if (document.querySelector('[data-tab="liked"].active')) {
+                    updateLikedSongsList();
+                }
+            }
+
+            updateLikedSongsTab();
+            saveLikedSongs();
+        }
+
+        function updateLikedSongsTab() {
+            const likedTab = document.querySelector('[data-tab="liked"]');
+            likedTab.textContent = likedSongs.length > 0 ? `Liked Songs (${likedSongs.length})` : 'Liked Songs';
+        }
+
+        function updateLikedSongsList() {
+            const likedSongsSection = document.getElementById('liked-songs');
+            likedSongsSection.innerHTML = '';
+
+            document.getElementById('placeholder').classList.add('hidden');
+            document.getElementById('placeholder-text').classList.add('hidden');
+
+            if (likedSongs.length === 0) {
+                likedSongsSection.innerHTML = '<div class="no-results">No liked songs yet. Heart some songs to add them here.</div>';
+                return;
+            }
+
+            likedSongs.forEach((song, idx) => {
+                const div = document.createElement('div');
+                div.classList.add('search-result-item');
+
+                if (currentVideoIndex === idx && document.querySelector('[data-tab="liked"].active')) {
+                    div.classList.add('now-playing');
+                }
+
+                div.innerHTML = `
+                    <div class="song-info">
+                        <div class="song-title">${song.title}</div>
+                        <div class="song-artist">${song.artist}</div>
+                    </div>
+                    <button class="like-button liked" data-id="${song.id}">
+                        <i class="bi bi-heart-fill"></i>
+                    </button>
+                `;
+
+                div.addEventListener('click', function(e) {
+                    if (e.target.closest('.like-button')) return;
+                    playVideo(song.id, idx);
+                });
+
+                div.querySelector('.like-button').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    toggleLike(this);
+                });
+
+                likedSongsSection.appendChild(div);
+            });
+        }
+
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                videoId: '',
+                playerVars: {
+                    autoplay: 1,
+                    controls: 0,
+                    modestbranding: 1,
+                    rel: 0,
+                    showinfo: 0,
+                    playsinline: 1,
+                    iv_load_policy: 3,
+                    fs: 0
+                },
+                events: {
+                    'onReady': () => {
+                        isPlayerReady = true;
+                        console.log('YouTube player ready');
+                    },
+                    'onStateChange': onPlayerStateChange,
+                    'onError': onPlayerError
+                }
+            });
+        }
+
+        function playVideo(videoId, index) {
+            if (!videoId) {
+                console.error("No video ID provided");
+                return;
+            }
+
+            console.log(`Playing video: ${videoId}, index: ${index}`);
+
+            document.getElementById('video-container').classList.remove('hidden');
+
+            document.querySelectorAll('.search-result-item').forEach(item => {
+                item.classList.remove('now-playing');
+            });
+
+            const currentTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+            let songItems;
+
+            if (currentTab === 'all') {
+                songItems = document.querySelectorAll('#search-results .search-result-item');
+                if (songItems.length > index) {
+                    songItems[index].classList.add('now-playing');
+                }
+            } else if (currentTab === 'liked') {
+                songItems = document.querySelectorAll('#liked-songs .search-result-item');
+                songItems.forEach(item => {
+                    const likeButton = item.querySelector('.like-button');
+                    if (likeButton && likeButton.getAttribute('data-id') === videoId) {
+                        item.classList.add('now-playing');
+                    }
+                });
+            }
+
+            if (!isPlayerReady || !player) {
+                console.warn("Player not ready, retrying in 500ms");
+                setTimeout(() => playVideo(videoId, index), 500);
+                return;
+            }
+
+            try {
+                player.loadVideoById({
+                    videoId: videoId,
+                    suggestedQuality: 'large'
+                });
+                isPlaying = true;
+                currentVideoIndex = index;
+                updatePlayButton();
+            } catch (error) {
+                console.error("Error playing video:", error);
+                const iframe = document.querySelector('#youtube-player iframe');
+                if (iframe) {
+                    iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=0&modestbranding=1&rel=0`;
+                }
+            }
+        }
+
+        function playNext() {
+            const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+
+            if (activeTab === 'all') {
+                if (currentVideoIndex === -1 || !currentSearchResults || currentVideoIndex >= currentSearchResults.length - 1) {
+                    if (currentSearchResults && currentSearchResults.length > 0) {
+                        playVideo(currentSearchResults[0].id.videoId, 0);
+                    }
+                    return;
+                }
+
+                currentVideoIndex++;
+                const nextVideo = currentSearchResults[currentVideoIndex];
+                playVideo(nextVideo.id.videoId, currentVideoIndex);
+            }
+            else if (activeTab === 'liked') {
+                if (likedSongs.length === 0) return;
+
+                let nextIndex = 0;
+                if (currentVideoIndex >= 0 && currentVideoIndex < likedSongs.length - 1) {
+                    nextIndex = currentVideoIndex + 1;
+                }
+
+                playVideo(likedSongs[nextIndex].id, nextIndex);
+            }
+        }
+
+        function playPrevious() {
+            const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+
+            if (activeTab === 'all') {
+                if (currentVideoIndex <= 0) {
+                    if (currentSearchResults && currentSearchResults.length > 0) {
+                        const lastIndex = currentSearchResults.length - 1;
+                        playVideo(currentSearchResults[lastIndex].id.videoId, lastIndex);
+                    }
+                    return;
+                }
+
+                currentVideoIndex--;
+                const prevVideo = currentSearchResults[currentVideoIndex];
+                playVideo(prevVideo.id.videoId, currentVideoIndex);
+            }
+            else if (activeTab === 'liked') {
+                if (likedSongs.length === 0) return;
+
+                let prevIndex = likedSongs.length - 1;
+                if (currentVideoIndex > 0 && currentVideoIndex < likedSongs.length) {
+                    prevIndex = currentVideoIndex - 1;
+                }
+
+                playVideo(likedSongs[prevIndex].id, prevIndex);
+            }
+        }
+
+        function togglePlayPause() {
+            if (!isPlayerReady || !player) return;
+
+            if (isPlaying) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
+
+            isPlaying = !isPlaying;
+            updatePlayButton();
+        }
+
+        function updatePlayButton() {
+            document.getElementById('play').innerHTML = isPlaying ?
+                '<i class="bi bi-pause-fill"></i>' :
+                '<i class="bi bi-play-fill"></i>';
+        }
+
+        let scrubInterval;
+        function onPlayerStateChange(event) {
+            if (event.data == YT.PlayerState.PLAYING) {
+                isPlaying = true;
+                updatePlayButton();
+
+                // Clear any existing interval
+                if (scrubInterval) clearInterval(scrubInterval);
+                // Start a new interval for updating the progress bar
+                scrubInterval = setInterval(updateScrubBar, 500);
+            }
+            else if (event.data == YT.PlayerState.PAUSED) {
+                isPlaying = false;
+                updatePlayButton();
+            }
+            else if (event.data == YT.PlayerState.ENDED) {
+                if (isLooping) {
+                    player.seekTo(0);
+                    player.playVideo();
+                } else {
+                    playNext();
+                }
+            }
+        }
+
+        function onPlayerError(event) {
+            console.error("Video error:", event.data);
+
+            const errorMessages = {
+                2: "Invalid parameter",
+                5: "HTML5 player error",
+                100: "Video not found or removed",
+                101: "Video cannot be played in embedded players",
+                150: "Video cannot be played in embedded players"
+            };
+
+            console.log(`Error ${event.data}: ${errorMessages[event.data] || "Unknown error"}`);
+
+            if (event.data === 101 || event.data === 150) {
+                playNext();
+            }
+        }
+
+        function updateScrubBar() {
+            if (!player || !isPlayerReady) return;
+
+            try {
+                const currentTime = player.getCurrentTime() || 0;
+                const duration = player.getDuration() || 0;
+
+                if (duration > 0) {
+                    const progress = (currentTime / duration) * 100;
+                    document.getElementById('scrub-bar-progress').style.width = progress + '%';
+
+                    // Update the time display
+                    const currentMinutes = Math.floor(currentTime / 60);
+                    const currentSeconds = Math.floor(currentTime % 60);
+                    document.getElementById('current-time').textContent =
+                        `${currentMinutes}:${currentSeconds < 10 ? '0' + currentSeconds : currentSeconds}`;
+
+                    const durationMinutes = Math.floor(duration / 60);
+                    const durationSeconds = Math.floor(duration % 60);
+                    document.getElementById('duration-time').textContent =
+                        `${durationMinutes}:${durationSeconds < 10 ? '0' + durationSeconds : durationSeconds}`;
+                }
+            } catch (e) {
+                console.error("Error updating scrub bar:", e);
+            }
+        }
+
+        function seekTo(event) {
+            if (!player || !isPlayerReady) return;
+
+            const scrubBar = document.getElementById('scrub-bar');
+            const rect = scrubBar.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const percentage = clickX / rect.width;
+            const newTime = percentage * player.getDuration();
+
+            player.seekTo(newTime);
+        }
+
+        function toggleLoop() {
+            isLooping = !isLooping;
+            const loopButton = document.getElementById('loop');
+
+            if (isLooping) {
+                loopButton.classList.add('loop-active');
+            } else {
+                loopButton.classList.remove('loop-active');
+            }
+        }
+
+        function toggleVideoVisibility() {
+            isVideoHidden = !isVideoHidden;
+
+            const videoContainer = document.getElementById('video-container');
+            if (isVideoHidden) {
+                videoContainer.classList.add('hidden');
+            } else {
+                videoContainer.classList.remove('hidden');
+            }
+        }
+
+        function toggleUIVisibility() {
+            isUIHidden = !isUIHidden;
+
+            // Elements to toggle
+            const header = document.querySelector('header');
+            const tabs = document.querySelector('.tabs');
+            const main = document.querySelector('main');
+            const playerControls = document.getElementById('player-controls');
+
+            if (isUIHidden) {
+                header.classList.add('hidden');
+                tabs.classList.add('hidden');
+                main.classList.add('hidden');
+                playerControls.classList.add('hidden');
+
+                document.getElementById('video-container').classList.remove('hidden');
+                isVideoHidden = false;
+
+                document.querySelector('#toggle-ui-button i').classList.remove('bi-eye');
+                document.querySelector('#toggle-ui-button i').classList.add('bi-eye-slash');
+            } else {
+                header.classList.remove('hidden');
+                tabs.classList.remove('hidden');
+                main.classList.remove('hidden');
+                playerControls.classList.remove('hidden');
+
+                document.querySelector('#toggle-ui-button i').classList.remove('bi-eye-slash');
+                document.querySelector('#toggle-ui-button i').classList.add('bi-eye');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+	</script>
 </body>
+
 </html>
