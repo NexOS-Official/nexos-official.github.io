@@ -161,7 +161,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 0 8px;
+            padding: 0 12px;
             height: 36px;
             background: transparent;
             border-radius: 8px 8px 0 0;
@@ -1950,6 +1950,40 @@ body {
     font-family: google sans;
     cursor: pointer;
 }
+        .taskbar-app-shortcut {
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          background-size: 20px 20px;
+          background-repeat: no-repeat;
+          background-position: center;
+          background-color: transparent;
+          transition: transform 0.15s, box-shadow 0.15s;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+
+        .taskbar-app-shortcut:hover {
+          cursor:pointer;
+        }
+
+        .taskbar-app-shortcut:active {
+          transform: scale(0.96);
+        }
+
+        .taskbar-app-shortcut img {
+          width: 20px;
+          height: 20px;
+          border-radius: 4px;
+          pointer-events: none;
+        }
+
         .taskbar-quick-btn {
           background: none;
           border: none;
@@ -5281,6 +5315,16 @@ menu.addEventListener('mouseleave', hideMenu);
                 <span id="battery-level"></span>
             </span>
 
+            <button class="taskbar-app-shortcut" id="appYouTube" title="New Tab">
+                <img src="/ghost.svg" alt="NT">
+            </button>
+            <button class="taskbar-app-shortcut" id="appGithub" title="GitHub">
+                <img src="https://www.google.com/s2/favicons?domain=github.com&sz=64" alt="GitHub">
+            </button>
+            <button class="taskbar-app-shortcut" id="appDiscord" title="Discord">
+                <img src="https://www.google.com/s2/favicons?domain=discord.com&sz=64" alt="Discord">
+            </button>
+
             <div class="taskbar-quick-divider"></div>
 
             <button class="taskbar-quick-btn" id="qsCalculator" title="Calculator">
@@ -5629,13 +5673,12 @@ menu.addEventListener('mouseleave', hideMenu);
 })();
 </script>
 
-<!-- Quick Services Taskbar Script -->
 <script>
 (function() {
     var quickServices = [
         { id: 'qsCalculator', title: 'Calculator', url: '/desmos/', type: 'iframe' },
         { id: 'qsTimer',      title: 'Timer',      url: null, type: 'custom', builder: buildTimerContent },
-        { id: 'qsTranslate',  title: 'Translate',   url: 'https://translate.google.com/?sl=auto&tl=en&op=translate', type: 'iframe' },
+        { id: 'qsTranslate',  title: 'Translate',   url: '/active/embed.html?url=https://translate.google.com/?sl=auto&tl=en&op=translate', type: 'iframe' },
         { id: 'qsNotes',      title: 'Quick Notes',  url: null, type: 'custom', builder: buildNotesContent },
         { id: 'qsConvert',    title: 'Unit Converter', url: null, type: 'custom', builder: buildConverterContent }
     ];
@@ -5647,14 +5690,12 @@ menu.addEventListener('mouseleave', hideMenu);
         var b = window.browser;
         if (!b) return;
 
-        // If this service is already open, close it
         if (activeQuickService === service.id && b.sidebar.classList.contains('open')) {
             b.closeSidebar();
             activeQuickService = null;
             return;
         }
 
-        // Close any existing sidebar first
         if (b.sidebar.classList.contains('open') || b.sidebar.classList.contains('minimized')) {
             b.contentArea.classList.remove('sidebar-open');
             b.contentArea.classList.remove('sidebar-fullscreen');
@@ -5663,7 +5704,6 @@ menu.addEventListener('mouseleave', hideMenu);
             b.clearActiveToolbarBtn();
             var iframe = document.getElementById('sidebarIframe');
             if (iframe) { iframe.src = 'about:blank'; iframe.style.display = ''; }
-            // Remove any custom content
             var custom = document.querySelector('.qs-custom-body');
             if (custom) custom.remove();
         }
@@ -5673,7 +5713,6 @@ menu.addEventListener('mouseleave', hideMenu);
         setTimeout(function() {
             b.sidebarTitle.textContent = service.title;
 
-            // Hide "open in new tab" for custom sidebars
             var sidebarNewTab = document.getElementById('sidebarNewTab');
             if (sidebarNewTab) sidebarNewTab.style.display = service.type === 'custom' ? 'none' : '';
 
@@ -5693,7 +5732,6 @@ menu.addEventListener('mouseleave', hideMenu);
         }, 60);
     }
 
-    // --- Timer ---
     function buildTimerContent() {
         var body = document.getElementById('sidebarContent');
         if (!body) return;
@@ -5739,7 +5777,6 @@ menu.addEventListener('mouseleave', hideMenu);
         resetBtn.onclick = function() { clearInterval(interval); running = false; seconds = 0; update(); startBtn.textContent = 'Start'; };
     }
 
-    // --- Notes ---
     function buildNotesContent() {
         var body = document.getElementById('sidebarContent');
         if (!body) return;
@@ -5769,7 +5806,6 @@ menu.addEventListener('mouseleave', hideMenu);
         textarea.focus();
     }
 
-    // --- Unit Converter ---
     function buildConverterContent() {
         var body = document.getElementById('sidebarContent');
         if (!body) return;
@@ -5845,12 +5881,9 @@ menu.addEventListener('mouseleave', hideMenu);
             var fi = parseInt(fromUnit.value), ti = parseInt(toUnit.value);
 
             if (cat.special) {
-                // Temperature
                 var result = val;
-                // Convert to Celsius first
                 if (fi === 1) result = (val - 32) * 5/9;
                 else if (fi === 2) result = val - 273.15;
-                // Convert from Celsius to target
                 if (ti === 1) result = result * 9/5 + 32;
                 else if (ti === 2) result = result + 273.15;
                 toInput.value = Math.round(result * 10000) / 10000;
@@ -5868,7 +5901,6 @@ menu.addEventListener('mouseleave', hideMenu);
         if (window.lucide) lucide.createIcons();
     }
 
-    // --- Patch closeSidebar to clean up custom content ---
     function patchClose() {
         var b = window.browser;
         if (!b) return;
@@ -5885,7 +5917,6 @@ menu.addEventListener('mouseleave', hideMenu);
         };
     }
 
-    // --- Power button ---
     function initPower() {
         var powerBtn = document.getElementById('qsPower');
         if (powerBtn) {
@@ -5896,7 +5927,6 @@ menu.addEventListener('mouseleave', hideMenu);
         }
     }
 
-    // --- Init ---
     function initQuickServices() {
         var b = window.browser;
         if (!b) { setTimeout(initQuickServices, 200); return; }
@@ -5918,6 +5948,36 @@ menu.addEventListener('mouseleave', hideMenu);
     }
 
     setTimeout(initQuickServices, 350);
+})();
+</script>
+
+<script>
+(function() {
+    var appShortcuts = [
+        { id: 'appYouTube', url: 'nexos://new-tab' },
+        { id: 'appGithub',  url: 'https://github.com' },
+        { id: 'appDiscord',  url: 'https://discord.com' }
+    ];
+
+    function initAppShortcuts() {
+        var b = window.browser;
+        if (!b) { setTimeout(initAppShortcuts, 250); return; }
+
+        appShortcuts.forEach(function(app) {
+            var btn = document.getElementById(app.id);
+            if (btn) {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var newTabId = b.createNewTab();
+                    if (newTabId) {
+                        b.navigate(app.url);
+                    }
+                });
+            }
+        });
+    }
+
+    setTimeout(initAppShortcuts, 400);
 })();
 </script>
 </body>
