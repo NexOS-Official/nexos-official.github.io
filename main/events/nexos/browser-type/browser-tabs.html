@@ -5980,5 +5980,51 @@ menu.addEventListener('mouseleave', hideMenu);
     setTimeout(initAppShortcuts, 400);
 })();
 </script>
+    <script>
+  (function () {
+    async function ping() {
+      try { await fetch("/auth/ping", { credentials: "include" }); } catch {}
+    }
+    ping();
+    setInterval(ping, 20000);
+
+    const es = new EventSource("/live", { withCredentials: true });
+
+    function showAnnouncement(msg) {
+      document.querySelectorAll("alert[nexos-ann]").forEach(e => e.remove());
+
+      const a = document.createElement("alert");
+      a.setAttribute("nexos-ann", "1");
+      a.textContent = msg;
+
+      a.style.position = "fixed";
+      a.style.left = "12px";
+      a.style.right = "12px";
+      a.style.top = "12px";
+      a.style.padding = "10px";
+      a.style.background = "black";
+      a.style.color = "white";
+      a.style.border = "1px solid gray";
+      a.style.zIndex = "999999";
+
+      const x = document.createElement("button");
+      x.textContent = "x";
+      x.style.marginLeft = "10px";
+      x.onclick = () => a.remove();
+
+      a.appendChild(document.createTextNode(" "));
+      a.appendChild(x);
+
+      document.body.appendChild(a);
+    }
+
+    es.addEventListener("announcement", (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (data && data.message) showAnnouncement(data.message);
+      } catch {}
+    });
+  })();
+</script>
 </body>
 </html>
