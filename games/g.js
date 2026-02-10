@@ -24,7 +24,7 @@ fetch(POP_URL)
   .catch(() => console.warn("Could not load popularity stats."));
 
 // 2. Fetch Games Database
-fetch("../json/zones.json")
+fetch("zones.json")
   .then((r) => r.json())
   .then((data) => {
     allGames = data.map((g) => ({
