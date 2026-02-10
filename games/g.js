@@ -11,9 +11,6 @@ const gameTitleEl = document.getElementById("game-title");
 let allGames = [];
 let popularityMap = {};
 
-/* =========================
-   POPULARITY
-========================= */
 fetch(POP_URL)
   .then(r => r.json())
   .then(data => {
@@ -24,9 +21,6 @@ fetch(POP_URL)
   })
   .catch(() => console.warn("Popularity stats unavailable"));
 
-/* =========================
-   LOAD DATABASE
-========================= */
 fetch("zones.json")
   .then(r => r.json())
   .then(data => {
@@ -44,9 +38,6 @@ fetch("zones.json")
     gameGrid.textContent = "Failed to load games: " + err;
   });
 
-/* =========================
-   RENDER
-========================= */
 function render(games) {
   gameGrid.innerHTML = "";
 
@@ -82,9 +73,6 @@ function render(games) {
   enableImageHoverTracking();
 }
 
-/* =========================
-   IMAGE LAZY LOAD
-========================= */
 function lazyLoadImages() {
   const images = document.querySelectorAll("img[data-src]");
   const observer = new IntersectionObserver(entries => {
@@ -100,9 +88,6 @@ function lazyLoadImages() {
   images.forEach(img => observer.observe(img));
 }
 
-/* =========================
-   IMAGE HOVER TRACKING
-========================= */
 function enableImageHoverTracking() {
   document.querySelectorAll(".card-icon").forEach(icon => {
     const img = icon.querySelector("img");
@@ -122,17 +107,12 @@ function enableImageHoverTracking() {
   });
 }
 
-/* =========================
-   SEARCH
-========================= */
+
 searchInput.addEventListener("input", e => {
   const q = e.target.value.toLowerCase();
   render(allGames.filter(g => g.name.toLowerCase().includes(q)));
 });
 
-/* =========================
-   OPEN GAME
-========================= */
 async function openGame(game) {
   gameTitleEl.textContent = `${game.name}.dat`;
   gameContainer.style.display = "flex";
@@ -157,9 +137,6 @@ async function openGame(game) {
   document.title = `${game.name} - Drive View`;
 }
 
-/* =========================
-   CONTROLS
-========================= */
 window.closeGame = () => {
   gameContainer.style.display = "none";
   document.body.style.overflow = "";
