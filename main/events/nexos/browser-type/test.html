@@ -3934,6 +3934,27 @@ if (blockedRegex.test(urlLower)) {
                 this.updateNavigationButtons();
             }
 
+            decodeProxyUrl(encodedUrl) {
+                // Custom decoder for the proxy's character substitution encoding
+                // Pattern: hvtrs8/- -> https://
+                const charMap = {
+                    'h': 'h', 'v': 't', 't': 't', 'r': 'p', 's': 's',
+                    '8': ':', '/': '/', '-': '.', '`': 'b', 'g': 'g',
+                    'k': 'i', 'j': 't', 'u': 'h', '.': '.', 'a': 'c',
+                    'o': 'o', 'L': 'N', 'e': 'e', 'z': 'x', 'O': 'O',
+                    'Q': 'S', 'M': 'O', 'f': 'f', 'd': 'f', 'i': 'i',
+                    'c': 'c', 'l': 'i', 'n': 'a', 'x': 'l', 'm': '-',
+                    'p': 'n', 'b': 'g', ',': '.',
+                    'w': 'u', 'y': 'b'
+                };
+                
+                let decoded = '';
+                for (let char of encodedUrl) {
+                    decoded += charMap[char] || char;
+                }
+                return decoded;
+            }
+
             extractOriginalUrl(proxyUrl) {
                 if (!proxyUrl) return proxyUrl;
                 
@@ -3948,11 +3969,16 @@ if (blockedRegex.test(urlLower)) {
                     const goIndex = proxyUrl.indexOf('/active/go/');
                     const encodedUrl = proxyUrl.substring(goIndex + '/active/go/'.length);
                     
-                    // The proxy uses a custom encoding - try to decode it
+                    // Try the custom proxy decoder
+                    const decoded = this.decodeProxyUrl(encodedUrl);
+                    if (decoded && decoded !== encodedUrl && decoded.startsWith('http')) {
+                        return decoded;
+                    }
+                    
+                    // Fall back to standard decoding
                     try {
                         return decodeURIComponent(encodedUrl);
                     } catch (e) {
-                        // If decoding fails, return the encoded version
                         return encodedUrl;
                     }
                 }
