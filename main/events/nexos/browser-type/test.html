@@ -4120,7 +4120,7 @@ if (blockedRegex.test(urlLower)) {
                 const interval = setInterval(() => {
                     if (this.activeTabId === tabId) {
                         const tab = this.tabs.get(tabId);
-                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank') {
+                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
                             // Try to read the actual current URL from the iframe
                             const realUrl = this.getIframeCurrentUrl(tab);
                             if (realUrl && realUrl !== 'about:blank') {
@@ -4177,9 +4177,17 @@ if (blockedRegex.test(urlLower)) {
                     
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab) {
+                        const decoded = this.extractOriginalUrl(previousUrl);
+                        tab.currentUrl = decoded;
                         tab.url = previousUrl;
+                        tab._navigatingHistory = true;
                         tab.iframe.src = previousUrl;
-                        this.addressBar.value = this.extractOriginalUrl(previousUrl);
+                        this.addressBar.value = decoded;
+                        this.updateFavicon(tab, decoded);
+                        this.updateTabTitle(tab, decoded);
+                        
+                        // Allow periodic updater to resume after navigation settles
+                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                     }
                     
                     this.updateNavigationButtons();
@@ -4198,9 +4206,16 @@ if (blockedRegex.test(urlLower)) {
                     
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab) {
+                        const decoded = this.extractOriginalUrl(nextUrl);
+                        tab.currentUrl = decoded;
                         tab.url = nextUrl;
+                        tab._navigatingHistory = true;
                         tab.iframe.src = nextUrl;
-                        this.addressBar.value = this.extractOriginalUrl(nextUrl);
+                        this.addressBar.value = decoded;
+                        this.updateFavicon(tab, decoded);
+                        this.updateTabTitle(tab, decoded);
+                        
+                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                     }
                     
                     this.updateNavigationButtons();
