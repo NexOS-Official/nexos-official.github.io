@@ -2789,6 +2789,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 this.initializeTabDragging();
 
+                // Listen for URL updates from embed.html iframe
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'urlUpdate') {
+                        const activeTab = this.tabs.get(this.activeTabId);
+                        if (activeTab) {
+                            const newUrl = event.data.url;
+                            
+                            // Update the address bar with the real URL (not the proxy URL)
+                            this.addressBar.value = newUrl;
+                            
+                            // Update the tab's current URL tracking
+                            activeTab.currentUrl = newUrl;
+                            
+                            // Update favicon for the real URL
+                            this.updateFavicon(activeTab, newUrl);
+                            
+                            // Update tab title if provided
+                            if (event.data.title) {
+                                this.updateTabTitle(activeTab, newUrl, event.data.title);
+                            } else {
+                                this.updateTabTitle(activeTab, newUrl);
+                            }
+                        }
+                    }
+                });
+
                 document.addEventListener('click', (e) => {
                     if (!this.contextMenu.contains(e.target)) {
                         this.hideContextMenu();
@@ -3977,19 +4003,31 @@ if (blockedRegex.test(urlLower)) {
                 }
             }
 
-            updateTabTitle(tab, url) {
+            updateTabTitle(tab, url, providedTitle = null) {
                 const domain = this.extractDomain(url);
                 const previousTitle = tab.title;
                 
-                try {
-                    const iframe = tab.iframe;
-                    if (iframe.contentDocument && iframe.contentDocument.title) {
-                        tab.title = iframe.contentDocument.title;
-                    } else if (domain) {
-                        tab.title = this.formatDomainTitle(domain);
-                    } else {
-                        tab.title = 'nexORAos';
+                // If a title is explicitly provided (from postMessage), use it
+                if (providedTitle) {
+                    tab.title = providedTitle;
+                } else {
+                    try {
+                        const iframe = tab.iframe;
+                        if (iframe.contentDocument && iframe.contentDocument.title) {
+                            tab.title = iframe.contentDocument.title;
+                        } else if (domain) {
+                            tab.title = this.formatDomainTitle(domain);
+                        } else {
+                            tab.title = 'nexORAos';
+                        }
+                    } catch (error) {
+                        if (domain) {
+                            tab.title = this.formatDomainTitle(domain);
+                        } else {
+                            tab.title = 'nexORAos';
+                        }
                     }
+                }
                 } catch (error) {
                     if (domain) {
                         tab.title = this.formatDomainTitle(domain);
@@ -4070,40 +4108,8 @@ if (blockedRegex.test(urlLower)) {
                     clearInterval(this.updateIntervals.get(tabId));
                 }
 
-                const interval = setInterval(() => {
-                    if (this.activeTabId === tabId) {
-                        const tab = this.tabs.get(tabId);
-                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank') {
-                            try {
-                                // Try to get the actual URL from inside the iframe
-                                const iframeUrl = tab.iframe.contentWindow.location.href;
-                                
-                                // Extract the real URL from the proxy format
-                                const match = iframeUrl.match(/[?&]url=([^&]+)/);
-                                if (match) {
-                                    const realUrl = decodeURIComponent(match[1]);
-                                    
-                                    // Only update if the URL has changed
-                                    if (tab.currentUrl !== realUrl) {
-                                        tab.currentUrl = realUrl;
-                                        tab.url = iframeUrl; // Keep the proxy URL in tab.url
-                                        
-                                        this.addressBar.value = realUrl;
-                                        this.updateTabTitle(tab, realUrl);
-                                        this.updateFavicon(tab, realUrl);
-                                    }
-                                }
-                            } catch (e) {
-                                // Cross-origin access blocked, fall back to existing behavior
-                                this.updateTabInfo(tabId);
-                                this.updateFavicon(tab, tab.iframe.src);
-                                this.updateAddressBarDomain(tab.iframe.src);
-                            }
-                        }
-                    }
-                }, 500); // Check more frequently (every 500ms) for better responsiveness
-
-                this.updateIntervals.set(tabId, interval);
+                // No longer needed - URL updates come via postMessage from embed.html
+                // Keep the function for backwards compatibility with other code that calls it
             }
 
             goBack() {
