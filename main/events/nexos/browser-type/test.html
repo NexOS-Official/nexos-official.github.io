@@ -2601,38 +2601,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             bindEvents() {
-                // Listen for URL updates from embed.html iframe
-                window.addEventListener('message', (event) => {
-                    console.log('[v0] Received message:', event.data);
-                    
-                    if (event.data && event.data.type === 'urlUpdate') {
-                        const activeTab = this.tabs.get(this.activeTabId);
-                        if (activeTab) {
-                            const newUrl = event.data.url;
-                            
-                            console.log('[v0] Processing URL update for active tab:', newUrl);
-                            
-                            // Update the address bar with the real URL (not the proxy URL)
-                            this.addressBar.value = newUrl;
-                            
-                            // Update the tab's current URL tracking
-                            activeTab.currentUrl = newUrl;
-                            
-                            // Update favicon for the real URL
-                            this.updateFavicon(activeTab, newUrl);
-                            
-                            // Update tab title if provided
-                            if (event.data.title) {
-                                activeTab.title = event.data.title;
-                                const tabElement = activeTab.element;
-                                const titleElement = tabElement.querySelector('.tab-title');
-                                if (titleElement) {
-                                    titleElement.textContent = event.data.title;
-                                }
-                            }
-                        }
-                    }
-                });
                 
                 this.newTabBtn.addEventListener('click', () => this.createNewTab());
                 this.addressBar.addEventListener('keydown', (e) => {
@@ -4003,7 +3971,7 @@ if (blockedRegex.test(urlLower)) {
                     this.updateTabTitle(tab, originalUrl);
                     
                     if (tab.id === this.activeTabId) {
-                        this.updateAddressBarDomain(currentUrl);
+                        this.addressBar.value = originalUrl;
                     }
                     
                 } catch (error) {
@@ -4087,8 +4055,7 @@ if (blockedRegex.test(urlLower)) {
                 this.tryFaviconSources(faviconElement, faviconSources, 0, tab);
             }
 
-            updateAddressBarDomain(url) {
-            }
+
 
             setupIframeLoadHandler(iframe, tabId) {
                 iframe.addEventListener('load', () => {
