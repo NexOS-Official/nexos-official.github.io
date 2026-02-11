@@ -3934,71 +3934,22 @@ if (blockedRegex.test(urlLower)) {
                 this.updateNavigationButtons();
             }
 
-            decodeProxyUrl(encodedUrl) {
-                // Custom decoder for the proxy's character substitution encoding
-                // Pattern: hvtrs8/- -> https://
-                const charMap = {
-                    'h': 'h', 'v': 't', 't': 't', 'r': 'p', 's': 's',
-                    '8': ':', '/': '/', '-': '.', '`': 'b', 'g': 'g',
-                    'k': 'i', 'j': 't', 'u': 'h', '.': '.', 'a': 'c',
-                    'o': 'o', 'L': 'N', 'e': 'e', 'z': 'x', 'O': 'O',
-                    'Q': 'S', 'M': 'O', 'f': 'f', 'd': 'f', 'i': 'i',
-                    'c': 'c', 'l': 'i', 'n': 'a', 'x': 'l', 'm': '-',
-                    'p': 'n', 'b': 'g', ',': '.',
-                    'w': 'u', 'y': 'b'
-                };
-                
-                let decoded = '';
-                for (let char of encodedUrl) {
-                    decoded += charMap[char] || char;
-                }
-                return decoded;
-            }
-
             extractOriginalUrl(proxyUrl) {
                 if (!proxyUrl) return proxyUrl;
                 
-                // Check for ?url= parameter format (e.g., /active/embed.html?url=https://example.com)
+                // ONLY extract the URL from the ?url= parameter - never decode the proxy's internal format
+                // Pattern: /active/embed.html?url=https://example.com
                 const urlParamMatch = proxyUrl.match(/[?&]url=([^&]+)/);
                 if (urlParamMatch) {
-                    return decodeURIComponent(urlParamMatch[1]);
-                }
-                
-                // Check for /active/go/ format - the URL comes after /active/go/
-                if (proxyUrl.includes('/active/go/')) {
-                    const goIndex = proxyUrl.indexOf('/active/go/');
-                    const encodedUrl = proxyUrl.substring(goIndex + '/active/go/'.length);
-                    
-                    // Try the custom proxy decoder
-                    const decoded = this.decodeProxyUrl(encodedUrl);
-                    if (decoded && decoded !== encodedUrl && decoded.startsWith('http')) {
-                        return decoded;
-                    }
-                    
-                    // Fall back to standard decoding
                     try {
-                        return decodeURIComponent(encodedUrl);
+                        return decodeURIComponent(urlParamMatch[1]);
                     } catch (e) {
-                        return encodedUrl;
+                        // If decoding fails, return the raw parameter
+                        return urlParamMatch[1];
                     }
                 }
                 
-                // Check for /active/embed.html without query string
-                if (proxyUrl.includes('/active/embed.html') && !proxyUrl.includes('?url=')) {
-                    // Might have the URL after embed.html in some other format
-                    const embedIndex = proxyUrl.indexOf('/active/embed.html');
-                    const afterEmbed = proxyUrl.substring(embedIndex + '/active/embed.html'.length);
-                    
-                    if (afterEmbed && afterEmbed !== '/' && afterEmbed.length > 1) {
-                        // Try to extract and decode
-                        try {
-                            return decodeURIComponent(afterEmbed.startsWith('?url=') ? afterEmbed.substring(5) : afterEmbed);
-                        } catch (e) {
-                            return afterEmbed;
-                        }
-                    }
-                }
-                
+                // If no ?url= parameter found, return the original URL
                 return proxyUrl;
             }
 
