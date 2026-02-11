@@ -2719,10 +2719,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 document.getElementById('gamesMenuItem').addEventListener('click', () => {
-                    const activeTab = this.tabs.get(this.activeTabId);
-                    if (activeTab && activeTab.iframe) {
-                        activeTab.iframe.src = '/games';
-                        this.updateAddressBar();
+                    const newTabId = this.createNewTab();
+                    const newTab = this.tabs.get(newTabId);
+                    if (newTab) {
+                        newTab.url = '/games';
+                        newTab.iframe.src = '/games';
+                        newTab.title = 'Games';
+                        const titleEl = newTab.element.querySelector('.tab-title');
+                        if (titleEl) titleEl.textContent = 'Games';
                     }
                     this.browserMenu.classList.remove('visible');
                 });
@@ -4142,7 +4146,7 @@ if (blockedRegex.test(urlLower)) {
                                         lucide.createIcons();
                                     }
                                     
-                                    // Update history
+                                    // Update navigation history (back/forward)
                                     const history = this.history[this.activeTabId];
                                     if (history) {
                                         const lastEntry = history[history.length - 1];
@@ -4153,6 +4157,11 @@ if (blockedRegex.test(urlLower)) {
                                             this.historyIndex[this.activeTabId] = history.length - 1;
                                             this.updateNavigationButtons();
                                         }
+                                    }
+                                    
+                                    // Also add to browsing history panel
+                                    if (this._addToBrowseHistory) {
+                                        this._addToBrowseHistory(realUrl, tab);
                                     }
                                 }
                             } else {
@@ -5659,6 +5668,19 @@ menu.addEventListener('mouseleave', hideMenu);
                 item.appendChild(faviconDiv);
                 item.appendChild(infoDiv);
                 item.appendChild(metaDiv);
+
+                // Make history items clickable
+                (function(entryUrl) {
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', function() {
+                        var b = window.browser;
+                        if (b) {
+                            b.closeSidebar();
+                            b.navigate(entryUrl);
+                        }
+                    });
+                })(entry.url);
+
                 historyBody.appendChild(item);
             }
         }
@@ -5740,6 +5762,29 @@ menu.addEventListener('mouseleave', hideMenu);
         patchLoadUrl(b);
         patchUpdateTabInfo(b);
         patchCloseSidebar(b);
+
+        // Expose callback for periodic updater to add browse history entries
+        b._addToBrowseHistory = function(url, tab) {
+            if (!url || url === 'about:blank' ||
+                url.startsWith('/welcomer') || url.startsWith('welcomer') ||
+                url.startsWith('/search/blocker') || url.startsWith('/new-tab/launch')) return;
+            
+            // Don't add duplicates if the most recent entry is the same URL
+            if (browseHistory.length > 0 && browseHistory[0].url === url) return;
+            
+            var favicon = null;
+            var siteName = b.extractDomain(url) || url;
+            if (tab) {
+                var faviconImg = tab.element.querySelector('.tab-favicon img');
+                if (faviconImg && faviconImg.src) favicon = faviconImg.src;
+                if (tab.title && tab.title !== 'ermmmm' && tab.title !== 'nexORAos' && tab.title !== 'nexAURAos') {
+                    siteName = tab.title;
+                }
+            }
+            browseHistory.unshift({ url: url, name: siteName, favicon: favicon, time: new Date() });
+            if (browseHistory.length > 200) browseHistory.pop();
+            saveHistoryToStorage();
+        };
 
         var historyBtn = document.getElementById('historyBtn');
         if (historyBtn) {
