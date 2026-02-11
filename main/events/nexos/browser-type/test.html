@@ -3932,10 +3932,27 @@ if (blockedRegex.test(urlLower)) {
             }
 
             extractOriginalUrl(proxyUrl) {
+                // Check for ?url= parameter (embed.html format)
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
                 }
+                
+                // Check for UV-encoded URL (/active/go/ path)
+                // UV uses XOR codec: odd-positioned characters are XOR'd with 2
+                const uvMatch = proxyUrl.match(/\/active\/go\/(.+)/);
+                if (uvMatch) {
+                    try {
+                        const encoded = decodeURIComponent(uvMatch[1]);
+                        const decoded = encoded.split('').map((char, i) => 
+                            i % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char
+                        ).join('');
+                        if (decoded.startsWith('http')) {
+                            return decoded;
+                        }
+                    } catch(e) {}
+                }
+                
                 return proxyUrl;
             }
 
@@ -4082,22 +4099,12 @@ if (blockedRegex.test(urlLower)) {
 
             getIframeCurrentUrl(tab) {
                 try {
-                    const iframeWin = tab.iframe.contentWindow;
-                    if (iframeWin && iframeWin.location && iframeWin.location.href) {
-                        const iframeHref = iframeWin.location.href;
-                        // If the embed.html has a ?url= param, extract it
-                        const extracted = this.extractOriginalUrl(iframeHref);
-                        if (extracted && extracted !== iframeHref) {
-                            return extracted;
+                    const iframeHref = tab.iframe.contentWindow.location.href;
+                    if (iframeHref && iframeHref !== 'about:blank') {
+                        const decoded = this.extractOriginalUrl(iframeHref);
+                        if (decoded !== iframeHref && decoded.startsWith('http')) {
+                            return decoded;
                         }
-                        // Also check if embed.html has an inner iframe we can read
-                        try {
-                            const innerIframe = iframeWin.document.querySelector('iframe');
-                            if (innerIframe && innerIframe.src && innerIframe.src !== 'about:blank') {
-                                return this.extractOriginalUrl(innerIframe.src);
-                            }
-                        } catch(e) {}
-                        return extracted;
                     }
                 } catch(e) {
                     // Cross-origin, can't access
