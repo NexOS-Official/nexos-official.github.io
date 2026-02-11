@@ -1,3 +1,5 @@
+
+
  
 
 <!DOCTYPE html>
@@ -2605,6 +2607,30 @@ document.addEventListener("DOMContentLoaded", () => {
                         this.navigate(this.addressBar.value);
                     }
                 });
+
+                // Listen for URL updates from embed.html via postMessage
+                window.addEventListener('message', (e) => {
+                    if (e.data && e.data.type === 'urlChange' && e.data.url) {
+                        const tab = this.tabs.get(this.activeTabId);
+                        if (tab) {
+                            const newUrl = e.data.url;
+                            tab.currentUrl = newUrl;
+                            this.addressBar.value = newUrl;
+                            this.updateFavicon(tab, newUrl);
+                            this.updateTabTitle(tab, newUrl);
+                            
+                            const isSecure = newUrl.startsWith('https://');
+                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                            if (securityIcon) {
+                                securityIcon.innerHTML = isSecure ? 
+                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                lucide.createIcons();
+                            }
+                        }
+                    }
+                });
                 this.backBtn.addEventListener('click', () => this.goBack());
                 this.forwardBtn.addEventListener('click', () => this.goForward());
                 this.refreshBtn.addEventListener('click', () => this.refresh());
@@ -2694,10 +2720,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 document.getElementById('gamesMenuItem').addEventListener('click', () => {
-                    const activeTab = this.tabs.get(this.activeTabId);
-                    if (activeTab && activeTab.iframe) {
-                        activeTab.iframe.src = '/games';
-                        this.updateAddressBar();
+                    const newTabId = this.createNewTab();
+                    const newTab = this.tabs.get(newTabId);
+                    if (newTab) {
+                        newTab.url = '/games';
+                        newTab.iframe.src = '/games';
+                        newTab.title = 'Games';
+                        const titleEl = newTab.element.querySelector('.tab-title');
+                        if (titleEl) titleEl.textContent = 'Games';
                     }
                     this.browserMenu.classList.remove('visible');
                 });
@@ -3626,7 +3656,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
-                    const originalUrl = this.extractOriginalUrl(tab.url);
+                    // Try to get the real URL from the iframe first
+                    const realUrl = this.getIframeCurrentUrl(tab);
+                    const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
                     tab.currentUrl = originalUrl;
                     
@@ -3685,10 +3717,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     newTab.element.classList.add('active');
                     newTab.iframe.style.display = 'block';
 
-                    let currentUrl = newTab.currentUrl || newTab.iframe.src;
+                    // Try to get the real URL from iframe first
+                    const realUrl = this.getIframeCurrentUrl(newTab);
+                    let currentUrl = realUrl || newTab.currentUrl || newTab.iframe.src;
                     
                     if (currentUrl && currentUrl !== 'about:blank') {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
+                        newTab.currentUrl = originalUrl;
                         this.updateTabTitle(newTab, originalUrl);
                         this.addressBar.value = originalUrl;
                         const isSecure = originalUrl.startsWith('https://');
@@ -3705,21 +3740,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            refresh() {
-                if (!this.activeTabId) return;
-                
-                const tab = this.tabs.get(this.activeTabId);
-                if (tab) {
-                    this.showLoading();
-                    
-                    const urlToRefresh = tab.currentUrl || tab.iframe.src;
-                    
-                    tab.iframe.src = 'about:blank';
-                    setTimeout(() => {
-                        tab.iframe.src = urlToRefresh;
-                    }, 10);
-                }
-            }
+            /* refresh is defined later in the class */
 
             closeTab(tabId) {
                 if (this.tabs.size <= 1) {
@@ -3916,10 +3937,27 @@ if (blockedRegex.test(urlLower)) {
             }
 
             extractOriginalUrl(proxyUrl) {
+                // Check for ?url= parameter (embed.html format)
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
                 }
+                
+                // Check for UV-encoded URL (/active/go/ path)
+                // UV uses XOR codec: odd-positioned characters are XOR'd with 2
+                const uvMatch = proxyUrl.match(/\/active\/go\/(.+)/);
+                if (uvMatch) {
+                    try {
+                        const encoded = decodeURIComponent(uvMatch[1]);
+                        const decoded = encoded.split('').map((char, i) => 
+                            i % 2 ? String.fromCharCode(char.charCodeAt(0) ^ 2) : char
+                        ).join('');
+                        if (decoded.startsWith('http')) {
+                            return decoded;
+                        }
+                    } catch(e) {}
+                }
+                
                 return proxyUrl;
             }
 
@@ -4064,6 +4102,21 @@ if (blockedRegex.test(urlLower)) {
                 });
             }
 
+            getIframeCurrentUrl(tab) {
+                try {
+                    const iframeHref = tab.iframe.contentWindow.location.href;
+                    if (iframeHref && iframeHref !== 'about:blank') {
+                        const decoded = this.extractOriginalUrl(iframeHref);
+                        if (decoded !== iframeHref && decoded.startsWith('http')) {
+                            return decoded;
+                        }
+                    }
+                } catch(e) {
+                    // Cross-origin, can't access
+                }
+                return null;
+            }
+
             setupPeriodicUpdates(tabId) {
                 if (this.updateIntervals.has(tabId)) {
                     clearInterval(this.updateIntervals.get(tabId));
@@ -4072,13 +4125,52 @@ if (blockedRegex.test(urlLower)) {
                 const interval = setInterval(() => {
                     if (this.activeTabId === tabId) {
                         const tab = this.tabs.get(tabId);
-                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank') {
-                            this.updateTabInfo(tabId);
-                            this.updateFavicon(tab, tab.iframe.src);
-                            this.updateAddressBarDomain(tab.iframe.src);
+                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
+                            // Try to read the actual current URL from the iframe
+                            const realUrl = this.getIframeCurrentUrl(tab);
+                            if (realUrl && realUrl !== 'about:blank') {
+                                const oldUrl = tab.currentUrl;
+                                if (realUrl !== oldUrl) {
+                                    tab.currentUrl = realUrl;
+                                    tab.url = tab.iframe.src; // keep proxy URL in sync
+                                    this.addressBar.value = realUrl;
+                                    this.updateFavicon(tab, realUrl);
+                                    this.updateTabTitle(tab, realUrl);
+                                    
+                                    const isSecure = realUrl.startsWith('https://');
+                                    this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                                    const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                                    if (securityIcon) {
+                                        securityIcon.innerHTML = isSecure ? 
+                                            '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                            '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                        lucide.createIcons();
+                                    }
+                                    
+                                    // Update navigation history (back/forward)
+                                    const history = this.history[this.activeTabId];
+                                    if (history) {
+                                        const lastEntry = history[history.length - 1];
+                                        const lastExtracted = this.extractOriginalUrl(lastEntry || '');
+                                        if (lastExtracted !== realUrl) {
+                                            const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                            history.push(proxyUrl);
+                                            this.historyIndex[this.activeTabId] = history.length - 1;
+                                            this.updateNavigationButtons();
+                                        }
+                                    }
+                                    
+                                    // Also add to browsing history panel
+                                    if (this._addToBrowseHistory) {
+                                        this._addToBrowseHistory(realUrl, tab);
+                                    }
+                                }
+                            } else {
+                                this.updateTabInfo(tabId);
+                            }
                         }
                     }
-                }, 1000);
+                }, 800);
 
                 this.updateIntervals.set(tabId, interval);
             }
@@ -4095,9 +4187,17 @@ if (blockedRegex.test(urlLower)) {
                     
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab) {
+                        const decoded = this.extractOriginalUrl(previousUrl);
+                        tab.currentUrl = decoded;
                         tab.url = previousUrl;
+                        tab._navigatingHistory = true;
                         tab.iframe.src = previousUrl;
-                        this.addressBar.value = this.extractOriginalUrl(previousUrl);
+                        this.addressBar.value = decoded;
+                        this.updateFavicon(tab, decoded);
+                        this.updateTabTitle(tab, decoded);
+                        
+                        // Allow periodic updater to resume after navigation settles
+                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                     }
                     
                     this.updateNavigationButtons();
@@ -4116,9 +4216,16 @@ if (blockedRegex.test(urlLower)) {
                     
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab) {
+                        const decoded = this.extractOriginalUrl(nextUrl);
+                        tab.currentUrl = decoded;
                         tab.url = nextUrl;
+                        tab._navigatingHistory = true;
                         tab.iframe.src = nextUrl;
-                        this.addressBar.value = this.extractOriginalUrl(nextUrl);
+                        this.addressBar.value = decoded;
+                        this.updateFavicon(tab, decoded);
+                        this.updateTabTitle(tab, decoded);
+                        
+                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                     }
                     
                     this.updateNavigationButtons();
@@ -4131,7 +4238,15 @@ if (blockedRegex.test(urlLower)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
-                    tab.iframe.src = tab.iframe.src;
+                    // If we have a currentUrl (display URL), re-wrap it in proxy format
+                    let urlToLoad = tab.iframe.src;
+                    if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
+                        urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
+                    }
+                    tab.iframe.src = 'about:blank';
+                    setTimeout(() => {
+                        tab.iframe.src = urlToLoad;
+                    }, 10);
                 }
             }
 
@@ -5554,6 +5669,19 @@ menu.addEventListener('mouseleave', hideMenu);
                 item.appendChild(faviconDiv);
                 item.appendChild(infoDiv);
                 item.appendChild(metaDiv);
+
+                // Make history items clickable
+                (function(entryUrl) {
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', function() {
+                        var b = window.browser;
+                        if (b) {
+                            b.closeSidebar();
+                            b.navigate(entryUrl);
+                        }
+                    });
+                })(entry.url);
+
                 historyBody.appendChild(item);
             }
         }
@@ -5635,6 +5763,29 @@ menu.addEventListener('mouseleave', hideMenu);
         patchLoadUrl(b);
         patchUpdateTabInfo(b);
         patchCloseSidebar(b);
+
+        // Expose callback for periodic updater to add browse history entries
+        b._addToBrowseHistory = function(url, tab) {
+            if (!url || url === 'about:blank' ||
+                url.startsWith('/welcomer') || url.startsWith('welcomer') ||
+                url.startsWith('/search/blocker') || url.startsWith('/new-tab/launch')) return;
+            
+            // Don't add duplicates if the most recent entry is the same URL
+            if (browseHistory.length > 0 && browseHistory[0].url === url) return;
+            
+            var favicon = null;
+            var siteName = b.extractDomain(url) || url;
+            if (tab) {
+                var faviconImg = tab.element.querySelector('.tab-favicon img');
+                if (faviconImg && faviconImg.src) favicon = faviconImg.src;
+                if (tab.title && tab.title !== 'ermmmm' && tab.title !== 'nexORAos' && tab.title !== 'nexAURAos') {
+                    siteName = tab.title;
+                }
+            }
+            browseHistory.unshift({ url: url, name: siteName, favicon: favicon, time: new Date() });
+            if (browseHistory.length > 200) browseHistory.pop();
+            saveHistoryToStorage();
+        };
 
         var historyBtn = document.getElementById('historyBtn');
         if (historyBtn) {
