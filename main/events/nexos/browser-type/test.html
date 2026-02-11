@@ -1,4 +1,6 @@
 
+
+
  
 
 <!DOCTYPE html>
@@ -2629,6 +2631,18 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                         }
                     }
+                    // Intercept links trying to open in a new real browser tab
+                    // and instead open them in a new tab within our custom browser
+                    if (e.data && e.data.type === 'openNewTab' && e.data.url) {
+                        const url = e.data.url;
+                        // Only intercept external URLs, not internal site navigation
+                        if (url.startsWith('http://') || url.startsWith('https://')) {
+                            const newTabId = this.createNewTab();
+                            if (newTabId) {
+                                this.navigate(url);
+                            }
+                        }
+                    }
                 });
                 this.backBtn.addEventListener('click', () => this.goBack());
                 this.forwardBtn.addEventListener('click', () => this.goForward());
@@ -3655,6 +3669,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
+                    // Intercept window.open calls inside the iframe to open in our browser tabs
+                    this.interceptIframeNewTabs(tab);
+                    
                     // Try to get the real URL from the iframe first
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
@@ -3699,7 +3716,90 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
             }
 
-            switchToTab(tabId) {
+            interceptIframeNewTabs(tab) {
+                if (!tab || !tab.iframe) return;
+                try {
+                    const iframeWin = tab.iframe.contentWindow;
+                    if (!iframeWin) return;
+                    
+                    const browser = this;
+                    
+                    // Override window.open in the iframe to redirect to our custom browser tabs
+                    const originalOpen = iframeWin.open;
+                    iframeWin.open = function(url, target, features) {
+                        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                            // Open in our custom browser instead of real browser
+                            window.parent.postMessage({ type: 'openNewTab', url: url }, '*');
+                            return null;
+                        }
+                        // For relative/internal URLs, let them proceed normally
+                        return originalOpen.call(this, url, target, features);
+                    };
+                    
+                    // Intercept clicks on links with target="_blank" inside the iframe
+                    const iframeDoc = iframeWin.document;
+                    if (iframeDoc) {
+                        iframeDoc.addEventListener('click', function(e) {
+                            const link = e.target.closest('a');
+                            if (link && link.target === '_blank' && link.href) {
+                                const href = link.href;
+                                if (href.startsWith('http://') || href.startsWith('https://')) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    // Open in a new tab in our custom browser
+                                    const newTabId = browser.createNewTab();
+                                    if (newTabId) {
+                                        browser.navigate(href);
+                                    }
+                                }
+                            }
+                        }, true);
+                    }
+                    
+                    // Also try to intercept inside nested iframes (like embed.html's inner iframe)
+                    const innerIframes = iframeWin.document.querySelectorAll('iframe');
+                    innerIframes.forEach(function(innerIframe) {
+                        try {
+                            const innerWin = innerIframe.contentWindow;
+                            if (innerWin) {
+                                const innerOrigOpen = innerWin.open;
+                                innerWin.open = function(url, target, features) {
+                                    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                                        window.top.postMessage({ type: 'openNewTab', url: url }, '*');
+                                        return null;
+                                    }
+                                    return innerOrigOpen.call(this, url, target, features);
+                                };
+                                
+                                const innerDoc = innerWin.document;
+                                if (innerDoc) {
+                                    innerDoc.addEventListener('click', function(e) {
+                                        const link = e.target.closest('a');
+                                        if (link && link.target === '_blank' && link.href) {
+                                            const href = link.href;
+                                            if (href.startsWith('http://') || href.startsWith('https://')) {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                const newTabId = browser.createNewTab();
+                                                if (newTabId) {
+                                                    browser.navigate(href);
+                                                }
+                                            }
+                                        }
+                                    }, true);
+                                }
+                            }
+                        } catch(innerErr) {
+                            // Cross-origin inner iframe, can't access
+                        }
+                    });
+                } catch(err) {
+                    // Cross-origin iframe, can't override window.open directly
+                    // The postMessage listener will still work if embed.html sends openNewTab messages
+                }
+            }
+
+
                 if (this.activeTabId === tabId) return;
 
                 if (this.activeTabId) {
@@ -3722,7 +3822,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     if (currentUrl && currentUrl !== 'about:blank') {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
-                        newTab.currentUrl = originalUrl;
+                    newTab.currentUrl = originalUrl;
                         this.updateTabTitle(newTab, originalUrl);
                         this.addressBar.value = originalUrl;
                         const isSecure = originalUrl.startsWith('https://');
@@ -3736,6 +3836,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             lucide.createIcons();
                         }
                     }
+                    this.updateNavigationButtons();
                 }
             }
 
