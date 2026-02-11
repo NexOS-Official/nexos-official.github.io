@@ -4003,31 +4003,19 @@ if (blockedRegex.test(urlLower)) {
                 }
             }
 
-            updateTabTitle(tab, url, providedTitle = null) {
+            updateTabTitle(tab, url) {
                 const domain = this.extractDomain(url);
                 const previousTitle = tab.title;
                 
-                // If a title is explicitly provided (from postMessage), use it
-                if (providedTitle) {
-                    tab.title = providedTitle;
-                } else {
-                    try {
-                        const iframe = tab.iframe;
-                        if (iframe.contentDocument && iframe.contentDocument.title) {
-                            tab.title = iframe.contentDocument.title;
-                        } else if (domain) {
-                            tab.title = this.formatDomainTitle(domain);
-                        } else {
-                            tab.title = 'nexORAos';
-                        }
-                    } catch (error) {
-                        if (domain) {
-                            tab.title = this.formatDomainTitle(domain);
-                        } else {
-                            tab.title = 'nexORAos';
-                        }
+                try {
+                    const iframe = tab.iframe;
+                    if (iframe.contentDocument && iframe.contentDocument.title) {
+                        tab.title = iframe.contentDocument.title;
+                    } else if (domain) {
+                        tab.title = this.formatDomainTitle(domain);
+                    } else {
+                        tab.title = 'nexORAos';
                     }
-                }
                 } catch (error) {
                     if (domain) {
                         tab.title = this.formatDomainTitle(domain);
@@ -4108,8 +4096,40 @@ if (blockedRegex.test(urlLower)) {
                     clearInterval(this.updateIntervals.get(tabId));
                 }
 
-                // No longer needed - URL updates come via postMessage from embed.html
-                // Keep the function for backwards compatibility with other code that calls it
+                const interval = setInterval(() => {
+                    if (this.activeTabId === tabId) {
+                        const tab = this.tabs.get(tabId);
+                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank') {
+                            try {
+                                // Try to get the actual URL from inside the iframe
+                                const iframeUrl = tab.iframe.contentWindow.location.href;
+                                
+                                // Extract the real URL from the proxy format
+                                const match = iframeUrl.match(/[?&]url=([^&]+)/);
+                                if (match) {
+                                    const realUrl = decodeURIComponent(match[1]);
+                                    
+                                    // Only update if the URL has changed
+                                    if (tab.currentUrl !== realUrl) {
+                                        tab.currentUrl = realUrl;
+                                        tab.url = iframeUrl; // Keep the proxy URL in tab.url
+                                        
+                                        this.addressBar.value = realUrl;
+                                        this.updateTabTitle(tab, realUrl);
+                                        this.updateFavicon(tab, realUrl);
+                                    }
+                                }
+                            } catch (e) {
+                                // Cross-origin access blocked, fall back to existing behavior
+                                this.updateTabInfo(tabId);
+                                this.updateFavicon(tab, tab.iframe.src);
+                                this.updateAddressBarDomain(tab.iframe.src);
+                            }
+                        }
+                    }
+                }, 500); // Check more frequently (every 500ms) for better responsiveness
+
+                this.updateIntervals.set(tabId, interval);
             }
 
             goBack() {
