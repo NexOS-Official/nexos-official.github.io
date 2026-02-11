@@ -3935,10 +3935,44 @@ if (blockedRegex.test(urlLower)) {
             }
 
             extractOriginalUrl(proxyUrl) {
-                const match = proxyUrl.match(/url=([^&]+)/);
-                if (match) {
-                    return decodeURIComponent(match[1]);
+                if (!proxyUrl) return proxyUrl;
+                
+                // Check for ?url= parameter format (e.g., /active/embed.html?url=https://example.com)
+                const urlParamMatch = proxyUrl.match(/[?&]url=([^&]+)/);
+                if (urlParamMatch) {
+                    return decodeURIComponent(urlParamMatch[1]);
                 }
+                
+                // Check for /active/go/ format - the URL comes after /active/go/
+                if (proxyUrl.includes('/active/go/')) {
+                    const goIndex = proxyUrl.indexOf('/active/go/');
+                    const encodedUrl = proxyUrl.substring(goIndex + '/active/go/'.length);
+                    
+                    // The proxy uses a custom encoding - try to decode it
+                    try {
+                        return decodeURIComponent(encodedUrl);
+                    } catch (e) {
+                        // If decoding fails, return the encoded version
+                        return encodedUrl;
+                    }
+                }
+                
+                // Check for /active/embed.html without query string
+                if (proxyUrl.includes('/active/embed.html') && !proxyUrl.includes('?url=')) {
+                    // Might have the URL after embed.html in some other format
+                    const embedIndex = proxyUrl.indexOf('/active/embed.html');
+                    const afterEmbed = proxyUrl.substring(embedIndex + '/active/embed.html'.length);
+                    
+                    if (afterEmbed && afterEmbed !== '/' && afterEmbed.length > 1) {
+                        // Try to extract and decode
+                        try {
+                            return decodeURIComponent(afterEmbed.startsWith('?url=') ? afterEmbed.substring(5) : afterEmbed);
+                        } catch (e) {
+                            return afterEmbed;
+                        }
+                    }
+                }
+                
                 return proxyUrl;
             }
 
