@@ -3637,7 +3637,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (this.activeTabId === tabId) {
                             this.updateFavicon(tab, originalUrl);
                             this.addressBar.value = originalUrl;
-                            this.updateBrowserUrlAndFavicon(originalUrl);
                             const isSecure = originalUrl.startsWith('https://');
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                             
@@ -3657,7 +3656,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (this.activeTabId === tabId) {
                                 this.updateFavicon(tab, originalUrl);
                                 this.addressBar.value = originalUrl;
-                                this.updateBrowserUrlAndFavicon(originalUrl);
                             }
                         }, 100);
                     }
@@ -3665,137 +3663,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 iframe.addEventListener('load', tab.loadHandler);
                 
-                // Start monitoring iframe URL changes
-                this.startIframeUrlMonitoring(tabId);
-                
                 // liten for navi eventssssssssssssss!!!
                 iframe.addEventListener('beforeunload', () => {
                     console.log('something happened', tabId);
                 });
-            }
-
-            startIframeUrlMonitoring(tabId) {
-                // Clear any existing monitor
-                if (this.urlMonitorIntervals && this.urlMonitorIntervals.has(tabId)) {
-                    clearInterval(this.urlMonitorIntervals.get(tabId));
-                }
-                
-                if (!this.urlMonitorIntervals) {
-                    this.urlMonitorIntervals = new Map();
-                }
-                
-                const tab = this.tabs.get(tabId);
-                if (!tab) return;
-                
-                // Monitor iframe URL changes every 500ms
-                const monitorInterval = setInterval(() => {
-                    if (!this.tabs.has(tabId)) {
-                        clearInterval(monitorInterval);
-                        this.urlMonitorIntervals.delete(tabId);
-                        return;
-                    }
-                    
-                    const currentTab = this.tabs.get(tabId);
-                    if (!currentTab || !currentTab.iframe) return;
-                    
-                    let currentIframeUrl = null;
-                    
-                    // Try to get the iframe's current URL
-                    try {
-                        // For same-origin iframes
-                        currentIframeUrl = currentTab.iframe.contentWindow.location.href;
-                    } catch (e) {
-                        // Cross-origin - use src attribute as fallback
-                        currentIframeUrl = currentTab.iframe.src;
-                    }
-                    
-                    if (currentIframeUrl && currentIframeUrl !== 'about:blank') {
-                        const extractedUrl = this.extractOriginalUrl(currentIframeUrl);
-                        
-                        // Check if URL changed
-                        if (extractedUrl !== currentTab.lastMonitoredUrl) {
-                            currentTab.lastMonitoredUrl = extractedUrl;
-                            currentTab.currentUrl = extractedUrl;
-                            currentTab.url = currentIframeUrl;
-                            
-                            // Update tab info
-                            this.updateTabInfo(tabId);
-                            
-                            // If this is the active tab, update address bar and browser URL
-                            if (this.activeTabId === tabId) {
-                                this.addressBar.value = extractedUrl;
-                                this.updateBrowserUrlAndFavicon(extractedUrl);
-                                this.updateFavicon(currentTab, extractedUrl);
-                                
-                                const isSecure = extractedUrl.startsWith('https://');
-                                this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                                
-                                const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                                if (securityIcon) {
-                                    securityIcon.innerHTML = isSecure ? 
-                                        '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                        '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                    lucide.createIcons();
-                                }
-                            }
-                        }
-                    }
-                }, 500);
-                
-                this.urlMonitorIntervals.set(tabId, monitorInterval);
-            }
-
-            updateBrowserUrlAndFavicon(url) {
-                if (!url || url === 'about:blank') return;
-                
-                try {
-                    // Update the page favicon to match the iframe's site
-                    // Note: Cannot update browser's actual address bar to different domain due to security restrictions
-                    // The address bar input field in the UI already shows the correct URL
-                    this.updatePageFavicon(url);
-                } catch (e) {
-                    console.log('Could not update favicon:', e);
-                }
-            }
-
-            updatePageFavicon(url) {
-                try {
-                    const domain = this.extractDomain(url);
-                    if (!domain) return;
-                    
-                    // Remove existing favicon links
-                    const existingFavicons = document.querySelectorAll('link[rel*="icon"]');
-                    existingFavicons.forEach(link => link.remove());
-                    
-                    // Try multiple favicon sources
-                    const faviconSources = [
-                        `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
-                        `https://${domain}/favicon.ico`,
-                        `https://icons.duckduckgo.com/ip3/${domain}.ico`
-                    ];
-                    
-                    // Create new favicon link
-                    const link = document.createElement('link');
-                    link.rel = 'icon';
-                    link.type = 'image/x-icon';
-                    link.href = faviconSources[0];
-                    
-                    // Add error handler to try fallbacks
-                    link.onerror = () => {
-                        if (faviconSources.length > 1) {
-                            link.href = faviconSources[1];
-                            link.onerror = () => {
-                                if (faviconSources.length > 2) {
-                                    link.href = faviconSources[2];
-                                }
-                            };
-                        }
-                    };
-                    
-                    document.head.appendChild(link);
-                } catch (e) {
-                    console.log('Could not update page favicon:', e);
-                }
             }
 
             switchToTab(tabId) {
@@ -3821,7 +3692,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
                         this.updateTabTitle(newTab, originalUrl);
                         this.addressBar.value = originalUrl;
-                        this.updateBrowserUrlAndFavicon(originalUrl);
                         const isSecure = originalUrl.startsWith('https://');
                         this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                         
@@ -3866,12 +3736,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 if (tab.pinned && this.contextMenuTabId !== tabId) {
                     return;
-                }
-                
-                // Clean up URL monitoring for this tab
-                if (this.urlMonitorIntervals && this.urlMonitorIntervals.has(tabId)) {
-                    clearInterval(this.urlMonitorIntervals.get(tabId));
-                    this.urlMonitorIntervals.delete(tabId);
                 }
                 
                 tab.element.style.transform = 'translateX(-100%)';
@@ -4040,9 +3904,7 @@ if (blockedRegex.test(urlLower)) {
                 this.showLoading();
                 tab.url = url;
                 tab.iframe.src = url;
-                const extractedUrl = this.extractOriginalUrl(url);
-                this.addressBar.value = extractedUrl;
-                this.updateBrowserUrlAndFavicon(extractedUrl);
+                this.addressBar.value = this.extractOriginalUrl(url);
 
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
@@ -4192,6 +4054,52 @@ if (blockedRegex.test(urlLower)) {
             }
 
             updateAddressBarDomain(url) {
+                console.log('[v0] updateAddressBarDomain called with:', url);
+                if (!this.activeTabId) return;
+                
+                const tab = this.tabs.get(this.activeTabId);
+                if (!tab) return;
+                
+                try {
+                    // Try to get the actual iframe URL (may fail due to CORS)
+                    let actualUrl = url;
+                    try {
+                        if (tab.iframe && tab.iframe.contentWindow && tab.iframe.contentWindow.location) {
+                            actualUrl = tab.iframe.contentWindow.location.href;
+                        }
+                    } catch (e) {
+                        // CORS restriction, use the provided url
+                        console.log('[v0] CORS blocked, using provided URL');
+                    }
+                    
+                    const originalUrl = this.extractOriginalUrl(actualUrl);
+                    
+                    // Only update if the URL has actually changed
+                    if (this.addressBar.value !== originalUrl && originalUrl !== 'about:blank') {
+                        console.log('[v0] Updating address bar to:', originalUrl);
+                        this.addressBar.value = originalUrl;
+                        
+                        // Update security icon
+                        const isSecure = originalUrl.startsWith('https://');
+                        this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                        
+                        const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                        if (securityIcon) {
+                            securityIcon.innerHTML = isSecure ? 
+                                '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                            lucide.createIcons();
+                        }
+                        
+                        // Update favicon if domain changed
+                        const newDomain = this.extractDomain(originalUrl);
+                        if (newDomain && newDomain !== tab.faviconDomain) {
+                            this.updateFavicon(tab, originalUrl);
+                        }
+                    }
+                } catch (err) {
+                    console.log('[v0] Error in updateAddressBarDomain:', err);
+                }
             }
 
             setupIframeLoadHandler(iframe, tabId) {
@@ -4236,9 +4144,7 @@ if (blockedRegex.test(urlLower)) {
                     if (tab) {
                         tab.url = previousUrl;
                         tab.iframe.src = previousUrl;
-                        const extractedUrl = this.extractOriginalUrl(previousUrl);
-                        this.addressBar.value = extractedUrl;
-                        this.updateBrowserUrlAndFavicon(extractedUrl);
+                        this.addressBar.value = this.extractOriginalUrl(previousUrl);
                     }
                     
                     this.updateNavigationButtons();
@@ -4259,9 +4165,7 @@ if (blockedRegex.test(urlLower)) {
                     if (tab) {
                         tab.url = nextUrl;
                         tab.iframe.src = nextUrl;
-                        const extractedUrl = this.extractOriginalUrl(nextUrl);
-                        this.addressBar.value = extractedUrl;
-                        this.updateBrowserUrlAndFavicon(extractedUrl);
+                        this.addressBar.value = this.extractOriginalUrl(nextUrl);
                     }
                     
                     this.updateNavigationButtons();
@@ -6065,7 +5969,7 @@ menu.addEventListener('mouseleave', hideMenu);
         if (powerBtn) {
             powerBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                window.location.href = 'https://google.com';
+                window.location.href = '/login';
             });
         }
     }
@@ -6096,11 +6000,11 @@ menu.addEventListener('mouseleave', hideMenu);
 
 <script>
 (function() {
-    var appShortcuts = [
-        { id: 'appYouTube', url: 'nexos://new-tab' },
-        { id: 'appGithub',  url: 'https://github.com/NexOS-Official/nexos-official.github.io' },
-        { id: 'appDiscord',  url: 'https://dsc.gg/nexoservices' }
-    ];
+  var appShortcuts = [
+  { id: 'appYouTube', url: 'nexos://new-tab' },
+  { id: 'appGithub',  url: 'https://nexos-official.github.io' },
+  { id: 'appDiscord',  url: 'https://dsc.gg/nexoservices' }
+  ];
 
     function initAppShortcuts() {
         var b = window.browser;
@@ -6122,6 +6026,52 @@ menu.addEventListener('mouseleave', hideMenu);
 
     setTimeout(initAppShortcuts, 400);
 })();
+</script>
+<script>
+  (function () {
+    async function ping() {
+      try { await fetch("/auth/ping", { credentials: "include" }); } catch {}
+    }
+    ping();
+    setInterval(ping, 20000);
+
+    const es = new EventSource("/live", { withCredentials: true });
+
+    function showAnnouncement(msg) {
+      document.querySelectorAll("alert[nexos-ann]").forEach(e => e.remove());
+
+      const a = document.createElement("alert");
+      a.setAttribute("nexos-ann", "1");
+      a.textContent = msg;
+
+      a.style.position = "fixed";
+      a.style.left = "12px";
+      a.style.right = "12px";
+      a.style.top = "12px";
+      a.style.padding = "10px";
+      a.style.background = "black";
+      a.style.color = "white";
+      a.style.border = "1px solid gray";
+      a.style.zIndex = "999999";
+
+      const x = document.createElement("button");
+      x.textContent = "x";
+      x.style.marginLeft = "10px";
+      x.onclick = () => a.remove();
+
+      a.appendChild(document.createTextNode(" "));
+      a.appendChild(x);
+
+      document.body.appendChild(a);
+    }
+
+    es.addEventListener("announcement", (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (data && data.message) showAnnouncement(data.message);
+      } catch {}
+    });
+  })();
 </script>
 </body>
 </html>
