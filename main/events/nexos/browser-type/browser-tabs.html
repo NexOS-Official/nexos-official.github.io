@@ -1,5 +1,6 @@
 
 
+
  
 
 <!DOCTYPE html>
@@ -6176,6 +6177,22 @@ menu.addEventListener('mouseleave', hideMenu);
       } catch {}
     });
   })();
+</script>
+<script>
+(function() {
+    function applyFixes() {
+        var b = window.browser;
+        if (!b) { setTimeout(applyFixes, 200); return; }
+
+        var origSwitchToTab = b.switchToTab.bind(b);
+        b.switchToTab = function(tabId) {
+            origSwitchToTab(tabId);
+            b.updateNavigationButtons();
+        };
+    }
+
+    setTimeout(applyFixes, 500);
+})();
 </script>
 </body>
 </html>
