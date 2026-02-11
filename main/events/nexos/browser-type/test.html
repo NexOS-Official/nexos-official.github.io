@@ -2603,12 +2603,14 @@ document.addEventListener("DOMContentLoaded", () => {
             bindEvents() {
                 // Listen for URL updates from embed.html iframe
                 window.addEventListener('message', (event) => {
+                    console.log('[v0] Received message:', event.data);
+                    
                     if (event.data && event.data.type === 'urlUpdate') {
                         const activeTab = this.tabs.get(this.activeTabId);
-                        if (activeTab && activeTab.iframe.contentWindow === event.source) {
+                        if (activeTab) {
                             const newUrl = event.data.url;
                             
-                            console.log('[v0] Received URL update:', newUrl);
+                            console.log('[v0] Processing URL update for active tab:', newUrl);
                             
                             // Update the address bar with the real URL (not the proxy URL)
                             this.addressBar.value = newUrl;
