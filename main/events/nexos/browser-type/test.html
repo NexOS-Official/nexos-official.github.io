@@ -6179,129 +6179,16 @@ menu.addEventListener('mouseleave', hideMenu);
   })();
 </script>
 <script>
-// === FIXES: Back/Forward nav + New Tab interception ===
 (function() {
     function applyFixes() {
         var b = window.browser;
         if (!b) { setTimeout(applyFixes, 200); return; }
 
-        // FIX 1: Update back/forward button state when switching tabs
         var origSwitchToTab = b.switchToTab.bind(b);
         b.switchToTab = function(tabId) {
             origSwitchToTab(tabId);
             b.updateNavigationButtons();
         };
-
-        // FIX 2: Listen for openNewTab messages from iframes
-        window.addEventListener('message', function(e) {
-            if (e.data && e.data.type === 'openNewTab' && e.data.url) {
-                var url = e.data.url;
-                if (url.startsWith('http://') || url.startsWith('https://')) {
-                    var newTabId = b.createNewTab();
-                    if (newTabId) {
-                        b.navigate(url);
-                    }
-                }
-            }
-        });
-
-        // FIX 3: Intercept window.open and target="_blank" inside iframes
-        function interceptIframeNewTabs(tab) {
-            if (!tab || !tab.iframe) return;
-            try {
-                var iframeWin = tab.iframe.contentWindow;
-                if (!iframeWin) return;
-
-                // Override window.open
-                var originalOpen = iframeWin.open;
-                iframeWin.open = function(url, target, features) {
-                    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-                        window.postMessage({ type: 'openNewTab', url: url }, '*');
-                        return null;
-                    }
-                    return originalOpen.call(this, url, target, features);
-                };
-
-                // Intercept target="_blank" link clicks
-                var iframeDoc = iframeWin.document;
-                if (iframeDoc) {
-                    iframeDoc.addEventListener('click', function(e) {
-                        var link = e.target.closest ? e.target.closest('a') : null;
-                        if (link && link.target === '_blank' && link.href) {
-                            if (link.href.startsWith('http://') || link.href.startsWith('https://')) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                var newTabId = b.createNewTab();
-                                if (newTabId) {
-                                    b.navigate(link.href);
-                                }
-                            }
-                        }
-                    }, true);
-                }
-
-                // Try nested iframes (e.g. embed.html inner iframe)
-                try {
-                    var innerIframes = iframeDoc.querySelectorAll('iframe');
-                    innerIframes.forEach(function(inner) {
-                        try {
-                            var innerWin = inner.contentWindow;
-                            if (!innerWin) return;
-                            var innerOpen = innerWin.open;
-                            innerWin.open = function(url, target, features) {
-                                if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-                                    window.top.postMessage({ type: 'openNewTab', url: url }, '*');
-                                    return null;
-                                }
-                                return innerOpen.call(this, url, target, features);
-                            };
-                            var innerDoc = innerWin.document;
-                            if (innerDoc) {
-                                innerDoc.addEventListener('click', function(e) {
-                                    var link = e.target.closest ? e.target.closest('a') : null;
-                                    if (link && link.target === '_blank' && link.href) {
-                                        if (link.href.startsWith('http://') || link.href.startsWith('https://')) {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            var nid = b.createNewTab();
-                                            if (nid) b.navigate(link.href);
-                                        }
-                                    }
-                                }, true);
-                            }
-                        } catch(ie) {}
-                    });
-                } catch(ne) {}
-            } catch(err) {
-                // Cross-origin - postMessage listener is the fallback
-            }
-        }
-
-        // Patch setupIframeLoadHandling to call interceptIframeNewTabs on each iframe load
-        var origSetup = b.setupIframeLoadHandling.bind(b);
-        b.setupIframeLoadHandling = function(tabId) {
-            origSetup(tabId);
-            var tab = b.tabs.get(tabId);
-            if (tab && tab.iframe) {
-                tab.iframe.addEventListener('load', function() {
-                    interceptIframeNewTabs(tab);
-                    // Re-intercept nested iframes after a delay (they may load later)
-                    setTimeout(function() { interceptIframeNewTabs(tab); }, 1500);
-                });
-            }
-        };
-
-        // Apply to already-existing tabs
-        b.tabs.forEach(function(tab, tabId) {
-            if (tab.iframe) {
-                tab.iframe.addEventListener('load', function() {
-                    interceptIframeNewTabs(tab);
-                    setTimeout(function() { interceptIframeNewTabs(tab); }, 1500);
-                });
-                // Also intercept now if already loaded
-                interceptIframeNewTabs(tab);
-            }
-        });
     }
 
     setTimeout(applyFixes, 500);
