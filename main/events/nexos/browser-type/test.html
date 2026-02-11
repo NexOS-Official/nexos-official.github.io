@@ -1,4 +1,5 @@
 
+
  
 
 <!DOCTYPE html>
@@ -2600,6 +2601,37 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             bindEvents() {
+                // Listen for URL updates from embed.html iframe
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'urlUpdate') {
+                        const activeTab = this.tabs.get(this.activeTabId);
+                        if (activeTab && activeTab.iframe.contentWindow === event.source) {
+                            const newUrl = event.data.url;
+                            
+                            console.log('[v0] Received URL update:', newUrl);
+                            
+                            // Update the address bar with the real URL (not the proxy URL)
+                            this.addressBar.value = newUrl;
+                            
+                            // Update the tab's current URL tracking
+                            activeTab.currentUrl = newUrl;
+                            
+                            // Update favicon for the real URL
+                            this.updateFavicon(activeTab, newUrl);
+                            
+                            // Update tab title if provided
+                            if (event.data.title) {
+                                activeTab.title = event.data.title;
+                                const tabElement = activeTab.element;
+                                const titleElement = tabElement.querySelector('.tab-title');
+                                if (titleElement) {
+                                    titleElement.textContent = event.data.title;
+                                }
+                            }
+                        }
+                    }
+                });
+                
                 this.newTabBtn.addEventListener('click', () => this.createNewTab());
                 this.addressBar.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
@@ -2788,32 +2820,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 this.initializeTabDragging();
-
-                // Listen for URL updates from embed.html iframe
-                window.addEventListener('message', (event) => {
-                    if (event.data && event.data.type === 'urlUpdate') {
-                        const activeTab = this.tabs.get(this.activeTabId);
-                        if (activeTab) {
-                            const newUrl = event.data.url;
-                            
-                            // Update the address bar with the real URL (not the proxy URL)
-                            this.addressBar.value = newUrl;
-                            
-                            // Update the tab's current URL tracking
-                            activeTab.currentUrl = newUrl;
-                            
-                            // Update favicon for the real URL
-                            this.updateFavicon(activeTab, newUrl);
-                            
-                            // Update tab title if provided
-                            if (event.data.title) {
-                                this.updateTabTitle(activeTab, newUrl, event.data.title);
-                            } else {
-                                this.updateTabTitle(activeTab, newUrl);
-                            }
-                        }
-                    }
-                });
 
                 document.addEventListener('click', (e) => {
                     if (!this.contextMenu.contains(e.target)) {
