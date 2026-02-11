@@ -3627,8 +3627,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
-                    const originalUrl = this.extractOriginalUrl(tab.url);
+                    // Try to get the actual URL from the iframe
+                    let actualUrl = tab.url; // fallback to stored URL
                     
+                    try {
+                        // Try to access the iframe's current location
+                        const iframeLocation = iframe.contentWindow?.location?.href;
+                        if (iframeLocation && iframeLocation !== 'about:blank') {
+                            actualUrl = iframeLocation;
+                        }
+                    } catch (e) {
+                        // Cross-origin - use iframe.src if available
+                        if (iframe.src && iframe.src !== 'about:blank') {
+                            actualUrl = iframe.src;
+                        }
+                    }
+                    
+                    const originalUrl = this.extractOriginalUrl(actualUrl);
+                    
+                    // Update the tab's stored URL
+                    tab.url = actualUrl;
                     tab.currentUrl = originalUrl;
                     
                     if (originalUrl && originalUrl !== 'about:blank') {
