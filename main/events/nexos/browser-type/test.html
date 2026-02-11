@@ -1,5 +1,4 @@
 
-
  
 
 <!DOCTYPE html>
@@ -2601,11 +2600,34 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             bindEvents() {
-                
                 this.newTabBtn.addEventListener('click', () => this.createNewTab());
                 this.addressBar.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         this.navigate(this.addressBar.value);
+                    }
+                });
+
+                // Listen for URL updates from embed.html via postMessage
+                window.addEventListener('message', (e) => {
+                    if (e.data && e.data.type === 'urlChange' && e.data.url) {
+                        const tab = this.tabs.get(this.activeTabId);
+                        if (tab) {
+                            const newUrl = e.data.url;
+                            tab.currentUrl = newUrl;
+                            this.addressBar.value = newUrl;
+                            this.updateFavicon(tab, newUrl);
+                            this.updateTabTitle(tab, newUrl);
+                            
+                            const isSecure = newUrl.startsWith('https://');
+                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                            if (securityIcon) {
+                                securityIcon.innerHTML = isSecure ? 
+                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                lucide.createIcons();
+                            }
+                        }
                     }
                 });
                 this.backBtn.addEventListener('click', () => this.goBack());
@@ -3629,7 +3651,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
-                    const originalUrl = this.extractOriginalUrl(tab.url);
+                    // Try to get the real URL from the iframe first
+                    const realUrl = this.getIframeCurrentUrl(tab);
+                    const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
                     tab.currentUrl = originalUrl;
                     
@@ -3688,10 +3712,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     newTab.element.classList.add('active');
                     newTab.iframe.style.display = 'block';
 
-                    let currentUrl = newTab.currentUrl || newTab.iframe.src;
+                    // Try to get the real URL from iframe first
+                    const realUrl = this.getIframeCurrentUrl(newTab);
+                    let currentUrl = realUrl || newTab.currentUrl || newTab.iframe.src;
                     
                     if (currentUrl && currentUrl !== 'about:blank') {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
+                        newTab.currentUrl = originalUrl;
                         this.updateTabTitle(newTab, originalUrl);
                         this.addressBar.value = originalUrl;
                         const isSecure = originalUrl.startsWith('https://');
@@ -3708,21 +3735,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            refresh() {
-                if (!this.activeTabId) return;
-                
-                const tab = this.tabs.get(this.activeTabId);
-                if (tab) {
-                    this.showLoading();
-                    
-                    const urlToRefresh = tab.currentUrl || tab.iframe.src;
-                    
-                    tab.iframe.src = 'about:blank';
-                    setTimeout(() => {
-                        tab.iframe.src = urlToRefresh;
-                    }, 10);
-                }
-            }
+            /* refresh is defined later in the class */
 
             closeTab(tabId) {
                 if (this.tabs.size <= 1) {
@@ -3971,7 +3984,7 @@ if (blockedRegex.test(urlLower)) {
                     this.updateTabTitle(tab, originalUrl);
                     
                     if (tab.id === this.activeTabId) {
-                        this.addressBar.value = originalUrl;
+                        this.updateAddressBarDomain(currentUrl);
                     }
                     
                 } catch (error) {
@@ -4055,7 +4068,8 @@ if (blockedRegex.test(urlLower)) {
                 this.tryFaviconSources(faviconElement, faviconSources, 0, tab);
             }
 
-
+            updateAddressBarDomain(url) {
+            }
 
             setupIframeLoadHandler(iframe, tabId) {
                 iframe.addEventListener('load', () => {
@@ -4064,6 +4078,31 @@ if (blockedRegex.test(urlLower)) {
                     
                     this.setupPeriodicUpdates(tabId);
                 });
+            }
+
+            getIframeCurrentUrl(tab) {
+                try {
+                    const iframeWin = tab.iframe.contentWindow;
+                    if (iframeWin && iframeWin.location && iframeWin.location.href) {
+                        const iframeHref = iframeWin.location.href;
+                        // If the embed.html has a ?url= param, extract it
+                        const extracted = this.extractOriginalUrl(iframeHref);
+                        if (extracted && extracted !== iframeHref) {
+                            return extracted;
+                        }
+                        // Also check if embed.html has an inner iframe we can read
+                        try {
+                            const innerIframe = iframeWin.document.querySelector('iframe');
+                            if (innerIframe && innerIframe.src && innerIframe.src !== 'about:blank') {
+                                return this.extractOriginalUrl(innerIframe.src);
+                            }
+                        } catch(e) {}
+                        return extracted;
+                    }
+                } catch(e) {
+                    // Cross-origin, can't access
+                }
+                return null;
             }
 
             setupPeriodicUpdates(tabId) {
@@ -4075,34 +4114,46 @@ if (blockedRegex.test(urlLower)) {
                     if (this.activeTabId === tabId) {
                         const tab = this.tabs.get(tabId);
                         if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank') {
-                            try {
-                                // Try to get the actual URL from inside the iframe
-                                const iframeUrl = tab.iframe.contentWindow.location.href;
-                                
-                                // Extract the real URL from the proxy format
-                                const match = iframeUrl.match(/[?&]url=([^&]+)/);
-                                if (match) {
-                                    const realUrl = decodeURIComponent(match[1]);
+                            // Try to read the actual current URL from the iframe
+                            const realUrl = this.getIframeCurrentUrl(tab);
+                            if (realUrl && realUrl !== 'about:blank') {
+                                const oldUrl = tab.currentUrl;
+                                if (realUrl !== oldUrl) {
+                                    tab.currentUrl = realUrl;
+                                    tab.url = tab.iframe.src; // keep proxy URL in sync
+                                    this.addressBar.value = realUrl;
+                                    this.updateFavicon(tab, realUrl);
+                                    this.updateTabTitle(tab, realUrl);
                                     
-                                    // Only update if the URL has changed
-                                    if (tab.currentUrl !== realUrl) {
-                                        tab.currentUrl = realUrl;
-                                        tab.url = iframeUrl; // Keep the proxy URL in tab.url
-                                        
-                                        this.addressBar.value = realUrl;
-                                        this.updateTabTitle(tab, realUrl);
-                                        this.updateFavicon(tab, realUrl);
+                                    const isSecure = realUrl.startsWith('https://');
+                                    this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                                    const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                                    if (securityIcon) {
+                                        securityIcon.innerHTML = isSecure ? 
+                                            '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                            '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                        lucide.createIcons();
+                                    }
+                                    
+                                    // Update history
+                                    const history = this.history[this.activeTabId];
+                                    if (history) {
+                                        const lastEntry = history[history.length - 1];
+                                        const lastExtracted = this.extractOriginalUrl(lastEntry || '');
+                                        if (lastExtracted !== realUrl) {
+                                            const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                            history.push(proxyUrl);
+                                            this.historyIndex[this.activeTabId] = history.length - 1;
+                                            this.updateNavigationButtons();
+                                        }
                                     }
                                 }
-                            } catch (e) {
-                                // Cross-origin access blocked, fall back to existing behavior
+                            } else {
                                 this.updateTabInfo(tabId);
-                                this.updateFavicon(tab, tab.iframe.src);
-                                this.updateAddressBarDomain(tab.iframe.src);
                             }
                         }
                     }
-                }, 500); // Check more frequently (every 500ms) for better responsiveness
+                }, 800);
 
                 this.updateIntervals.set(tabId, interval);
             }
@@ -4155,7 +4206,15 @@ if (blockedRegex.test(urlLower)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
-                    tab.iframe.src = tab.iframe.src;
+                    // If we have a currentUrl (display URL), re-wrap it in proxy format
+                    let urlToLoad = tab.iframe.src;
+                    if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
+                        urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
+                    }
+                    tab.iframe.src = 'about:blank';
+                    setTimeout(() => {
+                        tab.iframe.src = urlToLoad;
+                    }, 10);
                 }
             }
 
