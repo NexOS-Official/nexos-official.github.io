@@ -3668,30 +3668,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                     if (!iframeDoc || !iframe.contentWindow) return;
 
-                    // Override window.open to send a message to parent
+                    // Only intercept user-initiated clicks on target="_blank" links
+                    // Do NOT override window.open — that breaks embeds, auth popups, etc.
                     iframe.contentWindow.eval(`
                         (function() {
-                            // Override window.open
-                            var originalOpen = window.open;
-                            window.open = function(url, target, features) {
-                                if (url && url !== 'about:blank') {
-                                    // Resolve relative URLs
-                                    try {
-                                        var resolved = new URL(url, window.location.href).href;
-                                        window.parent.postMessage({ type: 'openNewTab', url: resolved }, '*');
-                                        return null;
-                                    } catch(e) {
-                                        window.parent.postMessage({ type: 'openNewTab', url: url }, '*');
-                                        return null;
-                                    }
-                                }
-                                return originalOpen.call(this, url, target, features);
-                            };
+                            if (window.__nexosInterceptorInstalled) return;
+                            window.__nexosInterceptorInstalled = true;
 
-                            // Intercept clicks on target="_blank" links
                             document.addEventListener('click', function(e) {
                                 var anchor = e.target.closest('a');
-                                if (anchor && anchor.target === '_blank' && anchor.href) {
+                                if (anchor && anchor.href && anchor.target === '_blank') {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     window.parent.postMessage({ type: 'openNewTab', url: anchor.href }, '*');
