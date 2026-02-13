@@ -3,6 +3,7 @@
 
 
 
+
  
 
 <!DOCTYPE html>
@@ -3671,6 +3672,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     tab.currentUrl = originalUrl;
                     
+                    // Block prohibited URLs detected after navigation/redirect
+                    if (originalUrl && this.isBlockedUrl(originalUrl)) {
+                        tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
+                        tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
+                        this.addressBar.value = '';
+                        return;
+                    }
+                    
                     if (originalUrl && originalUrl !== 'about:blank') {
                         this.updateTabInfo(tabId);
                         
@@ -3806,38 +3815,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 let url = input.trim();
                 if (!url) return;
 
-const blockedWords = [
-  "porn",
-  "pornhub",
-  "xvideos",
-  "xhamster",
-  "nude",
-  "nudity",
-  "naked",
-  "penis",
-  "vagina",
-  "sex",
-  "hentai",
-  "erotic",
-  "fetish",
-  "boobs",
-  "cum",
-  "gay",
-  "lesbian",
-  "anal",
-  "cock",
-];
-
-const blockedRegex = new RegExp(`\\b(${blockedWords.join("|")})\\b`, "i");
-const urlLower = decodeURIComponent(url.toLowerCase());
-
-const exceptionRegex = /\bnaked[\s\-\+_%]*mole[\s\-\+_%]*rat\b/i;
-
-if (exceptionRegex.test(urlLower)) {
-  return;
-}
-
-if (blockedRegex.test(urlLower)) {
+if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
   return;
 }
@@ -3918,6 +3896,23 @@ if (blockedRegex.test(urlLower)) {
                 }
 
                 this.loadUrl(url);
+            }
+
+            isBlockedUrl(url) {
+                const blockedWords = [
+                    "porn","pornhub","xvideos","xhamster","nude","nudity","naked",
+                    "penis","vagina","sex","hentai","erotic","fetish","boobs",
+                    "cum","gay","lesbian","anal","cock"
+                ];
+                const blockedRegex = new RegExp(`\\b(${blockedWords.join("|")})\\b`, "i");
+                try {
+                    var urlLower = decodeURIComponent(url.toLowerCase());
+                } catch(e) {
+                    var urlLower = url.toLowerCase();
+                }
+                const exceptionRegex = /\bnaked[\s\-\+_%]*mole[\s\-\+_%]*rat\b/i;
+                if (exceptionRegex.test(urlLower)) return false;
+                return blockedRegex.test(urlLower);
             }
 
             isUrl(input) {
@@ -4140,6 +4135,13 @@ if (blockedRegex.test(urlLower)) {
                             if (realUrl && realUrl !== 'about:blank') {
                                 const oldUrl = tab.currentUrl;
                                 if (realUrl !== oldUrl) {
+                                    // Block prohibited URLs detected via periodic check
+                                    if (this.isBlockedUrl(realUrl)) {
+                                        tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
+                                        tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
+                                        this.addressBar.value = '';
+                                        return;
+                                    }
                                     tab.currentUrl = realUrl;
                                     tab.url = tab.iframe.src; // keep proxy URL in sync
                                     this.addressBar.value = realUrl;
