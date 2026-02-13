@@ -2618,16 +2618,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // Listen for URL updates and new tab requests from iframes via postMessage
+                // Listen for URL updates from embed.html via postMessage
                 window.addEventListener('message', (e) => {
-                    // Handle new tab requests from iframes
-                    if (e.data && e.data.type === 'openNewTab' && e.data.url) {
-                        const newTabId = this.createNewTab();
-                        if (newTabId) {
-                            this.navigate(e.data.url);
-                        }
-                        return;
-                    }
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
@@ -3663,100 +3655,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
             }
 
-            injectNewTabInterceptor(iframe) {
-                const interceptorScript = `
-                    (function() {
-                        if (window.__nexosInterceptorInstalled) return;
-                        window.__nexosInterceptorInstalled = true;
-
-                        // Find the topmost NexOS parent to post messages to
-                        function getTopParent() {
-                            var w = window;
-                            while (w.parent && w.parent !== w) { w = w.parent; }
-                            return w;
-                        }
-
-                        // Intercept clicks on target="_blank" links
-                        document.addEventListener('click', function(e) {
-                            var anchor = e.target.closest ? e.target.closest('a') : null;
-                            if (!anchor) {
-                                // Walk up manually for older DOMs
-                                var el = e.target;
-                                while (el && el.tagName !== 'A') el = el.parentElement;
-                                anchor = el;
-                            }
-                            if (anchor && anchor.href && (anchor.target === '_blank' || anchor.target === '_new')) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                e.stopImmediatePropagation();
-                                var url = anchor.href;
-                                try { url = new URL(anchor.href, window.location.href).href; } catch(err) {}
-                                getTopParent().postMessage({ type: 'openNewTab', url: url }, '*');
-                                return false;
-                            }
-                        }, true);
-
-                        // Also intercept window.open calls (only user-gesture-initiated)
-                        var origOpen = window.open;
-                        window.open = function(url, target, features) {
-                            if (url && url !== '' && url !== 'about:blank') {
-                                try {
-                                    var resolved = new URL(url, window.location.href).href;
-                                    getTopParent().postMessage({ type: 'openNewTab', url: resolved }, '*');
-                                } catch(err) {
-                                    getTopParent().postMessage({ type: 'openNewTab', url: url }, '*');
-                                }
-                                return null;
-                            }
-                            return origOpen.apply(this, arguments);
-                        };
-                    })();
-                `;
-
-                this._injectIntoIframe(iframe, interceptorScript);
-            }
-
-            _injectIntoIframe(iframe, script) {
-                try {
-                    const win = iframe.contentWindow;
-                    if (!win || !win.document) return;
-                    
-                    // Inject into this iframe
-                    win.eval(script);
-
-                    // Recursively inject into any nested iframes (same-origin only)
-                    const nestedIframes = win.document.querySelectorAll('iframe');
-                    nestedIframes.forEach(nested => {
-                        this._injectIntoIframe(nested, script);
-                    });
-
-                    // Watch for dynamically added iframes
-                    const observer = new MutationObserver((mutations) => {
-                        mutations.forEach(mutation => {
-                            mutation.addedNodes.forEach(node => {
-                                if (node.tagName === 'IFRAME') {
-                                    node.addEventListener('load', () => {
-                                        this._injectIntoIframe(node, script);
-                                    });
-                                }
-                                // Also check children of added nodes
-                                if (node.querySelectorAll) {
-                                    node.querySelectorAll('iframe').forEach(nested => {
-                                        nested.addEventListener('load', () => {
-                                            this._injectIntoIframe(nested, script);
-                                        });
-                                    });
-                                }
-                            });
-                        });
-                    });
-                    observer.observe(win.document.body || win.document.documentElement, { childList: true, subtree: true });
-
-                } catch(e) {
-                    // Cross-origin iframe — can't inject, that's expected
-                }
-            }
-
             setupIframeLoadHandling(tabId) {
                 const tab = this.tabs.get(tabId);
                 if (!tab || !tab.iframe) return;
@@ -3768,13 +3666,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
-                    // Inject new tab interceptor into the iframe
-                    this.injectNewTabInterceptor(iframe);
                     // Try to get the real URL from the iframe first
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
                     tab.currentUrl = originalUrl;
+                    
+                    // Block prohibited URLs detected after navigation/redirect
+                    if (originalUrl && this.isBlockedUrl(originalUrl)) {
+                        tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
+                        tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
+                        this.addressBar.value = '';
+                        return;
+                    }
                     
                     if (originalUrl && originalUrl !== 'about:blank') {
                         this.updateTabInfo(tabId);
@@ -3911,38 +3815,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 let url = input.trim();
                 if (!url) return;
 
-const blockedWords = [
-  "porn",
-  "pornhub",
-  "xvideos",
-  "xhamster",
-  "nude",
-  "nudity",
-  "naked",
-  "penis",
-  "vagina",
-  "sex",
-  "hentai",
-  "erotic",
-  "fetish",
-  "boobs",
-  "cum",
-  "gay",
-  "lesbian",
-  "anal",
-  "cock",
-];
-
-const blockedRegex = new RegExp(`\\b(${blockedWords.join("|")})\\b`, "i");
-const urlLower = decodeURIComponent(url.toLowerCase());
-
-const exceptionRegex = /\bnaked[\s\-\+_%]*mole[\s\-\+_%]*rat\b/i;
-
-if (exceptionRegex.test(urlLower)) {
-  return;
-}
-
-if (blockedRegex.test(urlLower)) {
+if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
   return;
 }
@@ -4023,6 +3896,23 @@ if (blockedRegex.test(urlLower)) {
                 }
 
                 this.loadUrl(url);
+            }
+
+            isBlockedUrl(url) {
+                const blockedWords = [
+                    "porn","pornhub","xvideos","xhamster","nude","nudity","naked",
+                    "penis","vagina","sex","hentai","erotic","fetish","boobs",
+                    "cum","gay","lesbian","anal","cock"
+                ];
+                const blockedRegex = new RegExp(`\\b(${blockedWords.join("|")})\\b`, "i");
+                try {
+                    var urlLower = decodeURIComponent(url.toLowerCase());
+                } catch(e) {
+                    var urlLower = url.toLowerCase();
+                }
+                const exceptionRegex = /\bnaked[\s\-\+_%]*mole[\s\-\+_%]*rat\b/i;
+                if (exceptionRegex.test(urlLower)) return false;
+                return blockedRegex.test(urlLower);
             }
 
             isUrl(input) {
@@ -4245,6 +4135,13 @@ if (blockedRegex.test(urlLower)) {
                             if (realUrl && realUrl !== 'about:blank') {
                                 const oldUrl = tab.currentUrl;
                                 if (realUrl !== oldUrl) {
+                                    // Block prohibited URLs detected via periodic check
+                                    if (this.isBlockedUrl(realUrl)) {
+                                        tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
+                                        tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
+                                        this.addressBar.value = '';
+                                        return;
+                                    }
                                     tab.currentUrl = realUrl;
                                     tab.url = tab.iframe.src; // keep proxy URL in sync
                                     this.addressBar.value = realUrl;
@@ -6294,7 +6191,7 @@ menu.addEventListener('mouseleave', hideMenu);
     ping();
     setInterval(ping, 20000);
 
-    const es = new EventSource("/live", { withCredentials: true });
+    const es = new EventSource("/auth/announcements/stream", { withCredentials: true });
 
     function showAnnouncement(msg) {
       document.querySelectorAll("alert[nexos-ann]").forEach(e => e.remove());
@@ -6327,7 +6224,7 @@ menu.addEventListener('mouseleave', hideMenu);
     es.addEventListener("announcement", (ev) => {
       try {
         const data = JSON.parse(ev.data);
-        if (data && data.message) showAnnouncement(data.message);
+        if (data && (data.text || data.message)) showAnnouncement(data.text || data.message);
       } catch {}
     });
   })();
