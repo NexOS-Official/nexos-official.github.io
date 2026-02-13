@@ -3664,29 +3664,96 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             injectNewTabInterceptor(iframe) {
-                try {
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                    if (!iframeDoc || !iframe.contentWindow) return;
+                const interceptorScript = `
+                    (function() {
+                        if (window.__nexosInterceptorInstalled) return;
+                        window.__nexosInterceptorInstalled = true;
 
-                    // Only intercept user-initiated clicks on target="_blank" links
-                    // Do NOT override window.open — that breaks embeds, auth popups, etc.
-                    iframe.contentWindow.eval(`
-                        (function() {
-                            if (window.__nexosInterceptorInstalled) return;
-                            window.__nexosInterceptorInstalled = true;
+                        // Find the topmost NexOS parent to post messages to
+                        function getTopParent() {
+                            var w = window;
+                            while (w.parent && w.parent !== w) { w = w.parent; }
+                            return w;
+                        }
 
-                            document.addEventListener('click', function(e) {
-                                var anchor = e.target.closest('a');
-                                if (anchor && anchor.href && anchor.target === '_blank') {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    window.parent.postMessage({ type: 'openNewTab', url: anchor.href }, '*');
+                        // Intercept clicks on target="_blank" links
+                        document.addEventListener('click', function(e) {
+                            var anchor = e.target.closest ? e.target.closest('a') : null;
+                            if (!anchor) {
+                                // Walk up manually for older DOMs
+                                var el = e.target;
+                                while (el && el.tagName !== 'A') el = el.parentElement;
+                                anchor = el;
+                            }
+                            if (anchor && anchor.href && (anchor.target === '_blank' || anchor.target === '_new')) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.stopImmediatePropagation();
+                                var url = anchor.href;
+                                try { url = new URL(anchor.href, window.location.href).href; } catch(err) {}
+                                getTopParent().postMessage({ type: 'openNewTab', url: url }, '*');
+                                return false;
+                            }
+                        }, true);
+
+                        // Also intercept window.open calls (only user-gesture-initiated)
+                        var origOpen = window.open;
+                        window.open = function(url, target, features) {
+                            if (url && url !== '' && url !== 'about:blank') {
+                                try {
+                                    var resolved = new URL(url, window.location.href).href;
+                                    getTopParent().postMessage({ type: 'openNewTab', url: resolved }, '*');
+                                } catch(err) {
+                                    getTopParent().postMessage({ type: 'openNewTab', url: url }, '*');
                                 }
-                            }, true);
-                        })();
-                    `);
+                                return null;
+                            }
+                            return origOpen.apply(this, arguments);
+                        };
+                    })();
+                `;
+
+                this._injectIntoIframe(iframe, interceptorScript);
+            }
+
+            _injectIntoIframe(iframe, script) {
+                try {
+                    const win = iframe.contentWindow;
+                    if (!win || !win.document) return;
+                    
+                    // Inject into this iframe
+                    win.eval(script);
+
+                    // Recursively inject into any nested iframes (same-origin only)
+                    const nestedIframes = win.document.querySelectorAll('iframe');
+                    nestedIframes.forEach(nested => {
+                        this._injectIntoIframe(nested, script);
+                    });
+
+                    // Watch for dynamically added iframes
+                    const observer = new MutationObserver((mutations) => {
+                        mutations.forEach(mutation => {
+                            mutation.addedNodes.forEach(node => {
+                                if (node.tagName === 'IFRAME') {
+                                    node.addEventListener('load', () => {
+                                        this._injectIntoIframe(node, script);
+                                    });
+                                }
+                                // Also check children of added nodes
+                                if (node.querySelectorAll) {
+                                    node.querySelectorAll('iframe').forEach(nested => {
+                                        nested.addEventListener('load', () => {
+                                            this._injectIntoIframe(nested, script);
+                                        });
+                                    });
+                                }
+                            });
+                        });
+                    });
+                    observer.observe(win.document.body || win.document.documentElement, { childList: true, subtree: true });
+
                 } catch(e) {
-                    // Cross-origin iframe, can't inject - that's OK
+                    // Cross-origin iframe — can't inject, that's expected
                 }
             }
 
