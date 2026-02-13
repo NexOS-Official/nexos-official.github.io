@@ -3,6 +3,7 @@
 
 
 
+
  
 
 <!DOCTYPE html>
@@ -2617,8 +2618,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // Listen for URL updates from embed.html via postMessage
+                // Listen for URL updates and new tab requests from iframes via postMessage
                 window.addEventListener('message', (e) => {
+                    // Handle new tab requests from iframes
+                    if (e.data && e.data.type === 'openNewTab' && e.data.url) {
+                        const newTabId = this.createNewTab();
+                        if (newTabId) {
+                            this.navigate(e.data.url);
+                        }
+                        return;
+                    }
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
@@ -3654,6 +3663,47 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
             }
 
+            injectNewTabInterceptor(iframe) {
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (!iframeDoc || !iframe.contentWindow) return;
+
+                    // Override window.open to send a message to parent
+                    iframe.contentWindow.eval(`
+                        (function() {
+                            // Override window.open
+                            var originalOpen = window.open;
+                            window.open = function(url, target, features) {
+                                if (url && url !== 'about:blank') {
+                                    // Resolve relative URLs
+                                    try {
+                                        var resolved = new URL(url, window.location.href).href;
+                                        window.parent.postMessage({ type: 'openNewTab', url: resolved }, '*');
+                                        return null;
+                                    } catch(e) {
+                                        window.parent.postMessage({ type: 'openNewTab', url: url }, '*');
+                                        return null;
+                                    }
+                                }
+                                return originalOpen.call(this, url, target, features);
+                            };
+
+                            // Intercept clicks on target="_blank" links
+                            document.addEventListener('click', function(e) {
+                                var anchor = e.target.closest('a');
+                                if (anchor && anchor.target === '_blank' && anchor.href) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    window.parent.postMessage({ type: 'openNewTab', url: anchor.href }, '*');
+                                }
+                            }, true);
+                        })();
+                    `);
+                } catch(e) {
+                    // Cross-origin iframe, can't inject - that's OK
+                }
+            }
+
             setupIframeLoadHandling(tabId) {
                 const tab = this.tabs.get(tabId);
                 if (!tab || !tab.iframe) return;
@@ -3665,6 +3715,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
+                    // Inject new tab interceptor into the iframe
+                    this.injectNewTabInterceptor(iframe);
                     // Try to get the real URL from the iframe first
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
@@ -3913,7 +3965,7 @@ if (blockedRegex.test(urlLower)) {
                     }
                     url = `/active/embed.html?url=${encodeURIComponent(url)}`;
                 } else {
-                    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(url)}`;
+                    const searchUrl = `https://duckduckgo.com/?ia=web&origin=funnel_home_google&t=h_&q=${encodeURIComponent(url)}`;
                     url = `/active/embed.html?url=${encodeURIComponent(searchUrl)}`;
                 }
 
@@ -5481,9 +5533,24 @@ menu.addEventListener('mouseleave', hideMenu);
                 <button class="taskbar-quick-btn" id="qsProfile" title="Profile">
                     <i data-lucide="user" width="15" height="15" style="color:#000"></i>
                 </button>
-                <div id="profileMenu" style="display:none;position:absolute;bottom:40px;right:0;width:320px;height:400px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.18);overflow:hidden;z-index:9999;border:1px solid #e0e0e0;">
-                    <iframe src="/dashboard" style="width:100%;height:100%;border:none;"></iframe>
-                </div>
+                <div id="profileMenu"
+     style="
+        display:none;
+        position: relative;
+        bottom:200px;
+        right:1px;
+        width:320px;
+        height:400px;
+        background:#fff;
+        border-radius:12px;
+        box-shadow:0 8px 32px rgba(0,0,0,0.18);
+        overflow:hidden;
+        z-index:9999;
+        border:1px solid #e0e0e0;
+     ">
+    <iframe src="/dashboard" style="width:100%;height:100%;border:none;"></iframe>
+</div>
+
             </div>
             <button class="taskbar-quick-btn" id="qsPower" title="Power Off" style="color:#000;">
                 <i data-lucide="power" width="15" height="15" style="color:#000"></i>
