@@ -2337,9 +2337,10 @@ body {
         .media-card-controls {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
+          padding: 0 4px;
         }
-        .media-card-controls button {
+        .media-card-controls .volume-icon {
           background: none;
           border: none;
           cursor: pointer;
@@ -2347,41 +2348,33 @@ body {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          transition: background 0.15s, color 0.15s;
+          width: 24px;
+          height: 24px;
+          flex-shrink: 0;
         }
-        .media-card-controls button:hover {
-          background: #f0f0f0;
-          color: #1a1a1a;
-        }
-        .media-progress-bar {
+        .media-volume-slider {
           flex: 1;
           height: 4px;
           background: #e0e0e0;
           border-radius: 2px;
           position: relative;
           cursor: pointer;
+          -webkit-appearance: none;
+          appearance: none;
+          outline: none;
         }
-        .media-progress-fill {
-          height: 100%;
-          background: #1a1a1a;
-          border-radius: 2px;
-          width: 40%;
-          position: relative;
-          transition: width 0.1s linear;
-        }
-        .media-progress-fill::after {
-          content: '';
-          position: absolute;
-          right: -5px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 10px;
-          height: 10px;
+        .media-volume-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 12px;
+          height: 12px;
           background: #1a1a1a;
           border-radius: 50%;
+          cursor: pointer;
+        }
+        .media-volume-slider::-webkit-slider-runnable-track {
+          height: 4px;
+          background: linear-gradient(to right, #1a1a1a var(--vol, 100%), #e0e0e0 var(--vol, 100%));
+          border-radius: 2px;
         }
 
         .media-controls-empty {
@@ -6496,8 +6489,8 @@ menu.addEventListener('mouseleave', hideMenu);
 
 <script>
 (function() {
-    // Media Controls System
-    var mediaState = new Map(); // tabId -> { playing, title, artist, source, favicon, progress }
+    // Media Controls System - Real Audio Detection
+    var mediaState = new Map(); // tabId -> { playing, title, volume, muted, elements }
 
     function initMediaControls() {
         var b = window.browser;
@@ -6511,9 +6504,7 @@ menu.addEventListener('mouseleave', hideMenu);
         taskbarAudioBtn.addEventListener('click', function(e) {
             e.stopPropagation();
             popup.classList.toggle('show');
-            if (popup.classList.contains('show')) {
-                renderMediaControls();
-            }
+            if (popup.classList.contains('show')) renderMediaControls();
         });
 
         document.addEventListener('click', function(e) {
@@ -6522,18 +6513,199 @@ menu.addEventListener('mouseleave', hideMenu);
             }
         });
 
-        // Listen for audio messages from iframes
+        // Patch createNewTab to add audio indicator
+        var origCreateNewTab = b.createNewTab.bind(b);
+        b.createNewTab = function() {
+            var tabId = origCreateNewTab();
+            var tab = b.tabs.get(tabId);
+            if (tab && tab.element) {
+                var audioIndicator = document.createElement('div');
+                audioIndicator.className = 'tab-audio-indicator';
+                audioIndicator.innerHTML = '<i data-lucide="volume-2" width="14" height="14"></i>';
+                audioIndicator.title = 'Mute tab';
+                audioIndicator.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    var state = mediaState.get(tabId);
+                    if (state) {
+                        state.muted = !state.muted;
+                        // Actually mute/unmute the audio elements
+                        muteTabAudio(tabId, state.muted);
+                        audioIndicator.title = state.muted ? 'Unmute tab' : 'Mute tab';
+                        audioIndicator.innerHTML = state.muted
+                            ? '<i data-lucide="volume-x" width="14" height="14"></i>'
+                            : '<i data-lucide="volume-2" width="14" height="14"></i>';
+                        if (window.lucide) lucide.createIcons();
+                        if (popup.classList.contains('show')) renderMediaControls();
+                    }
+                });
+                var closeBtn = tab.element.querySelector('.tab-close');
+                if (closeBtn) {
+                    tab.element.insertBefore(audioIndicator, closeBtn);
+                }
+                if (window.lucide) lucide.createIcons();
+            }
+            return tabId;
+        };
+
+        // Patch closeTab
+        var origCloseTab = b.closeTab.bind(b);
+        b.closeTab = function(tabId) {
+            mediaState.delete(tabId);
+            origCloseTab(tabId);
+            updateMediaIndicators();
+            if (popup.classList.contains('show')) renderMediaControls();
+        };
+
+        function muteTabAudio(tabId, muted) {
+            var tab = b.tabs.get(tabId);
+            if (!tab || !tab.iframe) return;
+            try {
+                var doc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
+                var els = doc.querySelectorAll('audio, video');
+                els.forEach(function(el) { el.muted = muted; });
+            } catch(ex) {}
+            // Also try postMessage for cross-origin
+            try {
+                tab.iframe.contentWindow.postMessage({ type: 'mediaSetMuted', muted: muted }, '*');
+            } catch(ex) {}
+        }
+
+        function setTabVolume(tabId, volume) {
+            var tab = b.tabs.get(tabId);
+            if (!tab || !tab.iframe) return;
+            var state = mediaState.get(tabId);
+            if (state) state.volume = volume;
+            try {
+                var doc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
+                var els = doc.querySelectorAll('audio, video');
+                els.forEach(function(el) { el.volume = volume; });
+            } catch(ex) {}
+            try {
+                tab.iframe.contentWindow.postMessage({ type: 'mediaSetVolume', volume: volume }, '*');
+            } catch(ex) {}
+        }
+
+        // REAL audio detection - scans iframe DOMs for playing audio/video and AudioContext
+        function scanForAudio() {
+            for (var [tabId, tab] of b.tabs) {
+                if (!tab.iframe) continue;
+                var hasAudio = false;
+                var title = tab.title || 'Unknown';
+                var audioElements = [];
+
+                try {
+                    var doc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
+                    if (doc) {
+                        // Check <audio> and <video> elements
+                        var els = doc.querySelectorAll('audio, video');
+                        els.forEach(function(el) {
+                            if (!el.paused && !el.ended && el.readyState > 2 && el.duration > 0) {
+                                hasAudio = true;
+                                audioElements.push(el);
+                            }
+                        });
+
+                        // Check for AudioContext (games, web apps, etc.)
+                        var win = tab.iframe.contentWindow;
+                        if (win) {
+                            // Check known AudioContext patterns
+                            if (win.AudioContext || win.webkitAudioContext) {
+                                // Look for active audio contexts stored on window or common globals
+                                var contexts = [];
+                                try {
+                                    if (win._audioCtx && win._audioCtx.state === 'running') contexts.push(win._audioCtx);
+                                    if (win.audioContext && win.audioContext.state === 'running') contexts.push(win.audioContext);
+                                    if (win.audioCtx && win.audioCtx.state === 'running') contexts.push(win.audioCtx);
+                                } catch(ex) {}
+
+                                // Patch AudioContext to track creation
+                                if (!win.__nexos_audio_patched) {
+                                    try {
+                                        var OrigAC = win.AudioContext || win.webkitAudioContext;
+                                        if (OrigAC) {
+                                            var origConstructor = OrigAC;
+                                            win.__nexos_audio_contexts = win.__nexos_audio_contexts || [];
+                                            var PatchedAC = function() {
+                                                var ctx = new origConstructor();
+                                                win.__nexos_audio_contexts.push(ctx);
+                                                return ctx;
+                                            };
+                                            PatchedAC.prototype = origConstructor.prototype;
+                                            win.AudioContext = PatchedAC;
+                                            if (win.webkitAudioContext) win.webkitAudioContext = PatchedAC;
+                                            win.__nexos_audio_patched = true;
+                                        }
+                                    } catch(ex) {}
+                                }
+
+                                // Check tracked AudioContexts
+                                try {
+                                    if (win.__nexos_audio_contexts) {
+                                        win.__nexos_audio_contexts.forEach(function(ctx) {
+                                            if (ctx && ctx.state === 'running') {
+                                                hasAudio = true;
+                                            }
+                                        });
+                                    }
+                                } catch(ex) {}
+                            }
+
+                            // Scan for dynamically created audio/video in nested frames
+                            try {
+                                var nestedFrames = doc.querySelectorAll('iframe');
+                                nestedFrames.forEach(function(frame) {
+                                    try {
+                                        var nestedDoc = frame.contentDocument;
+                                        if (nestedDoc) {
+                                            var nestedEls = nestedDoc.querySelectorAll('audio, video');
+                                            nestedEls.forEach(function(el) {
+                                                if (!el.paused && !el.ended && el.readyState > 2) {
+                                                    hasAudio = true;
+                                                    audioElements.push(el);
+                                                }
+                                            });
+                                        }
+                                    } catch(ex) {}
+                                });
+                            } catch(ex) {}
+                        }
+                    }
+                } catch(ex) {
+                    // Cross-origin - can't inspect, skip
+                }
+
+                if (hasAudio) {
+                    var existing = mediaState.get(tabId);
+                    mediaState.set(tabId, {
+                        playing: true,
+                        title: title,
+                        volume: existing ? existing.volume : 1,
+                        muted: existing ? existing.muted : false,
+                        source: b.extractDomain(tab.currentUrl || tab.url) || 'Unknown'
+                    });
+                } else if (mediaState.has(tabId)) {
+                    // Audio stopped
+                    mediaState.delete(tabId);
+                }
+            }
+            updateMediaIndicators();
+            if (popup.classList.contains('show')) renderMediaControls();
+        }
+
+        // Also listen for postMessage from iframes that can self-report
         window.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'mediaPlaying') {
                 var tabId = findTabIdByIframe(e.source);
                 if (tabId !== null) {
+                    var existing = mediaState.get(tabId);
                     mediaState.set(tabId, {
                         playing: e.data.playing !== false,
                         title: e.data.title || 'Unknown',
-                        artist: e.data.artist || '',
+                        volume: existing ? existing.volume : 1,
+                        muted: existing ? existing.muted : false,
                         source: e.data.source || '',
-                        favicon: e.data.favicon || null,
-                        progress: e.data.progress || 0
+                        _fromMessage: true
                     });
                     updateMediaIndicators();
                     if (popup.classList.contains('show')) renderMediaControls();
@@ -6558,80 +6730,31 @@ menu.addEventListener('mouseleave', hideMenu);
             return null;
         }
 
-        // Patch createNewTab to add audio indicator to each tab
-        var origCreateNewTab = b.createNewTab.bind(b);
-        b.createNewTab = function() {
-            var tabId = origCreateNewTab();
-            var tab = b.tabs.get(tabId);
-            if (tab && tab.element) {
-                var audioIndicator = document.createElement('div');
-                audioIndicator.className = 'tab-audio-indicator';
-                audioIndicator.innerHTML = '<i data-lucide="volume-2" width="14" height="14"></i>';
-                audioIndicator.title = 'Audio playing';
-                audioIndicator.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    // Mute/unmute - toggle state
-                    var state = mediaState.get(tabId);
-                    if (state) {
-                        state.playing = !state.playing;
-                        updateMediaIndicators();
-                        if (popup.classList.contains('show')) renderMediaControls();
-                        // Notify iframe
-                        try {
-                            tab.iframe.contentWindow.postMessage({ type: 'mediaToggle', playing: state.playing }, '*');
-                        } catch(ex) {}
-                    }
-                });
-                // Insert before the close button
-                var closeBtn = tab.element.querySelector('.tab-close');
-                if (closeBtn) {
-                    tab.element.insertBefore(audioIndicator, closeBtn);
-                }
-                if (window.lucide) lucide.createIcons();
-            }
-            return tabId;
-        };
-
-        // Patch closeTab to clean up media state
-        var origCloseTab = b.closeTab.bind(b);
-        b.closeTab = function(tabId) {
-            mediaState.delete(tabId);
-            origCloseTab(tabId);
-            updateMediaIndicators();
-            if (popup.classList.contains('show')) renderMediaControls();
-        };
-
         function updateMediaIndicators() {
-            var hasAnyAudio = false;
-
-            for (var [tabId, state] of mediaState) {
-                var tab = b.tabs.get(tabId);
-                if (tab && tab.element) {
-                    var indicator = tab.element.querySelector('.tab-audio-indicator');
-                    if (indicator) {
-                        if (state.playing) {
-                            indicator.classList.add('playing');
-                            hasAnyAudio = true;
-                        } else {
-                            indicator.classList.remove('playing');
-                        }
-                    }
+            // Update each tab's audio indicator
+            for (var [tabId, tab] of b.tabs) {
+                if (!tab.element) continue;
+                var indicator = tab.element.querySelector('.tab-audio-indicator');
+                if (!indicator) continue;
+                var state = mediaState.get(tabId);
+                if (state) {
+                    indicator.classList.add('playing');
+                    indicator.innerHTML = state.muted
+                        ? '<i data-lucide="volume-x" width="14" height="14"></i>'
+                        : '<i data-lucide="volume-2" width="14" height="14"></i>';
+                } else {
+                    indicator.classList.remove('playing');
                 }
             }
 
-            // Also check for states that exist
-            if (!hasAnyAudio) {
-                for (var [tabId, state] of mediaState) {
-                    if (state) { hasAnyAudio = true; break; }
-                }
-            }
-
-            // Update taskbar audio button visibility
-            if (hasAnyAudio || mediaState.size > 0) {
+            // Update taskbar button
+            if (mediaState.size > 0) {
                 taskbarAudioBtn.classList.add('active');
             } else {
                 taskbarAudioBtn.classList.remove('active');
             }
+
+            if (window.lucide) lucide.createIcons();
         }
 
         function renderMediaControls() {
@@ -6643,13 +6766,14 @@ menu.addEventListener('mouseleave', hideMenu);
             listEl.innerHTML = '';
             for (var [tabId, state] of mediaState) {
                 var tab = b.tabs.get(tabId);
-                var domain = tab ? (b.extractDomain(tab.currentUrl || tab.url) || 'Unknown') : 'Unknown';
+                var domain = state.source || (tab ? (b.extractDomain(tab.currentUrl || tab.url) || 'Unknown') : 'Unknown');
                 var faviconSrc = null;
                 if (tab) {
                     var favImg = tab.element.querySelector('.tab-favicon img');
                     if (favImg) faviconSrc = favImg.src;
                 }
 
+                var volPercent = Math.round((state.volume || 1) * 100);
                 var card = document.createElement('div');
                 card.className = 'media-controls-card';
                 card.innerHTML =
@@ -6660,48 +6784,41 @@ menu.addEventListener('mouseleave', hideMenu);
                         '<div class="media-card-info">' +
                             '<div class="media-card-source">' + escapeHtml(domain) + '</div>' +
                             '<div class="media-card-title">' + escapeHtml(state.title) + '</div>' +
-                            (state.artist ? '<div class="media-card-artist">' + escapeHtml(state.artist) + '</div>' : '') +
                         '</div>' +
                         '<button class="media-card-play-btn" data-tab-id="' + tabId + '">' +
-                            '<i data-lucide="' + (state.playing ? 'pause' : 'play') + '" width="20" height="20"></i>' +
+                            '<i data-lucide="' + (state.muted ? 'volume-x' : 'pause') + '" width="20" height="20"></i>' +
                         '</button>' +
                     '</div>' +
                     '<div class="media-card-controls">' +
-                        '<button class="mc-prev" data-tab-id="' + tabId + '"><i data-lucide="skip-back" width="16" height="16"></i></button>' +
-                        '<div class="media-progress-bar"><div class="media-progress-fill" style="width:' + (state.progress || 40) + '%"></div></div>' +
-                        '<button class="mc-next" data-tab-id="' + tabId + '"><i data-lucide="skip-forward" width="16" height="16"></i></button>' +
+                        '<span class="volume-icon"><i data-lucide="' + (state.muted ? 'volume-x' : (volPercent === 0 ? 'volume' : volPercent < 50 ? 'volume-1' : 'volume-2')) + '" width="16" height="16"></i></span>' +
+                        '<input type="range" class="media-volume-slider" min="0" max="100" value="' + volPercent + '" data-tab-id="' + tabId + '" style="--vol:' + volPercent + '%">' +
                     '</div>';
 
                 listEl.appendChild(card);
             }
 
-            // Bind play/pause buttons
+            // Bind mute/unmute buttons
             listEl.querySelectorAll('.media-card-play-btn').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
                     e.stopPropagation();
                     var tid = parseInt(btn.dataset.tabId);
                     var st = mediaState.get(tid);
                     if (st) {
-                        st.playing = !st.playing;
+                        st.muted = !st.muted;
+                        muteTabAudio(tid, st.muted);
                         updateMediaIndicators();
                         renderMediaControls();
-                        var t = b.tabs.get(tid);
-                        if (t && t.iframe) {
-                            try { t.iframe.contentWindow.postMessage({ type: 'mediaToggle', playing: st.playing }, '*'); } catch(ex) {}
-                        }
                     }
                 });
             });
 
-            listEl.querySelectorAll('.mc-prev, .mc-next').forEach(function(btn) {
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    var tid = parseInt(btn.dataset.tabId);
-                    var t = b.tabs.get(tid);
-                    var action = btn.classList.contains('mc-prev') ? 'mediaPrev' : 'mediaNext';
-                    if (t && t.iframe) {
-                        try { t.iframe.contentWindow.postMessage({ type: action }, '*'); } catch(ex) {}
-                    }
+            // Bind volume sliders
+            listEl.querySelectorAll('.media-volume-slider').forEach(function(slider) {
+                slider.addEventListener('input', function(e) {
+                    var tid = parseInt(slider.dataset.tabId);
+                    var vol = parseInt(slider.value) / 100;
+                    slider.style.setProperty('--vol', slider.value + '%');
+                    setTabVolume(tid, vol);
                 });
             });
 
@@ -6714,51 +6831,8 @@ menu.addEventListener('mouseleave', hideMenu);
             return d.innerHTML;
         }
 
-        // Auto-detect audio in tabs by periodically checking
-        // Since cross-origin iframes can't be inspected, we simulate detection
-        // for known audio/music URLs
-        setInterval(function() {
-            for (var [tabId, tab] of b.tabs) {
-                var url = tab.currentUrl || tab.url || '';
-                var lowerUrl = url.toLowerCase();
-                var isAudioSite = (
-                    lowerUrl.includes('music.') ||
-                    lowerUrl.includes('spotify.') ||
-                    lowerUrl.includes('soundcloud.') ||
-                    lowerUrl.includes('youtube.com/watch') ||
-                    lowerUrl.includes('music.youtube') ||
-                    lowerUrl.includes('music.apple') ||
-                    lowerUrl.includes('pandora.') ||
-                    lowerUrl.includes('deezer.') ||
-                    lowerUrl.includes('tidal.')
-                );
-
-                if (isAudioSite && !mediaState.has(tabId)) {
-                    var domain = b.extractDomain(url) || 'Music';
-                    mediaState.set(tabId, {
-                        playing: true,
-                        title: tab.title || domain,
-                        artist: '',
-                        source: domain,
-                        favicon: null,
-                        progress: Math.floor(Math.random() * 60) + 20
-                    });
-                    updateMediaIndicators();
-                    if (popup.classList.contains('show')) renderMediaControls();
-                }
-
-                // Clean up if tab navigated away from audio site
-                if (!isAudioSite && mediaState.has(tabId)) {
-                    // Only remove if it was auto-detected (no postMessage source)
-                    var state = mediaState.get(tabId);
-                    if (state && !state._fromMessage) {
-                        mediaState.delete(tabId);
-                        updateMediaIndicators();
-                        if (popup.classList.contains('show')) renderMediaControls();
-                    }
-                }
-            }
-        }, 2000);
+        // Scan for audio every 1 second
+        setInterval(scanForAudio, 1000);
 
         if (window.lucide) lucide.createIcons();
     }
