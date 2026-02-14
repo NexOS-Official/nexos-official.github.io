@@ -2170,18 +2170,44 @@ body {
           height: 16px;
           flex-shrink: 0;
           display: none;
-          align-items: center;
+          align-items: flex-end;
           justify-content: center;
           cursor: pointer;
           margin-left: 4px;
-          color: #5f6368;
-          transition: color 0.15s;
+          gap: 1px;
+          transition: opacity 0.15s;
         }
         .tab-audio-indicator:hover {
-          color: #1a1a1a;
+          opacity: 0.7;
         }
         .tab-audio-indicator.playing {
           display: flex;
+        }
+        .tab-audio-indicator .eq-bar {
+          width: 2px;
+          background: #5f6368;
+          border-radius: 1px;
+          animation: eqBounce 0.6s ease-in-out infinite alternate;
+        }
+        .tab-audio-indicator .eq-bar:nth-child(1) {
+          height: 4px;
+          animation-delay: 0s;
+        }
+        .tab-audio-indicator .eq-bar:nth-child(2) {
+          height: 8px;
+          animation-delay: 0.2s;
+        }
+        .tab-audio-indicator .eq-bar:nth-child(3) {
+          height: 5px;
+          animation-delay: 0.4s;
+        }
+        .tab-audio-indicator.muted .eq-bar {
+          animation: none;
+          height: 2px !important;
+        }
+        @keyframes eqBounce {
+          0% { height: 2px; }
+          100% { height: 10px; }
         }
 
         .taskbar-audio-btn {
@@ -2370,71 +2396,53 @@ body {
         .media-card-controls .volume-icon-btn:hover {
           background: rgba(0,0,0,0.06);
         }
-        .media-volume-slider {
+        .media-volume-slider-container {
           flex: 1;
-          height: 2px;
-          border-radius: 1px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          position: relative;
           cursor: pointer;
-          -webkit-appearance: none;
-          appearance: none;
-          outline: none;
-          background: transparent;
-          margin: 0;
-          transition: height 0.15s ease;
         }
-        .media-volume-slider:hover {
-          height: 4px;
-        }
-        .media-volume-slider::-webkit-slider-runnable-track {
-          height: inherit;
-          background: linear-gradient(to right, #5f6368 var(--vol, 100%), #dadce0 var(--vol, 100%));
-          border-radius: 1px;
-          transition: height 0.15s ease;
-        }
-        .media-volume-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 0px;
-          height: 0px;
-          background: #5f6368;
-          border-radius: 50%;
-          cursor: pointer;
-          margin-top: 0px;
-          transition: width 0.15s ease, height 0.15s ease, margin-top 0.15s ease, box-shadow 0.15s ease;
-        }
-        .media-volume-slider:hover::-webkit-slider-thumb {
-          width: 12px;
-          height: 12px;
-          margin-top: -4px;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.25);
-        }
-        .media-volume-slider:active::-webkit-slider-thumb {
-          width: 14px;
-          height: 14px;
-          margin-top: -5px;
-          box-shadow: 0 1px 6px rgba(0,0,0,0.3);
-        }
-        .media-volume-slider::-moz-range-track {
+        .media-volume-track {
+          position: absolute;
+          left: 0;
+          right: 0;
           height: 2px;
           background: #dadce0;
           border-radius: 1px;
+          transition: height 0.2s cubic-bezier(0.2, 0, 0, 1);
+          overflow: hidden;
         }
-        .media-volume-slider::-moz-range-progress {
-          height: 2px;
+        .media-volume-slider-container:hover .media-volume-track {
+          height: 4px;
+        }
+        .media-volume-progress {
+          height: 100%;
           background: #5f6368;
           border-radius: 1px;
+          transition: width 0.05s linear;
         }
-        .media-volume-slider::-moz-range-thumb {
+        .media-volume-thumb {
+          position: absolute;
           width: 0px;
           height: 0px;
           background: #5f6368;
           border-radius: 50%;
-          border: none;
-          cursor: pointer;
-          transition: width 0.15s ease, height 0.15s ease;
+          transform: translateX(-50%);
+          transition: width 0.2s cubic-bezier(0.2, 0, 0, 1), height 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease;
+          pointer-events: none;
+          z-index: 1;
         }
-        .media-volume-slider:hover::-moz-range-thumb {
+        .media-volume-slider-container:hover .media-volume-thumb {
           width: 12px;
           height: 12px;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+        }
+        .media-volume-slider-container:active .media-volume-thumb {
+          width: 14px;
+          height: 14px;
+          box-shadow: 0 1px 6px rgba(0,0,0,0.3);
         }
 
         .media-controls-empty {
@@ -6720,7 +6728,7 @@ menu.addEventListener('mouseleave', hideMenu);
             if (tab && tab.element) {
                 var audioIndicator = document.createElement('div');
                 audioIndicator.className = 'tab-audio-indicator';
-                audioIndicator.innerHTML = '<i data-lucide="volume-2" width="14" height="14"></i>';
+                audioIndicator.innerHTML = '<div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>';
                 audioIndicator.title = 'Mute tab';
                 audioIndicator.addEventListener('click', function(e) {
                     e.stopPropagation();
@@ -6730,10 +6738,7 @@ menu.addEventListener('mouseleave', hideMenu);
                         state.muted = !state.muted;
                         muteTabAudio(tabId, state.muted);
                         audioIndicator.title = state.muted ? 'Unmute tab' : 'Mute tab';
-                        audioIndicator.innerHTML = state.muted
-                            ? '<i data-lucide="volume-x" width="14" height="14"></i>'
-                            : '<i data-lucide="volume-2" width="14" height="14"></i>';
-                        if (window.lucide) lucide.createIcons();
+                        audioIndicator.classList.toggle('muted', state.muted);
                         if (popup.classList.contains('show')) renderMediaControls();
                     }
                 });
@@ -6741,7 +6746,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 if (closeBtn) {
                     tab.element.insertBefore(audioIndicator, closeBtn);
                 }
-                if (window.lucide) lucide.createIcons();
             }
             return tabId;
         };
@@ -6783,15 +6787,60 @@ menu.addEventListener('mouseleave', hideMenu);
             } catch(ex) {}
         }
 
+        function injectMuteListener(iframe) {
+            if (!iframe || iframe.__nexos_mute_injected) return;
+            try {
+                var win = iframe.contentWindow;
+                var doc = iframe.contentDocument || win.document;
+                if (!doc || !doc.body) return;
+                var script = doc.createElement('script');
+                script.textContent = '(' + (function() {
+                    function applyToAll(muted, volume) {
+                        var els = document.querySelectorAll('audio, video');
+                        els.forEach(function(el) {
+                            if (muted !== undefined) el.muted = muted;
+                            if (volume !== undefined) el.volume = volume;
+                        });
+                        var frames = document.querySelectorAll('iframe');
+                        frames.forEach(function(f) {
+                            try { f.contentWindow.postMessage({ type: 'nexos_media_control', muted: muted, volume: volume }, '*'); } catch(e) {}
+                        });
+                    }
+                    window.addEventListener('message', function(e) {
+                        if (e.data && e.data.type === 'mediaSetMuted') applyToAll(e.data.muted, undefined);
+                        if (e.data && e.data.type === 'mediaSetVolume') applyToAll(undefined, e.data.volume);
+                        if (e.data && e.data.type === 'nexos_media_control') applyToAll(e.data.muted, e.data.volume);
+                    });
+                    var origPlay = HTMLMediaElement.prototype.play;
+                    HTMLMediaElement.prototype.play = function() {
+                        var self = this;
+                        if (window.__nexos_force_muted) self.muted = true;
+                        if (window.__nexos_force_volume !== undefined) self.volume = window.__nexos_force_volume;
+                        return origPlay.apply(self, arguments);
+                    };
+                }).toString() + ')();';
+                doc.head.appendChild(script);
+                iframe.__nexos_mute_injected = true;
+            } catch(ex) {}
+        }
+
         function muteTabAudio(tabId, muted) {
             var tab = b.tabs.get(tabId);
             if (!tab || !tab.iframe) return;
             var state = mediaState.get(tabId);
             if (state) state.muted = muted;
             try {
+                injectMuteListener(tab.iframe);
                 var doc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
                 var els = getAllMediaElements(doc);
                 els.forEach(function(el) { el.muted = muted; });
+                try {
+                    tab.iframe.contentWindow.__nexos_force_muted = muted;
+                } catch(ex) {}
+                var nestedFrames = doc.querySelectorAll('iframe');
+                nestedFrames.forEach(function(f) {
+                    try { injectMuteListener(f); } catch(ex) {}
+                });
             } catch(ex) {}
             try {
                 postMessageToAllFrames(tab.iframe.contentWindow, { type: 'mediaSetMuted', muted: muted });
@@ -6812,6 +6861,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 }
             }
             try {
+                injectMuteListener(tab.iframe);
                 var doc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
                 var els = getAllMediaElements(doc);
                 els.forEach(function(el) {
@@ -6819,6 +6869,10 @@ menu.addEventListener('mouseleave', hideMenu);
                     if (volume === 0) el.muted = true;
                     else el.muted = false;
                 });
+                try {
+                    tab.iframe.contentWindow.__nexos_force_volume = volume;
+                    tab.iframe.contentWindow.__nexos_force_muted = volume === 0;
+                } catch(ex) {}
             } catch(ex) {}
             try {
                 postMessageToAllFrames(tab.iframe.contentWindow, { type: 'mediaSetVolume', volume: volume });
@@ -6915,6 +6969,15 @@ menu.addEventListener('mouseleave', hideMenu);
                         muted: existing ? existing.muted : false,
                         source: b.extractDomain(tab.currentUrl || tab.url) || 'Unknown'
                     });
+                    try { injectMuteListener(tab.iframe); } catch(ex) {}
+                    var curState = mediaState.get(tabId);
+                    if (curState && curState.muted) {
+                        audioElements.forEach(function(el) { el.muted = true; });
+                        try { postMessageToAllFrames(tab.iframe.contentWindow, { type: 'mediaSetMuted', muted: true }); } catch(ex) {}
+                    }
+                    if (curState && curState.volume !== undefined && curState.volume !== 1) {
+                        audioElements.forEach(function(el) { el.volume = curState.volume; });
+                    }
                 } else if (mediaState.has(tabId)) {
                     mediaState.delete(tabId);
                 }
@@ -6967,11 +7030,13 @@ menu.addEventListener('mouseleave', hideMenu);
                 var state = mediaState.get(tabId);
                 if (state) {
                     indicator.classList.add('playing');
-                    indicator.innerHTML = state.muted
-                        ? '<i data-lucide="volume-x" width="14" height="14"></i>'
-                        : '<i data-lucide="volume-2" width="14" height="14"></i>';
+                    indicator.classList.toggle('muted', !!state.muted);
+                    if (!indicator.querySelector('.eq-bar')) {
+                        indicator.innerHTML = '<div class="eq-bar"></div><div class="eq-bar"></div><div class="eq-bar"></div>';
+                    }
                 } else {
                     indicator.classList.remove('playing');
+                    indicator.classList.remove('muted');
                 }
             }
 
@@ -6980,8 +7045,6 @@ menu.addEventListener('mouseleave', hideMenu);
             } else {
                 taskbarAudioBtn.classList.remove('active');
             }
-
-            if (window.lucide) lucide.createIcons();
         }
 
         function renderMediaControls() {
@@ -7033,7 +7096,10 @@ menu.addEventListener('mouseleave', hideMenu);
                                         : '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>')) +
                             '</svg>' +
                         '</button>' +
-                        '<input type="range" class="media-volume-slider" min="0" max="100" value="' + volPercent + '" data-tab-id="' + tabId + '" style="--vol:' + volPercent + '%">' +
+                        '<div class="media-volume-slider-container" data-tab-id="' + tabId + '">' +
+                            '<div class="media-volume-track"><div class="media-volume-progress" style="width:' + volPercent + '%"></div></div>' +
+                            '<div class="media-volume-thumb" style="left:' + volPercent + '%"></div>' +
+                        '</div>' +
                     '</div>';
 
                 listEl.appendChild(card);
@@ -7053,27 +7119,42 @@ menu.addEventListener('mouseleave', hideMenu);
                 });
             });
 
-            listEl.querySelectorAll('.media-volume-slider').forEach(function(slider) {
-                slider.addEventListener('input', function() {
-                    var tid = parseInt(slider.dataset.tabId);
-                    var val = parseInt(slider.value);
-                    var vol = val / 100;
-                    slider.style.setProperty('--vol', val + '%');
+            listEl.querySelectorAll('.media-volume-slider-container').forEach(function(container) {
+                var tid = parseInt(container.dataset.tabId);
+                var track = container.querySelector('.media-volume-track');
+                var progress = container.querySelector('.media-volume-progress');
+                var thumb = container.querySelector('.media-volume-thumb');
+                var dragging = false;
+
+                function updateFromEvent(e) {
+                    var rect = container.getBoundingClientRect();
+                    var x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+                    var pct = (x / rect.width) * 100;
+                    var vol = pct / 100;
+                    progress.style.width = pct + '%';
+                    thumb.style.left = pct + '%';
                     setTabVolume(tid, vol);
                     var st = mediaState.get(tid);
                     if (st && st.muted && vol > 0) {
                         st.muted = false;
                         muteTabAudio(tid, false);
                     }
+                }
+
+                container.addEventListener('mousedown', function(e) {
+                    dragging = true;
+                    updateFromEvent(e);
+                    e.preventDefault();
                 });
-                slider.addEventListener('change', function() {
-                    var tid = parseInt(slider.dataset.tabId);
-                    var val = parseInt(slider.value);
-                    var vol = val / 100;
-                    slider.style.setProperty('--vol', val + '%');
-                    setTabVolume(tid, vol);
-                    updateMediaIndicators();
-                    renderMediaControls();
+                document.addEventListener('mousemove', function(e) {
+                    if (dragging) updateFromEvent(e);
+                });
+                document.addEventListener('mouseup', function() {
+                    if (dragging) {
+                        dragging = false;
+                        updateMediaIndicators();
+                        renderMediaControls();
+                    }
                 });
             });
         }
