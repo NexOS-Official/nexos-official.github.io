@@ -4,6 +4,8 @@
 
 
 
+
+
  
 
 <!DOCTYPE html>
@@ -2774,7 +2776,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 this.fullscreenMenuBtn.addEventListener('click', () => {
                     if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen();
+                        const activeTab = this.tabs.get(this.activeTabId);
+                        if (activeTab && activeTab.iframe) {
+                            activeTab.iframe.requestFullscreen();
+                        }
                     } else {
                         document.exitFullscreen();
                     }
@@ -3153,6 +3158,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 iframe.addEventListener('load', () => {
                     this.updateTabInfo(tabId);
                     this.hideLoading();
+                    this.interceptNewTabRedirects(tabId);
                 });
                 
                 this.setupIframeLoadHandling(tabId);
@@ -4404,6 +4410,63 @@ if (this.isBlockedUrl(url)) {
                 }
                 
                 lucide.createIcons();
+            }
+
+            interceptNewTabRedirects(tabId) {
+                const tab = this.tabs.get(tabId);
+                if (!tab || !tab.iframe) return;
+
+                try {
+                    const iframeDoc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
+                    const iframeWin = tab.iframe.contentWindow;
+                    if (!iframeWin || !iframeDoc) return;
+
+                    // Override window.open to open in a new NexOS tab
+                    iframeWin.open = (url, target, features) => {
+                        if (url) {
+                            const newTabId = this.createNewTab();
+                            const newTab = this.tabs.get(newTabId);
+                            if (newTab) {
+                                this.navigate(url);
+                            }
+                        }
+                        return null;
+                    };
+
+                    // Intercept clicks on target="_blank" links
+                    iframeDoc.addEventListener('click', (e) => {
+                        const link = e.target.closest('a[target="_blank"], a[target="_new"]');
+                        if (link) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const href = link.href;
+                            if (href) {
+                                const newTabId = this.createNewTab();
+                                const newTab = this.tabs.get(newTabId);
+                                if (newTab) {
+                                    this.navigate(href);
+                                }
+                            }
+                        }
+                    }, true);
+
+                    // Also intercept dynamically added links via MutationObserver
+                    // and handle form submissions with target="_blank"
+                    iframeDoc.addEventListener('submit', (e) => {
+                        const form = e.target;
+                        if (form && (form.target === '_blank' || form.target === '_new')) {
+                            e.preventDefault();
+                            const action = form.action || iframeWin.location.href;
+                            const newTabId = this.createNewTab();
+                            if (newTabId) {
+                                this.navigate(action);
+                            }
+                        }
+                    }, true);
+
+                } catch (err) {
+                    // Cross-origin iframe - can't inject, silently skip
+                }
             }
 
             zoomIframe(delta) {
