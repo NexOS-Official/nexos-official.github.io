@@ -1,6 +1,19 @@
 importScripts('/active/uv/uv.bundle.js');
 importScripts('/active/uv/uv.config.js');
 
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open("uv-core").then(cache =>
+      cache.addAll([
+        "/active/uv/uv.bundle.js",
+        "/active/uv/uv.client.js",
+        "/active/uv/uv.handler.js",
+        "/active/uv/uv.config.js"
+      ])
+    )
+  );
+});
+
 class UVServiceWorker extends EventEmitter {     
     constructor(config = __uv$config) {
         super();
