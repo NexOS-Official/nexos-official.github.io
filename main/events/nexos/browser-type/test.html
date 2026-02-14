@@ -5,7 +5,6 @@
 
 
 
-
  
 
 <!DOCTYPE html>
@@ -13,9 +12,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NexOS ~ By Ghost</title>
+    <title>NexOS ~ The browser built for freedom</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <link rel="icon" href="eclipse.png" type="image/x-icon" />
+    <link rel="icon" href="/ghost.svg" type="image/x-icon" />
     <link rel="manifest" href="../manifest.json">
     <style>
         @font-face {
@@ -2482,6 +2481,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.initializeBatteryMonitoring();
                 
                 this.initializeLoadingAnimation();
+                this.setupPostMessageListener();
                 
                 lucide.createIcons();
                 
@@ -3158,7 +3158,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 iframe.addEventListener('load', () => {
                     this.updateTabInfo(tabId);
                     this.hideLoading();
-                    this.interceptNewTabRedirects(tabId);
                 });
                 
                 this.setupIframeLoadHandling(tabId);
@@ -3933,6 +3932,7 @@ if (this.isBlockedUrl(url)) {
 
                 this.showLoading();
                 tab.url = url;
+                tab._postMessageTitle = null; // Clear stale postMessage title on new navigation
                 tab.iframe.src = url;
                 this.addressBar.value = this.extractOriginalUrl(url);
 
@@ -4024,24 +4024,88 @@ if (this.isBlockedUrl(url)) {
                 }
             }
 
+            setupPostMessageListener() {
+                window.addEventListener('message', (e) => {
+                    if (e.data && e.data.type === 'tab-update') {
+                        // Find which tab's iframe sent this message
+                        let matchedTab = null;
+                        for (const [tabId, tab] of this.tabs) {
+                            try {
+                                if (tab.iframe.contentWindow === e.source) {
+                                    matchedTab = tab;
+                                    break;
+                                }
+                            } catch(err) {}
+                        }
+                        if (!matchedTab) return;
+
+                        const previousTitle = matchedTab.title;
+
+                        if (e.data.title && e.data.title.trim()) {
+                            matchedTab.title = e.data.title;
+                            matchedTab._postMessageTitle = e.data.title;
+                        }
+                        if (e.data.url) {
+                            const originalUrl = this.extractOriginalUrl(e.data.url);
+                            if (originalUrl && originalUrl !== 'about:blank') {
+                                matchedTab.currentUrl = originalUrl;
+                                if (this.activeTabId === matchedTab.id) {
+                                    this.addressBar.value = originalUrl;
+                                    const isSecure = originalUrl.startsWith('https://');
+                                    this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                                    const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                                    if (securityIcon) {
+                                        securityIcon.innerHTML = isSecure ? 
+                                            '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                            '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                        lucide.createIcons();
+                                    }
+                                }
+                            }
+                        }
+                        if (e.data.favicon) {
+                            const faviconElement = matchedTab.element.querySelector('.tab-favicon');
+                            if (faviconElement) {
+                                this.tryFaviconSources(faviconElement, [e.data.favicon], 0, matchedTab);
+                            }
+                        }
+
+                        const titleElement = matchedTab.element.querySelector('.tab-title');
+                        if (titleElement) {
+                            titleElement.textContent = matchedTab.title;
+                            titleElement.title = matchedTab.title;
+                        }
+
+                        if (previousTitle && previousTitle !== matchedTab.title && this.activeTabId === matchedTab.id) {
+                            this.showSiteToast(matchedTab, matchedTab.currentUrl || '');
+                        }
+                    }
+                });
+            }
+
             updateTabTitle(tab, url) {
                 const domain = this.extractDomain(url);
                 const previousTitle = tab.title;
                 
-                try {
-                    const iframe = tab.iframe;
-                    if (iframe.contentDocument && iframe.contentDocument.title) {
-                        tab.title = iframe.contentDocument.title;
-                    } else if (domain) {
-                        tab.title = this.formatDomainTitle(domain);
-                    } else {
-                        tab.title = 'nexORAos';
-                    }
-                } catch (error) {
-                    if (domain) {
-                        tab.title = this.formatDomainTitle(domain);
-                    } else {
-                        tab.title = 'nexAURAos';
+                // Prefer title received via postMessage (cross-origin safe)
+                if (tab._postMessageTitle) {
+                    tab.title = tab._postMessageTitle;
+                } else {
+                    try {
+                        const iframe = tab.iframe;
+                        if (iframe.contentDocument && iframe.contentDocument.title) {
+                            tab.title = iframe.contentDocument.title;
+                        } else if (domain) {
+                            tab.title = this.formatDomainTitle(domain);
+                        } else {
+                            tab.title = 'nexORAos';
+                        }
+                    } catch (error) {
+                        if (domain) {
+                            tab.title = this.formatDomainTitle(domain);
+                        } else {
+                            tab.title = 'nexAURAos';
+                        }
                     }
                 }
                 
@@ -4410,63 +4474,6 @@ if (this.isBlockedUrl(url)) {
                 }
                 
                 lucide.createIcons();
-            }
-
-            interceptNewTabRedirects(tabId) {
-                const tab = this.tabs.get(tabId);
-                if (!tab || !tab.iframe) return;
-
-                try {
-                    const iframeDoc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
-                    const iframeWin = tab.iframe.contentWindow;
-                    if (!iframeWin || !iframeDoc) return;
-
-                    // Override window.open to open in a new NexOS tab
-                    iframeWin.open = (url, target, features) => {
-                        if (url) {
-                            const newTabId = this.createNewTab();
-                            const newTab = this.tabs.get(newTabId);
-                            if (newTab) {
-                                this.navigate(url);
-                            }
-                        }
-                        return null;
-                    };
-
-                    // Intercept clicks on target="_blank" links
-                    iframeDoc.addEventListener('click', (e) => {
-                        const link = e.target.closest('a[target="_blank"], a[target="_new"]');
-                        if (link) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const href = link.href;
-                            if (href) {
-                                const newTabId = this.createNewTab();
-                                const newTab = this.tabs.get(newTabId);
-                                if (newTab) {
-                                    this.navigate(href);
-                                }
-                            }
-                        }
-                    }, true);
-
-                    // Also intercept dynamically added links via MutationObserver
-                    // and handle form submissions with target="_blank"
-                    iframeDoc.addEventListener('submit', (e) => {
-                        const form = e.target;
-                        if (form && (form.target === '_blank' || form.target === '_new')) {
-                            e.preventDefault();
-                            const action = form.action || iframeWin.location.href;
-                            const newTabId = this.createNewTab();
-                            if (newTabId) {
-                                this.navigate(action);
-                            }
-                        }
-                    }, true);
-
-                } catch (err) {
-                    // Cross-origin iframe - can't inject, silently skip
-                }
             }
 
             zoomIframe(delta) {
