@@ -1,8 +1,10 @@
 self.__uv$config = {
     prefix: '/active/go/',
     bare: '/bare/',
-    encodeUrl: Ultraviolet.codec.base64.encode,
-    decodeUrl: Ultraviolet.codec.base64.decode,
+
+    encodeUrl: (url) => Ultraviolet.codec.xor.encode(url),
+    decodeUrl: (url) => Ultraviolet.codec.xor.decode(url),
+
     handler: '/active/uv/uv.handler.js',
     bundle: '/active/uv/uv.bundle.js',
     config: '/active/uv/uv.config.js',
