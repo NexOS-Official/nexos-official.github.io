@@ -284,19 +284,27 @@ class UVServiceWorker extends EventEmitter {
             responseCtx.headers.location = ultraviolet.rewriteUrl(responseCtx.headers.location);
         }
 
-        // Async cookie handling
+        // Async cookie handling - don't block response
         if (responseCtx.headers['set-cookie']) {
-            ultraviolet.cookie.setCookies(responseCtx.headers['set-cookie'], db, ultraviolet.meta).then(() => {
-                self.clients.matchAll().then(clients => {
-                    clients.forEach(client => {
-                        client.postMessage({
-                            msg: 'updateCookies',
-                            url: ultraviolet.meta.url.href,
+            const cookieValue = responseCtx.headers['set-cookie'];
+            delete responseCtx.headers['set-cookie'];
+            
+            // Handle async without blocking
+            setTimeout(() => {
+                try {
+                    ultraviolet.cookie.setCookies(cookieValue, db, ultraviolet.meta);
+                    self.clients.matchAll().then(clients => {
+                        clients.forEach(client => {
+                            client.postMessage({
+                                msg: 'updateCookies',
+                                url: ultraviolet.meta.url.href,
+                            });
                         });
                     });
-                });
-            });
-            delete responseCtx.headers['set-cookie'];
+                } catch(err) {
+                    console.warn('Cookie set error:', err);
+                }
+            }, 0);
         }
 
         // Stream processing for faster rendering
