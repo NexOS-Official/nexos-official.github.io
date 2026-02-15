@@ -1,26 +1,31 @@
 "use strict";
+
 /**
  * @type {HTMLFormElement}
  */
 const form = document.getElementById("uv-form");
+
 /**
  * @type {HTMLInputElement}
  */
 const address = document.getElementById("uv-address");
+
 /**
  * @type {HTMLInputElement}
  */
 const searchEngine = document.getElementById("uv-search-engine");
+
 /**
  * @type {HTMLParagraphElement}
  */
 const error = document.getElementById("uv-error");
+
 /**
  * @type {HTMLPreElement}
  */
 const errorCode = document.getElementById("uv-error-code");
 
-// Attach form submit event listener
+// Handle form submission (SAME TAB ONLY)
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
@@ -29,15 +34,17 @@ form.addEventListener("submit", async (event) => {
   } catch (err) {
     error.textContent = "Failed to register service worker.";
     errorCode.textContent = err.toString();
-    throw err;
+    return;
   }
 
   const url = search(address.value, searchEngine.value);
+
+  // Navigate in the SAME TAB (classic behavior)
   location.href = __uv$config.prefix + __uv$config.encodeUrl(url);
 });
 
-// Autofill function with auto-submit
+// Optional autofill helper (still same tab)
 function autofill(url) {
   address.value = url;
-  form.requestSubmit(); // Automatically submit the form
+  form.requestSubmit();
 }
