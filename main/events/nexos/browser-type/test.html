@@ -2477,6 +2477,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 this.initializeElements();
                 this.bindEvents();
+                this.setupNewTabInterception();
                 this.createNewTab();
                 this.initializeBatteryMonitoring();
                 
@@ -2619,7 +2620,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // Listen for URL updates and new window requests from embed.html via postMessage
+                // Listen for URL updates from embed.html via postMessage
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         const tab = this.tabs.get(this.activeTabId);
@@ -2639,14 +2640,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                     '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
                             }
-                        }
-                    }
-                    
-                    // Intercept new window/tab requests from proxied content
-                    if (e.data && e.data.type === 'openNewTab' && e.data.url) {
-                        const newTabId = this.createNewTab();
-                        if (newTabId) {
-                            this.navigate(e.data.url);
                         }
                     }
                 });
@@ -3678,6 +3671,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
+                    // Inject new-tab interceptor into this iframe
+                    this.injectNewTabInterceptor(iframe);
+
                     // Try to get the real URL from the iframe first
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
@@ -4448,6 +4444,88 @@ if (this.isBlockedUrl(url)) {
                     displayElement.textContent = `${Math.round(zoomLevel)}%`;
                 }
             }
+
+            // ===== NEW TAB INTERCEPTION =====
+            // Listen for postMessage from iframes wanting to open new tabs
+            setupNewTabInterception() {
+                window.addEventListener('message', (e) => {
+                    if (e.data && e.data.type === 'nexos-open-new-tab' && e.data.url) {
+                        this.createNewTabWithUrl(e.data.url);
+                    }
+                });
+            }
+
+            // Create a new tab and navigate it to a specific URL
+            createNewTabWithUrl(url) {
+                const tabId = this.createNewTab();
+                if (tabId) {
+                    this.navigate(url);
+                }
+                return tabId;
+            }
+
+            // Inject window.open and target="_blank" interceptors into an iframe
+            injectNewTabInterceptor(iframe) {
+                try {
+                    const iframeWin = iframe.contentWindow;
+                    if (!iframeWin) return;
+
+                    // Override window.open
+                    iframeWin.open = function(url, target, features) {
+                        if (url && url !== 'about:blank') {
+                            // Resolve relative URLs against the iframe's location
+                            try {
+                                const resolved = new URL(url, iframeWin.location.href).href;
+                                window.parent.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
+                            } catch(e) {
+                                window.parent.postMessage({ type: 'nexos-open-new-tab', url: url }, '*');
+                            }
+                        }
+                        // Return a fake window object so callers don't crash
+                        return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
+                    };
+
+                    // Intercept target="_blank" link clicks
+                    iframeWin.document.addEventListener('click', function(e) {
+                        const link = e.target.closest('a[target="_blank"]');
+                        if (link && link.href) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
+                        }
+                    }, true);
+
+                    // Also try to inject into nested iframes (e.g. embed.html -> UV iframe)
+                    const nestedIframes = iframeWin.document.querySelectorAll('iframe');
+                    nestedIframes.forEach((nested) => {
+                        try {
+                            this.injectNewTabInterceptor(nested);
+                        } catch(e) {}
+                    });
+
+                    // Watch for new nested iframes being added
+                    try {
+                        const observer = new iframeWin.MutationObserver((mutations) => {
+                            mutations.forEach((mutation) => {
+                                mutation.addedNodes.forEach((node) => {
+                                    if (node.tagName === 'IFRAME') {
+                                        node.addEventListener('load', () => {
+                                            try { this.injectNewTabInterceptor(node); } catch(e) {}
+                                        });
+                                    }
+                                });
+                            });
+                        });
+                        observer.observe(iframeWin.document.body || iframeWin.document.documentElement, {
+                            childList: true, subtree: true
+                        });
+                    } catch(e) {}
+
+                } catch(e) {
+                    // Cross-origin - can't inject, that's okay
+                }
+            }
+            // ===== END NEW TAB INTERCEPTION =====
 
             showSiteToast(tab, url) {
                 const toast = document.getElementById('siteToast');
