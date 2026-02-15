@@ -5,7 +5,6 @@
 
 
 
-
  
 
 <!DOCTYPE html>
@@ -429,66 +428,7 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
-       /* Tab preview tooltip - Chrome style */
-        .tab-preview-tooltip {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            margin-top: 8px;
-            background: #202124;
-            color: #e8eaed;
-            border-radius: 8px;
-            padding: 8px 12px;
-            z-index: 10001;
-            pointer-events: none;
-            opacity: 0;
-            transform: translateY(-4px);
-            transition: opacity 0.15s ease, transform 0.15s ease;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-            min-width: 180px;
-            max-width: 320px;
-            font-family: google sans, sans-serif;
-        }
-        .tab-preview-tooltip.visible {
-            opacity: 1;
-            transform: translateY(0);
-        }
-        .tab-preview-title {
-            font-size: 13px;
-            font-weight: 500;
-            color: #e8eaed;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 2px;
-        }
-        .tab-preview-url {
-            font-size: 11px;
-            color: #9aa0a6;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .tab-preview-thumbnail {
-            width: 100%;
-            height: 120px;
-            background: #35363a;
-            border-radius: 4px;
-            margin-bottom: 6px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .tab-preview-thumbnail img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .tab-preview-thumbnail .preview-placeholder {
-            color: #5f6368;
-            font-size: 12px;
-        }
+       /* got rid of tab hover iframe thing its not needed - Leah */
 
 
 .address-bar-container {
@@ -2679,7 +2619,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // Listen for URL updates from embed.html via postMessage
+                // Listen for URL updates and new window requests from embed.html via postMessage
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         const tab = this.tabs.get(this.activeTabId);
@@ -2699,6 +2639,14 @@ document.addEventListener("DOMContentLoaded", () => {
                                     '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
                             }
+                        }
+                    }
+                    
+                    // Intercept new window/tab requests from proxied content
+                    if (e.data && e.data.type === 'openNewTab' && e.data.url) {
+                        const newTabId = this.createNewTab();
+                        if (newTabId) {
+                            this.navigate(e.data.url);
                         }
                     }
                 });
@@ -3171,19 +3119,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.historyIndex[tabId] = 0;
 
                 tabElement.addEventListener('click', (e) => {
+                    if (e.detail >= 3) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.closeTab(tabId);
+                        return;
+                    }
+                    
                     if (!e.target.closest('.tab-close')) {
                         this.switchToTab(tabId);
                     }
                 });
-
-                // 3-finger touch to close tab (all 3 fingers down at once)
-                tabElement.addEventListener('touchstart', (e) => {
-                    if (e.touches.length >= 3) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.closeTab(tabId);
-                    }
-                }, { passive: false });
 
                 tabElement.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
@@ -3205,7 +3151,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (!this.dragState.isDragging) {
                             this.showTabPreview(tabId, tabElement);
                         }
-                    }, 500);
+                    }, 3000);
                 });
 
                 tabElement.addEventListener('mouseleave', (e) => {
@@ -3213,7 +3159,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         clearTimeout(hoverTimeout);
                         hoverTimeout = null;
                     }
-                    this.hideTabPreview();
+                    this.hideTabPreview(tabId);
                 });
 
                 iframe.addEventListener('load', () => {
@@ -3825,64 +3771,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             /* refresh is defined later in the class */
-
-            showTabPreview(tabId, tabElement) {
-                const tab = this.tabs.get(tabId);
-                if (!tab || tabId === this.activeTabId) return;
-
-                // Remove any existing preview
-                this.hideTabPreview();
-
-                const tooltip = document.createElement('div');
-                tooltip.className = 'tab-preview-tooltip';
-                tooltip.id = 'tab-preview-' + tabId;
-
-                const title = tab.title || 'New Tab';
-                const url = this.extractOriginalUrl(tab.currentUrl || tab.url || '');
-
-                // Thumbnail area
-                const thumbDiv = document.createElement('div');
-                thumbDiv.className = 'tab-preview-thumbnail';
-                const placeholder = document.createElement('span');
-                placeholder.className = 'preview-placeholder';
-                placeholder.textContent = title.charAt(0).toUpperCase();
-                placeholder.style.fontSize = '32px';
-                placeholder.style.fontWeight = '300';
-                thumbDiv.appendChild(placeholder);
-                tooltip.appendChild(thumbDiv);
-
-                const titleDiv = document.createElement('div');
-                titleDiv.className = 'tab-preview-title';
-                titleDiv.textContent = title;
-                tooltip.appendChild(titleDiv);
-
-                if (url && url !== 'about:blank') {
-                    const urlDiv = document.createElement('div');
-                    urlDiv.className = 'tab-preview-url';
-                    urlDiv.textContent = url;
-                    tooltip.appendChild(urlDiv);
-                }
-
-                tabElement.style.position = 'relative';
-                tabElement.appendChild(tooltip);
-
-                // Trigger animation
-                requestAnimationFrame(() => {
-                    tooltip.classList.add('visible');
-                });
-
-                this._activePreviewId = tabId;
-            }
-
-            hideTabPreview() {
-                if (this._activePreviewId) {
-                    const existing = document.getElementById('tab-preview-' + this._activePreviewId);
-                    if (existing) existing.remove();
-                    this._activePreviewId = null;
-                }
-                // Also clean up any stray tooltips
-                document.querySelectorAll('.tab-preview-tooltip').forEach(el => el.remove());
-            }
 
             closeTab(tabId) {
                 if (this.tabs.size <= 1) {
