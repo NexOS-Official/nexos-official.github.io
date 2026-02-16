@@ -4533,27 +4533,18 @@ if (this.isBlockedUrl(url)) {
                     const iframeWin = iframe.contentWindow;
                     if (!iframeWin) return;
 
-                    // Override window.open - only intercept _blank targets
-                    const originalOpen = iframeWin.open.bind(iframeWin);
+                    // Override window.open
                     iframeWin.open = function(url, target, features) {
-                        // Only intercept if target is _blank or _new (new tab intent)
-                        if (url && url !== 'about:blank' && (target === '_blank' || target === '_new')) {
+                        if (url && url !== 'about:blank') {
+                            // Resolve relative URLs against the iframe's location
                             try {
                                 const resolved = new URL(url, iframeWin.location.href).href;
                                 window.parent.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
                             } catch(e) {
                                 window.parent.postMessage({ type: 'nexos-open-new-tab', url: url }, '*');
                             }
-                            return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                         }
-                        // For non-_blank targets, let the navigation happen normally in the iframe
-                        if (url && url !== 'about:blank') {
-                            try {
-                                iframeWin.location.href = new URL(url, iframeWin.location.href).href;
-                            } catch(e) {
-                                iframeWin.location.href = url;
-                            }
-                        }
+                        // Return a fake window object so callers don't crash
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     };
 
