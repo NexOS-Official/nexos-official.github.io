@@ -485,7 +485,7 @@
             right: 32px;
             top: 0;
             bottom: 0;
-            width: 80px;
+            width: 120px;
             background: linear-gradient(to right, transparent, #ebe5e5);
             border-radius: 0 10px 10px 0;
             pointer-events: none;
@@ -2674,7 +2674,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab && tab.currentUrl) {
                         const embedUrl = '/active/embed.html?URL=' + encodeURIComponent(tab.currentUrl);
-                        this.originalWindowOpen(embedUrl, '_blank');
+                        this._allowRealOpen = true;
+                        window.open(embedUrl, '_blank');
                     }
                 });
 
@@ -4525,17 +4526,15 @@ if (this.isBlockedUrl(url)) {
                 this.originalWindowOpen = originalWindowOpen;
                 const self = this;
                 window.open = function(url, target, features) {
+                    // Allow explicitly flagged calls (e.g. the "open in real browser" button) through
+                    if (self._allowRealOpen) {
+                        self._allowRealOpen = false;
+                        return originalWindowOpen(url, target, features);
+                    }
                     if (url && typeof url === 'string') {
-                        // If it's a proxy-internal URL (starts with /active/ or contains proxy patterns),
-                        // intercept it and open as a NexOS tab instead of a real browser tab
-                        if (url.startsWith('/active/') || url.includes('/active/')) {
-                            // Extract the real URL from the proxy path if possible
-                            try {
-                                // Try to decode it - the URL after /active/go/ etc. is the encoded original
-                                self.createNewTabWithUrl(url);
-                            } catch(e) {
-                                self.createNewTabWithUrl(url);
-                            }
+                        // If it's a proxy-internal URL, intercept it as a NexOS tab
+                        if (url.includes('/active/')) {
+                            self.createNewTabWithUrl(url);
                             return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                         }
                     }
