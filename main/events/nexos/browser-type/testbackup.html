@@ -5,6 +5,7 @@
 
 
 
+
  
 
 <!DOCTYPE html>
@@ -485,7 +486,7 @@
             right: 32px;
             top: 0;
             bottom: 0;
-            width: 40px;
+            width: 120px;
             background: linear-gradient(to right, transparent, #ebe5e5);
             border-radius: 0 10px 10px 0;
             pointer-events: none;
@@ -2669,11 +2670,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // Open current page in a real browser tab
+                // Open current page in a real browser tab using embed.html
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab && tab.currentUrl) {
-                        window.open(tab.currentUrl, '_blank');
+                        const embedUrl = '/active/embed.html?URL=' + encodeURIComponent(tab.currentUrl);
+                        this._allowRealOpen = true;
+                        window.open(embedUrl, '_blank');
                     }
                 });
 
@@ -4509,13 +4512,64 @@ if (this.isBlockedUrl(url)) {
             }
 
             // ===== NEW TAB INTERCEPTION =====
+
+            // Validate that a URL is a real, intentional navigation and not a
+            // garbage/encoded redirect, tracking pixel, or programmatic noise.
+            _isValidNewTabUrl(url) {
+                if (!url || typeof url !== 'string') return false;
+                // Reject blank / empty
+                if (url === 'about:blank' || url === '' || url === 'about:srcdoc') return false;
+                // Reject data: and javascript: URIs
+                if (/^(data:|javascript:)/i.test(url.trim())) return false;
+                // Reject URLs that are just fragments or query strings
+                if (/^[#?]/.test(url.trim())) return false;
+
+                // --- The main fix: catch garbled proxy-encoded URLs ---
+                // Proxy URLs go through /active/go/ and legitimate ones should
+                // decode to a recognisable protocol (http/https). If the decoded
+                // path after /active/go/ doesn't start with http(s) it's garbage
+                // from an internal redirect loop.
+                const activeGoMatch = url.match(/\/active\/go\/(.+)/);
+                if (activeGoMatch) {
+                    let decoded = activeGoMatch[1];
+                    try { decoded = decodeURIComponent(decoded); } catch(e) {}
+                    // A valid proxied URL should start with http:// or https://
+                    if (!/^https?:\/\//i.test(decoded)) return false;
+                }
+
+                return true;
+            }
+
             // Listen for postMessage from iframes wanting to open new tabs
             setupNewTabInterception() {
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'nexos-open-new-tab' && e.data.url) {
-                        this.createNewTabWithUrl(e.data.url);
+                        if (this._isValidNewTabUrl(e.data.url)) {
+                            this.createNewTabWithUrl(e.data.url);
+                        }
                     }
                 });
+
+                // Override window.open on the PARENT window to catch proxy URLs
+                const originalWindowOpen = window.open.bind(window);
+                this.originalWindowOpen = originalWindowOpen;
+                const self = this;
+                window.open = function(url, target, features) {
+                    if (self._allowRealOpen) {
+                        self._allowRealOpen = false;
+                        return originalWindowOpen(url, target, features);
+                    }
+                    if (url && typeof url === 'string' && url.includes('/active/')) {
+                        if (self._isValidNewTabUrl(url)) {
+                            self.createNewTabWithUrl(url);
+                            return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
+                        }
+                        // Invalid /active/ URL – silently swallow it instead of
+                        // letting the parent navigate to a broken route.
+                        return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
+                    }
+                    return originalWindowOpen(url, target, features);
+                };
             }
 
             // Create a new tab and navigate it to a specific URL
@@ -4533,37 +4587,38 @@ if (this.isBlockedUrl(url)) {
                     const iframeWin = iframe.contentWindow;
                     if (!iframeWin) return;
 
+                    const self = this;
+
                     // Override window.open
                     iframeWin.open = function(url, target, features) {
                         if (url && url !== 'about:blank') {
-                            // Resolve relative URLs against the iframe's location
+                            let resolved = url;
                             try {
-                                const resolved = new URL(url, iframeWin.location.href).href;
+                                resolved = new URL(url, iframeWin.location.href).href;
+                            } catch(e) {}
+                            // Only post if the URL passes validation
+                            if (self._isValidNewTabUrl(resolved)) {
                                 window.parent.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
-                            } catch(e) {
-                                window.parent.postMessage({ type: 'nexos-open-new-tab', url: url }, '*');
                             }
                         }
-                        // Return a fake window object so callers don't crash
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     };
 
-                    // Intercept target="_blank" link clicks
+                    // Intercept target="_blank" link clicks (only user-initiated)
                     iframeWin.document.addEventListener('click', function(e) {
+                        if (!e.isTrusted) return; // ignore synthetic / programmatic clicks
                         const link = e.target.closest('a[target="_blank"]');
-                        if (link && link.href) {
+                        if (link && link.href && self._isValidNewTabUrl(link.href)) {
                             e.preventDefault();
                             e.stopPropagation();
                             window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
                         }
                     }, true);
 
-                    // Also try to inject into nested iframes (e.g. embed.html -> UV iframe)
+                    // Also try to inject into nested iframes
                     const nestedIframes = iframeWin.document.querySelectorAll('iframe');
                     nestedIframes.forEach((nested) => {
-                        try {
-                            this.injectNewTabInterceptor(nested);
-                        } catch(e) {}
+                        try { this.injectNewTabInterceptor(nested); } catch(e) {}
                     });
 
                     // Watch for new nested iframes being added
