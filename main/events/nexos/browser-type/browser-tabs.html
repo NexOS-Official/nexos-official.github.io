@@ -7,6 +7,7 @@
 
 
 
+
  
 
 <!DOCTYPE html>
@@ -6482,7 +6483,31 @@ menu.addEventListener('mouseleave', hideMenu);
     window.addEventListener('blur', function() {
         setTimeout(function() {
             if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
-                closeAllMenus();
+                var profileMenu = document.getElementById('profileMenu');
+                var clickedDashboardIframe = profileMenu && profileMenu.contains(document.activeElement);
+                if (clickedDashboardIframe) {
+                    // Close everything except the profile/dashboard menu
+                    var contextMenu = document.getElementById('contextMenu');
+                    if (contextMenu) contextMenu.classList.remove('visible');
+                    var browserMenu = document.getElementById('browserMenu');
+                    if (browserMenu) browserMenu.classList.remove('visible');
+                    var appsMenu = document.getElementById('apps-menu');
+                    if (appsMenu && appsMenu.classList.contains('show')) {
+                        appsMenu.classList.remove('show');
+                        appsMenu.style.display = 'none';
+                        if (window.browser) window.browser.updateTaskbarVisibility && window.browser.updateTaskbarVisibility();
+                    }
+                    var aiMenuModal = document.getElementById('aiMenuModal');
+                    if (aiMenuModal) aiMenuModal.classList.remove('show');
+                    var globalLayout = document.getElementById('global-layout-options-menu');
+                    if (globalLayout) globalLayout.classList.remove('show');
+                    var desktopContext = document.querySelector('#context-menu');
+                    if (desktopContext) desktopContext.style.display = 'none';
+                    var cmdl = document.getElementById('CMDL');
+                    if (cmdl) cmdl.hidden = true;
+                } else {
+                    closeAllMenus();
+                }
             }
         }, 0);
     });
