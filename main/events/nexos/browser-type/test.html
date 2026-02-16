@@ -4167,15 +4167,21 @@ if (this.isBlockedUrl(url)) {
                                     }
                                     
                                     // Update navigation history (back/forward)
-                                    const history = this.history[this.activeTabId];
-                                    if (history) {
-                                        const lastEntry = history[history.length - 1];
-                                        const lastExtracted = this.extractOriginalUrl(lastEntry || '');
-                                        if (lastExtracted !== realUrl) {
-                                            const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
-                                            history.push(proxyUrl);
-                                            this.historyIndex[this.activeTabId] = history.length - 1;
-                                            this.updateNavigationButtons();
+                                    // Skip if we're currently navigating via back/forward buttons
+                                    if (!tab._navigatingHistory) {
+                                        const history = this.history[this.activeTabId];
+                                        if (history) {
+                                            const currentIndex = this.historyIndex[this.activeTabId];
+                                            const currentEntry = history[currentIndex];
+                                            const currentExtracted = this.extractOriginalUrl(currentEntry || '');
+                                            if (currentExtracted !== realUrl) {
+                                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                                // Truncate any forward history, then push
+                                                history.splice(currentIndex + 1);
+                                                history.push(proxyUrl);
+                                                this.historyIndex[this.activeTabId] = history.length - 1;
+                                                this.updateNavigationButtons();
+                                            }
                                         }
                                     }
                                     
