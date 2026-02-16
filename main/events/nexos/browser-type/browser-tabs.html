@@ -5,6 +5,8 @@
 
 
 
+
+
  
 
 <!DOCTYPE html>
@@ -428,7 +430,7 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
-       /* got rid of tab hover iframe thing its not needed - Leah */
+       
 
 
 .address-bar-container {
@@ -472,21 +474,65 @@
             cursor: not-allowed;
         }
 
+        .address-bar-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .address-bar-wrapper::after {
+            content: '';
+            position: absolute;
+            right: 32px;
+            top: 0;
+            bottom: 0;
+            width: 120px;
+            background: linear-gradient(to right, transparent, #ebe5e5);
+            border-radius: 0 10px 10px 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .address-bar-wrapper:focus-within::after {
+            background: linear-gradient(to right, transparent, #ebe5e5);
+        }
+
+        .open-external-btn {
+            position: absolute;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #5f6368;
+            border-radius: 50%;
+            z-index: 2;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .open-external-btn:hover {
+            background: rgba(0,0,0,0.08);
+            color: #202124;
+        }
+
         .address-bar {
             flex: 1;
             height: 32px;
             background: #ebe5e5;
             border: none;
             border-radius: 10px;
-            padding: 0 16px;
+            padding: 0 40px 0 16px;
             color: #000000;
             font-size: 14px;
             outline: none;
             transition: background 0.15s ease;
             font-family: google sans;
-            
         }
-
 
         .address-bar:focus {
             background: #ebe5e5;
@@ -817,7 +863,7 @@
             transform: translateX(0);
             opacity: 1;
             display: flex;
-            flex-direction: column; /* Hi :)))))))))) */
+            flex-direction: column;
             margin-bottom: 50px;
             border-radius: 20px;
             
@@ -1134,7 +1180,7 @@
             background: #ffffff;
         }
 
-       /*pvpn got rid of dark mode bc its fucking shit*/
+       
 
         .battery-notification {
             position: fixed;
@@ -2190,7 +2236,12 @@ body {
                 </button>
             </div>
             
-            <input type="text" class="address-bar" id="addressBar" placeholder="Search Google or type a URL">
+            <div class="address-bar-wrapper">
+                <input type="text" class="address-bar" id="addressBar" placeholder="Search Google or type a URL">
+                <button class="open-external-btn" id="openExternalBtn" title="Open in new browser tab">
+                    <i data-lucide="external-link" width="14" height="14"></i>
+                </button>
+            </div>
             <ul class="dropdown"></ul>
             
             <div class="toolbar-icons">  
@@ -2215,7 +2266,7 @@ body {
                 <button class="toolbar-btn split-btn" id="sidemultitaskaddedbynexorayayayay" title="">
                     <i data-lucide="square-split-horizontal" width="16" height="16"></i>
                 </button>
-                <!--PVPN got ridda the menu icon thingy so sry :|-->
+                
             </div>
 
             <div class="zoom-controls">
@@ -2250,7 +2301,7 @@ body {
   </div>
 </div>
 
-  <!--This beloiw is script titlecloking thing by nexora ur welcome!!!!!!!!!!!!!!-->
+  
   <script>
 document.addEventListener("DOMContentLoaded", () => {
   lucide.createIcons();
@@ -2438,7 +2489,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="battery-notification-percent" id="batteryPercent">20% battery left.</div>
             </div>
         </div>
-        <!--Tbh i find this sidebar annoying... - pvpn-->
+        
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title" id="sidebarTitle">Sidebar</div>
@@ -2477,6 +2528,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 this.initializeElements();
                 this.bindEvents();
+                this.setupNewTabInterception();
                 this.createNewTab();
                 this.initializeBatteryMonitoring();
                 
@@ -2591,7 +2643,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.sidebarFullscreen = document.getElementById('sidebarFullscreen');
                 this.isSidebarFullscreen = false;
                 this.isContentBlurred = false;
-                //pvpn got rid of sun icon bc i would rather stick with nexos light mode.
+                
                 this.batteryNotification = document.getElementById('batteryNotification');
                 this.batteryIcon = document.getElementById('batteryIcon');
                 this.batteryPercent = document.getElementById('batteryPercent');
@@ -2616,6 +2668,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.addressBar.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         this.navigate(this.addressBar.value);
+                    }
+                });
+
+                // Open current page in a real browser tab using embed.html
+                document.getElementById('openExternalBtn').addEventListener('click', () => {
+                    const tab = this.tabs.get(this.activeTabId);
+                    if (tab && tab.currentUrl) {
+                        const embedUrl = '/active/embed.html?URL=' + encodeURIComponent(tab.currentUrl);
+                        this._allowRealOpen = true;
+                        window.open(embedUrl, '_blank');
                     }
                 });
 
@@ -3670,6 +3732,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
+                    // Inject new-tab interceptor into this iframe
+                    this.injectNewTabInterceptor(iframe);
+
                     // Try to get the real URL from the iframe first
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
@@ -3716,7 +3781,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 iframe.addEventListener('load', tab.loadHandler);
                 
-                // liten for navi eventssssssssssssss!!!
+                
                 iframe.addEventListener('beforeunload', () => {
                     console.log('something happened', tabId);
                 });
@@ -3762,7 +3827,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            /* refresh is defined later in the class */
+            
 
             closeTab(tabId) {
                 if (this.tabs.size <= 1) {
@@ -4163,15 +4228,21 @@ if (this.isBlockedUrl(url)) {
                                     }
                                     
                                     // Update navigation history (back/forward)
-                                    const history = this.history[this.activeTabId];
-                                    if (history) {
-                                        const lastEntry = history[history.length - 1];
-                                        const lastExtracted = this.extractOriginalUrl(lastEntry || '');
-                                        if (lastExtracted !== realUrl) {
-                                            const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
-                                            history.push(proxyUrl);
-                                            this.historyIndex[this.activeTabId] = history.length - 1;
-                                            this.updateNavigationButtons();
+                                    // Skip if we're currently navigating via back/forward buttons
+                                    if (!tab._navigatingHistory) {
+                                        const history = this.history[this.activeTabId];
+                                        if (history) {
+                                            const currentIndex = this.historyIndex[this.activeTabId];
+                                            const currentEntry = history[currentIndex];
+                                            const currentExtracted = this.extractOriginalUrl(currentEntry || '');
+                                            if (currentExtracted !== realUrl) {
+                                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                                // Truncate any forward history, then push
+                                                history.splice(currentIndex + 1);
+                                                history.push(proxyUrl);
+                                                this.historyIndex[this.activeTabId] = history.length - 1;
+                                                this.updateNavigationButtons();
+                                            }
                                         }
                                     }
                                     
@@ -4440,6 +4511,140 @@ if (this.isBlockedUrl(url)) {
                     displayElement.textContent = `${Math.round(zoomLevel)}%`;
                 }
             }
+
+            // ===== NEW TAB INTERCEPTION =====
+
+            // Validate that a URL is a real, intentional navigation and not a
+            // garbage/encoded redirect, tracking pixel, or programmatic noise.
+            _isValidNewTabUrl(url) {
+                if (!url || typeof url !== 'string') return false;
+                // Reject blank / empty
+                if (url === 'about:blank' || url === '' || url === 'about:srcdoc') return false;
+                // Reject data: and javascript: URIs
+                if (/^(data:|javascript:)/i.test(url.trim())) return false;
+                // Reject URLs that are just fragments or query strings
+                if (/^[#?]/.test(url.trim())) return false;
+
+                // --- The main fix: catch garbled proxy-encoded URLs ---
+                // Proxy URLs go through /active/go/ and legitimate ones should
+                // decode to a recognisable protocol (http/https). If the decoded
+                // path after /active/go/ doesn't start with http(s) it's garbage
+                // from an internal redirect loop.
+                const activeGoMatch = url.match(/\/active\/go\/(.+)/);
+                if (activeGoMatch) {
+                    let decoded = activeGoMatch[1];
+                    try { decoded = decodeURIComponent(decoded); } catch(e) {}
+                    // A valid proxied URL should start with http:// or https://
+                    if (!/^https?:\/\//i.test(decoded)) return false;
+                }
+
+                return true;
+            }
+
+            // Listen for postMessage from iframes wanting to open new tabs
+            setupNewTabInterception() {
+                window.addEventListener('message', (e) => {
+                    if (e.data && e.data.type === 'nexos-open-new-tab' && e.data.url) {
+                        if (this._isValidNewTabUrl(e.data.url)) {
+                            this.createNewTabWithUrl(e.data.url);
+                        }
+                    }
+                });
+
+                // Override window.open on the PARENT window to catch proxy URLs
+                const originalWindowOpen = window.open.bind(window);
+                this.originalWindowOpen = originalWindowOpen;
+                const self = this;
+                window.open = function(url, target, features) {
+                    if (self._allowRealOpen) {
+                        self._allowRealOpen = false;
+                        return originalWindowOpen(url, target, features);
+                    }
+                    if (url && typeof url === 'string' && url.includes('/active/')) {
+                        if (self._isValidNewTabUrl(url)) {
+                            self.createNewTabWithUrl(url);
+                            return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
+                        }
+                        // Invalid /active/ URL – silently swallow it instead of
+                        // letting the parent navigate to a broken route.
+                        return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
+                    }
+                    return originalWindowOpen(url, target, features);
+                };
+            }
+
+            // Create a new tab and navigate it to a specific URL
+            createNewTabWithUrl(url) {
+                const tabId = this.createNewTab();
+                if (tabId) {
+                    this.navigate(url);
+                }
+                return tabId;
+            }
+
+            // Inject window.open and target="_blank" interceptors into an iframe
+            injectNewTabInterceptor(iframe) {
+                try {
+                    const iframeWin = iframe.contentWindow;
+                    if (!iframeWin) return;
+
+                    const self = this;
+
+                    // Override window.open
+                    iframeWin.open = function(url, target, features) {
+                        if (url && url !== 'about:blank') {
+                            let resolved = url;
+                            try {
+                                resolved = new URL(url, iframeWin.location.href).href;
+                            } catch(e) {}
+                            // Only post if the URL passes validation
+                            if (self._isValidNewTabUrl(resolved)) {
+                                window.parent.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
+                            }
+                        }
+                        return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
+                    };
+
+                    // Intercept target="_blank" link clicks (only user-initiated)
+                    iframeWin.document.addEventListener('click', function(e) {
+                        if (!e.isTrusted) return; // ignore synthetic / programmatic clicks
+                        const link = e.target.closest('a[target="_blank"]');
+                        if (link && link.href && self._isValidNewTabUrl(link.href)) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
+                        }
+                    }, true);
+
+                    // Also try to inject into nested iframes
+                    const nestedIframes = iframeWin.document.querySelectorAll('iframe');
+                    nestedIframes.forEach((nested) => {
+                        try { this.injectNewTabInterceptor(nested); } catch(e) {}
+                    });
+
+                    // Watch for new nested iframes being added
+                    try {
+                        const observer = new iframeWin.MutationObserver((mutations) => {
+                            mutations.forEach((mutation) => {
+                                mutation.addedNodes.forEach((node) => {
+                                    if (node.tagName === 'IFRAME') {
+                                        node.addEventListener('load', () => {
+                                            try { this.injectNewTabInterceptor(node); } catch(e) {}
+                                        });
+                                    }
+                                });
+                            });
+                        });
+                        observer.observe(iframeWin.document.body || iframeWin.document.documentElement, {
+                            childList: true, subtree: true
+                        });
+                    } catch(e) {}
+
+                } catch(e) {
+                    // Cross-origin - can't inject, that's okay
+                }
+            }
+            // ===== END NEW TAB INTERCEPTION =====
 
             showSiteToast(tab, url) {
                 const toast = document.getElementById('siteToast');
@@ -5552,7 +5757,7 @@ menu.addEventListener('mouseleave', hideMenu);
             </div>
         </div>
     </div>
-<!-- History Sidebar Feature Script -->
+
 <script>
 (function() {
     var HISTORY_STORAGE_KEY = 'nexaura_browse_history';
@@ -6247,6 +6452,104 @@ menu.addEventListener('mouseleave', hideMenu);
     }
 
     setTimeout(applyFixes, 500);
+})();
+</script>
+<script>
+(function() {
+    function closeAllMenus() {
+        var contextMenu = document.getElementById('contextMenu');
+        if (contextMenu) contextMenu.classList.remove('visible');
+        var browserMenu = document.getElementById('browserMenu');
+        if (browserMenu) browserMenu.classList.remove('visible');
+        var appsMenu = document.getElementById('apps-menu');
+        if (appsMenu && appsMenu.classList.contains('show')) {
+            appsMenu.classList.remove('show');
+            appsMenu.style.display = 'none';
+            if (window.browser) window.browser.updateTaskbarVisibility && window.browser.updateTaskbarVisibility();
+        }
+        var profileMenu = document.getElementById('profileMenu');
+        if (profileMenu) profileMenu.style.display = 'none';
+        var aiMenuModal = document.getElementById('aiMenuModal');
+        if (aiMenuModal) aiMenuModal.classList.remove('show');
+        var globalLayout = document.getElementById('global-layout-options-menu');
+        if (globalLayout) globalLayout.classList.remove('show');
+        var desktopContext = document.querySelector('#context-menu');
+        if (desktopContext) desktopContext.style.display = 'none';
+        var cmdl = document.getElementById('CMDL');
+        if (cmdl) cmdl.hidden = true;
+    }
+
+    window.addEventListener('blur', function() {
+        setTimeout(function() {
+            if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+                closeAllMenus();
+            }
+        }, 0);
+    });
+})();
+</script>
+<script>
+(function() {
+    var blockedBrowserShortcuts = [
+        { ctrl: true, key: 'w' },
+        { ctrl: true, key: 't' },
+        { ctrl: true, key: 'n' },
+        { ctrl: true, shift: true, key: 'n' },
+        { ctrl: true, shift: true, key: 'p' },
+        { ctrl: true, key: 'h' },
+        { ctrl: true, key: 'j' },
+        { ctrl: true, key: 'd' },
+        { ctrl: true, key: 'p' },
+        { ctrl: true, key: 's' },
+        { ctrl: true, key: 'o' },
+        { ctrl: true, key: 'u' },
+        { ctrl: true, shift: true, key: 'i' },
+        { ctrl: true, shift: true, key: 'j' },
+        { ctrl: true, shift: true, key: 'delete' },
+        { ctrl: true, key: 'tab' },
+        { ctrl: true, shift: true, key: 'tab' },
+    ];
+
+    function shouldBlock(e) {
+        var k = e.key.toLowerCase();
+        var isCtrl = e.ctrlKey || e.metaKey;
+        for (var i = 0; i < blockedBrowserShortcuts.length; i++) {
+            var s = blockedBrowserShortcuts[i];
+            if (s.ctrl && isCtrl && k === s.key) {
+                if (s.shift && !e.shiftKey) continue;
+                if (!s.shift && e.shiftKey) continue;
+                return true;
+            }
+        }
+        if (isCtrl && k >= '1' && k <= '9') return true;
+        return false;
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (shouldBlock(e)) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true);
+
+    window.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'nexos-keydown') {
+            var d = e.data;
+            var evt = new KeyboardEvent('keydown', {
+                key: d.key,
+                code: d.code,
+                keyCode: d.keyCode,
+                which: d.which,
+                altKey: d.altKey,
+                ctrlKey: d.ctrlKey,
+                shiftKey: d.shiftKey,
+                metaKey: d.metaKey,
+                bubbles: true,
+                cancelable: true
+            });
+            document.dispatchEvent(evt);
+        }
+    });
 })();
 </script>
 </body>
