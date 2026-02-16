@@ -485,7 +485,7 @@
             right: 32px;
             top: 0;
             bottom: 0;
-            width: 40px;
+            width: 80px;
             background: linear-gradient(to right, transparent, #ebe5e5);
             border-radius: 0 10px 10px 0;
             pointer-events: none;
@@ -2669,11 +2669,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // Open current page in a real browser tab
+                // Open current page in a real browser tab using embed.html
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab && tab.currentUrl) {
-                        window.open(tab.currentUrl, '_blank');
+                        const embedUrl = '/active/embed.html?URL=' + encodeURIComponent(tab.currentUrl);
+                        this.originalWindowOpen(embedUrl, '_blank');
                     }
                 });
 
@@ -4521,6 +4522,7 @@ if (this.isBlockedUrl(url)) {
                 // Override window.open on the PARENT window to catch proxy URLs
                 // that escape iframe injection (cross-origin frames, cached references, etc.)
                 const originalWindowOpen = window.open.bind(window);
+                this.originalWindowOpen = originalWindowOpen;
                 const self = this;
                 window.open = function(url, target, features) {
                     if (url && typeof url === 'string') {
