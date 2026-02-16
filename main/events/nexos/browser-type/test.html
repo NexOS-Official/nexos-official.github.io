@@ -4511,11 +4511,35 @@ if (this.isBlockedUrl(url)) {
             // ===== NEW TAB INTERCEPTION =====
             // Listen for postMessage from iframes wanting to open new tabs
             setupNewTabInterception() {
+                // Listen for postMessage from iframes wanting to open new tabs
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'nexos-open-new-tab' && e.data.url) {
                         this.createNewTabWithUrl(e.data.url);
                     }
                 });
+
+                // Override window.open on the PARENT window to catch proxy URLs
+                // that escape iframe injection (cross-origin frames, cached references, etc.)
+                const originalWindowOpen = window.open.bind(window);
+                const self = this;
+                window.open = function(url, target, features) {
+                    if (url && typeof url === 'string') {
+                        // If it's a proxy-internal URL (starts with /active/ or contains proxy patterns),
+                        // intercept it and open as a NexOS tab instead of a real browser tab
+                        if (url.startsWith('/active/') || url.includes('/active/')) {
+                            // Extract the real URL from the proxy path if possible
+                            try {
+                                // Try to decode it - the URL after /active/go/ etc. is the encoded original
+                                self.createNewTabWithUrl(url);
+                            } catch(e) {
+                                self.createNewTabWithUrl(url);
+                            }
+                            return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
+                        }
+                    }
+                    // For non-proxy URLs, allow normal behavior
+                    return originalWindowOpen(url, target, features);
+                };
             }
 
             // Create a new tab and navigate it to a specific URL
