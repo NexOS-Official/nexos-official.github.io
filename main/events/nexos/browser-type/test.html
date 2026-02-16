@@ -472,21 +472,65 @@
             cursor: not-allowed;
         }
 
+        .address-bar-wrapper {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .address-bar-wrapper::after {
+            content: '';
+            position: absolute;
+            right: 32px;
+            top: 0;
+            bottom: 0;
+            width: 40px;
+            background: linear-gradient(to right, transparent, #ebe5e5);
+            border-radius: 0 10px 10px 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .address-bar-wrapper:focus-within::after {
+            background: linear-gradient(to right, transparent, #ebe5e5);
+        }
+
+        .open-external-btn {
+            position: absolute;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #5f6368;
+            border-radius: 50%;
+            z-index: 2;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .open-external-btn:hover {
+            background: rgba(0,0,0,0.08);
+            color: #202124;
+        }
+
         .address-bar {
             flex: 1;
             height: 32px;
             background: #ebe5e5;
             border: none;
             border-radius: 10px;
-            padding: 0 16px;
+            padding: 0 40px 0 16px;
             color: #000000;
             font-size: 14px;
             outline: none;
             transition: background 0.15s ease;
             font-family: google sans;
-            
         }
-
 
         .address-bar:focus {
             background: #ebe5e5;
@@ -2190,7 +2234,12 @@ body {
                 </button>
             </div>
             
-            <input type="text" class="address-bar" id="addressBar" placeholder="Search Google or type a URL">
+            <div class="address-bar-wrapper">
+                <input type="text" class="address-bar" id="addressBar" placeholder="Search Google or type a URL">
+                <button class="open-external-btn" id="openExternalBtn" title="Open in new browser tab">
+                    <i data-lucide="external-link" width="14" height="14"></i>
+                </button>
+            </div>
             <ul class="dropdown"></ul>
             
             <div class="toolbar-icons">  
@@ -2617,6 +2666,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.addressBar.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         this.navigate(this.addressBar.value);
+                    }
+                });
+
+                // Open current page in a real browser tab
+                document.getElementById('openExternalBtn').addEventListener('click', () => {
+                    const tab = this.tabs.get(this.activeTabId);
+                    if (tab && tab.currentUrl) {
+                        window.open(tab.currentUrl, '_blank');
                     }
                 });
 
@@ -4476,18 +4533,27 @@ if (this.isBlockedUrl(url)) {
                     const iframeWin = iframe.contentWindow;
                     if (!iframeWin) return;
 
-                    // Override window.open
+                    // Override window.open - only intercept _blank targets
+                    const originalOpen = iframeWin.open.bind(iframeWin);
                     iframeWin.open = function(url, target, features) {
-                        if (url && url !== 'about:blank') {
-                            // Resolve relative URLs against the iframe's location
+                        // Only intercept if target is _blank or _new (new tab intent)
+                        if (url && url !== 'about:blank' && (target === '_blank' || target === '_new')) {
                             try {
                                 const resolved = new URL(url, iframeWin.location.href).href;
                                 window.parent.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
                             } catch(e) {
                                 window.parent.postMessage({ type: 'nexos-open-new-tab', url: url }, '*');
                             }
+                            return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                         }
-                        // Return a fake window object so callers don't crash
+                        // For non-_blank targets, let the navigation happen normally in the iframe
+                        if (url && url !== 'about:blank') {
+                            try {
+                                iframeWin.location.href = new URL(url, iframeWin.location.href).href;
+                            } catch(e) {
+                                iframeWin.location.href = url;
+                            }
+                        }
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     };
 
