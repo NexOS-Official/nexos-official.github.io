@@ -6487,5 +6487,69 @@ menu.addEventListener('mouseleave', hideMenu);
     });
 })();
 </script>
+<script>
+(function() {
+    var blockedBrowserShortcuts = [
+        { ctrl: true, key: 'w' },
+        { ctrl: true, key: 't' },
+        { ctrl: true, key: 'n' },
+        { ctrl: true, shift: true, key: 'n' },
+        { ctrl: true, shift: true, key: 'p' },
+        { ctrl: true, key: 'h' },
+        { ctrl: true, key: 'j' },
+        { ctrl: true, key: 'd' },
+        { ctrl: true, key: 'p' },
+        { ctrl: true, key: 's' },
+        { ctrl: true, key: 'o' },
+        { ctrl: true, key: 'u' },
+        { ctrl: true, shift: true, key: 'i' },
+        { ctrl: true, shift: true, key: 'j' },
+        { ctrl: true, shift: true, key: 'delete' },
+        { ctrl: true, key: 'tab' },
+        { ctrl: true, shift: true, key: 'tab' },
+    ];
+
+    function shouldBlock(e) {
+        var k = e.key.toLowerCase();
+        var isCtrl = e.ctrlKey || e.metaKey;
+        for (var i = 0; i < blockedBrowserShortcuts.length; i++) {
+            var s = blockedBrowserShortcuts[i];
+            if (s.ctrl && isCtrl && k === s.key) {
+                if (s.shift && !e.shiftKey) continue;
+                if (!s.shift && e.shiftKey) continue;
+                return true;
+            }
+        }
+        if (isCtrl && k >= '1' && k <= '9') return true;
+        return false;
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (shouldBlock(e)) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    }, true);
+
+    window.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'nexos-keydown') {
+            var d = e.data;
+            var evt = new KeyboardEvent('keydown', {
+                key: d.key,
+                code: d.code,
+                keyCode: d.keyCode,
+                which: d.which,
+                altKey: d.altKey,
+                ctrlKey: d.ctrlKey,
+                shiftKey: d.shiftKey,
+                metaKey: d.metaKey,
+                bubbles: true,
+                cancelable: true
+            });
+            document.dispatchEvent(evt);
+        }
+    });
+})();
+</script>
 </body>
 </html>
