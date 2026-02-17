@@ -40,6 +40,12 @@
             user-select: none;
         }
 
+        #focusOverlay {
+  display: none;
+  pointer-events: none;
+}
+
+
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -4754,8 +4760,6 @@ if (this.isBlockedUrl(url)) {
                             self.createNewTabWithUrl(url);
                             return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                         }
-                        // Invalid /active/ URL – silently swallow it instead of
-                        // letting the parent navigate to a broken route.
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     }
                     return originalWindowOpen(url, target, features);
@@ -5600,19 +5604,6 @@ if (this.isBlockedUrl(url)) {
         document.getElementById('contentArea').style.opacity = opacity;
     });
 
-    // Focus Mode
-    const focusBtn = document.getElementById('focusBtn');
-    const focusOverlay = document.getElementById('focusOverlay');
-    const focusCloseBtn = document.getElementById('focusCloseBtn');
-    const focusIframe = document.getElementById('focusIframe');
-
-    focusBtn.addEventListener('click', () => {
-        focusIframe.src = '/main/events/sidebar/apps/tasks/tasks.html'; // Path requested by user
-        focusOverlay.classList.add('visible');
-        controlCenterMenu.classList.remove('visible');
-        timeDateContainer.classList.remove('expanded');
-    });
-
     focusCloseBtn.addEventListener('click', () => {
         focusOverlay.classList.remove('visible');
         setTimeout(() => {
@@ -5706,31 +5697,6 @@ if (this.isBlockedUrl(url)) {
       windowManager.openApp("terminal");
     }
     contextMenu.style.display = "none";
-  });
-
-  launcherButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    if (appsMenu.classList.contains("show")) {
-      appsMenu.classList.remove("show");
-      appsMenu.addEventListener(
-        "transitionend",
-        function handler() {
-          appsMenu.style.display = "none";
-          appsMenu.removeEventListener("transitionend", handler);
-          windowManager.updateTaskbarVisibility();
-        },
-        { once: true },
-      );
-    } else {
-      appsMenu.style.display = "flex";
-      requestAnimationFrame(() => {
-        appsMenu.classList.add("show");
-        windowManager.updateTaskbarVisibility();
-      });
-      appSearchInput.value = "";
-      populateAppsGrid();
-      appSearchInput.focus();
-    }
   });
 
   document.addEventListener("click", (event) => {
@@ -5919,6 +5885,9 @@ menu.addEventListener('mouseleave', hideMenu);
                 <span id="battery-level"></span>
             </span>
 
+            <div class="focus-overlay" id="focusOverlay" hidden></div>
+
+
             <button class="taskbar-app-shortcut" id="appYouTube" title="New Tab">
                 <img src="/ghost.svg" alt="NT">
             </button>
@@ -6007,6 +5976,14 @@ menu.addEventListener('mouseleave', hideMenu);
                 <input type="range" class="cc-slider" min="0" max="100" value="100" id="brightnessSlider">
             </div>
         </div>
+
+    <!-- Focus Overlay -->
+    <div class="focus-overlay" id="focusOverlay">
+        <div class="focus-container">
+            <button class="focus-close" id="focusCloseBtn">
+                <i data-lucide="x" width="20" height="20"></i>
+            </button>
+    </div>
 
     <div id="global-layout-options-menu" class="layout-options-menu">
         <div class="layout-option" data-layout="split">
