@@ -6,6 +6,9 @@
 
 
 
+
+
+
  
 
 <!DOCTYPE html>
@@ -2208,6 +2211,262 @@ body {
           font-family: google sans;
           gap: 8px;
         }
+    /* Liquid Date Animation */
+    .time-date-container {
+        display: flex;
+        align-items: center;
+        position: relative;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        background: rgba(255, 255, 255, 0.0);
+        border-radius: 12px;
+        padding: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.0);
+        margin-left: 8px;
+    }
+
+    .time-date-container:hover {
+        background: rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .date-box {
+        max-width: 0;
+        opacity: 0;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        border: none !important;
+        background: transparent !important;
+        font-family: 'google sans', sans-serif;
+    }
+
+    .time-date-container.expanded .date-box {
+        max-width: 150px;
+        opacity: 1;
+        padding: 0 8px;
+        margin-left: 4px;
+        border-left: 1px solid rgba(0,0,0,0.1) !important;
+    }
+
+    .time-box {
+        border: none !important;
+        background: transparent !important;
+        padding: 4px 8px;
+        font-family: 'google sans', sans-serif;
+    }
+
+    /* Control Center Menu */
+    .control-center-menu {
+        position: fixed;
+        bottom: 60px;
+        right: 20px;
+        width: 320px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(20px) saturate(180%);
+        -webkit-backdrop-filter: blur(20px) saturate(180%);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        z-index: 10000;
+        transform: translateY(20px) scale(0.95);
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        color: #1a1a1a;
+        font-family: 'google sans', sans-serif;
+    }
+
+    .control-center-menu.visible {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .cc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .cc-time-large {
+        font-size: 32px;
+        font-weight: 500;
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+
+    .cc-date-large {
+        font-size: 14px;
+        color: #666;
+        font-weight: 400;
+    }
+
+    .cc-battery-large {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        color: #666;
+        background: rgba(0,0,0,0.05);
+        padding: 6px 10px;
+        border-radius: 20px;
+    }
+
+    .cc-section {
+        background: rgba(255,255,255,0.5);
+        border-radius: 12px;
+        padding: 12px;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .cc-slider-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .cc-slider-icon {
+        color: #666;
+    }
+
+    .cc-slider {
+        flex: 1;
+        -webkit-appearance: none;
+        height: 4px;
+        background: #e0e0e0;
+        border-radius: 2px;
+        outline: none;
+    }
+
+    .cc-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.1s;
+    }
+
+    .cc-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.1);
+    }
+
+    .cc-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+    }
+
+    .cc-btn {
+        background: rgba(255,255,255,0.6);
+        border: 1px solid rgba(0,0,0,0.05);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 13px;
+        font-family: inherit;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .cc-btn:hover {
+        background: rgba(255,255,255,0.9);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    .cc-btn.active {
+        background: #007aff;
+        color: white;
+        border-color: #007aff;
+    }
+    
+    .cc-btn.active svg {
+        color: white !important;
+    }
+
+    /* Focus Mode Overlay */
+    .focus-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.4);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        z-index: 20000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+
+    .focus-overlay.visible {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .focus-container {
+        width: 90%;
+        height: 85%;
+        background: #fff;
+        border-radius: 24px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        transform: scale(0.95);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .focus-overlay.visible .focus-container {
+        transform: scale(1);
+    }
+
+    .focus-close {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: rgba(0,0,0,0.1);
+        border: none;
+        border-radius: 50%;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10;
+        transition: background 0.2s;
+        color: #333;
+    }
+
+    .focus-close:hover {
+        background: rgba(0,0,0,0.2);
+    }
+
+    .focus-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
     </style>
 </head>
 <body>
@@ -2236,7 +2495,7 @@ body {
             </div>
             
             <div class="address-bar-wrapper">
-                <input type="text" class="address-bar" id="addressBar" placeholder="Search Google or type a URL">
+                <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL">
                 <button class="open-external-btn" id="openExternalBtn" title="Open in new browser tab">
                     <i data-lucide="external-link" width="14" height="14"></i>
                 </button>
@@ -5359,13 +5618,93 @@ if (this.isBlockedUrl(url)) {
     });
   };
 
-  const updateDateTime = () => {
-    const now = new Date();
-    currentTimeElement.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
-    currentDateElement.textContent = now.toLocaleDateString([], { month: "short", day: "numeric" });
-  };
-  updateDateTime();
-  setInterval(updateDateTime, 1000);
+    const updateDateTime = () => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+      const dateStr = now.toLocaleDateString([], { weekday: 'short', month: "short", day: "numeric" });
+      
+      currentTimeElement.textContent = timeStr;
+      currentDateElement.textContent = dateStr;
+      
+      // Update Control Center
+      const ccTime = document.getElementById('ccTime');
+      const ccDate = document.getElementById('ccDate');
+      if(ccTime) ccTime.textContent = timeStr;
+      if(ccDate) ccDate.textContent = dateStr;
+    };
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+
+    // Liquid Date & Control Center Logic
+    const timeDateContainer = document.getElementById('timeDateContainer');
+    const controlCenterMenu = document.getElementById('controlCenterMenu');
+    
+    // Toggle Control Center & Expand Date
+    timeDateContainer.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isExpanded = timeDateContainer.classList.contains('expanded');
+        
+        if (isExpanded) {
+            timeDateContainer.classList.remove('expanded');
+            controlCenterMenu.classList.remove('visible');
+        } else {
+            timeDateContainer.classList.add('expanded');
+            controlCenterMenu.classList.add('visible');
+        }
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!controlCenterMenu.contains(e.target) && !timeDateContainer.contains(e.target)) {
+            timeDateContainer.classList.remove('expanded');
+            controlCenterMenu.classList.remove('visible');
+        }
+    });
+
+    // Brightness Slider (simulated with iframe filter)
+    const brightnessSlider = document.getElementById('brightnessSlider');
+    brightnessSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        const opacity = 0.3 + (val / 100) * 0.7; // Don't go completely black
+        document.getElementById('contentArea').style.opacity = opacity;
+    });
+
+    // Focus Mode
+    const focusBtn = document.getElementById('focusBtn');
+    const focusOverlay = document.getElementById('focusOverlay');
+    const focusCloseBtn = document.getElementById('focusCloseBtn');
+    const focusIframe = document.getElementById('focusIframe');
+
+    focusBtn.addEventListener('click', () => {
+        focusIframe.src = '/main/events/sidebar/apps/tasks/tasks.html'; // Path requested by user
+        focusOverlay.classList.add('visible');
+        controlCenterMenu.classList.remove('visible');
+        timeDateContainer.classList.remove('expanded');
+    });
+
+    focusCloseBtn.addEventListener('click', () => {
+        focusOverlay.classList.remove('visible');
+        setTimeout(() => {
+            focusIframe.src = 'about:blank';
+        }, 300);
+    });
+
+    // Update battery in Control Center
+    const updateCCBattery = () => {
+         if ("getBattery" in navigator) {
+            navigator.getBattery().then((battery) => {
+                const level = Math.round(battery.level * 100);
+                const ccBatteryLevel = document.getElementById('ccBatteryLevel');
+                if(ccBatteryLevel) ccBatteryLevel.textContent = `${level}%`;
+            });
+         }
+    };
+    updateCCBattery();
+    if ("getBattery" in navigator) {
+        navigator.getBattery().then((battery) => {
+            battery.addEventListener("levelchange", updateCCBattery);
+        });
+    }
 
   const updateBatteryStatus = () => {
     if ("getBattery" in navigator) {
@@ -5682,8 +6021,10 @@ menu.addEventListener('mouseleave', hideMenu);
             <button class="history-btn" id="historyBtn" title="History">
                 <i data-lucide="history" width="16" height="16" style="color:#000"></i>
             </button>
-            <span id="current-time" class="time-box" aria-label="Current time"></span>
-            <span id="current-date" class="date-box" aria-label="Current date"></span>
+            <div class="time-date-container" id="timeDateContainer">
+                <span id="current-time" class="time-box" aria-label="Current time"></span>
+                <span id="current-date" class="date-box" aria-label="Current date"></span>
+            </div>
 
             <div class="taskbar-quick-divider"></div>
 
@@ -5713,6 +6054,48 @@ menu.addEventListener('mouseleave', hideMenu);
             <button class="taskbar-quick-btn" id="qsPower" title="Power Off" style="color:#000;">
                 <i data-lucide="power" width="15" height="15" style="color:#000"></i>
             </button>
+        </div>
+    </div>
+
+    <!-- Control Center Menu -->
+    <div class="control-center-menu" id="controlCenterMenu">
+        <div class="cc-header">
+            <div>
+                <div class="cc-time-large" id="ccTime">12:00</div>
+                <div class="cc-date-large" id="ccDate">Monday, Jan 1</div>
+            </div>
+            <div class="cc-battery-large">
+                <i data-lucide="battery" width="16" height="16"></i>
+                <span id="ccBatteryLevel">100%</span>
+            </div>
+        </div>
+
+        <div class="cc-section">
+            <div class="cc-slider-row">
+                <i data-lucide="sun" width="18" height="18" class="cc-slider-icon"></i>
+                <input type="range" class="cc-slider" min="0" max="100" value="100" id="brightnessSlider">
+            </div>
+        </div>
+
+        <div class="cc-grid">
+            <button class="cc-btn" id="focusBtn">
+                <i data-lucide="crosshair" width="24" height="24" style="color:#5f6368"></i>
+                <span>Focus</span>
+            </button>
+            <button class="cc-btn" id="dndBtn">
+                <i data-lucide="moon" width="24" height="24" style="color:#5f6368"></i>
+                <span>DND</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Focus Overlay -->
+    <div class="focus-overlay" id="focusOverlay">
+        <div class="focus-container">
+            <button class="focus-close" id="focusCloseBtn">
+                <i data-lucide="x" width="20" height="20"></i>
+            </button>
+            <iframe class="focus-iframe" id="focusIframe" src="about:blank"></iframe>
         </div>
     </div>
 
@@ -6481,7 +6864,31 @@ menu.addEventListener('mouseleave', hideMenu);
     window.addEventListener('blur', function() {
         setTimeout(function() {
             if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
-                closeAllMenus();
+                var profileMenu = document.getElementById('profileMenu');
+                var clickedDashboardIframe = profileMenu && profileMenu.contains(document.activeElement);
+                if (clickedDashboardIframe) {
+                    // Close everything except the profile/dashboard menu
+                    var contextMenu = document.getElementById('contextMenu');
+                    if (contextMenu) contextMenu.classList.remove('visible');
+                    var browserMenu = document.getElementById('browserMenu');
+                    if (browserMenu) browserMenu.classList.remove('visible');
+                    var appsMenu = document.getElementById('apps-menu');
+                    if (appsMenu && appsMenu.classList.contains('show')) {
+                        appsMenu.classList.remove('show');
+                        appsMenu.style.display = 'none';
+                        if (window.browser) window.browser.updateTaskbarVisibility && window.browser.updateTaskbarVisibility();
+                    }
+                    var aiMenuModal = document.getElementById('aiMenuModal');
+                    if (aiMenuModal) aiMenuModal.classList.remove('show');
+                    var globalLayout = document.getElementById('global-layout-options-menu');
+                    if (globalLayout) globalLayout.classList.remove('show');
+                    var desktopContext = document.querySelector('#context-menu');
+                    if (desktopContext) desktopContext.style.display = 'none';
+                    var cmdl = document.getElementById('CMDL');
+                    if (cmdl) cmdl.hidden = true;
+                } else {
+                    closeAllMenus();
+                }
             }
         }, 0);
     });
