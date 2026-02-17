@@ -25,7 +25,6 @@ const error = document.getElementById("uv-error");
  */
 const errorCode = document.getElementById("uv-error-code");
 
-// Handle form submission (SAME TAB ONLY)
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
