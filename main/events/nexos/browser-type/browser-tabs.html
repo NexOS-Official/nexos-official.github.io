@@ -10,6 +10,7 @@
 
 
 
+
  
 
 <!DOCTYPE html>
@@ -2552,6 +2553,76 @@ body {
         opacity: 1;
         pointer-events: auto;
     }
+
+    /* Search Suggestions Dropdown */
+    .search-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 0 0 12px 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        z-index: 9999;
+        max-height: 400px;
+        overflow-y: auto;
+        display: none;
+        margin-top: 2px;
+    }
+    .search-suggestions.visible {
+        display: block;
+    }
+    .search-suggestion-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        font-family: google sans, sans-serif;
+        color: #1a1a1a;
+        transition: background 0.1s ease;
+    }
+    .search-suggestion-item:hover,
+    .search-suggestion-item.selected {
+        background: #f1f3f4;
+    }
+    .search-suggestion-item:last-child {
+        border-radius: 0 0 12px 12px;
+    }
+    .search-suggestion-icon {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: #5f6368;
+    }
+    .search-suggestion-icon img {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+    }
+    .search-suggestion-text {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .search-suggestion-text strong {
+        font-weight: 600;
+    }
+    .search-suggestion-url {
+        color: #70757a;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 300px;
+    }
+
     </style>
 </head>
 <body>
@@ -2579,11 +2650,12 @@ body {
                 </button>
             </div>
             
-            <div class="address-bar-wrapper">
-                <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL">
+            <div class="address-bar-wrapper" style="position:relative;">
+                <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off">
                 <button class="open-external-btn" id="openExternalBtn" title="Open in new browser tab">
                     <i data-lucide="external-link" width="14" height="14"></i>
                 </button>
+                <div class="search-suggestions" id="searchSuggestions"></div>
             </div>
             <ul class="dropdown"></ul>
             
@@ -7016,6 +7088,222 @@ menu.addEventListener('mouseleave', hideMenu);
             document.dispatchEvent(evt);
         }
     });
+})();
+</script>
+<script>
+(function() {
+    let debounceTimer = null;
+    let selectedIndex = -1;
+    let currentSuggestions = [];
+
+    function initSearchSuggestions() {
+        const addressBar = document.getElementById('addressBar');
+        const suggestionsBox = document.getElementById('searchSuggestions');
+        if (!addressBar || !suggestionsBox) {
+            setTimeout(initSearchSuggestions, 300);
+            return;
+        }
+
+        addressBar.addEventListener('input', function() {
+            const query = addressBar.value.trim();
+            if (query.length < 1) {
+                clearTimeout(debounceTimer);
+                hideSuggestions();
+                return;
+            }
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => fetchSuggestions(query), 200);
+        });
+
+        addressBar.addEventListener('focus', function() {
+            const query = addressBar.value.trim();
+            if (query.length >= 1 && currentSuggestions.length > 0) {
+                suggestionsBox.classList.add('visible');
+            }
+        });
+
+        addressBar.addEventListener('keydown', function(e) {
+            if (!suggestionsBox.classList.contains('visible')) return;
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, currentSuggestions.length - 1);
+                updateSelection();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection();
+            } else if (e.key === 'Enter') {
+                if (selectedIndex >= 0 && currentSuggestions[selectedIndex]) {
+                    e.preventDefault();
+                    addressBar.value = currentSuggestions[selectedIndex].text;
+                    hideSuggestions();
+                    if (window.browser) window.browser.navigate(addressBar.value);
+                }
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!suggestionsBox.contains(e.target) && e.target !== addressBar) {
+                hideSuggestions();
+            }
+        });
+    }
+
+    function fetchSuggestions(query) {
+        const suggestionsBox = document.getElementById('searchSuggestions');
+        
+        // Use Google Suggest API via JSONP (it properly supports JSONP callbacks)
+        const callbackName = '_sgCallback_' + Date.now();
+        window[callbackName] = function(data) {
+            currentSuggestions = [];
+            // Google returns [query, [suggestions array], ...]
+            if (Array.isArray(data) && Array.isArray(data[1])) {
+                data[1].slice(0, 8).forEach(function(phrase) {
+                    currentSuggestions.push({
+                        text: phrase,
+                        type: 'search'
+                    });
+                });
+            }
+            
+            // Add a "search" option at the top
+            currentSuggestions.unshift({
+                text: query,
+                type: 'search-direct',
+                label: query + ' — Search'
+            });
+
+            // Check if the query looks like a URL
+            var isUrl = /^(https?:\/\/|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})/.test(query);
+            if (isUrl) {
+                currentSuggestions.unshift({
+                    text: query,
+                    type: 'url',
+                    label: query
+                });
+            }
+
+            renderSuggestions(query);
+            delete window[callbackName];
+            if (script.parentNode) script.parentNode.removeChild(script);
+        };
+
+        var script = document.createElement('script');
+        script.src = 'https://suggestqueries.google.com/complete/search?client=chrome&q=' + encodeURIComponent(query) + '&callback=' + callbackName;
+        script.onerror = function() {
+            // Fallback: just show the direct search option
+            currentSuggestions = [{
+                text: query,
+                type: 'search-direct',
+                label: query + ' — Search'
+            }];
+            var isUrl = /^(https?:\/\/|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})/.test(query);
+            if (isUrl) {
+                currentSuggestions.unshift({
+                    text: query,
+                    type: 'url',
+                    label: query
+                });
+            }
+            renderSuggestions(query);
+            delete window[callbackName];
+            if (script.parentNode) script.parentNode.removeChild(script);
+        };
+        document.head.appendChild(script);
+    }
+
+    function renderSuggestions(query) {
+        const suggestionsBox = document.getElementById('searchSuggestions');
+        if (!suggestionsBox) return;
+
+        selectedIndex = -1;
+        suggestionsBox.innerHTML = '';
+
+        if (currentSuggestions.length === 0) {
+            hideSuggestions();
+            return;
+        }
+
+        var queryLower = query.toLowerCase();
+
+        currentSuggestions.forEach(function(suggestion, index) {
+            var item = document.createElement('div');
+            item.className = 'search-suggestion-item';
+            item.dataset.index = index;
+
+            var icon = document.createElement('div');
+            icon.className = 'search-suggestion-icon';
+
+            if (suggestion.type === 'url') {
+                icon.innerHTML = '<i data-lucide="globe" width="16" height="16"></i>';
+            } else {
+                icon.innerHTML = '<i data-lucide="search" width="16" height="16"></i>';
+            }
+
+            var textDiv = document.createElement('div');
+            textDiv.className = 'search-suggestion-text';
+
+            var displayText = suggestion.label || suggestion.text;
+            // Bold the matching part
+            var idx = displayText.toLowerCase().indexOf(queryLower);
+            if (idx >= 0 && suggestion.type !== 'search-direct' && suggestion.type !== 'url') {
+                textDiv.innerHTML = escapeHtml(displayText.substring(0, idx)) + 
+                    '<strong>' + escapeHtml(displayText.substring(idx, idx + query.length)) + '</strong>' + 
+                    escapeHtml(displayText.substring(idx + query.length));
+            } else {
+                textDiv.textContent = displayText;
+            }
+
+            item.appendChild(icon);
+            item.appendChild(textDiv);
+
+            item.addEventListener('click', function() {
+                var addressBar = document.getElementById('addressBar');
+                addressBar.value = suggestion.text;
+                hideSuggestions();
+                if (window.browser) window.browser.navigate(suggestion.text);
+            });
+
+            item.addEventListener('mouseenter', function() {
+                selectedIndex = index;
+                updateSelection();
+            });
+
+            suggestionsBox.appendChild(item);
+        });
+
+        suggestionsBox.classList.add('visible');
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function updateSelection() {
+        var items = document.querySelectorAll('.search-suggestion-item');
+        items.forEach(function(item, i) {
+            if (i === selectedIndex) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    function hideSuggestions() {
+        var suggestionsBox = document.getElementById('searchSuggestions');
+        if (suggestionsBox) suggestionsBox.classList.remove('visible');
+        selectedIndex = -1;
+        currentSuggestions = [];
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    setTimeout(initSearchSuggestions, 500);
 })();
 </script>
 </body>
