@@ -2528,6 +2528,29 @@ body {
         color: #999;
         font-size: 13px;
     }
+    /* Profile Dashboard Menu - popup style */
+    .profile-menu-popup {
+        position: fixed;
+        bottom: 60px;
+        right: 60px;
+        width: 320px;
+        height: 400px;
+        background: #fff;
+        border-radius: 18px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+        overflow: hidden;
+        z-index: 10000;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        transform: translateY(20px) scale(0.95);
+        opacity: 0;
+        pointer-events: none;
+        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .profile-menu-popup.visible {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+        pointer-events: auto;
+    }
     </style>
 </head>
 <body>
@@ -5711,7 +5734,7 @@ if (this.isBlockedUrl(url)) {
         } else {
             // Close profile menu first
             var profileMenu = document.getElementById('profileMenu');
-            if (profileMenu) profileMenu.style.display = 'none';
+            if (profileMenu) profileMenu.classList.remove('visible');
             
             timeDateContainer.classList.add('expanded');
             if (ccWrapper) ccWrapper.classList.add('visible');
@@ -6065,24 +6088,10 @@ menu.addEventListener('mouseleave', hideMenu);
                 <button class="taskbar-quick-btn" id="qsProfile" title="Profile">
                     <i data-lucide="user" width="15" height="15" style="color:#000"></i>
                 </button>
-                <div id="profileMenu"
-     style="
-        display:none;
-        position: relative;
-        bottom:200px;
-        right:1px;
-        width:320px;
-        height:400px;
-        background:#fff;
-        border-radius:12px;
-        box-shadow:0 8px 32px rgba(0,0,0,0.18);
-        overflow:hidden;
-        z-index:9999;
-        border:1px solid #e0e0e0;
-     ">
-    <iframe src="/dashboard" style="width:100%;height:100%;border:none;"></iframe>
-</div>
-
+            </div>
+            
+            <div id="profileMenu" class="profile-menu-popup">
+                <iframe src="/dashboard" style="width:100%;height:100%;border:none;"></iframe>
             </div>
             <button class="taskbar-quick-btn" id="qsPower" title="Power Off" style="color:#000;">
                 <i data-lucide="power" width="15" height="15" style="color:#000"></i>
@@ -6741,21 +6750,21 @@ menu.addEventListener('mouseleave', hideMenu);
         if (profileBtn && profileMenu) {
             profileBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (profileMenu.style.display === 'none' || profileMenu.style.display === '') {
+                if (profileMenu.classList.contains('visible')) {
+                    profileMenu.classList.remove('visible');
+                } else {
                     // Close control center/announcements first
                     var ccWrapper = document.getElementById('ccAnncWrapper');
                     var tdc = document.getElementById('timeDateContainer');
                     if (ccWrapper) ccWrapper.classList.remove('visible');
                     if (tdc) tdc.classList.remove('expanded');
                     
-                    profileMenu.style.display = 'block';
-                } else {
-                    profileMenu.style.display = 'none';
+                    profileMenu.classList.add('visible');
                 }
             });
             document.addEventListener('click', function(e) {
                 if (!profileMenu.contains(e.target) && e.target !== profileBtn && !profileBtn.contains(e.target)) {
-                    profileMenu.style.display = 'none';
+                    profileMenu.classList.remove('visible');
                 }
             });
         }
@@ -6900,7 +6909,7 @@ menu.addEventListener('mouseleave', hideMenu);
             if (window.browser) window.browser.updateTaskbarVisibility && window.browser.updateTaskbarVisibility();
         }
         var profileMenu = document.getElementById('profileMenu');
-        if (profileMenu) profileMenu.style.display = 'none';
+        if (profileMenu) profileMenu.classList.remove('visible');
         var aiMenuModal = document.getElementById('aiMenuModal');
         if (aiMenuModal) aiMenuModal.classList.remove('show');
         var globalLayout = document.getElementById('global-layout-options-menu');
