@@ -13,136 +13,12 @@
 
 
 
+
  
 
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script>
-      /* ============================================================
-         FULLSCREEN API SPOOF
-         Makes games/apps think they are fullscreen when they're
-         really running inside an iframe.
-      ============================================================ */
-      (function () {
-        'use strict';
-
-        // Track our "fake" fullscreen element
-        let _fakeFullscreenElement = null;
-
-        // Helper to dispatch fake fullscreen events
-        function dispatchFullscreenChange(target) {
-          const events = [
-            'fullscreenchange',
-            'webkitfullscreenchange',
-            'mozfullscreenchange',
-            'MSFullscreenChange',
-          ];
-          events.forEach(function (evtName) {
-            try {
-              const evt = new Event(evtName, { bubbles: true });
-              (target || document).dispatchEvent(evt);
-            } catch (e) {}
-          });
-        }
-
-        // --- Element.prototype.requestFullscreen ---
-        const _origRequest = Element.prototype.requestFullscreen
-          || Element.prototype.webkitRequestFullscreen
-          || Element.prototype.mozRequestFullScreen
-          || Element.prototype.msRequestFullscreen;
-
-        function fakeRequestFullscreen(options) {
-          _fakeFullscreenElement = this;
-          // Attempt the real one first (works in top-level context)
-          if (_origRequest) {
-            return _origRequest.call(this, options).catch(function () {
-              // Silently swallow the "not allowed" error and fake it
-              dispatchFullscreenChange(document);
-              return Promise.resolve();
-            });
-          }
-          dispatchFullscreenChange(document);
-          return Promise.resolve();
-        }
-
-        Element.prototype.requestFullscreen = fakeRequestFullscreen;
-        Element.prototype.webkitRequestFullscreen = fakeRequestFullscreen;
-        Element.prototype.mozRequestFullScreen = fakeRequestFullscreen;
-        Element.prototype.msRequestFullscreen = fakeRequestFullscreen;
-
-        // --- document.exitFullscreen ---
-        const _origExit = Document.prototype.exitFullscreen
-          || Document.prototype.webkitExitFullscreen
-          || Document.prototype.mozCancelFullScreen
-          || Document.prototype.msExitFullscreen;
-
-        function fakeExitFullscreen() {
-          _fakeFullscreenElement = null;
-          if (_origExit) {
-            return _origExit.call(document).catch(function () {
-              dispatchFullscreenChange(document);
-              return Promise.resolve();
-            });
-          }
-          dispatchFullscreenChange(document);
-          return Promise.resolve();
-        }
-
-        Document.prototype.exitFullscreen = fakeExitFullscreen;
-        Document.prototype.webkitExitFullscreen = fakeExitFullscreen;
-        Document.prototype.mozCancelFullScreen = fakeExitFullscreen;
-        Document.prototype.msExitFullscreen = fakeExitFullscreen;
-
-        // --- document.fullscreenElement getter ---
-        // Returns real element if truly fullscreen, otherwise our fake one
-        function makeFSElementGetter(nativeProp) {
-          Object.defineProperty(Document.prototype, nativeProp, {
-            get: function () {
-              // If there's a real fullscreen element, report it
-              const real = document.__proto__
-                ? Object.getOwnPropertyDescriptor(Document.prototype, nativeProp)
-                : null;
-              try {
-                const realVal = real && real.get ? real.get.call(this) : null;
-                if (realVal) return realVal;
-              } catch(e) {}
-              return _fakeFullscreenElement;
-            },
-            configurable: true,
-          });
-        }
-
-        ['fullscreenElement', 'webkitFullscreenElement',
-         'mozFullScreenElement', 'msFullscreenElement'].forEach(makeFSElementGetter);
-
-        // --- document.fullscreenEnabled ---
-        ['fullscreenEnabled', 'webkitFullscreenEnabled',
-         'mozFullScreenEnabled', 'msFullscreenEnabled'].forEach(function (prop) {
-          Object.defineProperty(Document.prototype, prop, {
-            get: function () { return true; },
-            configurable: true,
-          });
-        });
-
-        // --- screen dimensions spoof ---
-        // Make screen.width/height appear to be the window size (common fullscreen check)
-        try {
-          Object.defineProperty(window, 'screenTop', { get: () => 0, configurable: true });
-          Object.defineProperty(window, 'screenY',   { get: () => 0, configurable: true });
-          Object.defineProperty(window, 'screenLeft', { get: () => 0, configurable: true });
-          Object.defineProperty(window, 'screenX',   { get: () => 0, configurable: true });
-          Object.defineProperty(window.screen, 'width',  { get: () => window.innerWidth,  configurable: true });
-          Object.defineProperty(window.screen, 'height', { get: () => window.innerHeight, configurable: true });
-          Object.defineProperty(window.screen, 'availWidth',  { get: () => window.innerWidth,  configurable: true });
-          Object.defineProperty(window.screen, 'availHeight', { get: () => window.innerHeight, configurable: true });
-          Object.defineProperty(window.screen, 'availTop',  { get: () => 0, configurable: true });
-          Object.defineProperty(window.screen, 'availLeft', { get: () => 0, configurable: true });
-        } catch(e) {}
-
-        console.log('[NexOS] Fullscreen API spoof active.');
-      })();
-    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>NexOS ~ The browser built for freedom</title>
@@ -988,7 +864,7 @@
             transform: scaleX(0);
             transform-origin: left;
             transition: transform 0.3s ease;
-            z-index: 10;
+            z-index: 5;
         }
 
         .loading-indicator.loading {
@@ -2704,7 +2580,7 @@ body {
         border: 1px solid #e0e0e0;
         border-radius: 0 0 12px 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        z-index: 9999;
+        z-index: 99999;
         max-height: 400px;
         overflow-y: auto;
         display: none;
@@ -3222,6 +3098,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.newTabBtn.addEventListener('click', () => this.createNewTab());
                 this.addressBar.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
+                        // Hide search suggestions and blur address bar immediately
+                        const suggestionsBox = document.getElementById('searchSuggestions');
+                        if (suggestionsBox) suggestionsBox.classList.remove('visible');
+                        this.addressBar.blur();
                         this.navigate(this.addressBar.value);
                     }
                 });
@@ -4542,7 +4422,11 @@ if (this.isBlockedUrl(url)) {
             isUrl(input) {
                 const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
                 const localhostPattern = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/;
-                return urlPattern.test(input) || localhostPattern.test(input) || input.includes('.');
+                if (urlPattern.test(input) || localhostPattern.test(input)) return true;
+                // Only treat input with a dot as a URL if it looks like a domain
+                // (no spaces, and the dot is followed by valid TLD-like chars)
+                if (input.includes('.') && !/\s/.test(input) && /\.[a-z]{2,}$/i.test(input)) return true;
+                return false;
             }
 
             loadUrl(url) {
@@ -7406,6 +7290,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 var addressBar = document.getElementById('addressBar');
                 addressBar.value = suggestion.text;
                 hideSuggestions();
+                addressBar.blur();
                 if (window.browser) window.browser.navigate(suggestion.text);
             });
 
