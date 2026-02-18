@@ -4313,11 +4313,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 150);
             }
 
-            navigate(input) {
+             navigate(input) {
                 if (!this.activeTabId) return;
 
                 let url = input.trim();
                 if (!url) return;
+
+                // Prevent double-navigation: if the input is the same URL we already navigated to, skip
+                const tab = this.tabs.get(this.activeTabId);
+                if (tab && tab.currentUrl && url === tab.currentUrl) return;
 
 if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
@@ -7144,6 +7148,11 @@ menu.addEventListener('mouseleave', hideMenu);
             if (query.length >= 1 && currentSuggestions.length > 0) {
                 suggestionsBox.classList.add('visible');
             }
+        });
+
+        addressBar.addEventListener('blur', function() {
+            // Small delay so click events on suggestions can fire first
+            setTimeout(function() { hideSuggestions(); }, 150);
         });
 
         addressBar.addEventListener('keydown', function(e) {
