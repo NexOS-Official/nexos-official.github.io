@@ -2321,6 +2321,7 @@ body {
     }
 
     .control-center-menu.visible {
+        /* no-op, wrapper handles visibility */
     }
 
     .cc-header {
@@ -3101,7 +3102,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab && tab.currentUrl) {
@@ -3592,7 +3592,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const iframe = document.createElement('iframe');
                 iframe.className = 'tab-content';
                 iframe.dataset.tabId = tabId;
-                iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-presentation';
+                iframe.sandbox = 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-downloads';
                 iframe.src = tab.url;
                 this.contentArea.appendChild(iframe);
 
@@ -4168,7 +4168,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
-                    const previousUrl = tab.currentUrl;
                     tab.currentUrl = originalUrl;
                     
                     if (originalUrl && this.isBlockedUrl(originalUrl)) {
@@ -4179,23 +4178,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     
                     if (originalUrl && originalUrl !== 'about:blank') {
-                        if (!tab._navigatingHistory && previousUrl && previousUrl !== originalUrl) {
-                            const history = this.history[tabId];
-                            if (history) {
-                                const currentIndex = this.historyIndex[tabId];
-                                const currentExtracted = this.extractOriginalUrl(history[currentIndex] || '');
-                                if (currentExtracted !== originalUrl) {
-                                    const proxyUrl = originalUrl.startsWith('http') 
-                                        ? `/active/embed.html?url=${encodeURIComponent(originalUrl)}` 
-                                        : originalUrl;
-                                    history.splice(currentIndex + 1);
-                                    history.push(proxyUrl);
-                                    this.historyIndex[tabId] = history.length - 1;
-                                    this.updateNavigationButtons();
-                                }
-                            }
-                        }
-
                         this.updateTabInfo(tabId);
                         
                         if (this.activeTabId === tabId) {
@@ -4223,13 +4205,12 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                         }, 100);
                     }
+                    this.setupPeriodicUpdates(tabId);
                 };
                 
                 iframe.addEventListener('load', tab.loadHandler);
-                
-                
+            
                 iframe.addEventListener('beforeunload', () => {
-                    console.log('something happened', tabId);
                 });
             }
 
@@ -4250,7 +4231,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     newTab.element.classList.add('active');
                     newTab.iframe.style.display = 'block';
 
-                    
                     const realUrl = this.getIframeCurrentUrl(newTab);
                     let currentUrl = realUrl || newTab.currentUrl || newTab.iframe.src;
                     
@@ -4456,7 +4436,6 @@ if (this.isBlockedUrl(url)) {
             }
 
             extractOriginalUrl(proxyUrl) {
-                
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
@@ -4527,7 +4506,7 @@ if (this.isBlockedUrl(url)) {
                     }
                     
                 } catch (error) {
-                    console.log('Could not access iframe content:', error);
+                    
                 }
             }
 
@@ -4629,7 +4608,6 @@ if (this.isBlockedUrl(url)) {
                         }
                     }
                 } catch(e) {
-                    
                 }
                 return null;
             }
@@ -4643,12 +4621,10 @@ if (this.isBlockedUrl(url)) {
                     if (this.activeTabId === tabId) {
                         const tab = this.tabs.get(tabId);
                         if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
-                            
                             const realUrl = this.getIframeCurrentUrl(tab);
                             if (realUrl && realUrl !== 'about:blank') {
                                 const oldUrl = tab.currentUrl;
                                 if (realUrl !== oldUrl) {
-                                    
                                     if (this.isBlockedUrl(realUrl)) {
                                         tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                                         tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
@@ -4656,7 +4632,7 @@ if (this.isBlockedUrl(url)) {
                                         return;
                                     }
                                     tab.currentUrl = realUrl;
-                                    tab.url = tab.iframe.src; // keep proxy URL in sync
+                                    tab.url = tab.iframe.src;
                                     this.addressBar.value = realUrl;
                                     this.updateFavicon(tab, realUrl);
                                     this.updateTabTitle(tab, realUrl);
@@ -4679,7 +4655,6 @@ if (this.isBlockedUrl(url)) {
                                             const currentExtracted = this.extractOriginalUrl(currentEntry || '');
                                             if (currentExtracted !== realUrl) {
                                                 const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
-                                                
                                                 history.splice(currentIndex + 1);
                                                 history.push(proxyUrl);
                                                 this.historyIndex[this.activeTabId] = history.length - 1;
@@ -4687,7 +4662,6 @@ if (this.isBlockedUrl(url)) {
                                             }
                                         }
                                     }
-                                    
                                     
                                     if (this._addToBrowseHistory) {
                                         this._addToBrowseHistory(realUrl, tab);
@@ -4723,7 +4697,6 @@ if (this.isBlockedUrl(url)) {
                         this.addressBar.value = decoded;
                         this.updateFavicon(tab, decoded);
                         this.updateTabTitle(tab, decoded);
-                        
                         
                         setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                     }
@@ -4766,7 +4739,6 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
-                    
                     let urlToLoad = tab.iframe.src;
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
@@ -4954,34 +4926,22 @@ if (this.isBlockedUrl(url)) {
                 }
             }
 
-            
-
             _isValidNewTabUrl(url) {
                 if (!url || typeof url !== 'string') return false;
-                
                 if (url === 'about:blank' || url === '' || url === 'about:srcdoc') return false;
-                
                 if (/^(data:|javascript:)/i.test(url.trim())) return false;
-                
                 if (/^[#?]/.test(url.trim())) return false;
 
-                
-                
-                
-                
-                
                 const activeGoMatch = url.match(/\/active\/go\/(.+)/);
                 if (activeGoMatch) {
                     let decoded = activeGoMatch[1];
                     try { decoded = decodeURIComponent(decoded); } catch(e) {}
-                    
                     if (!/^https?:\/\//i.test(decoded)) return false;
                 }
 
                 return true;
             }
 
-            
             setupNewTabInterception() {
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'nexos-open-new-tab' && e.data.url) {
@@ -4999,7 +4959,7 @@ if (this.isBlockedUrl(url)) {
                         self._allowRealOpen = false;
                         return originalWindowOpen(url, target, features);
                     }
-                    if (url && typeof url === 'string') {
+                    if (url && typeof url === 'string' && url.includes('/active/')) {
                         if (self._isValidNewTabUrl(url)) {
                             self.createNewTabWithUrl(url);
                             return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
@@ -5008,16 +4968,8 @@ if (this.isBlockedUrl(url)) {
                     }
                     return originalWindowOpen(url, target, features);
                 };
-
-                window.addEventListener('beforeunload', function(e) {
-                    if (self.tabs && self.tabs.size > 0) {
-                        e.preventDefault();
-                        e.returnValue = '';
-                    }
-                });
             }
 
-            
             createNewTabWithUrl(url) {
                 const tabId = this.createNewTab();
                 if (tabId) {
@@ -5026,7 +4978,6 @@ if (this.isBlockedUrl(url)) {
                 return tabId;
             }
 
-            
             injectNewTabInterceptor(iframe) {
                 try {
                     const iframeWin = iframe.contentWindow;
@@ -5049,66 +5000,27 @@ if (this.isBlockedUrl(url)) {
 
                     iframeWin.document.addEventListener('click', function(e) {
                         if (!e.isTrusted) return;
-                        const link = e.target.closest('a[target="_blank"], a[target="_top"], a[target="_parent"]');
-                        if (link && link.href) {
-                            const tgt = (link.target || '').toLowerCase();
-                            if (tgt === '_blank' && self._isValidNewTabUrl(link.href)) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
-                            } else if (tgt === '_top' || tgt === '_parent') {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                let resolved = link.href;
-                                try { resolved = new URL(link.href, iframeWin.location.href).href; } catch(ex) {}
-                                if (self._isValidNewTabUrl(resolved)) {
-                                    const tab = self.tabs.get(self.activeTabId);
-                                    if (tab) {
-                                        self.navigate(resolved);
-                                    }
-                                }
-                            }
+                        const link = e.target.closest('a[target="_blank"]');
+                        if (link && link.href && self._isValidNewTabUrl(link.href)) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
                         }
                     }, true);
 
                     iframeWin.document.addEventListener('submit', function(e) {
                         const form = e.target;
-                        if (!form || !form.tagName || form.tagName !== 'FORM') return;
-                        const tgt = (form.target || '').toLowerCase();
-                        if (tgt === '_top' || tgt === '_parent' || tgt === '_blank') {
+                        if (form && (form.target === '_blank' || form.target === '_top' || form.target === '_parent')) {
                             e.preventDefault();
-                            e.stopPropagation();
-                            let action = form.action || iframeWin.location.href;
-                            try { action = new URL(action, iframeWin.location.href).href; } catch(ex) {}
-                            if (tgt === '_blank') {
-                                if (self._isValidNewTabUrl(action)) {
-                                    window.parent.postMessage({ type: 'nexos-open-new-tab', url: action }, '*');
-                                }
-                            } else {
-                                self.navigate(action);
+                            const formData = new FormData(form);
+                            const action = form.action || iframeWin.location.href;
+                            let resolved = action;
+                            try { resolved = new URL(action, iframeWin.location.href).href; } catch(ex) {}
+                            if (self._isValidNewTabUrl(resolved)) {
+                                window.parent.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
                             }
                         }
                     }, true);
-
-                    try {
-                        const topDesc = Object.getOwnPropertyDescriptor(iframeWin, 'top');
-                        if (!topDesc || topDesc.configurable) {
-                            Object.defineProperty(iframeWin, 'top', {
-                                get: function() { return iframeWin; },
-                                configurable: false
-                            });
-                        }
-                    } catch(e) {}
-
-                    try {
-                        const parentDesc = Object.getOwnPropertyDescriptor(iframeWin, 'parent');
-                        if (!parentDesc || parentDesc.configurable) {
-                            Object.defineProperty(iframeWin, 'parent', {
-                                get: function() { return iframeWin; },
-                                configurable: false
-                            });
-                        }
-                    } catch(e) {}
 
                     const nestedIframes = iframeWin.document.querySelectorAll('iframe');
                     nestedIframes.forEach((nested) => {
@@ -5882,7 +5794,6 @@ if (this.isBlockedUrl(url)) {
             timeDateContainer.classList.remove('expanded');
             if (ccWrapper) ccWrapper.classList.remove('visible');
         } else {
-            
             var profileMenu = document.getElementById('profileMenu');
             if (profileMenu) profileMenu.classList.remove('visible');
             
