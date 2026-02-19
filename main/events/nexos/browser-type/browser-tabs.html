@@ -2023,6 +2023,7 @@ body {
     flex-wrap: wrap;
     gap: 6px;
     font-family: google sans;
+    z-index: 9;
 }
 #suggestions button {
     flex: 1 0 30%;
@@ -7172,11 +7173,9 @@ menu.addEventListener('mouseleave', hideMenu);
     function fetchSuggestions(query) {
         const suggestionsBox = document.getElementById('searchSuggestions');
         
-        // Use Google Suggest API via JSONP (it properly supports JSONP callbacks)
         const callbackName = '_sgCallback_' + Date.now();
         window[callbackName] = function(data) {
             currentSuggestions = [];
-            // Google returns [query, [suggestions array], ...]
             if (Array.isArray(data) && Array.isArray(data[1])) {
                 data[1].slice(0, 8).forEach(function(phrase) {
                     currentSuggestions.push({
@@ -7186,14 +7185,12 @@ menu.addEventListener('mouseleave', hideMenu);
                 });
             }
             
-            // Add a "search" option at the top
             currentSuggestions.unshift({
                 text: query,
                 type: 'search-direct',
                 label: query + ' — Search'
             });
 
-            // Check if the query looks like a URL
             var isUrl = /^(https?:\/\/|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})/.test(query);
             if (isUrl) {
                 currentSuggestions.unshift({
