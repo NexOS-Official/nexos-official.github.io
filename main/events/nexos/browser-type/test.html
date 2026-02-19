@@ -13,7 +13,6 @@
 
 
 
-
  
 
 <!DOCTYPE html>
@@ -465,7 +464,7 @@
     align-items: center;
     gap: 8px;
     position: relative;
-    z-index: 100;
+    z-index: 1;
 }
 
 
@@ -864,7 +863,7 @@
             transform: scaleX(0);
             transform-origin: left;
             transition: transform 0.3s ease;
-            z-index: 1;
+            z-index: 10;
         }
 
         .loading-indicator.loading {
@@ -2236,7 +2235,7 @@ body {
           font-family: google sans;
           gap: 8px;
         }
-    
+    /* Liquid Date Animation */
     .time-date-container {
         display: flex;
         align-items: center;
@@ -2283,7 +2282,7 @@ body {
         font-family: 'google sans', sans-serif;
     }
 
-    
+    /* Wrapper for control center + announcements */
     .cc-annc-wrapper {
         position: fixed;
         bottom: 60px;
@@ -2320,7 +2319,9 @@ body {
         font-family: 'google sans', sans-serif;
     }
 
+    /* visible class now on wrapper, keep this for compat */
     .control-center-menu.visible {
+        /* no-op, wrapper handles visibility */
     }
 
     .cc-header {
@@ -2433,7 +2434,7 @@ body {
     .cc-btn.active svg {
         color: white !important;
     }
-    
+    /* Announcement notification dot */
     .time-date-container {
         position: relative;
     }
@@ -2457,7 +2458,7 @@ body {
         50% { transform: scale(1.3); opacity: 0.7; }
     }
 
-    
+    /* Announcement panel below control center */
     .annc-panel {
         width: 100%;
         max-height: 280px;
@@ -2545,7 +2546,7 @@ body {
         color: #999;
         font-size: 13px;
     }
-    
+    /* Profile Dashboard Menu - popup style */
     .profile-menu-popup {
         position: fixed;
         bottom: 60px;
@@ -2569,7 +2570,7 @@ body {
         pointer-events: auto;
     }
 
-    
+    /* Search Suggestions Dropdown */
     .search-suggestions {
         position: absolute;
         top: 100%;
@@ -2638,40 +2639,251 @@ body {
         max-width: 300px;
     }
 
-    body.taskbar-hidden .taskbar {
-        display: none !important;
+    /* ===== SPLIT SCREEN STYLES ===== */
+    .split-picker-overlay {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 400px;
+        height: 100vh;
+        background: #2a2a2a;
+        z-index: 10001;
+        display: none;
+        flex-direction: column;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+        animation: splitPickerSlideIn 0.3s ease-out;
+    }
+    .split-picker-overlay.visible {
+        display: flex;
+    }
+    @keyframes splitPickerSlideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    .split-picker-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid #444;
+    }
+    .split-picker-title {
+        color: #fff;
+        font-size: 16px;
+        font-family: google sans, sans-serif;
+        font-weight: 400;
+    }
+    .split-picker-close {
+        background: none;
+        border: none;
+        color: #aaa;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .split-picker-close:hover {
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+    }
+    .split-picker-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 0;
+    }
+    .split-picker-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 24px;
+        cursor: pointer;
+        transition: background 0.15s;
+        color: #fff;
+        font-family: google sans, sans-serif;
+    }
+    .split-picker-item:hover {
+        background: rgba(255,255,255,0.08);
+    }
+    .split-picker-item-favicon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #444;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .split-picker-item-favicon img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+    }
+    .split-picker-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .split-picker-item-title {
+        font-size: 14px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .split-picker-item-url {
+        font-size: 12px;
+        color: #888;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
-    body.taskbar-hidden .content-area {
-        margin-bottom: 0 !important;
-        border-radius: 15px 15px 0 0 !important;
+    /* Split tab - two titles in one tab */
+    .tab.split-tab {
+        min-width: 200px !important;
+        max-width: 400px !important;
+    }
+    .split-tab-inner {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        gap: 0;
+    }
+    .split-tab-half {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        min-width: 0;
+        gap: 6px;
+        padding: 0 4px;
+    }
+    .split-tab-half + .split-tab-half {
+        border-left: 1px solid rgba(0,0,0,0.12);
+    }
+    .split-tab-half .tab-favicon {
+        margin-right: 4px;
+    }
+    .split-tab-half .tab-title {
+        flex: 1;
+        font-size: 12px;
+        min-width: 0;
+    }
+    .split-tab-half .tab-close {
+        margin-left: 4px;
+        width: 16px;
+        height: 16px;
+    }
+    .split-tab-half .tab-close svg {
+        width: 10px;
+        height: 10px;
     }
 
-    body.taskbar-hidden .content-area.sidebar-open {
-        margin-bottom: 0 !important;
+    /* Split content area */
+    .split-content-container {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+    .split-content-container.hidden {
+        display: none;
+    }
+    .split-content-pane {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+    }
+    .split-content-pane + .split-content-pane {
+        border-left: 2px solid #e0e0e0;
+    }
+    .split-content-pane iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
     }
 
-    body.taskbar-hidden .sidebar {
-        margin-bottom: 0 !important;
-        height: calc(100vh - 92px) !important;
+    /* Inactive pane overlay */
+    .split-inactive-overlay {
+        position: absolute;
+        bottom: 8px;
+        padding: 6px 12px;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(8px);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #fff;
+        font-size: 12px;
+        font-family: google sans, sans-serif;
+        pointer-events: none;
+        z-index: 10;
+        transition: opacity 0.2s;
+        opacity: 0;
+    }
+    .split-content-pane:first-child .split-inactive-overlay {
+        left: 8px;
+    }
+    .split-content-pane:last-child .split-inactive-overlay {
+        right: 8px;
+    }
+    .split-inactive-overlay.visible {
+        opacity: 1;
+    }
+    .split-inactive-overlay img {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+    }
+    .split-active-x {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        background: rgba(0,0,0,0.5);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 14px;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+    .split-active-x.visible {
+        opacity: 1;
     }
 
-    body.taskbar-hidden .sidebar .sidebar-content {
-        margin-bottom: 0 !important;
-        border-bottom-left-radius: 0 !important;
+    /* Context menu split options */
+    .context-submenu {
+        position: fixed;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        min-width: 200px;
+        display: none;
+        z-index: 10001;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-
-    body.taskbar-hidden .cc-annc-wrapper {
-        display: none !important;
+    .context-submenu.visible {
+        display: block;
     }
-
-    body.taskbar-hidden .battery-info {
-        display: none !important;
+    .context-menu-item.has-submenu {
+        position: relative;
     }
-
-    body.taskbar-hidden .profile-menu-popup {
-        display: none !important;
+    .context-menu-item .submenu-arrow {
+        margin-left: auto;
+        font-size: 10px;
+        color: #999;
     }
+    /* ===== END SPLIT SCREEN STYLES ===== */
 
     </style>
 </head>
@@ -2860,6 +3072,17 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="loading-indicator" id="loadingIndicator"></div>
         </div>
 
+        <!-- Split Screen Picker Overlay -->
+        <div class="split-picker-overlay" id="splitPickerOverlay">
+            <div class="split-picker-header">
+                <span class="split-picker-title">Choose a tab to add to split view</span>
+                <button class="split-picker-close" id="splitPickerClose">
+                    <i data-lucide="x" width="18" height="18"></i>
+                </button>
+            </div>
+            <div class="split-picker-list" id="splitPickerList"></div>
+        </div>
+
         <div class="context-menu" id="contextMenu">
             <button class="context-menu-item" id="pinTabBtn">
                 <i data-lucide="pin" width="14" height="14"></i>
@@ -2883,6 +3106,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 <i data-lucide="x-circle" width="14" height="14"></i>
                 Close other tabs
             </button>
+            <div class="context-menu-separator" id="splitMenuSeparator" style="display:none;"></div>
+            <button class="context-menu-item has-submenu" id="arrangeSplitBtn" style="display:none;">
+                <i data-lucide="columns-2" width="14" height="14"></i>
+                Arrange split view
+                <span class="submenu-arrow">▸</span>
+            </button>
+            <div class="context-submenu" id="splitSubmenu">
+                <button class="context-menu-item" id="separateViewsBtn">
+                    <i data-lucide="square-split-horizontal" width="14" height="14"></i>
+                    Separate views
+                </button>
+                <button class="context-menu-item" id="closeLeftViewBtn">
+                    <i data-lucide="panel-left-close" width="14" height="14"></i>
+                    Close left view
+                </button>
+                <button class="context-menu-item" id="closeRightViewBtn">
+                    <i data-lucide="panel-right-close" width="14" height="14"></i>
+                    Close right view
+                </button>
+                <button class="context-menu-item" id="reverseViewsBtn">
+                    <i data-lucide="arrow-left-right" width="14" height="14"></i>
+                    Reverse views
+                </button>
+            </div>
         </div>
 
         <div class="browser-menu" id="browserMenu">
@@ -3136,7 +3383,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                
+                // Open current page in a real browser tab using embed.html
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab && tab.currentUrl) {
@@ -3146,7 +3393,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                
+                // Listen for URL updates from embed.html via postMessage
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         const tab = this.tabs.get(this.activeTabId);
@@ -4197,16 +4444,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
-                    
+                    // Inject new-tab interceptor into this iframe
                     this.injectNewTabInterceptor(iframe);
 
-                    
+                    // Try to get the real URL from the iframe first
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
                     tab.currentUrl = originalUrl;
                     
-                    
+                    // Block prohibited URLs detected after navigation/redirect
                     if (originalUrl && this.isBlockedUrl(originalUrl)) {
                         tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                         tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
@@ -4269,7 +4516,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     newTab.element.classList.add('active');
                     newTab.iframe.style.display = 'block';
 
-                    
+                    // Try to get the real URL from iframe first
                     const realUrl = this.getIframeCurrentUrl(newTab);
                     let currentUrl = realUrl || newTab.currentUrl || newTab.iframe.src;
                     
@@ -4475,12 +4722,14 @@ if (this.isBlockedUrl(url)) {
             }
 
             extractOriginalUrl(proxyUrl) {
-                
+                // Check for ?url= parameter (embed.html format)
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
                 }
                 
+                // Check for UV-encoded URL (/active/go/ path)
+                // UV uses XOR codec: odd-positioned characters are XOR'd with 2
                 const uvMatch = proxyUrl.match(/\/active\/go\/(.+)/);
                 if (uvMatch) {
                     try {
@@ -4648,7 +4897,7 @@ if (this.isBlockedUrl(url)) {
                         }
                     }
                 } catch(e) {
-                    
+                    // Cross-origin, can't access
                 }
                 return null;
             }
@@ -4662,12 +4911,12 @@ if (this.isBlockedUrl(url)) {
                     if (this.activeTabId === tabId) {
                         const tab = this.tabs.get(tabId);
                         if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
-                            
+                            // Try to read the actual current URL from the iframe
                             const realUrl = this.getIframeCurrentUrl(tab);
                             if (realUrl && realUrl !== 'about:blank') {
                                 const oldUrl = tab.currentUrl;
                                 if (realUrl !== oldUrl) {
-                                    
+                                    // Block prohibited URLs detected via periodic check
                                     if (this.isBlockedUrl(realUrl)) {
                                         tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                                         tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
@@ -4675,7 +4924,7 @@ if (this.isBlockedUrl(url)) {
                                         return;
                                     }
                                     tab.currentUrl = realUrl;
-                                    tab.url = tab.iframe.src;
+                                    tab.url = tab.iframe.src; // keep proxy URL in sync
                                     this.addressBar.value = realUrl;
                                     this.updateFavicon(tab, realUrl);
                                     this.updateTabTitle(tab, realUrl);
@@ -4690,6 +4939,8 @@ if (this.isBlockedUrl(url)) {
                                         lucide.createIcons();
                                     }
                                     
+                                    // Update navigation history (back/forward)
+                                    // Skip if we're currently navigating via back/forward buttons
                                     if (!tab._navigatingHistory) {
                                         const history = this.history[this.activeTabId];
                                         if (history) {
@@ -4698,7 +4949,7 @@ if (this.isBlockedUrl(url)) {
                                             const currentExtracted = this.extractOriginalUrl(currentEntry || '');
                                             if (currentExtracted !== realUrl) {
                                                 const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
-                                                
+                                                // Truncate any forward history, then push
                                                 history.splice(currentIndex + 1);
                                                 history.push(proxyUrl);
                                                 this.historyIndex[this.activeTabId] = history.length - 1;
@@ -4707,7 +4958,7 @@ if (this.isBlockedUrl(url)) {
                                         }
                                     }
                                     
-                                    
+                                    // Also add to browsing history panel
                                     if (this._addToBrowseHistory) {
                                         this._addToBrowseHistory(realUrl, tab);
                                     }
@@ -4743,7 +4994,7 @@ if (this.isBlockedUrl(url)) {
                         this.updateFavicon(tab, decoded);
                         this.updateTabTitle(tab, decoded);
                         
-                        
+                        // Allow periodic updater to resume after navigation settles
                         setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                     }
                     
@@ -4785,7 +5036,7 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
-                    
+                    // If we have a currentUrl (display URL), re-wrap it in proxy format
                     let urlToLoad = tab.iframe.src;
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
@@ -4973,29 +5224,36 @@ if (this.isBlockedUrl(url)) {
                 }
             }
 
-            
+            // ===== NEW TAB INTERCEPTION =====
 
+            // Validate that a URL is a real, intentional navigation and not a
+            // garbage/encoded redirect, tracking pixel, or programmatic noise.
             _isValidNewTabUrl(url) {
                 if (!url || typeof url !== 'string') return false;
-                
+                // Reject blank / empty
                 if (url === 'about:blank' || url === '' || url === 'about:srcdoc') return false;
-                
+                // Reject data: and javascript: URIs
                 if (/^(data:|javascript:)/i.test(url.trim())) return false;
-                
+                // Reject URLs that are just fragments or query strings
                 if (/^[#?]/.test(url.trim())) return false;
 
+                // --- The main fix: catch garbled proxy-encoded URLs ---
+                // Proxy URLs go through /active/go/ and legitimate ones should
+                // decode to a recognisable protocol (http/https). If the decoded
+                // path after /active/go/ doesn't start with http(s) it's garbage
+                // from an internal redirect loop.
                 const activeGoMatch = url.match(/\/active\/go\/(.+)/);
                 if (activeGoMatch) {
                     let decoded = activeGoMatch[1];
                     try { decoded = decodeURIComponent(decoded); } catch(e) {}
-                    
+                    // A valid proxied URL should start with http:// or https://
                     if (!/^https?:\/\//i.test(decoded)) return false;
                 }
 
                 return true;
             }
 
-            
+            // Listen for postMessage from iframes wanting to open new tabs
             setupNewTabInterception() {
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'nexos-open-new-tab' && e.data.url) {
@@ -5005,7 +5263,7 @@ if (this.isBlockedUrl(url)) {
                     }
                 });
 
-                
+                // Override window.open on the PARENT window to catch proxy URLs
                 const originalWindowOpen = window.open.bind(window);
                 this.originalWindowOpen = originalWindowOpen;
                 const self = this;
@@ -5025,7 +5283,7 @@ if (this.isBlockedUrl(url)) {
                 };
             }
 
-            
+            // Create a new tab and navigate it to a specific URL
             createNewTabWithUrl(url) {
                 const tabId = this.createNewTab();
                 if (tabId) {
@@ -5034,7 +5292,7 @@ if (this.isBlockedUrl(url)) {
                 return tabId;
             }
 
-            
+            // Inject window.open and target="_blank" interceptors into an iframe
             injectNewTabInterceptor(iframe) {
                 try {
                     const iframeWin = iframe.contentWindow;
@@ -5042,14 +5300,14 @@ if (this.isBlockedUrl(url)) {
 
                     const self = this;
 
-                    
+                    // Override window.open
                     iframeWin.open = function(url, target, features) {
                         if (url && url !== 'about:blank') {
                             let resolved = url;
                             try {
                                 resolved = new URL(url, iframeWin.location.href).href;
                             } catch(e) {}
-                            
+                            // Only post if the URL passes validation
                             if (self._isValidNewTabUrl(resolved)) {
                                 window.parent.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
                             }
@@ -5057,9 +5315,9 @@ if (this.isBlockedUrl(url)) {
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     };
 
-                    
+                    // Intercept target="_blank" link clicks (only user-initiated)
                     iframeWin.document.addEventListener('click', function(e) {
-                        if (!e.isTrusted) return;
+                        if (!e.isTrusted) return; // ignore synthetic / programmatic clicks
                         const link = e.target.closest('a[target="_blank"]');
                         if (link && link.href && self._isValidNewTabUrl(link.href)) {
                             e.preventDefault();
@@ -5068,13 +5326,13 @@ if (this.isBlockedUrl(url)) {
                         }
                     }, true);
 
-                    
+                    // Also try to inject into nested iframes
                     const nestedIframes = iframeWin.document.querySelectorAll('iframe');
                     nestedIframes.forEach((nested) => {
                         try { this.injectNewTabInterceptor(nested); } catch(e) {}
                     });
 
-                    
+                    // Watch for new nested iframes being added
                     try {
                         const observer = new iframeWin.MutationObserver((mutations) => {
                             mutations.forEach((mutation) => {
@@ -5093,10 +5351,10 @@ if (this.isBlockedUrl(url)) {
                     } catch(e) {}
 
                 } catch(e) {
-                    
+                    // Cross-origin - can't inject, that's okay
                 }
             }
-            
+            // ===== END NEW TAB INTERCEPTION =====
 
             showSiteToast(tab, url) {
                 const toast = document.getElementById('siteToast');
@@ -5820,7 +6078,7 @@ if (this.isBlockedUrl(url)) {
       currentTimeElement.textContent = timeStr;
       currentDateElement.textContent = dateStr;
       
-      
+      // Update Control Center
       const ccTime = document.getElementById('ccTime');
       const ccDate = document.getElementById('ccDate');
       if(ccTime) ccTime.textContent = timeStr;
@@ -5829,11 +6087,11 @@ if (this.isBlockedUrl(url)) {
     updateDateTime();
     setInterval(updateDateTime, 1000);
 
-    
+    // Liquid Date & Control Center Logic
     const timeDateContainer = document.getElementById('timeDateContainer');
     const controlCenterMenu = document.getElementById('controlCenterMenu');
     
-    
+    // Toggle Control Center & Expand Date & Announcement Panel
     timeDateContainer.addEventListener('click', (e) => {
         e.stopPropagation();
         const isExpanded = timeDateContainer.classList.contains('expanded');
@@ -5844,7 +6102,7 @@ if (this.isBlockedUrl(url)) {
             timeDateContainer.classList.remove('expanded');
             if (ccWrapper) ccWrapper.classList.remove('visible');
         } else {
-            
+            // Close profile menu first
             var profileMenu = document.getElementById('profileMenu');
             if (profileMenu) profileMenu.classList.remove('visible');
             
@@ -5854,7 +6112,7 @@ if (this.isBlockedUrl(url)) {
         }
     });
 
-    
+    // Close when clicking outside
     document.addEventListener('click', (e) => {
         const ccWrapper = document.getElementById('ccAnncWrapper');
         if (!ccWrapper.contains(e.target) && !timeDateContainer.contains(e.target)) {
@@ -5863,7 +6121,7 @@ if (this.isBlockedUrl(url)) {
         }
     });
 
-    
+    // Brightness Slider (simulated with iframe filter)
     const brightnessSlider = document.getElementById('brightnessSlider');
     brightnessSlider.addEventListener('input', (e) => {
         const val = e.target.value;
@@ -5878,7 +6136,7 @@ if (this.isBlockedUrl(url)) {
         }, 300);
     });
 
-    
+    // Update battery in Control Center
     const updateCCBattery = () => {
          if ("getBattery" in navigator) {
             navigator.getBattery().then((battery) => {
@@ -6211,9 +6469,9 @@ menu.addEventListener('mouseleave', hideMenu);
         </div>
     </div>
 
-    
+    <!-- Control Center + Announcements Wrapper -->
     <div class="cc-annc-wrapper" id="ccAnncWrapper">
-        
+        <!-- Control Center Menu -->
         <div class="control-center-menu" id="controlCenterMenu">
             <div class="cc-header">
                 <div>
@@ -6234,7 +6492,7 @@ menu.addEventListener('mouseleave', hideMenu);
             </div>
         </div>
 
-        
+        <!-- Announcement Panel (below control center) -->
         <div class="annc-panel" id="anncPanel">
             <div class="annc-panel-header">
                 <span>Announcements</span>
@@ -6246,7 +6504,7 @@ menu.addEventListener('mouseleave', hideMenu);
         </div>
     </div>
 
-    
+    <!-- Focus Overlay -->
     <div class="focus-overlay" id="focusOverlay">
         <div class="focus-container">
             <button class="focus-close" id="focusCloseBtn">
@@ -6450,7 +6708,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 item.appendChild(infoDiv);
                 item.appendChild(metaDiv);
 
-                
+                // Make history items clickable
                 (function(entryUrl) {
                     item.style.cursor = 'pointer';
                     item.addEventListener('click', function() {
@@ -6544,13 +6802,13 @@ menu.addEventListener('mouseleave', hideMenu);
         patchUpdateTabInfo(b);
         patchCloseSidebar(b);
 
-        
+        // Expose callback for periodic updater to add browse history entries
         b._addToBrowseHistory = function(url, tab) {
             if (!url || url === 'about:blank' ||
                 url.startsWith('/welcomer') || url.startsWith('welcomer') ||
                 url.startsWith('/search/blocker') || url.startsWith('/new-tab/launch')) return;
             
-            
+            // Don't add duplicates if the most recent entry is the same URL
             if (browseHistory.length > 0 && browseHistory[0].url === url) return;
             
             var favicon = null;
@@ -6865,7 +7123,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 if (profileMenu.classList.contains('visible')) {
                     profileMenu.classList.remove('visible');
                 } else {
-                    
+                    // Close control center/announcements first
                     var ccWrapper = document.getElementById('ccAnncWrapper');
                     var tdc = document.getElementById('timeDateContainer');
                     if (ccWrapper) ccWrapper.classList.remove('visible');
@@ -7038,7 +7296,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 var profileMenu = document.getElementById('profileMenu');
                 var clickedDashboardIframe = profileMenu && profileMenu.contains(document.activeElement);
                 if (clickedDashboardIframe) {
-                    
+                    // Close everything except the profile/dashboard menu
                     var contextMenu = document.getElementById('contextMenu');
                     if (contextMenu) contextMenu.classList.remove('visible');
                     var browserMenu = document.getElementById('browserMenu');
@@ -7231,7 +7489,7 @@ menu.addEventListener('mouseleave', hideMenu);
         var script = document.createElement('script');
         script.src = 'https://suggestqueries.google.com/complete/search?client=chrome&q=' + encodeURIComponent(query) + '&callback=' + callbackName;
         script.onerror = function() {
-            
+            // Fallback: just show the direct search option
             currentSuggestions = [{
                 text: query,
                 type: 'search-direct',
@@ -7284,7 +7542,7 @@ menu.addEventListener('mouseleave', hideMenu);
             textDiv.className = 'search-suggestion-text';
 
             var displayText = suggestion.label || suggestion.text;
-            
+            // Bold the matching part
             var idx = displayText.toLowerCase().indexOf(queryLower);
             if (idx >= 0 && suggestion.type !== 'search-direct' && suggestion.type !== 'url') {
                 textDiv.innerHTML = escapeHtml(displayText.substring(0, idx)) + 
@@ -7340,12 +7598,12 @@ menu.addEventListener('mouseleave', hideMenu);
         return div.innerHTML;
     }
 
-    
+    // Hide suggestions when iframe gains focus (click inside iframe)
     window.addEventListener('blur', function() {
         hideSuggestions();
     });
 
-    
+    // Polling fallback: detect when an iframe steals focus
     setInterval(function() {
         if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
             hideSuggestions();
@@ -7355,21 +7613,487 @@ menu.addEventListener('mouseleave', hideMenu);
     setTimeout(initSearchSuggestions, 500);
 })();
 </script>
-<script>
-(function() {
-    document.addEventListener('keydown', function(e) {
-        if (e.ctrlKey && e.key.toLowerCase() === 'b') {
-            e.preventDefault();
-            e.stopPropagation();
-            document.body.classList.toggle('taskbar-hidden');
-        }
-    }, true);
 
-    window.addEventListener('message', function(e) {
-        if (e.data && e.data.type === 'nexos-keydown' && e.data.ctrlKey && e.data.key.toLowerCase() === 'b') {
-            document.body.classList.toggle('taskbar-hidden');
-        }
-    });
+<script>
+// ===== SPLIT SCREEN FUNCTIONALITY =====
+(function() {
+    function initSplitScreen() {
+        const b = window.browser;
+        if (!b) { setTimeout(initSplitScreen, 300); return; }
+
+        // Track split tabs: Map<tabId, { leftTabId, rightTabId, leftIframe, rightIframe, container }>
+        b.splitTabs = new Map();
+        b.activeSplitPane = null; // 'left' or 'right'
+
+        // Override handleSplitClick to show picker instead of sidebar
+        b.handleSplitClick = function() {
+            const activeTab = this.tabs.get(this.activeTabId);
+            if (!activeTab) return;
+
+            // If already split, don't show picker
+            if (this.splitTabs.has(this.activeTabId)) return;
+
+            // If only 1 tab, can't split
+            if (this.tabs.size < 2) return;
+
+            this.showSplitPicker();
+        };
+
+        b.showSplitPicker = function() {
+            const overlay = document.getElementById('splitPickerOverlay');
+            const list = document.getElementById('splitPickerList');
+            list.innerHTML = '';
+
+            // List all tabs except the active one
+            this.tabs.forEach((tab, tabId) => {
+                if (tabId === this.activeTabId) return;
+                if (tab.pinned) return; // skip pinned
+
+                const item = document.createElement('div');
+                item.className = 'split-picker-item';
+
+                const favicon = document.createElement('div');
+                favicon.className = 'split-picker-item-favicon';
+                const faviconImg = tab.element.querySelector('.tab-favicon img');
+                if (faviconImg && faviconImg.src) {
+                    favicon.innerHTML = `<img src="${faviconImg.src}" alt="">`;
+                } else {
+                    favicon.innerHTML = '<i data-lucide="globe" width="16" height="16" style="color:#888"></i>';
+                }
+
+                const info = document.createElement('div');
+                info.className = 'split-picker-item-info';
+                const title = document.createElement('div');
+                title.className = 'split-picker-item-title';
+                title.textContent = tab.title || 'Untitled';
+                const url = document.createElement('div');
+                url.className = 'split-picker-item-url';
+                url.textContent = this.extractDomain(this.extractOriginalUrl(tab.currentUrl || tab.url)) || '';
+                info.appendChild(title);
+                info.appendChild(url);
+
+                item.appendChild(favicon);
+                item.appendChild(info);
+
+                item.addEventListener('click', () => {
+                    this.createSplitView(this.activeTabId, tabId);
+                    overlay.classList.remove('visible');
+                });
+
+                list.appendChild(item);
+            });
+
+            overlay.classList.add('visible');
+            if (window.lucide) lucide.createIcons();
+        };
+
+        // Close picker
+        document.getElementById('splitPickerClose').addEventListener('click', () => {
+            document.getElementById('splitPickerOverlay').classList.remove('visible');
+        });
+        document.addEventListener('click', (e) => {
+            const overlay = document.getElementById('splitPickerOverlay');
+            if (overlay.classList.contains('visible') && !overlay.contains(e.target) && 
+                e.target !== b.sidemultitaskaddedbynexorayayayay && !b.sidemultitaskaddedbynexorayayayay.contains(e.target)) {
+                overlay.classList.remove('visible');
+            }
+        });
+
+        b.createSplitView = function(leftTabId, rightTabId) {
+            const leftTab = this.tabs.get(leftTabId);
+            const rightTab = this.tabs.get(rightTabId);
+            if (!leftTab || !rightTab) return;
+
+            // Hide both original iframes
+            leftTab.iframe.style.display = 'none';
+            rightTab.iframe.style.display = 'none';
+
+            // Remove right tab element from tab bar (it merges into left)
+            rightTab.element.style.display = 'none';
+
+            // Transform left tab into a split tab
+            leftTab.element.classList.add('split-tab');
+            const leftFaviconImg = leftTab.element.querySelector('.tab-favicon img');
+            const leftFaviconSrc = leftFaviconImg ? leftFaviconImg.src : '';
+            const rightFaviconImg = rightTab.element.querySelector('.tab-favicon img');
+            const rightFaviconSrc = rightFaviconImg ? rightFaviconImg.src : '';
+
+            // Replace tab inner HTML with split tab layout
+            leftTab.element.innerHTML = `
+                <div class="split-tab-inner">
+                    <div class="split-tab-half" data-side="left">
+                        <div class="tab-favicon">
+                            ${leftFaviconSrc ? `<img src="${leftFaviconSrc}" width="16" height="16">` : '<i data-lucide="globe" width="16" height="16"></i>'}
+                        </div>
+                        <div class="tab-title">${leftTab.title || 'Untitled'}</div>
+                        <div class="tab-close split-close-left">
+                            <i data-lucide="x" width="10" height="10"></i>
+                        </div>
+                    </div>
+                    <div class="split-tab-half" data-side="right">
+                        <div class="tab-favicon">
+                            ${rightFaviconSrc ? `<img src="${rightFaviconSrc}" width="16" height="16">` : '<i data-lucide="globe" width="16" height="16"></i>'}
+                        </div>
+                        <div class="tab-title">${rightTab.title || 'Untitled'}</div>
+                        <div class="tab-close split-close-right">
+                            <i data-lucide="x" width="10" height="10"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Create split content container
+            const container = document.createElement('div');
+            container.className = 'split-content-container';
+            container.dataset.splitTabId = leftTabId;
+
+            const leftPane = document.createElement('div');
+            leftPane.className = 'split-content-pane';
+            leftPane.dataset.side = 'left';
+            const leftIframe = document.createElement('iframe');
+            leftIframe.src = leftTab.iframe.src;
+            leftPane.appendChild(leftIframe);
+
+            // Inactive overlay for left
+            const leftOverlay = document.createElement('div');
+            leftOverlay.className = 'split-inactive-overlay';
+            leftOverlay.innerHTML = `${leftFaviconSrc ? `<img src="${leftFaviconSrc}">` : ''}<span>${this.extractDomain(this.extractOriginalUrl(leftTab.currentUrl || leftTab.url)) || ''}</span>`;
+            leftPane.appendChild(leftOverlay);
+
+            const rightPane = document.createElement('div');
+            rightPane.className = 'split-content-pane';
+            rightPane.dataset.side = 'right';
+            const rightIframe = document.createElement('iframe');
+            rightIframe.src = rightTab.iframe.src;
+            rightPane.appendChild(rightIframe);
+
+            // Inactive overlay for right
+            const rightOverlay = document.createElement('div');
+            rightOverlay.className = 'split-inactive-overlay';
+            rightOverlay.innerHTML = `${rightFaviconSrc ? `<img src="${rightFaviconSrc}">` : ''}<span>${this.extractDomain(this.extractOriginalUrl(rightTab.currentUrl || rightTab.url)) || ''}</span>`;
+            rightPane.appendChild(rightOverlay);
+
+            // Active X indicators
+            const leftX = document.createElement('div');
+            leftX.className = 'split-active-x';
+            leftX.innerHTML = '×';
+            leftPane.appendChild(leftX);
+            const rightX = document.createElement('div');
+            rightX.className = 'split-active-x';
+            rightX.innerHTML = '×';
+            rightPane.appendChild(rightX);
+
+            container.appendChild(leftPane);
+            container.appendChild(rightPane);
+            this.contentArea.appendChild(container);
+
+            // Track
+            this.splitTabs.set(leftTabId, {
+                leftTabId: leftTabId,
+                rightTabId: rightTabId,
+                leftIframe: leftIframe,
+                rightIframe: rightIframe,
+                container: container,
+                leftTab: leftTab,
+                rightTab: rightTab,
+                activeSide: 'left'
+            });
+
+            // Set active pane interactions
+            const self = this;
+            leftPane.addEventListener('mousedown', () => {
+                self.setSplitActivePane(leftTabId, 'left');
+            });
+            rightPane.addEventListener('mousedown', () => {
+                self.setSplitActivePane(leftTabId, 'right');
+            });
+
+            // Close buttons for each side
+            leftTab.element.querySelector('.split-close-left').addEventListener('click', (e) => {
+                e.stopPropagation();
+                self.closeSplitSide(leftTabId, 'left');
+            });
+            leftTab.element.querySelector('.split-close-right').addEventListener('click', (e) => {
+                e.stopPropagation();
+                self.closeSplitSide(leftTabId, 'right');
+            });
+
+            // Initial state: left is active
+            this.setSplitActivePane(leftTabId, 'left');
+
+            // Switch to this tab
+            this.switchToTab(leftTabId);
+            this.updateTabSizes();
+            if (window.lucide) lucide.createIcons();
+        };
+
+        b.setSplitActivePane = function(splitTabId, side) {
+            const split = this.splitTabs.get(splitTabId);
+            if (!split) return;
+            split.activeSide = side;
+
+            const container = split.container;
+            const panes = container.querySelectorAll('.split-content-pane');
+            
+            panes.forEach(pane => {
+                const paneSide = pane.dataset.side;
+                const overlay = pane.querySelector('.split-inactive-overlay');
+                const xBtn = pane.querySelector('.split-active-x');
+                
+                if (paneSide === side) {
+                    // Active pane
+                    if (overlay) overlay.classList.remove('visible');
+                    if (xBtn) xBtn.classList.add('visible');
+                } else {
+                    // Inactive pane
+                    if (overlay) overlay.classList.add('visible');
+                    if (xBtn) xBtn.classList.remove('visible');
+                }
+            });
+
+            // Update address bar to show active pane's URL
+            const activeTab = side === 'left' ? split.leftTab : split.rightTab;
+            if (activeTab) {
+                const url = this.extractOriginalUrl(activeTab.currentUrl || activeTab.url);
+                this.addressBar.value = url;
+            }
+        };
+
+        b.closeSplitSide = function(splitTabId, sideToClose) {
+            const split = this.splitTabs.get(splitTabId);
+            if (!split) return;
+            this.unsplitView(splitTabId, sideToClose === 'left' ? 'right' : 'left');
+        };
+
+        b.unsplitView = function(splitTabId, keepSide) {
+            const split = this.splitTabs.get(splitTabId);
+            if (!split) return;
+
+            // Remove split container
+            split.container.remove();
+
+            // Restore both tabs
+            const leftTab = split.leftTab;
+            const rightTab = split.rightTab;
+
+            // Show right tab element again
+            rightTab.element.style.display = '';
+
+            // Restore left tab to normal
+            leftTab.element.classList.remove('split-tab');
+            const leftFaviconImg = leftTab.faviconUrl || '';
+            leftTab.element.innerHTML = `
+                <div class="tab-favicon">
+                    ${leftFaviconImg ? `<img src="${leftFaviconImg}" width="20" height="20">` : '<i data-lucide="globe" width="20" height="20"></i>'}
+                </div>
+                <div class="tab-title">${leftTab.title || 'Untitled'}</div>
+                <div class="tab-close">
+                    <i data-lucide="x" width="12" height="12"></i>
+                </div>
+            `;
+
+            // Show original iframes
+            leftTab.iframe.style.display = '';
+            rightTab.iframe.style.display = '';
+
+            // Re-bind events
+            leftTab.element.addEventListener('click', (e) => {
+                if (!e.target.closest('.tab-close')) {
+                    this.switchToTab(leftTab.id);
+                }
+            });
+            leftTab.element.querySelector('.tab-close').addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.closeTab(leftTab.id);
+            });
+            leftTab.element.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this.showContextMenu(e.clientX, e.clientY, leftTab.id);
+            });
+
+            // Remove from split tracking
+            this.splitTabs.delete(splitTabId);
+
+            // Switch to the kept side's tab
+            const keepTab = keepSide === 'left' ? leftTab : rightTab;
+            this.switchToTab(keepTab.id);
+            this.updateTabSizes();
+            if (window.lucide) lucide.createIcons();
+        };
+
+        b.reverseViews = function(splitTabId) {
+            const split = this.splitTabs.get(splitTabId);
+            if (!split) return;
+
+            // Swap iframes
+            const leftSrc = split.leftIframe.src;
+            split.leftIframe.src = split.rightIframe.src;
+            split.rightIframe.src = leftSrc;
+
+            // Swap tab references
+            const tmpTab = split.leftTab;
+            split.leftTab = split.rightTab;
+            split.rightTab = tmpTab;
+
+            const tmpId = split.leftTabId;
+            split.leftTabId = split.rightTabId;
+            split.rightTabId = tmpId;
+
+            // Update tab element
+            const halves = split.container.closest('.browser-container').querySelector(`.tab[data-tab-id="${splitTabId}"]`);
+            // Refresh the split tab titles
+            this.refreshSplitTabElement(splitTabId);
+        };
+
+        b.refreshSplitTabElement = function(splitTabId) {
+            const split = this.splitTabs.get(splitTabId);
+            if (!split) return;
+
+            const tabEl = split.leftTab.element;
+            const leftFaviconImg = split.leftTab.element ? split.leftTab.faviconUrl : '';
+            const rightFaviconImg = split.rightTab.element ? split.rightTab.faviconUrl : '';
+
+            tabEl.innerHTML = `
+                <div class="split-tab-inner">
+                    <div class="split-tab-half" data-side="left">
+                        <div class="tab-favicon">
+                            ${leftFaviconImg ? `<img src="${leftFaviconImg}" width="16" height="16">` : '<i data-lucide="globe" width="16" height="16"></i>'}
+                        </div>
+                        <div class="tab-title">${split.leftTab.title || 'Untitled'}</div>
+                        <div class="tab-close split-close-left">
+                            <i data-lucide="x" width="10" height="10"></i>
+                        </div>
+                    </div>
+                    <div class="split-tab-half" data-side="right">
+                        <div class="tab-favicon">
+                            ${rightFaviconImg ? `<img src="${rightFaviconImg}" width="16" height="16">` : '<i data-lucide="globe" width="16" height="16"></i>'}
+                        </div>
+                        <div class="tab-title">${split.rightTab.title || 'Untitled'}</div>
+                        <div class="tab-close split-close-right">
+                            <i data-lucide="x" width="10" height="10"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Rebind close events
+            const self = this;
+            tabEl.querySelector('.split-close-left').addEventListener('click', (e) => {
+                e.stopPropagation();
+                self.closeSplitSide(splitTabId, 'left');
+            });
+            tabEl.querySelector('.split-close-right').addEventListener('click', (e) => {
+                e.stopPropagation();
+                self.closeSplitSide(splitTabId, 'right');
+            });
+
+            if (window.lucide) lucide.createIcons();
+        };
+
+        // Override switchToTab to handle split views
+        const origSwitchToTab = b.switchToTab.bind(b);
+        b.switchToTab = function(tabId) {
+            // Hide all split containers
+            b.splitTabs.forEach((split, id) => {
+                split.container.style.display = 'none';
+            });
+
+            origSwitchToTab(tabId);
+
+            // Show split container if this tab is split
+            const split = b.splitTabs.get(tabId);
+            if (split) {
+                split.container.style.display = 'flex';
+                // Hide the normal iframe
+                const tab = b.tabs.get(tabId);
+                if (tab) tab.iframe.style.display = 'none';
+            }
+        };
+
+        // Override showContextMenu to add split options
+        const origShowContextMenu = b.showContextMenu.bind(b);
+        b.showContextMenu = function(x, y, tabId) {
+            origShowContextMenu(x, y, tabId);
+            
+            const splitSep = document.getElementById('splitMenuSeparator');
+            const arrangeBtn = document.getElementById('arrangeSplitBtn');
+            
+            if (this.splitTabs.has(tabId)) {
+                splitSep.style.display = '';
+                arrangeBtn.style.display = 'flex';
+            } else {
+                splitSep.style.display = 'none';
+                arrangeBtn.style.display = 'none';
+            }
+        };
+
+        // Context menu split submenu hover
+        const arrangeBtn = document.getElementById('arrangeSplitBtn');
+        const splitSubmenu = document.getElementById('splitSubmenu');
+        
+        arrangeBtn.addEventListener('mouseenter', () => {
+            const rect = arrangeBtn.getBoundingClientRect();
+            splitSubmenu.style.left = (rect.right) + 'px';
+            splitSubmenu.style.top = rect.top + 'px';
+            splitSubmenu.classList.add('visible');
+        });
+        arrangeBtn.addEventListener('mouseleave', (e) => {
+            if (!splitSubmenu.contains(e.relatedTarget)) {
+                splitSubmenu.classList.remove('visible');
+            }
+        });
+        splitSubmenu.addEventListener('mouseleave', () => {
+            splitSubmenu.classList.remove('visible');
+        });
+
+        // Submenu actions
+        document.getElementById('separateViewsBtn').addEventListener('click', () => {
+            const tabId = b.contextMenuTabId;
+            if (tabId && b.splitTabs.has(tabId)) {
+                b.unsplitView(tabId, 'left');
+            }
+            b.hideContextMenu();
+            splitSubmenu.classList.remove('visible');
+        });
+
+        document.getElementById('closeLeftViewBtn').addEventListener('click', () => {
+            const tabId = b.contextMenuTabId;
+            if (tabId && b.splitTabs.has(tabId)) {
+                b.closeSplitSide(tabId, 'left');
+            }
+            b.hideContextMenu();
+            splitSubmenu.classList.remove('visible');
+        });
+
+        document.getElementById('closeRightViewBtn').addEventListener('click', () => {
+            const tabId = b.contextMenuTabId;
+            if (tabId && b.splitTabs.has(tabId)) {
+                b.closeSplitSide(tabId, 'right');
+            }
+            b.hideContextMenu();
+            splitSubmenu.classList.remove('visible');
+        });
+
+        document.getElementById('reverseViewsBtn').addEventListener('click', () => {
+            const tabId = b.contextMenuTabId;
+            if (tabId && b.splitTabs.has(tabId)) {
+                b.reverseViews(tabId);
+            }
+            b.hideContextMenu();
+            splitSubmenu.classList.remove('visible');
+        });
+
+        // Hide submenu when context menu hides
+        const origHideContextMenu = b.hideContextMenu.bind(b);
+        b.hideContextMenu = function() {
+            origHideContextMenu();
+            splitSubmenu.classList.remove('visible');
+        };
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    setTimeout(initSplitScreen, 400);
 })();
 </script>
 </body>
