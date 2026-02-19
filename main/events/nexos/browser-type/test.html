@@ -13,7 +13,6 @@
 
 
 
-
  
 
 <!DOCTYPE html>
@@ -465,7 +464,7 @@
     align-items: center;
     gap: 8px;
     position: relative;
-    z-index: 1;
+    z-index: 100;
 }
 
 
@@ -864,7 +863,7 @@
             transform: scaleX(0);
             transform-origin: left;
             transition: transform 0.3s ease;
-            z-index: 5;
+            z-index: 10;
         }
 
         .loading-indicator.loading {
@@ -2235,7 +2234,7 @@ body {
           font-family: google sans;
           gap: 8px;
         }
-    /* Liquid Date Animation */
+    
     .time-date-container {
         display: flex;
         align-items: center;
@@ -2282,7 +2281,7 @@ body {
         font-family: 'google sans', sans-serif;
     }
 
-    /* Wrapper for control center + announcements */
+    
     .cc-annc-wrapper {
         position: fixed;
         bottom: 60px;
@@ -2319,9 +2318,7 @@ body {
         font-family: 'google sans', sans-serif;
     }
 
-    /* visible class now on wrapper, keep this for compat */
     .control-center-menu.visible {
-        /* no-op, wrapper handles visibility */
     }
 
     .cc-header {
@@ -2434,7 +2431,7 @@ body {
     .cc-btn.active svg {
         color: white !important;
     }
-    /* Announcement notification dot */
+    
     .time-date-container {
         position: relative;
     }
@@ -2458,7 +2455,7 @@ body {
         50% { transform: scale(1.3); opacity: 0.7; }
     }
 
-    /* Announcement panel below control center */
+    
     .annc-panel {
         width: 100%;
         max-height: 280px;
@@ -2546,7 +2543,7 @@ body {
         color: #999;
         font-size: 13px;
     }
-    /* Profile Dashboard Menu - popup style */
+    
     .profile-menu-popup {
         position: fixed;
         bottom: 60px;
@@ -2570,7 +2567,7 @@ body {
         pointer-events: auto;
     }
 
-    /* Search Suggestions Dropdown */
+    
     .search-suggestions {
         position: absolute;
         top: 100%;
@@ -2580,7 +2577,7 @@ body {
         border: 1px solid #e0e0e0;
         border-radius: 0 0 12px 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        z-index: 99999;
+        z-index: 9999;
         max-height: 400px;
         overflow-y: auto;
         display: none;
@@ -3098,15 +3095,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.newTabBtn.addEventListener('click', () => this.createNewTab());
                 this.addressBar.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
-                        // Hide search suggestions and blur address bar immediately
-                        const suggestionsBox = document.getElementById('searchSuggestions');
-                        if (suggestionsBox) suggestionsBox.classList.remove('visible');
-                        this.addressBar.blur();
                         this.navigate(this.addressBar.value);
                     }
                 });
 
-                // Open current page in a real browser tab using embed.html
+                
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab && tab.currentUrl) {
@@ -3116,7 +3109,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // Listen for URL updates from embed.html via postMessage
+                
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         const tab = this.tabs.get(this.activeTabId);
@@ -4167,16 +4160,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 
                 tab.loadHandler = () => {
-                    // Inject new-tab interceptor into this iframe
+                    
                     this.injectNewTabInterceptor(iframe);
 
-                    // Try to get the real URL from the iframe first
+                    
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
                     tab.currentUrl = originalUrl;
                     
-                    // Block prohibited URLs detected after navigation/redirect
+                    
                     if (originalUrl && this.isBlockedUrl(originalUrl)) {
                         tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                         tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
@@ -4239,7 +4232,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     newTab.element.classList.add('active');
                     newTab.iframe.style.display = 'block';
 
-                    // Try to get the real URL from iframe first
+                    
                     const realUrl = this.getIframeCurrentUrl(newTab);
                     let currentUrl = realUrl || newTab.currentUrl || newTab.iframe.src;
                     
@@ -4313,15 +4306,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 150);
             }
 
-             navigate(input) {
+            navigate(input) {
                 if (!this.activeTabId) return;
 
                 let url = input.trim();
                 if (!url) return;
-
-                // Prevent double-navigation: if the input is the same URL we already navigated to, skip
-                const tab = this.tabs.get(this.activeTabId);
-                if (tab && tab.currentUrl && url === tab.currentUrl) return;
 
 if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
@@ -4426,11 +4415,7 @@ if (this.isBlockedUrl(url)) {
             isUrl(input) {
                 const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
                 const localhostPattern = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/;
-                if (urlPattern.test(input) || localhostPattern.test(input)) return true;
-                // Only treat input with a dot as a URL if it looks like a domain
-                // (no spaces, and the dot is followed by valid TLD-like chars)
-                if (input.includes('.') && !/\s/.test(input) && /\.[a-z]{2,}$/i.test(input)) return true;
-                return false;
+                return urlPattern.test(input) || localhostPattern.test(input) || input.includes('.');
             }
 
             loadUrl(url) {
@@ -4453,14 +4438,12 @@ if (this.isBlockedUrl(url)) {
             }
 
             extractOriginalUrl(proxyUrl) {
-                // Check for ?url= parameter (embed.html format)
+                
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
                 }
                 
-                // Check for UV-encoded URL (/active/go/ path)
-                // UV uses XOR codec: odd-positioned characters are XOR'd with 2
                 const uvMatch = proxyUrl.match(/\/active\/go\/(.+)/);
                 if (uvMatch) {
                     try {
@@ -4628,7 +4611,7 @@ if (this.isBlockedUrl(url)) {
                         }
                     }
                 } catch(e) {
-                    // Cross-origin, can't access
+                    
                 }
                 return null;
             }
@@ -4642,12 +4625,12 @@ if (this.isBlockedUrl(url)) {
                     if (this.activeTabId === tabId) {
                         const tab = this.tabs.get(tabId);
                         if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
-                            // Try to read the actual current URL from the iframe
+                            
                             const realUrl = this.getIframeCurrentUrl(tab);
                             if (realUrl && realUrl !== 'about:blank') {
                                 const oldUrl = tab.currentUrl;
                                 if (realUrl !== oldUrl) {
-                                    // Block prohibited URLs detected via periodic check
+                                    
                                     if (this.isBlockedUrl(realUrl)) {
                                         tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                                         tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
@@ -4670,8 +4653,6 @@ if (this.isBlockedUrl(url)) {
                                         lucide.createIcons();
                                     }
                                     
-                                    // Update navigation history (back/forward)
-                                    // Skip if we're currently navigating via back/forward buttons
                                     if (!tab._navigatingHistory) {
                                         const history = this.history[this.activeTabId];
                                         if (history) {
@@ -4680,7 +4661,7 @@ if (this.isBlockedUrl(url)) {
                                             const currentExtracted = this.extractOriginalUrl(currentEntry || '');
                                             if (currentExtracted !== realUrl) {
                                                 const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
-                                                // Truncate any forward history, then push
+                                                
                                                 history.splice(currentIndex + 1);
                                                 history.push(proxyUrl);
                                                 this.historyIndex[this.activeTabId] = history.length - 1;
@@ -4689,7 +4670,7 @@ if (this.isBlockedUrl(url)) {
                                         }
                                     }
                                     
-                                    // Also add to browsing history panel
+                                    
                                     if (this._addToBrowseHistory) {
                                         this._addToBrowseHistory(realUrl, tab);
                                     }
@@ -4725,7 +4706,7 @@ if (this.isBlockedUrl(url)) {
                         this.updateFavicon(tab, decoded);
                         this.updateTabTitle(tab, decoded);
                         
-                        // Allow periodic updater to resume after navigation settles
+                        
                         setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                     }
                     
@@ -4767,7 +4748,7 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
-                    // If we have a currentUrl (display URL), re-wrap it in proxy format
+                    
                     let urlToLoad = tab.iframe.src;
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
@@ -4955,36 +4936,29 @@ if (this.isBlockedUrl(url)) {
                 }
             }
 
-            // ===== NEW TAB INTERCEPTION =====
+            
 
-            // Validate that a URL is a real, intentional navigation and not a
-            // garbage/encoded redirect, tracking pixel, or programmatic noise.
             _isValidNewTabUrl(url) {
                 if (!url || typeof url !== 'string') return false;
-                // Reject blank / empty
+                
                 if (url === 'about:blank' || url === '' || url === 'about:srcdoc') return false;
-                // Reject data: and javascript: URIs
+                
                 if (/^(data:|javascript:)/i.test(url.trim())) return false;
-                // Reject URLs that are just fragments or query strings
+                
                 if (/^[#?]/.test(url.trim())) return false;
 
-                // --- The main fix: catch garbled proxy-encoded URLs ---
-                // Proxy URLs go through /active/go/ and legitimate ones should
-                // decode to a recognisable protocol (http/https). If the decoded
-                // path after /active/go/ doesn't start with http(s) it's garbage
-                // from an internal redirect loop.
                 const activeGoMatch = url.match(/\/active\/go\/(.+)/);
                 if (activeGoMatch) {
                     let decoded = activeGoMatch[1];
                     try { decoded = decodeURIComponent(decoded); } catch(e) {}
-                    // A valid proxied URL should start with http:// or https://
+                    
                     if (!/^https?:\/\//i.test(decoded)) return false;
                 }
 
                 return true;
             }
 
-            // Listen for postMessage from iframes wanting to open new tabs
+            
             setupNewTabInterception() {
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'nexos-open-new-tab' && e.data.url) {
@@ -4994,7 +4968,7 @@ if (this.isBlockedUrl(url)) {
                     }
                 });
 
-                // Override window.open on the PARENT window to catch proxy URLs
+                
                 const originalWindowOpen = window.open.bind(window);
                 this.originalWindowOpen = originalWindowOpen;
                 const self = this;
@@ -5014,7 +4988,7 @@ if (this.isBlockedUrl(url)) {
                 };
             }
 
-            // Create a new tab and navigate it to a specific URL
+            
             createNewTabWithUrl(url) {
                 const tabId = this.createNewTab();
                 if (tabId) {
@@ -5023,7 +4997,7 @@ if (this.isBlockedUrl(url)) {
                 return tabId;
             }
 
-            // Inject window.open and target="_blank" interceptors into an iframe
+            
             injectNewTabInterceptor(iframe) {
                 try {
                     const iframeWin = iframe.contentWindow;
@@ -5031,14 +5005,14 @@ if (this.isBlockedUrl(url)) {
 
                     const self = this;
 
-                    // Override window.open
+                    
                     iframeWin.open = function(url, target, features) {
                         if (url && url !== 'about:blank') {
                             let resolved = url;
                             try {
                                 resolved = new URL(url, iframeWin.location.href).href;
                             } catch(e) {}
-                            // Only post if the URL passes validation
+                            
                             if (self._isValidNewTabUrl(resolved)) {
                                 window.parent.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
                             }
@@ -5046,9 +5020,9 @@ if (this.isBlockedUrl(url)) {
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     };
 
-                    // Intercept target="_blank" link clicks (only user-initiated)
+                    
                     iframeWin.document.addEventListener('click', function(e) {
-                        if (!e.isTrusted) return; // ignore synthetic / programmatic clicks
+                        
                         const link = e.target.closest('a[target="_blank"]');
                         if (link && link.href && self._isValidNewTabUrl(link.href)) {
                             e.preventDefault();
@@ -5057,13 +5031,13 @@ if (this.isBlockedUrl(url)) {
                         }
                     }, true);
 
-                    // Also try to inject into nested iframes
+                    
                     const nestedIframes = iframeWin.document.querySelectorAll('iframe');
                     nestedIframes.forEach((nested) => {
                         try { this.injectNewTabInterceptor(nested); } catch(e) {}
                     });
 
-                    // Watch for new nested iframes being added
+                    
                     try {
                         const observer = new iframeWin.MutationObserver((mutations) => {
                             mutations.forEach((mutation) => {
@@ -5082,10 +5056,10 @@ if (this.isBlockedUrl(url)) {
                     } catch(e) {}
 
                 } catch(e) {
-                    // Cross-origin - can't inject, that's okay
+                }
                 }
             }
-            // ===== END NEW TAB INTERCEPTION =====
+            
 
             showSiteToast(tab, url) {
                 const toast = document.getElementById('siteToast');
@@ -5809,7 +5783,7 @@ if (this.isBlockedUrl(url)) {
       currentTimeElement.textContent = timeStr;
       currentDateElement.textContent = dateStr;
       
-      // Update Control Center
+      
       const ccTime = document.getElementById('ccTime');
       const ccDate = document.getElementById('ccDate');
       if(ccTime) ccTime.textContent = timeStr;
@@ -5818,11 +5792,11 @@ if (this.isBlockedUrl(url)) {
     updateDateTime();
     setInterval(updateDateTime, 1000);
 
-    // Liquid Date & Control Center Logic
+    
     const timeDateContainer = document.getElementById('timeDateContainer');
     const controlCenterMenu = document.getElementById('controlCenterMenu');
     
-    // Toggle Control Center & Expand Date & Announcement Panel
+    
     timeDateContainer.addEventListener('click', (e) => {
         e.stopPropagation();
         const isExpanded = timeDateContainer.classList.contains('expanded');
@@ -5833,7 +5807,7 @@ if (this.isBlockedUrl(url)) {
             timeDateContainer.classList.remove('expanded');
             if (ccWrapper) ccWrapper.classList.remove('visible');
         } else {
-            // Close profile menu first
+            
             var profileMenu = document.getElementById('profileMenu');
             if (profileMenu) profileMenu.classList.remove('visible');
             
@@ -5843,7 +5817,7 @@ if (this.isBlockedUrl(url)) {
         }
     });
 
-    // Close when clicking outside
+    
     document.addEventListener('click', (e) => {
         const ccWrapper = document.getElementById('ccAnncWrapper');
         if (!ccWrapper.contains(e.target) && !timeDateContainer.contains(e.target)) {
@@ -5852,7 +5826,7 @@ if (this.isBlockedUrl(url)) {
         }
     });
 
-    // Brightness Slider (simulated with iframe filter)
+    
     const brightnessSlider = document.getElementById('brightnessSlider');
     brightnessSlider.addEventListener('input', (e) => {
         const val = e.target.value;
@@ -5867,7 +5841,7 @@ if (this.isBlockedUrl(url)) {
         }, 300);
     });
 
-    // Update battery in Control Center
+    
     const updateCCBattery = () => {
          if ("getBattery" in navigator) {
             navigator.getBattery().then((battery) => {
@@ -6200,9 +6174,9 @@ menu.addEventListener('mouseleave', hideMenu);
         </div>
     </div>
 
-    <!-- Control Center + Announcements Wrapper -->
+    
     <div class="cc-annc-wrapper" id="ccAnncWrapper">
-        <!-- Control Center Menu -->
+        
         <div class="control-center-menu" id="controlCenterMenu">
             <div class="cc-header">
                 <div>
@@ -6223,7 +6197,7 @@ menu.addEventListener('mouseleave', hideMenu);
             </div>
         </div>
 
-        <!-- Announcement Panel (below control center) -->
+        
         <div class="annc-panel" id="anncPanel">
             <div class="annc-panel-header">
                 <span>Announcements</span>
@@ -6235,7 +6209,7 @@ menu.addEventListener('mouseleave', hideMenu);
         </div>
     </div>
 
-    <!-- Focus Overlay -->
+    
     <div class="focus-overlay" id="focusOverlay">
         <div class="focus-container">
             <button class="focus-close" id="focusCloseBtn">
@@ -6439,7 +6413,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 item.appendChild(infoDiv);
                 item.appendChild(metaDiv);
 
-                // Make history items clickable
+                
                 (function(entryUrl) {
                     item.style.cursor = 'pointer';
                     item.addEventListener('click', function() {
@@ -6533,13 +6507,13 @@ menu.addEventListener('mouseleave', hideMenu);
         patchUpdateTabInfo(b);
         patchCloseSidebar(b);
 
-        // Expose callback for periodic updater to add browse history entries
+        
         b._addToBrowseHistory = function(url, tab) {
             if (!url || url === 'about:blank' ||
                 url.startsWith('/welcomer') || url.startsWith('welcomer') ||
                 url.startsWith('/search/blocker') || url.startsWith('/new-tab/launch')) return;
             
-            // Don't add duplicates if the most recent entry is the same URL
+            
             if (browseHistory.length > 0 && browseHistory[0].url === url) return;
             
             var favicon = null;
@@ -6854,7 +6828,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 if (profileMenu.classList.contains('visible')) {
                     profileMenu.classList.remove('visible');
                 } else {
-                    // Close control center/announcements first
+                    
                     var ccWrapper = document.getElementById('ccAnncWrapper');
                     var tdc = document.getElementById('timeDateContainer');
                     if (ccWrapper) ccWrapper.classList.remove('visible');
@@ -7027,7 +7001,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 var profileMenu = document.getElementById('profileMenu');
                 var clickedDashboardIframe = profileMenu && profileMenu.contains(document.activeElement);
                 if (clickedDashboardIframe) {
-                    // Close everything except the profile/dashboard menu
+                    
                     var contextMenu = document.getElementById('contextMenu');
                     if (contextMenu) contextMenu.classList.remove('visible');
                     var browserMenu = document.getElementById('browserMenu');
@@ -7058,6 +7032,7 @@ menu.addEventListener('mouseleave', hideMenu);
 (function() {
     var blockedBrowserShortcuts = [
         { ctrl: true, key: 'w' },
+        { ctrl: true, key: 'b' },
         { ctrl: true, key: 't' },
         { ctrl: true, key: 'n' },
         { ctrl: true, shift: true, key: 'n' },
@@ -7150,11 +7125,6 @@ menu.addEventListener('mouseleave', hideMenu);
             }
         });
 
-        addressBar.addEventListener('blur', function() {
-            // Small delay so click events on suggestions can fire first
-            setTimeout(function() { hideSuggestions(); }, 150);
-        });
-
         addressBar.addEventListener('keydown', function(e) {
             if (!suggestionsBox.classList.contains('visible')) return;
             
@@ -7190,11 +7160,11 @@ menu.addEventListener('mouseleave', hideMenu);
     function fetchSuggestions(query) {
         const suggestionsBox = document.getElementById('searchSuggestions');
         
-        // Use Google Suggest API via JSONP (it properly supports JSONP callbacks)
+        
         const callbackName = '_sgCallback_' + Date.now();
         window[callbackName] = function(data) {
             currentSuggestions = [];
-            // Google returns [query, [suggestions array], ...]
+            
             if (Array.isArray(data) && Array.isArray(data[1])) {
                 data[1].slice(0, 8).forEach(function(phrase) {
                     currentSuggestions.push({
@@ -7204,14 +7174,14 @@ menu.addEventListener('mouseleave', hideMenu);
                 });
             }
             
-            // Add a "search" option at the top
+            
             currentSuggestions.unshift({
                 text: query,
                 type: 'search-direct',
                 label: query + ' — Search'
             });
 
-            // Check if the query looks like a URL
+            
             var isUrl = /^(https?:\/\/|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})/.test(query);
             if (isUrl) {
                 currentSuggestions.unshift({
@@ -7229,7 +7199,7 @@ menu.addEventListener('mouseleave', hideMenu);
         var script = document.createElement('script');
         script.src = 'https://suggestqueries.google.com/complete/search?client=chrome&q=' + encodeURIComponent(query) + '&callback=' + callbackName;
         script.onerror = function() {
-            // Fallback: just show the direct search option
+            
             currentSuggestions = [{
                 text: query,
                 type: 'search-direct',
@@ -7282,7 +7252,7 @@ menu.addEventListener('mouseleave', hideMenu);
             textDiv.className = 'search-suggestion-text';
 
             var displayText = suggestion.label || suggestion.text;
-            // Bold the matching part
+            
             var idx = displayText.toLowerCase().indexOf(queryLower);
             if (idx >= 0 && suggestion.type !== 'search-direct' && suggestion.type !== 'url') {
                 textDiv.innerHTML = escapeHtml(displayText.substring(0, idx)) + 
@@ -7299,7 +7269,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 var addressBar = document.getElementById('addressBar');
                 addressBar.value = suggestion.text;
                 hideSuggestions();
-                addressBar.blur();
                 if (window.browser) window.browser.navigate(suggestion.text);
             });
 
@@ -7339,7 +7308,62 @@ menu.addEventListener('mouseleave', hideMenu);
         return div.innerHTML;
     }
 
+    
+    window.addEventListener('blur', function() {
+        hideSuggestions();
+    });
+
+    
+    setInterval(function() {
+        if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+            hideSuggestions();
+        }
+    }, 200);
+
     setTimeout(initSearchSuggestions, 500);
+})();
+</script>
+<script>
+(function() {
+    var taskbarHidden = false;
+
+    function toggleTaskbarMode() {
+        taskbarHidden = !taskbarHidden;
+        var taskbar = document.getElementById('taskbar');
+        var contentArea = document.getElementById('contentArea');
+
+        if (taskbarHidden) {
+            taskbar.style.display = 'none';
+            contentArea.style.marginBottom = '0';
+            contentArea.style.marginLeft = '0';
+            contentArea.style.marginRight = '0';
+            contentArea.style.marginTop = '0';
+            contentArea.style.borderRadius = '0';
+        } else {
+            taskbar.style.display = '';
+            contentArea.style.marginBottom = '';
+            contentArea.style.marginLeft = '';
+            contentArea.style.marginRight = '';
+            contentArea.style.marginTop = '';
+            contentArea.style.borderRadius = '';
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleTaskbarMode();
+        }
+    }, true);
+
+    window.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'nexos-keydown') {
+            if ((e.data.ctrlKey || e.data.metaKey) && e.data.key && e.data.key.toLowerCase() === 'b') {
+                toggleTaskbarMode();
+            }
+        }
+    });
 })();
 </script>
 </body>
