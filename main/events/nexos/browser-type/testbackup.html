@@ -9,6 +9,10 @@
 
 
 
+
+
+
+
  
 
 <!DOCTYPE html>
@@ -155,8 +159,8 @@
             background: linear-gradient(
   to bottom,
   #e3e3e3 0px,
-  #e3e3e3 42px,
-  #ffffff 42px,
+  #e3e3e3 43px,
+  #ffffff 43px,
   #ffffff 100%
 );
             overflow: hidden;
@@ -168,13 +172,24 @@
             display: flex;
             align-items: flex-end;
             padding: 0;
-            height: 36px;
+            padding-top: 6px;
+            padding-left: 25px;
+            height: 43px;
             position: relative;
-            margin-top: 6px;
-            margin-bottom: 0;
-            margin-left: 25px;
+            margin: 0;
             user-select: none;
             flex-shrink: 0;
+        }
+
+        .tab-bar::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #ffffff;
+            z-index: 0;
         }
 
         .tab {
@@ -182,7 +197,7 @@
             align-items: center;
             gap: 8px;
             padding: 0 12px;
-            height: 36px;
+            height: 37px;
             background: transparent;
             border-radius: 8px 8px 0 0;
             cursor: auto !important;
@@ -448,6 +463,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    position: relative;
+    z-index: 1;
 }
 
 
@@ -2006,6 +2023,7 @@ body {
     flex-wrap: wrap;
     gap: 6px;
     font-family: google sans;
+    z-index: 11;
 }
 #suggestions button {
     flex: 1 0 30%;
@@ -2551,6 +2569,386 @@ body {
         opacity: 1;
         pointer-events: auto;
     }
+
+    /* Search Suggestions Dropdown */
+    .search-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 0 0 12px 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        z-index: 9999;
+        max-height: 400px;
+        overflow-y: auto;
+        display: none;
+        margin-top: 2px;
+    }
+    .search-suggestions.visible {
+        display: block;
+    }
+    .search-suggestion-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        font-family: google sans, sans-serif;
+        color: #1a1a1a;
+        transition: background 0.1s ease;
+    }
+    .search-suggestion-item:hover,
+    .search-suggestion-item.selected {
+        background: #f1f3f4;
+    }
+    .search-suggestion-item:last-child {
+        border-radius: 0 0 12px 12px;
+    }
+    .search-suggestion-icon {
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: #5f6368;
+    }
+    .search-suggestion-icon img {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+    }
+    .search-suggestion-text {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .search-suggestion-text strong {
+        font-weight: 600;
+    }
+    .search-suggestion-url {
+        color: #70757a;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 300px;
+    }
+
+    /* ===== SPLIT SCREEN STYLES ===== */
+
+    /* Split screen button next to refresh */
+    .split-screen-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: transparent;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.15s ease;
+        color: #000000;
+    }
+    .split-screen-btn:hover {
+        background: rgba(0,0,0,0.08);
+    }
+
+    /* Split tab picker overlay */
+    .split-picker-overlay {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 400px;
+        height: 100vh;
+        background: #2a2a2a;
+        z-index: 10001;
+        display: none;
+        flex-direction: column;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.5);
+    }
+    .split-picker-overlay.visible {
+        display: flex;
+    }
+    .split-picker-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        border-bottom: 1px solid #444;
+    }
+    .split-picker-title {
+        color: #fff;
+        font-size: 16px;
+        font-family: google sans, sans-serif;
+    }
+    .split-picker-close {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #aaa;
+        border-radius: 50%;
+        transition: background 0.15s;
+    }
+    .split-picker-close:hover {
+        background: rgba(255,255,255,0.1);
+    }
+    .split-picker-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+    }
+    .split-picker-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.15s;
+        color: #fff;
+        font-family: google sans, sans-serif;
+    }
+    .split-picker-item:hover {
+        background: rgba(255,255,255,0.1);
+    }
+    .split-picker-item-favicon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #444;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+    }
+    .split-picker-item-favicon img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .split-picker-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .split-picker-item-title {
+        font-size: 14px;
+        color: #fff;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .split-picker-item-url {
+        font-size: 12px;
+        color: #888;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Split tab appearance - two titles in one tab */
+    .tab.split-tab {
+        min-width: 200px !important;
+        max-width: 400px !important;
+        display: flex;
+        align-items: center;
+        gap: 0;
+        padding: 0 4px;
+    }
+    .split-tab-section {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+        padding: 0 6px;
+        height: 100%;
+        border-radius: 6px 6px 0 0;
+        position: relative;
+    }
+    .split-tab-section .tab-favicon {
+        margin-right: 4px;
+    }
+    .split-tab-section .tab-title {
+        flex: 1;
+        font-size: 12px;
+        min-width: 0;
+    }
+    .split-tab-section .split-tab-close {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.6;
+        transition: all 0.15s;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+    .split-tab-section .split-tab-close:hover {
+        background: rgba(0,0,0,0.1);
+        opacity: 1;
+    }
+    .split-tab-divider {
+        width: 1px;
+        height: 20px;
+        background: rgba(0,0,0,0.15);
+        flex-shrink: 0;
+    }
+
+    /* Split content area */
+    .split-content-wrapper {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        position: relative;
+    }
+    .split-pane {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+    }
+    .split-pane iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+    .split-divider {
+        width: 4px;
+        background: #e0e0e0;
+        cursor: col-resize;
+        flex-shrink: 0;
+        transition: background 0.15s;
+    }
+    .split-divider:hover {
+        background: #007aff;
+    }
+
+    /* Inactive pane overlay */
+    .split-pane-overlay {
+        position: absolute;
+        bottom: 12px;
+        padding: 8px 14px;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(8px);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 5;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        max-width: 250px;
+    }
+    .split-pane-overlay.left-overlay {
+        left: 12px;
+    }
+    .split-pane-overlay.right-overlay {
+        right: 12px;
+    }
+    .split-pane-overlay-favicon {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .split-pane-overlay-favicon img {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+    }
+    .split-pane-overlay-url {
+        color: #fff;
+        font-size: 12px;
+        font-family: google sans, sans-serif;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Active pane X button */
+    .split-pane-active-indicator {
+        position: absolute;
+        bottom: 12px;
+        padding: 6px;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(8px);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        cursor: pointer;
+        transition: background 0.15s;
+        pointer-events: auto;
+    }
+    .split-pane-active-indicator.left-indicator {
+        left: 12px;
+    }
+    .split-pane-active-indicator.right-indicator {
+        right: 12px;
+    }
+    .split-pane-active-indicator:hover {
+        background: rgba(0,0,0,0.7);
+    }
+    .split-pane-active-indicator svg {
+        width: 12px;
+        height: 12px;
+        color: #fff;
+    }
+
+    /* Inactive pane dimming */
+    .split-pane.inactive::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.03);
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    /* Context menu submenu */
+    .context-submenu-trigger {
+        position: relative;
+    }
+    .context-submenu-trigger .context-submenu-arrow {
+        margin-left: auto;
+        color: #999;
+    }
+    .context-submenu {
+        position: absolute;
+        left: 100%;
+        top: 0;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        min-width: 200px;
+        display: none;
+        z-index: 1002;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .context-submenu-trigger:hover .context-submenu {
+        display: block;
+    }
+
+    /* ===== END SPLIT SCREEN STYLES ===== */
+
     </style>
 </head>
 <body>
@@ -2576,13 +2974,17 @@ body {
                 <button class="nav-btn" id="refreshBtn">
                     <i data-lucide="rotate-cw" width="16" height="16"></i>
                 </button>
+                <button class="split-screen-btn" id="splitScreenBtn" title="Split screen">
+                    <i data-lucide="columns-2" width="16" height="16"></i>
+                </button>
             </div>
             
-            <div class="address-bar-wrapper">
-                <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL">
+            <div class="address-bar-wrapper" style="position:relative;">
+                <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off">
                 <button class="open-external-btn" id="openExternalBtn" title="Open in new browser tab">
                     <i data-lucide="external-link" width="14" height="14"></i>
                 </button>
+                <div class="search-suggestions" id="searchSuggestions"></div>
             </div>
             <ul class="dropdown"></ul>
             
@@ -2747,6 +3149,29 @@ document.addEventListener("DOMContentLoaded", () => {
                 Unpin tab
             </button>
             <div class="context-menu-separator"></div>
+            <div class="context-menu-item context-submenu-trigger" id="arrangeSplitViewBtn" style="display: none;">
+                <i data-lucide="columns-2" width="14" height="14"></i>
+                Arrange split view
+                <i data-lucide="chevron-right" width="12" height="12" class="context-submenu-arrow"></i>
+                <div class="context-submenu">
+                    <button class="context-menu-item" id="separateViewsBtn">
+                        <i data-lucide="separator-vertical" width="14" height="14"></i>
+                        Separate views
+                    </button>
+                    <button class="context-menu-item" id="closeLeftViewBtn">
+                        <i data-lucide="panel-left-close" width="14" height="14"></i>
+                        Close left view
+                    </button>
+                    <button class="context-menu-item" id="closeRightViewBtn">
+                        <i data-lucide="panel-right-close" width="14" height="14"></i>
+                        Close right view
+                    </button>
+                    <button class="context-menu-item" id="reverseViewsBtn">
+                        <i data-lucide="arrow-left-right" width="14" height="14"></i>
+                        Reverse views
+                    </button>
+                </div>
+            </div>
             <button class="context-menu-item" id="duplicateTabBtn">
                 <i data-lucide="copy" width="14" height="14"></i>
                 Duplicate tab
@@ -2760,6 +3185,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 <i data-lucide="x-circle" width="14" height="14"></i>
                 Close other tabs
             </button>
+        </div>
+
+        <!-- Split Tab Picker Overlay -->
+        <div class="split-picker-overlay" id="splitPickerOverlay">
+            <div class="split-picker-header">
+                <span class="split-picker-title">Choose a tab to add to split view</span>
+                <button class="split-picker-close" id="splitPickerClose">
+                    <i data-lucide="x" width="18" height="18"></i>
+                </button>
+            </div>
+            <div class="split-picker-list" id="splitPickerList"></div>
         </div>
 
         <div class="browser-menu" id="browserMenu">
@@ -7015,6 +7451,965 @@ menu.addEventListener('mouseleave', hideMenu);
             document.dispatchEvent(evt);
         }
     });
+})();
+</script>
+<script>
+(function() {
+    let debounceTimer = null;
+    let selectedIndex = -1;
+    let currentSuggestions = [];
+
+    function initSearchSuggestions() {
+        const addressBar = document.getElementById('addressBar');
+        const suggestionsBox = document.getElementById('searchSuggestions');
+        if (!addressBar || !suggestionsBox) {
+            setTimeout(initSearchSuggestions, 300);
+            return;
+        }
+
+        addressBar.addEventListener('input', function() {
+            const query = addressBar.value.trim();
+            if (query.length < 1) {
+                clearTimeout(debounceTimer);
+                hideSuggestions();
+                return;
+            }
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => fetchSuggestions(query), 200);
+        });
+
+        addressBar.addEventListener('focus', function() {
+            const query = addressBar.value.trim();
+            if (query.length >= 1 && currentSuggestions.length > 0) {
+                suggestionsBox.classList.add('visible');
+            }
+        });
+
+        addressBar.addEventListener('keydown', function(e) {
+            if (!suggestionsBox.classList.contains('visible')) return;
+            
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, currentSuggestions.length - 1);
+                updateSelection();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection();
+            } else if (e.key === 'Enter') {
+                if (selectedIndex >= 0 && currentSuggestions[selectedIndex]) {
+                    e.preventDefault();
+                    addressBar.value = currentSuggestions[selectedIndex].text;
+                    hideSuggestions();
+                    if (window.browser) window.browser.navigate(addressBar.value);
+                } else {
+                    hideSuggestions();
+                }
+            } else if (e.key === 'Escape') {
+                hideSuggestions();
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!suggestionsBox.contains(e.target) && e.target !== addressBar) {
+                hideSuggestions();
+            }
+        });
+    }
+
+    function fetchSuggestions(query) {
+        const suggestionsBox = document.getElementById('searchSuggestions');
+        
+        const callbackName = '_sgCallback_' + Date.now();
+        window[callbackName] = function(data) {
+            currentSuggestions = [];
+            if (Array.isArray(data) && Array.isArray(data[1])) {
+                data[1].slice(0, 8).forEach(function(phrase) {
+                    currentSuggestions.push({
+                        text: phrase,
+                        type: 'search'
+                    });
+                });
+            }
+            
+            currentSuggestions.unshift({
+                text: query,
+                type: 'search-direct',
+                label: query + ' — Search'
+            });
+
+            var isUrl = /^(https?:\/\/|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})/.test(query);
+            if (isUrl) {
+                currentSuggestions.unshift({
+                    text: query,
+                    type: 'url',
+                    label: query
+                });
+            }
+
+            renderSuggestions(query);
+            delete window[callbackName];
+            if (script.parentNode) script.parentNode.removeChild(script);
+        };
+
+        var script = document.createElement('script');
+        script.src = 'https://suggestqueries.google.com/complete/search?client=chrome&q=' + encodeURIComponent(query) + '&callback=' + callbackName;
+        script.onerror = function() {
+            // Fallback: just show the direct search option
+            currentSuggestions = [{
+                text: query,
+                type: 'search-direct',
+                label: query + ' — Search'
+            }];
+            var isUrl = /^(https?:\/\/|[a-zA-Z0-9-]+\.[a-zA-Z]{2,})/.test(query);
+            if (isUrl) {
+                currentSuggestions.unshift({
+                    text: query,
+                    type: 'url',
+                    label: query
+                });
+            }
+            renderSuggestions(query);
+            delete window[callbackName];
+            if (script.parentNode) script.parentNode.removeChild(script);
+        };
+        document.head.appendChild(script);
+    }
+
+    function renderSuggestions(query) {
+        const suggestionsBox = document.getElementById('searchSuggestions');
+        if (!suggestionsBox) return;
+
+        selectedIndex = -1;
+        suggestionsBox.innerHTML = '';
+
+        if (currentSuggestions.length === 0) {
+            hideSuggestions();
+            return;
+        }
+
+        var queryLower = query.toLowerCase();
+
+        currentSuggestions.forEach(function(suggestion, index) {
+            var item = document.createElement('div');
+            item.className = 'search-suggestion-item';
+            item.dataset.index = index;
+
+            var icon = document.createElement('div');
+            icon.className = 'search-suggestion-icon';
+
+            if (suggestion.type === 'url') {
+                icon.innerHTML = '<i data-lucide="globe" width="16" height="16"></i>';
+            } else {
+                icon.innerHTML = '<i data-lucide="search" width="16" height="16"></i>';
+            }
+
+            var textDiv = document.createElement('div');
+            textDiv.className = 'search-suggestion-text';
+
+            var displayText = suggestion.label || suggestion.text;
+            // Bold the matching part
+            var idx = displayText.toLowerCase().indexOf(queryLower);
+            if (idx >= 0 && suggestion.type !== 'search-direct' && suggestion.type !== 'url') {
+                textDiv.innerHTML = escapeHtml(displayText.substring(0, idx)) + 
+                    '<strong>' + escapeHtml(displayText.substring(idx, idx + query.length)) + '</strong>' + 
+                    escapeHtml(displayText.substring(idx + query.length));
+            } else {
+                textDiv.textContent = displayText;
+            }
+
+            item.appendChild(icon);
+            item.appendChild(textDiv);
+
+            item.addEventListener('click', function() {
+                var addressBar = document.getElementById('addressBar');
+                addressBar.value = suggestion.text;
+                hideSuggestions();
+                if (window.browser) window.browser.navigate(suggestion.text);
+            });
+
+            item.addEventListener('mouseenter', function() {
+                selectedIndex = index;
+                updateSelection();
+            });
+
+            suggestionsBox.appendChild(item);
+        });
+
+        suggestionsBox.classList.add('visible');
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function updateSelection() {
+        var items = document.querySelectorAll('.search-suggestion-item');
+        items.forEach(function(item, i) {
+            if (i === selectedIndex) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    function hideSuggestions() {
+        var suggestionsBox = document.getElementById('searchSuggestions');
+        if (suggestionsBox) suggestionsBox.classList.remove('visible');
+        selectedIndex = -1;
+        currentSuggestions = [];
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Hide suggestions when iframe gains focus (click inside iframe)
+    window.addEventListener('blur', function() {
+        hideSuggestions();
+    });
+
+    // Polling fallback: detect when an iframe steals focus
+    setInterval(function() {
+        if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+            hideSuggestions();
+        }
+    }, 200);
+
+    setTimeout(initSearchSuggestions, 500);
+})();
+</script>
+<script>
+// ===== SPLIT SCREEN FUNCTIONALITY =====
+(function() {
+    function initSplitScreen() {
+        var b = window.browser;
+        if (!b) { setTimeout(initSplitScreen, 300); return; }
+
+        var splitPickerOverlay = document.getElementById('splitPickerOverlay');
+        var splitPickerList = document.getElementById('splitPickerList');
+        var splitPickerClose = document.getElementById('splitPickerClose');
+        var splitScreenBtn = document.getElementById('splitScreenBtn');
+        var arrangeSplitViewBtn = document.getElementById('arrangeSplitViewBtn');
+        var separateViewsBtn = document.getElementById('separateViewsBtn');
+        var closeLeftViewBtn = document.getElementById('closeLeftViewBtn');
+        var closeRightViewBtn = document.getElementById('closeRightViewBtn');
+        var reverseViewsBtn = document.getElementById('reverseViewsBtn');
+
+        // --- Split state tracking on each tab ---
+        // tab.splitData = { leftTabId, rightTabId, activePane: 'left'|'right', leftIframe, rightIframe, wrapper }
+
+        // Open the split picker
+        splitScreenBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var activeTab = b.tabs.get(b.activeTabId);
+            if (!activeTab) return;
+
+            // If already in split, unsplit
+            if (activeTab.splitData) {
+                unsplitTab(b.activeTabId);
+                return;
+            }
+
+            showSplitPicker(b.activeTabId);
+        });
+
+        splitPickerClose.addEventListener('click', function() {
+            hideSplitPicker();
+        });
+
+        document.addEventListener('click', function(e) {
+            if (splitPickerOverlay.classList.contains('visible') &&
+                !splitPickerOverlay.contains(e.target) &&
+                e.target !== splitScreenBtn) {
+                hideSplitPicker();
+            }
+        });
+
+        function showSplitPicker(sourceTabId) {
+            splitPickerList.innerHTML = '';
+            b.tabs.forEach(function(tab, tabId) {
+                if (tabId === sourceTabId) return;
+                if (tab.splitData) return; // already split
+
+                var item = document.createElement('div');
+                item.className = 'split-picker-item';
+
+                var faviconDiv = document.createElement('div');
+                faviconDiv.className = 'split-picker-item-favicon';
+                var faviconImg = tab.element.querySelector('.tab-favicon img');
+                if (faviconImg && faviconImg.src) {
+                    var img = document.createElement('img');
+                    img.src = faviconImg.src;
+                    faviconDiv.appendChild(img);
+                } else {
+                    faviconDiv.innerHTML = '<i data-lucide="globe" width="18" height="18" style="color:#aaa"></i>';
+                }
+
+                var infoDiv = document.createElement('div');
+                infoDiv.className = 'split-picker-item-info';
+                var titleDiv = document.createElement('div');
+                titleDiv.className = 'split-picker-item-title';
+                titleDiv.textContent = tab.title || 'New Tab';
+                var urlDiv = document.createElement('div');
+                urlDiv.className = 'split-picker-item-url';
+                var url = b.extractOriginalUrl(tab.currentUrl || tab.url || '');
+                urlDiv.textContent = b.extractDomain(url) || url;
+                infoDiv.appendChild(titleDiv);
+                infoDiv.appendChild(urlDiv);
+
+                item.appendChild(faviconDiv);
+                item.appendChild(infoDiv);
+
+                item.addEventListener('click', function() {
+                    hideSplitPicker();
+                    splitTabs(sourceTabId, tabId);
+                });
+
+                splitPickerList.appendChild(item);
+            });
+
+            splitPickerOverlay.classList.add('visible');
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function hideSplitPicker() {
+            splitPickerOverlay.classList.remove('visible');
+        }
+
+        function splitTabs(leftTabId, rightTabId) {
+            var leftTab = b.tabs.get(leftTabId);
+            var rightTab = b.tabs.get(rightTabId);
+            if (!leftTab || !rightTab) return;
+
+            // Hide the right tab's original tab element
+            rightTab.element.style.display = 'none';
+            rightTab.iframe.style.display = 'none';
+
+            // Create split data
+            var splitData = {
+                leftTabId: leftTabId,
+                rightTabId: rightTabId,
+                activePane: 'left',
+                wrapper: null,
+                leftIframe: null,
+                rightIframe: null
+            };
+
+            leftTab.splitData = splitData;
+            rightTab.splitData = splitData;
+
+            // Rebuild the tab element to show both titles
+            rebuildSplitTabElement(leftTab, rightTab);
+
+            // Create split content wrapper
+            var wrapper = document.createElement('div');
+            wrapper.className = 'split-content-wrapper';
+            wrapper.dataset.tabId = leftTabId;
+
+            var leftPane = document.createElement('div');
+            leftPane.className = 'split-pane active';
+            leftPane.id = 'splitPaneLeft_' + leftTabId;
+
+            var divider = document.createElement('div');
+            divider.className = 'split-divider';
+
+            var rightPane = document.createElement('div');
+            rightPane.className = 'split-pane inactive';
+            rightPane.id = 'splitPaneRight_' + leftTabId;
+
+            // Move iframes into panes
+            leftTab.iframe.style.display = 'block';
+            leftTab.iframe.classList.remove('tab-content');
+            leftTab.iframe.style.width = '100%';
+            leftTab.iframe.style.height = '100%';
+            leftTab.iframe.style.border = 'none';
+            leftPane.appendChild(leftTab.iframe);
+
+            rightTab.iframe.style.display = 'block';
+            rightTab.iframe.classList.remove('tab-content');
+            rightTab.iframe.style.width = '100%';
+            rightTab.iframe.style.height = '100%';
+            rightTab.iframe.style.border = 'none';
+            rightPane.appendChild(rightTab.iframe);
+
+            // Create overlays
+            var leftOverlay = createPaneOverlay(rightTab, 'left');
+            var rightOverlay = createPaneOverlay(leftTab, 'right');
+            
+            // Active pane shows X, inactive shows url+favicon
+            var leftIndicator = createActiveIndicator('left');
+            var rightIndicator = createActiveIndicator('right');
+
+            leftPane.appendChild(leftIndicator);
+            rightPane.appendChild(rightOverlay);
+            rightPane.appendChild(rightIndicator);
+            leftPane.appendChild(leftOverlay);
+
+            // Initially left is active
+            leftIndicator.style.display = 'flex';
+            leftOverlay.style.display = 'none';
+            rightIndicator.style.display = 'none';
+            rightOverlay.style.display = 'flex';
+
+            wrapper.appendChild(leftPane);
+            wrapper.appendChild(divider);
+            wrapper.appendChild(rightPane);
+
+            splitData.wrapper = wrapper;
+            splitData.leftIframe = leftTab.iframe;
+            splitData.rightIframe = rightTab.iframe;
+
+            b.contentArea.appendChild(wrapper);
+
+            // Show wrapper if this is the active tab
+            if (b.activeTabId === leftTabId) {
+                wrapper.style.display = 'flex';
+                wrapper.style.width = '100%';
+                wrapper.style.height = '100%';
+                wrapper.style.position = 'absolute';
+                wrapper.style.top = '0';
+                wrapper.style.left = '0';
+            } else {
+                wrapper.style.display = 'none';
+            }
+
+            // Click handlers for pane switching
+            leftPane.addEventListener('mousedown', function(e) {
+                if (e.target.closest('.split-pane-active-indicator')) return;
+                setActivePane(leftTabId, 'left');
+            });
+            rightPane.addEventListener('mousedown', function(e) {
+                if (e.target.closest('.split-pane-active-indicator')) return;
+                setActivePane(leftTabId, 'right');
+            });
+
+            // X buttons close that pane
+            leftIndicator.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeSplitPane(leftTabId, 'left');
+            });
+            rightIndicator.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeSplitPane(leftTabId, 'right');
+            });
+
+            // Divider drag
+            setupDividerDrag(divider, leftPane, rightPane);
+
+            // Update address bar
+            updateSplitAddressBar(leftTabId);
+
+            b.updateTabSizes();
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function createPaneOverlay(tab, side) {
+            var overlay = document.createElement('div');
+            overlay.className = 'split-pane-overlay ' + side + '-overlay';
+
+            var favicon = document.createElement('div');
+            favicon.className = 'split-pane-overlay-favicon';
+            var faviconImg = tab.element.querySelector('.tab-favicon img');
+            if (faviconImg && faviconImg.src) {
+                var img = document.createElement('img');
+                img.src = faviconImg.src;
+                favicon.appendChild(img);
+            }
+
+            var urlSpan = document.createElement('span');
+            urlSpan.className = 'split-pane-overlay-url';
+            var url = b.extractOriginalUrl(tab.currentUrl || tab.url || '');
+            urlSpan.textContent = b.extractDomain(url) || url;
+
+            overlay.appendChild(favicon);
+            overlay.appendChild(urlSpan);
+            return overlay;
+        }
+
+        function createActiveIndicator(side) {
+            var indicator = document.createElement('div');
+            indicator.className = 'split-pane-active-indicator ' + side + '-indicator';
+            indicator.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+            return indicator;
+        }
+
+        function setActivePane(splitHostTabId, pane) {
+            var hostTab = b.tabs.get(splitHostTabId);
+            if (!hostTab || !hostTab.splitData) return;
+            var sd = hostTab.splitData;
+            if (sd.activePane === pane) return;
+            sd.activePane = pane;
+
+            var leftPane = document.getElementById('splitPaneLeft_' + splitHostTabId);
+            var rightPane = document.getElementById('splitPaneRight_' + splitHostTabId);
+            if (!leftPane || !rightPane) return;
+
+            if (pane === 'left') {
+                leftPane.classList.add('active');
+                leftPane.classList.remove('inactive');
+                rightPane.classList.add('inactive');
+                rightPane.classList.remove('active');
+
+                // Show X on left, overlay on right
+                var li = leftPane.querySelector('.split-pane-active-indicator');
+                var lo = leftPane.querySelector('.split-pane-overlay');
+                var ri = rightPane.querySelector('.split-pane-active-indicator');
+                var ro = rightPane.querySelector('.split-pane-overlay');
+                if (li) li.style.display = 'flex';
+                if (lo) lo.style.display = 'none';
+                if (ri) ri.style.display = 'none';
+                if (ro) ro.style.display = 'flex';
+            } else {
+                rightPane.classList.add('active');
+                rightPane.classList.remove('inactive');
+                leftPane.classList.add('inactive');
+                leftPane.classList.remove('active');
+
+                var li = leftPane.querySelector('.split-pane-active-indicator');
+                var lo = leftPane.querySelector('.split-pane-overlay');
+                var ri = rightPane.querySelector('.split-pane-active-indicator');
+                var ro = rightPane.querySelector('.split-pane-overlay');
+                if (li) li.style.display = 'none';
+                if (lo) lo.style.display = 'flex';
+                if (ri) ri.style.display = 'flex';
+                if (ro) ro.style.display = 'none';
+            }
+
+            updateSplitAddressBar(splitHostTabId);
+        }
+
+        function updateSplitAddressBar(splitHostTabId) {
+            var hostTab = b.tabs.get(splitHostTabId);
+            if (!hostTab || !hostTab.splitData) return;
+            var sd = hostTab.splitData;
+
+            var activeTabId = sd.activePane === 'left' ? sd.leftTabId : sd.rightTabId;
+            var activeTab = b.tabs.get(activeTabId);
+            if (activeTab) {
+                var url = b.extractOriginalUrl(activeTab.currentUrl || activeTab.url || '');
+                b.addressBar.value = url;
+                var isSecure = url.startsWith('https://');
+                b.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+            }
+        }
+
+        function closeSplitPane(splitHostTabId, pane) {
+            var hostTab = b.tabs.get(splitHostTabId);
+            if (!hostTab || !hostTab.splitData) return;
+            var sd = hostTab.splitData;
+
+            var keepTabId = pane === 'left' ? sd.rightTabId : sd.leftTabId;
+            var removeTabId = pane === 'left' ? sd.leftTabId : sd.rightTabId;
+
+            unsplitTabKeeping(splitHostTabId, keepTabId, removeTabId);
+        }
+
+        function unsplitTab(splitHostTabId) {
+            var hostTab = b.tabs.get(splitHostTabId);
+            if (!hostTab || !hostTab.splitData) return;
+            var sd = hostTab.splitData;
+
+            var leftTab = b.tabs.get(sd.leftTabId);
+            var rightTab = b.tabs.get(sd.rightTabId);
+
+            // Remove wrapper
+            if (sd.wrapper && sd.wrapper.parentNode) {
+                // Move iframes back
+                if (leftTab) {
+                    b.contentArea.appendChild(leftTab.iframe);
+                    leftTab.iframe.className = 'tab-content';
+                    leftTab.iframe.style.width = '';
+                    leftTab.iframe.style.height = '';
+                    leftTab.iframe.style.display = b.activeTabId === sd.leftTabId ? 'block' : 'none';
+                }
+                if (rightTab) {
+                    b.contentArea.appendChild(rightTab.iframe);
+                    rightTab.iframe.className = 'tab-content';
+                    rightTab.iframe.style.width = '';
+                    rightTab.iframe.style.height = '';
+                    rightTab.iframe.style.display = 'none';
+                }
+                sd.wrapper.remove();
+            }
+
+            // Restore tab elements
+            if (leftTab) {
+                leftTab.splitData = null;
+                restoreTabElement(leftTab);
+            }
+            if (rightTab) {
+                rightTab.splitData = null;
+                rightTab.element.style.display = '';
+                restoreTabElement(rightTab);
+            }
+
+            // Switch to the left tab
+            if (leftTab) {
+                b.switchToTab(sd.leftTabId);
+            }
+
+            b.updateTabSizes();
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function unsplitTabKeeping(splitHostTabId, keepTabId, removeTabId) {
+            var hostTab = b.tabs.get(splitHostTabId);
+            if (!hostTab || !hostTab.splitData) return;
+            var sd = hostTab.splitData;
+
+            var keepTab = b.tabs.get(keepTabId);
+            var removeTab = b.tabs.get(removeTabId);
+
+            // Remove wrapper
+            if (sd.wrapper && sd.wrapper.parentNode) {
+                if (keepTab) {
+                    b.contentArea.appendChild(keepTab.iframe);
+                    keepTab.iframe.className = 'tab-content';
+                    keepTab.iframe.style.width = '';
+                    keepTab.iframe.style.height = '';
+                    keepTab.iframe.style.display = 'block';
+                }
+                sd.wrapper.remove();
+            }
+
+            if (keepTab) {
+                keepTab.splitData = null;
+                restoreTabElement(keepTab);
+            }
+
+            // Close the removed tab
+            if (removeTab) {
+                removeTab.splitData = null;
+                removeTab.element.remove();
+                removeTab.iframe.remove();
+                b.tabs.delete(removeTabId);
+            }
+
+            if (keepTab) {
+                b.activeTabId = null;
+                b.switchToTab(keepTabId);
+            }
+
+            b.updateTabSizes();
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function rebuildSplitTabElement(leftTab, rightTab) {
+            var tabEl = leftTab.element;
+            tabEl.classList.add('split-tab');
+
+            // Clear existing content
+            tabEl.innerHTML = '';
+
+            // Left section
+            var leftSection = document.createElement('div');
+            leftSection.className = 'split-tab-section';
+
+            var leftFavicon = document.createElement('div');
+            leftFavicon.className = 'tab-favicon';
+            var leftFaviconImg = leftTab.faviconUrl ? '<img src="' + leftTab.faviconUrl + '" width="16" height="16">' : '<i data-lucide="globe" width="16" height="16"></i>';
+            leftFavicon.innerHTML = leftFaviconImg;
+
+            var leftTitle = document.createElement('div');
+            leftTitle.className = 'tab-title';
+            leftTitle.textContent = leftTab.title || 'New Tab';
+
+            var leftClose = document.createElement('div');
+            leftClose.className = 'split-tab-close';
+            leftClose.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+            leftClose.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeSplitPane(leftTab.id, 'left');
+            });
+
+            leftSection.appendChild(leftFavicon);
+            leftSection.appendChild(leftTitle);
+            leftSection.appendChild(leftClose);
+
+            // Divider
+            var divider = document.createElement('div');
+            divider.className = 'split-tab-divider';
+
+            // Right section
+            var rightSection = document.createElement('div');
+            rightSection.className = 'split-tab-section';
+
+            var rightFavicon = document.createElement('div');
+            rightFavicon.className = 'tab-favicon';
+            var rightFaviconImg = rightTab.faviconUrl ? '<img src="' + rightTab.faviconUrl + '" width="16" height="16">' : '<i data-lucide="globe" width="16" height="16"></i>';
+            rightFavicon.innerHTML = rightFaviconImg;
+
+            var rightTitle = document.createElement('div');
+            rightTitle.className = 'tab-title';
+            rightTitle.textContent = rightTab.title || 'New Tab';
+
+            var rightClose = document.createElement('div');
+            rightClose.className = 'split-tab-close';
+            rightClose.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+            rightClose.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeSplitPane(leftTab.id, 'right');
+            });
+
+            rightSection.appendChild(rightFavicon);
+            rightSection.appendChild(rightTitle);
+            rightSection.appendChild(rightClose);
+
+            tabEl.appendChild(leftSection);
+            tabEl.appendChild(divider);
+            tabEl.appendChild(rightSection);
+        }
+
+        function restoreTabElement(tab) {
+            var tabEl = tab.element;
+            tabEl.classList.remove('split-tab');
+            tabEl.innerHTML = '';
+
+            var favicon = document.createElement('div');
+            favicon.className = 'tab-favicon';
+            if (tab.faviconUrl) {
+                favicon.innerHTML = '<img src="' + tab.faviconUrl + '" width="20" height="20">';
+            } else {
+                favicon.innerHTML = '<i data-lucide="globe" width="20" height="20"></i>';
+            }
+
+            var title = document.createElement('div');
+            title.className = 'tab-title';
+            title.textContent = tab.title || 'New Tab';
+
+            var close = document.createElement('div');
+            close.className = 'tab-close';
+            close.innerHTML = '<i data-lucide="x" width="12" height="12"></i>';
+            close.addEventListener('click', function(e) {
+                e.stopPropagation();
+                b.closeTab(tab.id);
+            });
+
+            tabEl.appendChild(favicon);
+            tabEl.appendChild(title);
+            tabEl.appendChild(close);
+        }
+
+        function setupDividerDrag(divider, leftPane, rightPane) {
+            var isDragging = false;
+            var startX = 0;
+            var startLeftWidth = 0;
+            var totalWidth = 0;
+
+            divider.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.clientX;
+                startLeftWidth = leftPane.offsetWidth;
+                totalWidth = leftPane.offsetWidth + rightPane.offsetWidth;
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                var dx = e.clientX - startX;
+                var newLeftWidth = Math.max(100, Math.min(totalWidth - 100, startLeftWidth + dx));
+                var leftPercent = (newLeftWidth / (totalWidth + 4)) * 100;
+                leftPane.style.flex = '0 0 ' + leftPercent + '%';
+                rightPane.style.flex = '1';
+            });
+
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+        }
+
+        // Patch switchToTab to handle split views
+        var origSwitchToTab = b.switchToTab.bind(b);
+        b.switchToTab = function(tabId) {
+            var tab = b.tabs.get(tabId);
+            if (tab && tab.splitData) {
+                var sd = tab.splitData;
+                // Only allow switching to the host tab (left tab)
+                var hostTabId = sd.leftTabId;
+                if (tabId !== hostTabId) {
+                    tabId = hostTabId;
+                    tab = b.tabs.get(tabId);
+                }
+
+                // Hide all other content
+                b.tabs.forEach(function(t, id) {
+                    if (id !== tabId) {
+                        if (t.splitData && t.splitData.wrapper) {
+                            t.splitData.wrapper.style.display = 'none';
+                        }
+                        if (!t.splitData) {
+                            t.iframe.style.display = 'none';
+                        }
+                        t.element.classList.remove('active');
+                    }
+                });
+
+                if (b.activeTabId && b.activeTabId !== tabId) {
+                    var prevTab = b.tabs.get(b.activeTabId);
+                    if (prevTab) {
+                        prevTab.element.classList.remove('active');
+                        if (!prevTab.splitData) {
+                            prevTab.iframe.style.display = 'none';
+                        } else if (prevTab.splitData.wrapper) {
+                            prevTab.splitData.wrapper.style.display = 'none';
+                        }
+                    }
+                }
+
+                b.activeTabId = tabId;
+                tab.element.classList.add('active');
+
+                if (sd.wrapper) {
+                    sd.wrapper.style.display = 'flex';
+                    sd.wrapper.style.width = '100%';
+                    sd.wrapper.style.height = '100%';
+                    sd.wrapper.style.position = 'absolute';
+                    sd.wrapper.style.top = '0';
+                    sd.wrapper.style.left = '0';
+                }
+
+                updateSplitAddressBar(tabId);
+                return;
+            }
+
+            // Hide any split wrappers
+            b.tabs.forEach(function(t) {
+                if (t.splitData && t.splitData.wrapper) {
+                    t.splitData.wrapper.style.display = 'none';
+                }
+            });
+
+            origSwitchToTab(tabId);
+        };
+
+        // Patch showContextMenu to show split options
+        var origShowContextMenu = b.showContextMenu.bind(b);
+        b.showContextMenu = function(x, y, tabId) {
+            origShowContextMenu(x, y, tabId);
+            var tab = b.tabs.get(tabId);
+            if (tab && tab.splitData) {
+                arrangeSplitViewBtn.style.display = 'flex';
+            } else {
+                arrangeSplitViewBtn.style.display = 'none';
+            }
+            if (window.lucide) lucide.createIcons();
+        };
+
+        // Context menu: Separate views
+        separateViewsBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            if (tabId) {
+                var tab = b.tabs.get(tabId);
+                if (tab && tab.splitData) {
+                    unsplitTab(tab.splitData.leftTabId);
+                }
+            }
+            b.hideContextMenu();
+        });
+
+        // Context menu: Close left view
+        closeLeftViewBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            if (tabId) {
+                var tab = b.tabs.get(tabId);
+                if (tab && tab.splitData) {
+                    closeSplitPane(tab.splitData.leftTabId, 'left');
+                }
+            }
+            b.hideContextMenu();
+        });
+
+        // Context menu: Close right view
+        closeRightViewBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            if (tabId) {
+                var tab = b.tabs.get(tabId);
+                if (tab && tab.splitData) {
+                    closeSplitPane(tab.splitData.leftTabId, 'right');
+                }
+            }
+            b.hideContextMenu();
+        });
+
+        // Context menu: Reverse views
+        reverseViewsBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            if (tabId) {
+                var tab = b.tabs.get(tabId);
+                if (tab && tab.splitData) {
+                    reverseViews(tab.splitData.leftTabId);
+                }
+            }
+            b.hideContextMenu();
+        });
+
+        function reverseViews(splitHostTabId) {
+            var hostTab = b.tabs.get(splitHostTabId);
+            if (!hostTab || !hostTab.splitData) return;
+            var sd = hostTab.splitData;
+
+            // Swap left and right
+            var tempTabId = sd.leftTabId;
+            sd.leftTabId = sd.rightTabId;
+            sd.rightTabId = tempTabId;
+
+            var tempIframe = sd.leftIframe;
+            sd.leftIframe = sd.rightIframe;
+            sd.rightIframe = tempIframe;
+
+            // Reverse active pane
+            sd.activePane = sd.activePane === 'left' ? 'right' : 'left';
+
+            // Rebuild the wrapper
+            if (sd.wrapper) {
+                var leftPane = sd.wrapper.querySelector('.split-pane:first-child');
+                var rightPane = sd.wrapper.querySelector('.split-pane:last-child');
+                var divider = sd.wrapper.querySelector('.split-divider');
+
+                if (leftPane && rightPane && divider) {
+                    sd.wrapper.innerHTML = '';
+                    sd.wrapper.appendChild(rightPane);
+                    sd.wrapper.appendChild(divider);
+                    sd.wrapper.appendChild(leftPane);
+
+                    // Update IDs
+                    rightPane.id = 'splitPaneLeft_' + splitHostTabId;
+                    leftPane.id = 'splitPaneRight_' + splitHostTabId;
+                }
+            }
+
+            // Rebuild tab element
+            var leftTab = b.tabs.get(sd.leftTabId);
+            var rightTab = b.tabs.get(sd.rightTabId);
+            if (leftTab && rightTab) {
+                rebuildSplitTabElement(hostTab, rightTab);
+            }
+
+            setActivePane(splitHostTabId, sd.activePane);
+            if (window.lucide) lucide.createIcons();
+        }
+
+        // Patch closeTab to handle split tabs
+        var origCloseTab = b.closeTab.bind(b);
+        b.closeTab = function(tabId) {
+            var tab = b.tabs.get(tabId);
+            if (tab && tab.splitData) {
+                var sd = tab.splitData;
+                if (tabId === sd.leftTabId) {
+                    closeSplitPane(sd.leftTabId, 'left');
+                } else {
+                    closeSplitPane(sd.leftTabId, 'right');
+                }
+                return;
+            }
+            origCloseTab(tabId);
+        };
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    setTimeout(initSplitScreen, 600);
 })();
 </script>
 </body>
