@@ -13,7 +13,6 @@
 
 
 
-
  
 
 <!DOCTYPE html>
@@ -864,7 +863,7 @@
             transform: scaleX(0);
             transform-origin: left;
             transition: transform 0.3s ease;
-            z-index: 5;
+            z-index: 10;
         }
 
         .loading-indicator.loading {
@@ -2580,7 +2579,7 @@ body {
         border: 1px solid #e0e0e0;
         border-radius: 0 0 12px 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        z-index: 99999;
+        z-index: 9999;
         max-height: 400px;
         overflow-y: auto;
         display: none;
@@ -3098,10 +3097,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.newTabBtn.addEventListener('click', () => this.createNewTab());
                 this.addressBar.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
-                        // Hide search suggestions and blur address bar immediately
-                        const suggestionsBox = document.getElementById('searchSuggestions');
-                        if (suggestionsBox) suggestionsBox.classList.remove('visible');
-                        this.addressBar.blur();
                         this.navigate(this.addressBar.value);
                     }
                 });
@@ -4313,15 +4308,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 150);
             }
 
-             navigate(input) {
+            navigate(input) {
                 if (!this.activeTabId) return;
 
                 let url = input.trim();
                 if (!url) return;
-
-                // Prevent double-navigation: if the input is the same URL we already navigated to, skip
-                const tab = this.tabs.get(this.activeTabId);
-                if (tab && tab.currentUrl && url === tab.currentUrl) return;
 
 if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
@@ -4426,11 +4417,7 @@ if (this.isBlockedUrl(url)) {
             isUrl(input) {
                 const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
                 const localhostPattern = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/;
-                if (urlPattern.test(input) || localhostPattern.test(input)) return true;
-                // Only treat input with a dot as a URL if it looks like a domain
-                // (no spaces, and the dot is followed by valid TLD-like chars)
-                if (input.includes('.') && !/\s/.test(input) && /\.[a-z]{2,}$/i.test(input)) return true;
-                return false;
+                return urlPattern.test(input) || localhostPattern.test(input) || input.includes('.');
             }
 
             loadUrl(url) {
@@ -7150,11 +7137,6 @@ menu.addEventListener('mouseleave', hideMenu);
             }
         });
 
-        addressBar.addEventListener('blur', function() {
-            // Small delay so click events on suggestions can fire first
-            setTimeout(function() { hideSuggestions(); }, 150);
-        });
-
         addressBar.addEventListener('keydown', function(e) {
             if (!suggestionsBox.classList.contains('visible')) return;
             
@@ -7299,7 +7281,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 var addressBar = document.getElementById('addressBar');
                 addressBar.value = suggestion.text;
                 hideSuggestions();
-                addressBar.blur();
                 if (window.browser) window.browser.navigate(suggestion.text);
             });
 
