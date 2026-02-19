@@ -2910,6 +2910,9 @@ body {
                 <button class="nav-btn" id="refreshBtn">
                     <i data-lucide="rotate-cw" width="16" height="16"></i>
                 </button>
+                <button class="nav-btn split-nav-btn" id="splitNavBtn" title="Split screen">
+                    <i data-lucide="columns-2" width="16" height="16"></i>
+                </button>
             </div>
             
             <div class="address-bar-wrapper" style="position:relative;">
@@ -2939,9 +2942,6 @@ body {
                 </button>
                 <button class="toolbar-btn cloud-btn" id="cloudBtn" title="">
                     <i data-lucide="cloud" width="16" height="16"></i>
-                </button>
-                <button class="toolbar-btn split-btn" id="sidemultitaskaddedbynexorayayayay" title="">
-                    <i data-lucide="square-split-horizontal" width="16" height="16"></i>
                 </button>
                 
             </div>
@@ -3084,6 +3084,11 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
 
         <div class="context-menu" id="contextMenu">
+            <div class="context-menu-item" id="contextMenuUrl" style="font-size:12px;color:#888;pointer-events:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px;">
+                <i data-lucide="globe" width="14" height="14"></i>
+                <span id="contextMenuUrlText"></span>
+            </div>
+            <div class="context-menu-separator"></div>
             <button class="context-menu-item" id="pinTabBtn">
                 <i data-lucide="pin" width="14" height="14"></i>
                 Pin tab
@@ -3346,7 +3351,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.aiBtn = document.getElementById('aiBtn');
                 this.cloudBtn = document.getElementById('cloudBtn');
                 this.geforcenow = document.getElementById('geforcenow');
-                this.sidemultitaskaddedbynexorayayayay = document.getElementById('sidemultitaskaddedbynexorayayayay');
+                this.sidemultitaskaddedbynexorayayayay = document.getElementById('splitNavBtn');
                 this.sidebar = document.getElementById('sidebar');
                 this.sidebarTitle = document.getElementById('sidebarTitle');
                 this.sidebarClose = document.getElementById('sidebarClose');
@@ -3431,7 +3436,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.movies.addEventListener('click', () => this.handlePhoneClick());
                 this.aiBtn.addEventListener('click', () => this.handleAiClick());
                 this.cloudBtn.addEventListener('click', () => this.handleCloudClick());
-                this.sidemultitaskaddedbynexorayayayay.addEventListener('click', () => this.handleSplitClick());
+                this.sidemultitaskaddedbynexorayayayay.addEventListener('click', () => b.handleSplitClick());
 
                 this.aiMenuBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -8014,6 +8019,14 @@ menu.addEventListener('mouseleave', hideMenu);
         const origShowContextMenu = b.showContextMenu.bind(b);
         b.showContextMenu = function(x, y, tabId) {
             origShowContextMenu(x, y, tabId);
+
+            const tab = this.tabs.get(tabId);
+            const urlTextEl = document.getElementById('contextMenuUrlText');
+            if (tab && urlTextEl) {
+                const currentUrl = tab.currentUrl || tab.url || '';
+                const displayUrl = this.extractOriginalUrl ? this.extractOriginalUrl(currentUrl) : currentUrl;
+                urlTextEl.textContent = displayUrl || 'New Tab';
+            }
             
             const splitSep = document.getElementById('splitMenuSeparator');
             const arrangeBtn = document.getElementById('arrangeSplitBtn');
