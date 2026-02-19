@@ -2774,9 +2774,37 @@ body {
         flex: 1;
         min-width: 0;
         padding: 0 6px;
-        height: 100%;
+        height: 28px;
         border-radius: 6px 6px 0 0;
         position: relative;
+        background: #f0f0f0;
+        margin-top: auto;
+    }
+    .split-tab-section.active-section {
+        background: #ffffff;
+    }
+    /* Mask-image rounding for mini tabs - like real browser tabs */
+    .split-tab-section::before {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: -8px;
+        width: 8px;
+        height: 8px;
+        background: inherit;
+        mask-image: radial-gradient(circle at 0 0, transparent 8px, black 0);
+        -webkit-mask-image: radial-gradient(circle at 0 0, transparent 8px, black 0);
+    }
+    .split-tab-section::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        right: -8px;
+        width: 8px;
+        height: 8px;
+        background: inherit;
+        mask-image: radial-gradient(circle at 8px 0, transparent 8px, black 0);
+        -webkit-mask-image: radial-gradient(circle at 8px 0, transparent 8px, black 0);
     }
     .split-tab-section .tab-favicon {
         margin-right: 4px;
@@ -2807,14 +2835,16 @@ body {
         height: 20px;
         background: rgba(0,0,0,0.15);
         flex-shrink: 0;
+        margin: 0 2px;
     }
 
-    /* Split content area */
+    /* Split content area - LIGHT THEMED */
     .split-content-wrapper {
         display: flex;
         width: 100%;
         height: 100%;
         position: relative;
+        background: #ffffff;
     }
     .split-pane {
         flex: 1;
@@ -2832,9 +2862,27 @@ body {
         cursor: col-resize;
         flex-shrink: 0;
         transition: background 0.15s;
+        z-index: 10;
     }
     .split-divider:hover {
         background: #007aff;
+    }
+    .split-divider:active {
+        background: #007aff;
+    }
+    /* Full-screen overlay during divider drag to prevent iframe stealing events */
+    .split-drag-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 99999;
+        cursor: col-resize;
+        display: none;
+    }
+    .split-drag-overlay.active {
+        display: block;
     }
 
     /* Inactive pane overlay */
@@ -3166,10 +3214,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <i data-lucide="panel-right-close" width="14" height="14"></i>
                         Close right view
                     </button>
-                    <button class="context-menu-item" id="reverseViewsBtn">
-                        <i data-lucide="arrow-left-right" width="14" height="14"></i>
-                        Reverse views
-                    </button>
+                    <!-- Reverse views removed -->
                 </div>
             </div>
             <button class="context-menu-item" id="duplicateTabBtn">
@@ -7682,6 +7727,11 @@ menu.addEventListener('mouseleave', hideMenu);
 <script>
 // ===== SPLIT SCREEN FUNCTIONALITY =====
 (function() {
+    // Global drag overlay for divider resizing
+    var splitDragOverlay = document.createElement('div');
+    splitDragOverlay.className = 'split-drag-overlay';
+    document.body.appendChild(splitDragOverlay);
+
     function initSplitScreen() {
         var b = window.browser;
         if (!b) { setTimeout(initSplitScreen, 300); return; }
@@ -7694,10 +7744,6 @@ menu.addEventListener('mouseleave', hideMenu);
         var separateViewsBtn = document.getElementById('separateViewsBtn');
         var closeLeftViewBtn = document.getElementById('closeLeftViewBtn');
         var closeRightViewBtn = document.getElementById('closeRightViewBtn');
-        var reverseViewsBtn = document.getElementById('reverseViewsBtn');
-
-        // --- Split state tracking on each tab ---
-        // tab.splitData = { leftTabId, rightTabId, activePane: 'left'|'right', leftIframe, rightIframe, wrapper }
 
         // Open the split picker
         splitScreenBtn.addEventListener('click', function(e) {
@@ -7705,7 +7751,6 @@ menu.addEventListener('mouseleave', hideMenu);
             var activeTab = b.tabs.get(b.activeTabId);
             if (!activeTab) return;
 
-            // If already in split, unsplit
             if (activeTab.splitData) {
                 unsplitTab(b.activeTabId);
                 return;
@@ -7730,7 +7775,7 @@ menu.addEventListener('mouseleave', hideMenu);
             splitPickerList.innerHTML = '';
             b.tabs.forEach(function(tab, tabId) {
                 if (tabId === sourceTabId) return;
-                if (tab.splitData) return; // already split
+                if (tab.splitData) return;
 
                 var item = document.createElement('div');
                 item.className = 'split-picker-item';
@@ -7782,11 +7827,9 @@ menu.addEventListener('mouseleave', hideMenu);
             var rightTab = b.tabs.get(rightTabId);
             if (!leftTab || !rightTab) return;
 
-            // Hide the right tab's original tab element
+            // Hide the right tab element in the tab bar (don't count it for sizing)
             rightTab.element.style.display = 'none';
-            rightTab.iframe.style.display = 'none';
 
-            // Create split data
             var splitData = {
                 leftTabId: leftTabId,
                 rightTabId: rightTabId,
@@ -7799,10 +7842,10 @@ menu.addEventListener('mouseleave', hideMenu);
             leftTab.splitData = splitData;
             rightTab.splitData = splitData;
 
-            // Rebuild the tab element to show both titles
+            // Rebuild tab element to show both titles
             rebuildSplitTabElement(leftTab, rightTab);
 
-            // Create split content wrapper
+            // Create split content wrapper - NO RELOAD, just reparent existing iframes
             var wrapper = document.createElement('div');
             wrapper.className = 'split-content-wrapper';
             wrapper.dataset.tabId = leftTabId;
@@ -7818,26 +7861,25 @@ menu.addEventListener('mouseleave', hideMenu);
             rightPane.className = 'split-pane inactive';
             rightPane.id = 'splitPaneRight_' + leftTabId;
 
-            // Move iframes into panes
+            // Reparent existing iframes WITHOUT reloading
             leftTab.iframe.style.display = 'block';
-            leftTab.iframe.classList.remove('tab-content');
+            leftTab.iframe.classList.remove('tab-content', 'active');
             leftTab.iframe.style.width = '100%';
             leftTab.iframe.style.height = '100%';
             leftTab.iframe.style.border = 'none';
             leftPane.appendChild(leftTab.iframe);
 
             rightTab.iframe.style.display = 'block';
-            rightTab.iframe.classList.remove('tab-content');
+            rightTab.iframe.classList.remove('tab-content', 'active');
             rightTab.iframe.style.width = '100%';
             rightTab.iframe.style.height = '100%';
             rightTab.iframe.style.border = 'none';
             rightPane.appendChild(rightTab.iframe);
 
-            // Create overlays
+            // Create overlays for inactive pane info
             var leftOverlay = createPaneOverlay(rightTab, 'left');
             var rightOverlay = createPaneOverlay(leftTab, 'right');
-            
-            // Active pane shows X, inactive shows url+favicon
+
             var leftIndicator = createActiveIndicator('left');
             var rightIndicator = createActiveIndicator('right');
 
@@ -7894,10 +7936,9 @@ menu.addEventListener('mouseleave', hideMenu);
                 closeSplitPane(leftTabId, 'right');
             });
 
-            // Divider drag
+            // Divider drag with overlay to prevent iframe stealing mouse
             setupDividerDrag(divider, leftPane, rightPane);
 
-            // Update address bar
             updateSplitAddressBar(leftTabId);
 
             b.updateTabSizes();
@@ -7951,7 +7992,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 rightPane.classList.add('inactive');
                 rightPane.classList.remove('active');
 
-                // Show X on left, overlay on right
                 var li = leftPane.querySelector('.split-pane-active-indicator');
                 var lo = leftPane.querySelector('.split-pane-overlay');
                 var ri = rightPane.querySelector('.split-pane-active-indicator');
@@ -7976,7 +8016,20 @@ menu.addEventListener('mouseleave', hideMenu);
                 if (ro) ro.style.display = 'none';
             }
 
+            // Update active section styling in tab bar
+            updateSplitTabSections(splitHostTabId);
             updateSplitAddressBar(splitHostTabId);
+        }
+
+        function updateSplitTabSections(splitHostTabId) {
+            var hostTab = b.tabs.get(splitHostTabId);
+            if (!hostTab || !hostTab.splitData) return;
+            var sd = hostTab.splitData;
+            var sections = hostTab.element.querySelectorAll('.split-tab-section');
+            if (sections.length >= 2) {
+                sections[0].classList.toggle('active-section', sd.activePane === 'left');
+                sections[1].classList.toggle('active-section', sd.activePane === 'right');
+            }
         }
 
         function updateSplitAddressBar(splitHostTabId) {
@@ -8013,9 +8066,8 @@ menu.addEventListener('mouseleave', hideMenu);
             var leftTab = b.tabs.get(sd.leftTabId);
             var rightTab = b.tabs.get(sd.rightTabId);
 
-            // Remove wrapper
+            // Move iframes back to content area WITHOUT reloading
             if (sd.wrapper && sd.wrapper.parentNode) {
-                // Move iframes back
                 if (leftTab) {
                     b.contentArea.appendChild(leftTab.iframe);
                     leftTab.iframe.className = 'tab-content';
@@ -8046,6 +8098,7 @@ menu.addEventListener('mouseleave', hideMenu);
 
             // Switch to the left tab
             if (leftTab) {
+                b.activeTabId = null; // force re-switch
                 b.switchToTab(sd.leftTabId);
             }
 
@@ -8061,7 +8114,7 @@ menu.addEventListener('mouseleave', hideMenu);
             var keepTab = b.tabs.get(keepTabId);
             var removeTab = b.tabs.get(removeTabId);
 
-            // Remove wrapper
+            // Move kept iframe back WITHOUT reloading
             if (sd.wrapper && sd.wrapper.parentNode) {
                 if (keepTab) {
                     b.contentArea.appendChild(keepTab.iframe);
@@ -8078,7 +8131,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 restoreTabElement(keepTab);
             }
 
-            // Close the removed tab
             if (removeTab) {
                 removeTab.splitData = null;
                 removeTab.element.remove();
@@ -8098,13 +8150,11 @@ menu.addEventListener('mouseleave', hideMenu);
         function rebuildSplitTabElement(leftTab, rightTab) {
             var tabEl = leftTab.element;
             tabEl.classList.add('split-tab');
-
-            // Clear existing content
             tabEl.innerHTML = '';
 
             // Left section
             var leftSection = document.createElement('div');
-            leftSection.className = 'split-tab-section';
+            leftSection.className = 'split-tab-section active-section';
 
             var leftFavicon = document.createElement('div');
             leftFavicon.className = 'tab-favicon';
@@ -8203,6 +8253,8 @@ menu.addEventListener('mouseleave', hideMenu);
                 startLeftWidth = leftPane.offsetWidth;
                 totalWidth = leftPane.offsetWidth + rightPane.offsetWidth;
                 e.preventDefault();
+                // Show overlay to prevent iframes from stealing mouse events
+                splitDragOverlay.classList.add('active');
             });
 
             document.addEventListener('mousemove', function(e) {
@@ -8215,51 +8267,46 @@ menu.addEventListener('mouseleave', hideMenu);
             });
 
             document.addEventListener('mouseup', function() {
-                isDragging = false;
+                if (isDragging) {
+                    isDragging = false;
+                    splitDragOverlay.classList.remove('active');
+                }
             });
         }
 
-        // Patch switchToTab to handle split views
+        // Patch switchToTab to handle split views properly
         var origSwitchToTab = b.switchToTab.bind(b);
         b.switchToTab = function(tabId) {
             var tab = b.tabs.get(tabId);
+
+            // If clicking on the right tab of a split, redirect to host
             if (tab && tab.splitData) {
                 var sd = tab.splitData;
-                // Only allow switching to the host tab (left tab)
                 var hostTabId = sd.leftTabId;
                 if (tabId !== hostTabId) {
                     tabId = hostTabId;
                     tab = b.tabs.get(tabId);
                 }
+            }
 
-                // Hide all other content
-                b.tabs.forEach(function(t, id) {
-                    if (id !== tabId) {
-                        if (t.splitData && t.splitData.wrapper) {
-                            t.splitData.wrapper.style.display = 'none';
-                        }
-                        if (!t.splitData) {
-                            t.iframe.style.display = 'none';
-                        }
-                        t.element.classList.remove('active');
-                    }
-                });
-
-                if (b.activeTabId && b.activeTabId !== tabId) {
-                    var prevTab = b.tabs.get(b.activeTabId);
-                    if (prevTab) {
-                        prevTab.element.classList.remove('active');
-                        if (!prevTab.splitData) {
-                            prevTab.iframe.style.display = 'none';
-                        } else if (prevTab.splitData.wrapper) {
-                            prevTab.splitData.wrapper.style.display = 'none';
-                        }
-                    }
+            // First hide ALL split wrappers and non-split iframes
+            b.tabs.forEach(function(t, id) {
+                if (t.splitData && t.splitData.wrapper && t.splitData.leftTabId === id) {
+                    t.splitData.wrapper.style.display = 'none';
                 }
+                // Only hide iframes that are NOT inside a split wrapper
+                if (!t.splitData) {
+                    t.iframe.style.display = 'none';
+                }
+                t.element.classList.remove('active');
+            });
 
+            if (tab && tab.splitData) {
+                var sd = tab.splitData;
                 b.activeTabId = tabId;
                 tab.element.classList.add('active');
 
+                // Show the split wrapper
                 if (sd.wrapper) {
                     sd.wrapper.style.display = 'flex';
                     sd.wrapper.style.width = '100%';
@@ -8269,18 +8316,65 @@ menu.addEventListener('mouseleave', hideMenu);
                     sd.wrapper.style.left = '0';
                 }
 
+                // Make sure both iframes inside the wrapper are visible
+                sd.leftIframe.style.display = 'block';
+                sd.rightIframe.style.display = 'block';
+
                 updateSplitAddressBar(tabId);
                 return;
             }
 
-            // Hide any split wrappers
-            b.tabs.forEach(function(t) {
-                if (t.splitData && t.splitData.wrapper) {
-                    t.splitData.wrapper.style.display = 'none';
+            // Non-split tab: use original
+            origSwitchToTab(tabId);
+        };
+
+        // Patch updateTabSizes to account for hidden split partner tabs and split-tab width
+        var origUpdateTabSizes = b.updateTabSizes.bind(b);
+        b.updateTabSizes = function() {
+            var regularTabs = Array.from(b.tabs.values()).filter(function(t) {
+                return !t.pinned && t.element.style.display !== 'none';
+            });
+            var pinnedTabs = Array.from(b.tabs.values()).filter(function(t) { return t.pinned; });
+
+            if (regularTabs.length === 0) return;
+
+            var tabBarWidth = b.tabBar.offsetWidth;
+            var newTabBtnWidth = 32;
+            var pinnedTabsWidth = pinnedTabs.length * 28;
+            var availableWidth = tabBarWidth - newTabBtnWidth - pinnedTabsWidth - 20;
+
+            // Count split tabs as needing more width
+            var totalUnits = 0;
+            regularTabs.forEach(function(tab) {
+                if (tab.element.classList.contains('split-tab')) {
+                    totalUnits += 2; // split tabs count as 2
+                } else {
+                    totalUnits += 1;
                 }
             });
 
-            origSwitchToTab(tabId);
+            var unitWidth = Math.max(32, availableWidth / totalUnits);
+            unitWidth = Math.min(240, unitWidth);
+
+            regularTabs.forEach(function(tab) {
+                var tabElement = tab.element;
+                var w = unitWidth;
+                if (tabElement.classList.contains('split-tab')) {
+                    w = Math.min(400, unitWidth * 2);
+                }
+                tabElement.style.minWidth = w + 'px';
+                tabElement.style.maxWidth = w + 'px';
+                tabElement.style.width = w + 'px';
+
+                tabElement.classList.remove('very-small');
+                if (w <= 80 && !tabElement.classList.contains('split-tab')) {
+                    tabElement.classList.add('very-small');
+                }
+            });
+
+            b.tabBar.style.display = 'none';
+            b.tabBar.offsetHeight;
+            b.tabBar.style.display = 'flex';
         };
 
         // Patch showContextMenu to show split options
@@ -8331,64 +8425,6 @@ menu.addEventListener('mouseleave', hideMenu);
             }
             b.hideContextMenu();
         });
-
-        // Context menu: Reverse views
-        reverseViewsBtn.addEventListener('click', function() {
-            var tabId = b.contextMenuTabId;
-            if (tabId) {
-                var tab = b.tabs.get(tabId);
-                if (tab && tab.splitData) {
-                    reverseViews(tab.splitData.leftTabId);
-                }
-            }
-            b.hideContextMenu();
-        });
-
-        function reverseViews(splitHostTabId) {
-            var hostTab = b.tabs.get(splitHostTabId);
-            if (!hostTab || !hostTab.splitData) return;
-            var sd = hostTab.splitData;
-
-            // Swap left and right
-            var tempTabId = sd.leftTabId;
-            sd.leftTabId = sd.rightTabId;
-            sd.rightTabId = tempTabId;
-
-            var tempIframe = sd.leftIframe;
-            sd.leftIframe = sd.rightIframe;
-            sd.rightIframe = tempIframe;
-
-            // Reverse active pane
-            sd.activePane = sd.activePane === 'left' ? 'right' : 'left';
-
-            // Rebuild the wrapper
-            if (sd.wrapper) {
-                var leftPane = sd.wrapper.querySelector('.split-pane:first-child');
-                var rightPane = sd.wrapper.querySelector('.split-pane:last-child');
-                var divider = sd.wrapper.querySelector('.split-divider');
-
-                if (leftPane && rightPane && divider) {
-                    sd.wrapper.innerHTML = '';
-                    sd.wrapper.appendChild(rightPane);
-                    sd.wrapper.appendChild(divider);
-                    sd.wrapper.appendChild(leftPane);
-
-                    // Update IDs
-                    rightPane.id = 'splitPaneLeft_' + splitHostTabId;
-                    leftPane.id = 'splitPaneRight_' + splitHostTabId;
-                }
-            }
-
-            // Rebuild tab element
-            var leftTab = b.tabs.get(sd.leftTabId);
-            var rightTab = b.tabs.get(sd.rightTabId);
-            if (leftTab && rightTab) {
-                rebuildSplitTabElement(hostTab, rightTab);
-            }
-
-            setActivePane(splitHostTabId, sd.activePane);
-            if (window.lucide) lucide.createIcons();
-        }
 
         // Patch closeTab to handle split tabs
         var origCloseTab = b.closeTab.bind(b);
