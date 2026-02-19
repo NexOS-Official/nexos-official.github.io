@@ -7320,6 +7320,18 @@ menu.addEventListener('mouseleave', hideMenu);
         return div.innerHTML;
     }
 
+    // Hide suggestions when iframe gains focus (click inside iframe)
+    window.addEventListener('blur', function() {
+        hideSuggestions();
+    });
+
+    // Polling fallback: detect when an iframe steals focus
+    setInterval(function() {
+        if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+            hideSuggestions();
+        }
+    }, 200);
+
     setTimeout(initSearchSuggestions, 500);
 })();
 </script>
