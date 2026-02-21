@@ -134,11 +134,10 @@
         let isVideoHidden = false;
         let isUIHidden = false;
         let currentTrack = { title: 'Not Playing', artist: 'Select a song' };
-        let failedVideoIds = new Set();
-        let consecutiveErrors = 0;
-        const MAX_CONSECUTIVE_ERRORS = 5;
         let searchRetryCount = 0;
-        const MAX_SEARCH_RETRIES = 3;
+        let playerErrorCount = 0;
+        const MAX_SEARCH_RETRIES = 8;
+        const MAX_PLAYER_ERRORS = 5;
 
         function loadLikedSongs() {
             const saved = localStorage.getItem('likedSongs');
@@ -227,14 +226,16 @@
             return API_KEYS[currentApiKeyIndex];
         }
 
-        function searchMusic(query, retryCount = 0) {
+        function searchMusic(query) {
             if (!query || query.trim() === '') return;
 
             const apiKey = getApiKey();
             if (!apiKey) return;
 
             const searchResults = document.getElementById('search-results');
-            searchResults.innerHTML = '<div class="loading"><div class="spinner"></div><span>Searching...</span></div>';
+            if (searchRetryCount === 0) {
+                searchResults.innerHTML = '<div class="loading"><div class="spinner"></div><span>Searching...</span></div>';
+            }
             searchResults.classList.remove('hidden');
 
             document.querySelectorAll('.tab-button').forEach(tab => tab.classList.remove('active'));
@@ -243,8 +244,6 @@
             document.getElementById('placeholder').classList.add('hidden');
 
             currentVideoIndex = -1;
-            failedVideoIds.clear();
-            consecutiveErrors = 0;
 
             const specialArtists = ["nessa barrett", "nessabarrett"];
             let isSpecialArtistSearch = specialArtists.some(artist =>
@@ -257,16 +256,19 @@
 
             fetch(url)
                 .then(response => {
-                    if (response.status === 403 || response.status === 429) {
-                        throw new Error(`QUOTA_EXCEEDED:${response.status}`);
+                    if (!response.ok) {
+                        if (response.status === 403 || response.status === 429) {
+                            throw new Error('QUOTA_EXCEEDED');
+                        }
+                        throw new Error(`Network error: ${response.status}`);
                     }
-                    if (!response.ok) throw new Error(`Network error: ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
                     if (data.error) {
-                        throw new Error(`API error: ${data.error.message}`);
+                        throw new Error('QUOTA_EXCEEDED');
                     }
+                    searchRetryCount = 0;
                     const results = document.getElementById('search-results');
                     currentSearchResults = data.items || [];
                     results.innerHTML = '';
@@ -302,7 +304,7 @@
 
                         div.addEventListener('click', function(e) {
                             if (e.target.closest('.like-button')) return;
-                            consecutiveErrors = 0;
+                            playerErrorCount = 0;
                             playVideo(video.id.videoId, index);
                             updateTrackInfo(video.snippet.title, video.snippet.channelTitle);
                         });
@@ -316,15 +318,17 @@
                     });
                 })
                 .catch((error) => {
-                    console.error('Search error:', error);
-                    
-                    if (retryCount < MAX_SEARCH_RETRIES && API_KEYS.length > 1) {
+                    console.warn('Search error with key index', currentApiKeyIndex, ':', error.message);
+
+                    if (searchRetryCount < MAX_SEARCH_RETRIES && API_KEYS.length > 1) {
+                        searchRetryCount++;
                         currentApiKeyIndex = (currentApiKeyIndex + 1) % API_KEYS.length;
-                        console.log(`Retrying with API key index ${currentApiKeyIndex} (attempt ${retryCount + 1})`);
-                        searchMusic(query, retryCount + 1);
+                        console.log('Retrying with key index', currentApiKeyIndex, '(attempt', searchRetryCount, ')');
+                        searchMusic(query);
                     } else {
+                        searchRetryCount = 0;
                         document.getElementById('search-results').innerHTML =
-                            '<div class="empty-state"><i class="bi bi-exclamation-circle"></i><p>Error searching. Please try again.</p></div>';
+                            '<div class="empty-state"><i class="bi bi-exclamation-circle"></i><p>All API keys exhausted. Please try again later.</p></div>';
                     }
                 });
         }
@@ -455,14 +459,6 @@
         function playVideo(videoId, index) {
             if (!videoId) {
                 console.error("No video ID provided");
-                return;
-            }
-
-            // Skip videos that already failed
-            if (failedVideoIds.has(videoId)) {
-                console.warn(`Skipping failed video: ${videoId}`);
-                currentVideoIndex = index;
-                playNext();
                 return;
             }
 
@@ -611,28 +607,15 @@
         }
 
         function onPlayerError(event) {
-            console.error('Player error:', event.data);
-            consecutiveErrors++;
-            
-            // Track which video failed
-            if (player && player.getVideoUrl) {
-                try {
-                    const url = player.getVideoUrl();
-                    const match = url.match(/[?&]v=([^&]+)/);
-                    if (match) failedVideoIds.add(match[1]);
-                } catch(e) {}
+            console.warn('Player error code:', event.data, '- skipping to next track');
+            playerErrorCount++;
+            if (playerErrorCount < MAX_PLAYER_ERRORS) {
+                setTimeout(() => playNext(), 300);
+            } else {
+                console.error('Too many consecutive player errors, stopping.');
+                playerErrorCount = 0;
+                updateTrackInfo('Playback Error', 'Try a different song');
             }
-            
-            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-                console.warn('Too many consecutive errors, stopping auto-play');
-                consecutiveErrors = 0;
-                isPlaying = false;
-                updatePlayButton();
-                return;
-            }
-            
-            // Skip to next playable video
-            playNext();
         }
 
         function updateScrubBar() {
