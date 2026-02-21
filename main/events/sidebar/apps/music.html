@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -133,6 +134,11 @@
         let isVideoHidden = false;
         let isUIHidden = false;
         let currentTrack = { title: 'Not Playing', artist: 'Select a song' };
+        let failedVideoIds = new Set();
+        let consecutiveErrors = 0;
+        const MAX_CONSECUTIVE_ERRORS = 5;
+        let searchRetryCount = 0;
+        const MAX_SEARCH_RETRIES = 3;
 
         function loadLikedSongs() {
             const saved = localStorage.getItem('likedSongs');
@@ -221,7 +227,7 @@
             return API_KEYS[currentApiKeyIndex];
         }
 
-        function searchMusic(query) {
+        function searchMusic(query, retryCount = 0) {
             if (!query || query.trim() === '') return;
 
             const apiKey = getApiKey();
@@ -237,6 +243,8 @@
             document.getElementById('placeholder').classList.add('hidden');
 
             currentVideoIndex = -1;
+            failedVideoIds.clear();
+            consecutiveErrors = 0;
 
             const specialArtists = ["nessa barrett", "nessabarrett"];
             let isSpecialArtistSearch = specialArtists.some(artist =>
@@ -245,16 +253,22 @@
 
             let searchQuery = isSpecialArtistSearch ? query : `${query} music`;
 
-            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${searchQuery}&key=${apiKey}&videoCategoryId=10&maxResults=50`;
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(searchQuery)}&key=${apiKey}&videoCategoryId=10&maxResults=50`;
 
             fetch(url)
                 .then(response => {
+                    if (response.status === 403 || response.status === 429) {
+                        throw new Error(`QUOTA_EXCEEDED:${response.status}`);
+                    }
                     if (!response.ok) throw new Error(`Network error: ${response.status}`);
                     return response.json();
                 })
                 .then(data => {
+                    if (data.error) {
+                        throw new Error(`API error: ${data.error.message}`);
+                    }
                     const results = document.getElementById('search-results');
-                    currentSearchResults = data.items;
+                    currentSearchResults = data.items || [];
                     results.innerHTML = '';
 
                     if (currentSearchResults.length === 0) {
@@ -288,6 +302,7 @@
 
                         div.addEventListener('click', function(e) {
                             if (e.target.closest('.like-button')) return;
+                            consecutiveErrors = 0;
                             playVideo(video.id.videoId, index);
                             updateTrackInfo(video.snippet.title, video.snippet.channelTitle);
                         });
@@ -302,12 +317,14 @@
                 })
                 .catch((error) => {
                     console.error('Search error:', error);
-                    document.getElementById('search-results').innerHTML =
-                        '<div class="empty-state"><i class="bi bi-exclamation-circle"></i><p>Error searching. Please try again.</p></div>';
-
-                    if (API_KEYS.length > 1) {
+                    
+                    if (retryCount < MAX_SEARCH_RETRIES && API_KEYS.length > 1) {
                         currentApiKeyIndex = (currentApiKeyIndex + 1) % API_KEYS.length;
-                        searchMusic(query);
+                        console.log(`Retrying with API key index ${currentApiKeyIndex} (attempt ${retryCount + 1})`);
+                        searchMusic(query, retryCount + 1);
+                    } else {
+                        document.getElementById('search-results').innerHTML =
+                            '<div class="empty-state"><i class="bi bi-exclamation-circle"></i><p>Error searching. Please try again.</p></div>';
                     }
                 });
         }
@@ -438,6 +455,14 @@
         function playVideo(videoId, index) {
             if (!videoId) {
                 console.error("No video ID provided");
+                return;
+            }
+
+            // Skip videos that already failed
+            if (failedVideoIds.has(videoId)) {
+                console.warn(`Skipping failed video: ${videoId}`);
+                currentVideoIndex = index;
+                playNext();
                 return;
             }
 
@@ -587,6 +612,26 @@
 
         function onPlayerError(event) {
             console.error('Player error:', event.data);
+            consecutiveErrors++;
+            
+            // Track which video failed
+            if (player && player.getVideoUrl) {
+                try {
+                    const url = player.getVideoUrl();
+                    const match = url.match(/[?&]v=([^&]+)/);
+                    if (match) failedVideoIds.add(match[1]);
+                } catch(e) {}
+            }
+            
+            if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                console.warn('Too many consecutive errors, stopping auto-play');
+                consecutiveErrors = 0;
+                isPlaying = false;
+                updatePlayButton();
+                return;
+            }
+            
+            // Skip to next playable video
             playNext();
         }
 
