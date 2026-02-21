@@ -3112,11 +3112,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
-                // Listen for URL updates from embed.html via postMessage
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         const tab = this.tabs.get(this.activeTabId);
-                        if (tab) {
+                        if (tab && !tab._navigatingHistory) {
                             const newUrl = e.data.url;
                             tab.currentUrl = newUrl;
                             this.addressBar.value = newUrl;
@@ -3131,6 +3130,23 @@ document.addEventListener("DOMContentLoaded", () => {
                                     '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
                                     '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
+                            }
+
+                            const history = this.history[this.activeTabId];
+                            if (history) {
+                                const currentIndex = this.historyIndex[this.activeTabId];
+                                const currentExtracted = this.extractOriginalUrl(history[currentIndex] || '');
+                                if (currentExtracted !== newUrl) {
+                                    const proxyUrl = `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
+                                    history.splice(currentIndex + 1);
+                                    history.push(proxyUrl);
+                                    this.historyIndex[this.activeTabId] = history.length - 1;
+                                    this.updateNavigationButtons();
+                                }
+                            }
+
+                            if (this._addToBrowseHistory) {
+                                this._addToBrowseHistory(newUrl, tab);
                             }
                         }
                     }
@@ -5153,18 +5169,53 @@ if (this.isBlockedUrl(url)) {
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     };
 
-                    // Intercept target="_blank" link clicks (only user-initiated)
                     iframeWin.document.addEventListener('click', function(e) {
-                        if (!e.isTrusted) return; // ignore synthetic / programmatic clicks
-                        const link = e.target.closest('a[target="_blank"]');
-                        if (link && link.href && self._isValidNewTabUrl(link.href)) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
+                        if (!e.isTrusted) return;
+                        const link = e.target.closest('a');
+                        if (link && link.href) {
+                            if (link.target === '_blank' && self._isValidNewTabUrl(link.href)) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
+                            } else if (link.target !== '_blank') {
+                                setTimeout(function() {
+                                    try {
+                                        var currentHref = iframeWin.location.href;
+                                        var decoded = self.extractOriginalUrl(currentHref);
+                                        if (decoded.startsWith('http')) {
+                                            window.parent.postMessage({ type: 'urlChange', url: decoded }, '*');
+                                        }
+                                    } catch(ex) {}
+                                }, 300);
+                                setTimeout(function() {
+                                    try {
+                                        var currentHref = iframeWin.location.href;
+                                        var decoded = self.extractOriginalUrl(currentHref);
+                                        if (decoded.startsWith('http')) {
+                                            window.parent.postMessage({ type: 'urlChange', url: decoded }, '*');
+                                        }
+                                    } catch(ex) {}
+                                }, 1000);
+                            }
                         }
                     }, true);
 
-                    // Also try to inject into nested iframes
+                    var lastKnownHref = '';
+                    try { lastKnownHref = iframeWin.location.href; } catch(e) {}
+                    var navCheckInterval = setInterval(function() {
+                        try {
+                            var currentHref = iframeWin.location.href;
+                            if (currentHref !== lastKnownHref && currentHref !== 'about:blank') {
+                                lastKnownHref = currentHref;
+                                var decoded = self.extractOriginalUrl(currentHref);
+                                if (decoded.startsWith('http')) {
+                                    window.parent.postMessage({ type: 'urlChange', url: decoded }, '*');
+                                }
+                            }
+                        } catch(e) {
+                            clearInterval(navCheckInterval);
+                        }
+                    }, 500);
                     const nestedIframes = iframeWin.document.querySelectorAll('iframe');
                     nestedIframes.forEach((nested) => {
                         try { this.injectNewTabInterceptor(nested); } catch(e) {}
