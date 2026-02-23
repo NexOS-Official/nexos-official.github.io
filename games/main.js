@@ -3,6 +3,7 @@ document.querySelectorAll('.sidebahhhhhhhforthegameiconstuffsotheycanfindgenreso
 
 const thesearecardstoholdgames =
 document.querySelectorAll('.foldarcads');
+
 svgthingssotheiconsfrombootstrapwork.forEach(svgthing => {
     svgthing.addEventListener('click', () => {
         svgthingssotheiconsfrombootstrapwork.forEach(sv => sv.classList.remove('active'));
@@ -17,12 +18,14 @@ svgthingssotheiconsfrombootstrapwork.forEach(svgthing => {
         });
     });
 });
+
 thesearecardstoholdgames.forEach(card => {
     card.addEventListener('click', () => {
         const url = card.getAttribute('data-url');
         if (url) window.location.href = url;
     });
 });
+
 thesearecardstoholdgames.forEach(card => {
     const img = card.querySelector('img');
     card.addEventListener('mousemove', e => {
@@ -35,6 +38,7 @@ thesearecardstoholdgames.forEach(card => {
         img.style.transform = 'scale(1)';
     });
 });
+
 const searchInput = document.getElementById('searchforthejstofindwithtitle');
 searchInput.addEventListener('input', () => {
     const query = searchInput.value.toLowerCase().trim();
