@@ -231,8 +231,20 @@
         }
 
         .tab.tab-entering {
-            transform: translateX(100px);
+            max-width: 0 !important;
+            min-width: 0 !important;
+            width: 0 !important;
+            padding: 0 !important;
             opacity: 0;
+            overflow: hidden;
+        }
+
+        .tab.tab-entering-animate {
+            transition: max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        min-width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        padding 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .tab.tab-closing {
@@ -3550,7 +3562,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 requestAnimationFrame(() => {
-                    tabElement.classList.remove('tab-entering');
+                    tabElement.classList.add('tab-entering-animate');
+                    requestAnimationFrame(() => {
+                        tabElement.classList.remove('tab-entering');
+                        tabElement.addEventListener('transitionend', () => {
+                            tabElement.classList.remove('tab-entering-animate');
+                        }, { once: true });
+                    });
                 });
 
                 const iframe = document.createElement('iframe');
