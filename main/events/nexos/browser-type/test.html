@@ -248,12 +248,18 @@
         }
 
         .tab.tab-closing {
-            transform: translateX(-100px);
-            opacity: 0;
+            transition: max-width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        min-width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        padding 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             max-width: 0 !important;
             min-width: 0 !important;
+            width: 0 !important;
             padding: 0 !important;
             margin: 0 !important;
+            opacity: 0;
+            overflow: hidden;
         }
 
         .tab.tab-pinning {
@@ -4239,52 +4245,63 @@ document.addEventListener("DOMContentLoaded", () => {
             
 
             closeTab(tabId) {
-                if (this.tabs.size <= 1) {
+                const getOrderedOpenTabs = () => {
+                    return Array.from(this.tabBar.querySelectorAll('.tab'))
+                        .map(el => this.tabs.get(parseInt(el.dataset.tabId)))
+                        .filter(Boolean)
+                        .filter(t => !t._closing);
+                };
+
+                const openTabs = getOrderedOpenTabs();
+                if (openTabs.length <= 1) {
                     this.showFinalTabNotification();
                     return;
                 }
-                
-                const tabIndex = Array.from(this.tabs.values()).findIndex(t => t.id === tabId);
-                if (tabIndex === -1) return;
-                
-                const tab = Array.from(this.tabs.values())[tabIndex];
-                const wasActive = tab.id === this.activeTabId;
-                
+
+                const tab = this.tabs.get(tabId);
+                if (!tab || tab._closing) return;
+
                 if (tab.pinned && this.contextMenuTabId !== tabId) {
                     return;
                 }
-                
-                tab.element.style.transform = 'translateX(-100%)';
-                tab.element.style.opacity = '0';
-                
-                setTimeout(() => {
+
+                const currentIndex = openTabs.findIndex(t => t.id === tabId);
+                const nextActiveTab =
+                    (currentIndex >= 0 && openTabs[currentIndex + 1]) ||
+                    (currentIndex > 0 && openTabs[currentIndex - 1]) ||
+                    openTabs.find(t => t.id !== tabId) ||
+                    null;
+
+                tab._closing = true;
+
+                if (tab.id === this.activeTabId && nextActiveTab) {
+                    this.switchToTab(nextActiveTab.id);
+                }
+
+                tab.element.classList.add('tab-closing');
+
+                let cleaned = false;
+                const cleanup = () => {
+                    if (cleaned) return;
+                    cleaned = true;
+
                     tab.element.remove();
                     tab.iframe.remove();
                     this.tabs.delete(tabId);
-                    
-                    if (wasActive && this.tabs.size > 0) {
-                        const remainingTabs = Array.from(this.tabs.values());
-                        let newActiveTabId = null;
 
-                        const nextTab = remainingTabs.find(t => t.element.compareDocumentPosition(tab.element) & Node.DOCUMENT_POSITION_FOLLOWING);
-                        if (nextTab) {
-                            newActiveTabId = nextTab.id;
-                        } else {
-                            const prevTab = remainingTabs.find(t => t.element.compareDocumentPosition(tab.element) & Node.DOCUMENT_POSITION_PRECEDING);
-                            if (prevTab) {
-                                newActiveTabId = prevTab.id;
-                            } else if (remainingTabs.length > 0) {
-                                newActiveTabId = remainingTabs[0].id;
-                            }
-                        }
-                        
-                        if (newActiveTabId) {
-                            this.switchToTab(newActiveTabId);
+                    const activeTab = this.tabs.get(this.activeTabId);
+                    if (!activeTab || activeTab._closing) {
+                        const fallback = getOrderedOpenTabs()[0];
+                        if (fallback) {
+                            this.switchToTab(fallback.id);
                         }
                     }
-                    
+
                     this.updateTabSizes();
-                }, 150);
+                };
+
+                tab.element.addEventListener('transitionend', cleanup, { once: true });
+                setTimeout(cleanup, 320);
             }
 
             navigate(input) {
@@ -4378,9 +4395,7 @@ if (this.isBlockedUrl(url)) {
 
             isBlockedUrl(url) {
                 const blockedWords = [
-                    "porn","pornhub","xvideos","xhamster","nude","nudity","naked",
-                    "penis","vagina","sex","hentai","erotic","fetish","boobs",
-                    "cum","gay","lesbian","anal","cock"
+                    // No blocked words right now bc it was getting the site blocked bc of bad words in the code
                 ];
                 const blockedRegex = new RegExp(`\\b(${blockedWords.join("|")})\\b`, "i");
                 try {
@@ -7245,7 +7260,7 @@ menu.addEventListener('mouseleave', hideMenu);
         hideSuggestions();
     });
 
-    setInterval(function() {
+    setInterval(function() {    
         if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
             hideSuggestions();
         }
