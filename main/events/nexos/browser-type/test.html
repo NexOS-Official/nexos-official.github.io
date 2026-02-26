@@ -3113,10 +3113,27 @@ document.addEventListener("DOMContentLoaded", () => {
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
                             const newUrl = e.data.url;
+                            const oldUrl = tab.currentUrl;
                             tab.currentUrl = newUrl;
                             this.addressBar.value = newUrl;
                             this.updateFavicon(tab, newUrl);
                             this.updateTabTitle(tab, newUrl);
+                            
+                            // Push to per-tab history if URL actually changed
+                            if (!tab._navigatingHistory && newUrl !== oldUrl) {
+                                const history = this.history[this.activeTabId];
+                                if (history) {
+                                    const currentIndex = this.historyIndex[this.activeTabId];
+                                    const currentExtracted = this.extractOriginalUrl(history[currentIndex] || '');
+                                    if (currentExtracted !== newUrl) {
+                                        const proxyUrl = `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
+                                        history.splice(currentIndex + 1);
+                                        history.push(proxyUrl);
+                                        this.historyIndex[this.activeTabId] = history.length - 1;
+                                        this.updateNavigationButtons();
+                                    }
+                                }
+                            }
                             
                             const isSecure = newUrl.startsWith('https://');
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
@@ -4169,6 +4186,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
+                    const oldUrl = tab.currentUrl;
                     tab.currentUrl = originalUrl;
                     
                     if (originalUrl && this.isBlockedUrl(originalUrl)) {
@@ -4179,6 +4197,22 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     
                     if (originalUrl && originalUrl !== 'about:blank') {
+                        // Push to per-tab history on every iframe load (if not navigating via back/forward)
+                        if (!tab._navigatingHistory && originalUrl !== oldUrl) {
+                            const history = this.history[tabId];
+                            if (history) {
+                                const currentIndex = this.historyIndex[tabId];
+                                const currentExtracted = this.extractOriginalUrl(history[currentIndex] || '');
+                                if (currentExtracted !== originalUrl) {
+                                    const proxyUrl = tab.iframe.src || `/active/embed.html?url=${encodeURIComponent(originalUrl)}`;
+                                    history.splice(currentIndex + 1);
+                                    history.push(proxyUrl);
+                                    this.historyIndex[tabId] = history.length - 1;
+                                    this.updateNavigationButtons();
+                                }
+                            }
+                        }
+                        
                         this.updateTabInfo(tabId);
                         
                         if (this.activeTabId === tabId) {
@@ -4252,6 +4286,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             lucide.createIcons();
                         }
                     }
+                    
+                    // Update back/forward buttons for this tab's history
+                    this.updateNavigationButtons();
                 }
             }
 
@@ -4523,35 +4560,25 @@ if (this.isBlockedUrl(url)) {
                 }
             }
 
-            _getDeepTitle(iframe) {
-                try {
-                    const doc = iframe.contentDocument;
-                    if (!doc) return null;
-                    const nestedIframes = doc.querySelectorAll('iframe');
-                    for (const nested of nestedIframes) {
-                        try {
-                            const nestedDoc = nested.contentDocument;
-                            if (nestedDoc && nestedDoc.title) {
-                                return nestedDoc.title;
-                            }
-                        } catch(e) {}
-                    }
-                    if (doc.title) return doc.title;
-                } catch(e) {}
-                return null;
-            }
-
             updateTabTitle(tab, url) {
                 const domain = this.extractDomain(url);
                 const previousTitle = tab.title;
                 
-                const deepTitle = this._getDeepTitle(tab.iframe);
-                if (deepTitle) {
-                    tab.title = deepTitle;
-                } else if (domain) {
-                    tab.title = this.formatDomainTitle(domain);
-                } else {
-                    tab.title = 'nexORAos';
+                try {
+                    const iframe = tab.iframe;
+                    if (iframe.contentDocument && iframe.contentDocument.title) {
+                        tab.title = iframe.contentDocument.title;
+                    } else if (domain) {
+                        tab.title = this.formatDomainTitle(domain);
+                    } else {
+                        tab.title = 'nexORAos';
+                    }
+                } catch (error) {
+                    if (domain) {
+                        tab.title = this.formatDomainTitle(domain);
+                    } else {
+                        tab.title = 'nexAURAos';
+                    }
                 }
                 
                 const titleElement = tab.element.querySelector('.tab-title');
@@ -4641,27 +4668,25 @@ if (this.isBlockedUrl(url)) {
                 }
 
                 const interval = setInterval(() => {
-                    const tab = this.tabs.get(tabId);
-                    if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
-                        const realUrl = this.getIframeCurrentUrl(tab);
-                        if (realUrl && realUrl !== 'about:blank') {
-                            const oldUrl = tab.currentUrl;
-
-                            this.updateTabTitle(tab, realUrl);
-
-                            if (realUrl !== oldUrl) {
-                                if (this.isBlockedUrl(realUrl)) {
-                                    tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
-                                    tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
-                                    if (this.activeTabId === tabId) this.addressBar.value = '';
-                                    return;
-                                }
-                                tab.currentUrl = realUrl;
-                                tab.url = tab.iframe.src;
-                                this.updateFavicon(tab, realUrl);
-
-                                if (this.activeTabId === tabId) {
+                    if (this.activeTabId === tabId) {
+                        const tab = this.tabs.get(tabId);
+                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
+                            const realUrl = this.getIframeCurrentUrl(tab);
+                            if (realUrl && realUrl !== 'about:blank') {
+                                const oldUrl = tab.currentUrl;
+                                if (realUrl !== oldUrl) {
+                                    if (this.isBlockedUrl(realUrl)) {
+                                        tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
+                                        tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
+                                        this.addressBar.value = '';
+                                        return;
+                                    }
+                                    tab.currentUrl = realUrl;
+                                    tab.url = tab.iframe.src;
                                     this.addressBar.value = realUrl;
+                                    this.updateFavicon(tab, realUrl);
+                                    this.updateTabTitle(tab, realUrl);
+                                    
                                     const isSecure = realUrl.startsWith('https://');
                                     this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                                     const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
@@ -4692,9 +4717,9 @@ if (this.isBlockedUrl(url)) {
                                         this._addToBrowseHistory(realUrl, tab);
                                     }
                                 }
+                            } else {
+                                this.updateTabInfo(tabId);
                             }
-                        } else {
-                            this.updateTabInfo(tabId);
                         }
                     }
                 }, 800);
@@ -4974,19 +4999,6 @@ if (this.isBlockedUrl(url)) {
                             this.createNewTabWithUrl(e.data.url);
                         }
                     }
-                    if (e.data && e.data.type === 'nexos-title-change' && e.data.title) {
-                        for (const [tabId, tab] of this.tabs) {
-                            if (tab.iframe && tab.iframe.contentWindow === e.source) {
-                                const titleElement = tab.element.querySelector('.tab-title');
-                                if (titleElement && tab.title !== e.data.title) {
-                                    tab.title = e.data.title;
-                                    titleElement.textContent = e.data.title;
-                                    titleElement.title = e.data.title;
-                                }
-                                break;
-                            }
-                        }
-                    }
                 });
 
                 const originalWindowOpen = window.open.bind(window);
@@ -5050,29 +5062,6 @@ if (this.isBlockedUrl(url)) {
                     nestedIframes.forEach((nested) => {
                         try { this.injectNewTabInterceptor(nested); } catch(e) {}
                     });
-
-                    try {
-                        const titleEl = iframeWin.document.querySelector('title');
-                        if (titleEl) {
-                            const titleObserver = new iframeWin.MutationObserver(() => {
-                                const newTitle = iframeWin.document.title;
-                                if (newTitle) {
-                                    window.postMessage({ type: 'nexos-title-change', title: newTitle }, '*');
-                                }
-                            });
-                            titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
-                        }
-                        const headEl = iframeWin.document.head;
-                        if (headEl) {
-                            const headObserver = new iframeWin.MutationObserver(() => {
-                                const newTitleEl = iframeWin.document.querySelector('title');
-                                if (newTitleEl && iframeWin.document.title) {
-                                    window.postMessage({ type: 'nexos-title-change', title: iframeWin.document.title }, '*');
-                                }
-                            });
-                            headObserver.observe(headEl, { childList: true, subtree: true });
-                        }
-                    } catch(e) {}
 
                     try {
                         const observer = new iframeWin.MutationObserver((mutations) => {
