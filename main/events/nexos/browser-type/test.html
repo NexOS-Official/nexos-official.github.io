@@ -4523,25 +4523,35 @@ if (this.isBlockedUrl(url)) {
                 }
             }
 
+            _getDeepTitle(iframe) {
+                try {
+                    const doc = iframe.contentDocument;
+                    if (!doc) return null;
+                    const nestedIframes = doc.querySelectorAll('iframe');
+                    for (const nested of nestedIframes) {
+                        try {
+                            const nestedDoc = nested.contentDocument;
+                            if (nestedDoc && nestedDoc.title) {
+                                return nestedDoc.title;
+                            }
+                        } catch(e) {}
+                    }
+                    if (doc.title) return doc.title;
+                } catch(e) {}
+                return null;
+            }
+
             updateTabTitle(tab, url) {
                 const domain = this.extractDomain(url);
                 const previousTitle = tab.title;
                 
-                try {
-                    const iframe = tab.iframe;
-                    if (iframe.contentDocument && iframe.contentDocument.title) {
-                        tab.title = iframe.contentDocument.title;
-                    } else if (domain) {
-                        tab.title = this.formatDomainTitle(domain);
-                    } else {
-                        tab.title = 'nexORAos';
-                    }
-                } catch (error) {
-                    if (domain) {
-                        tab.title = this.formatDomainTitle(domain);
-                    } else {
-                        tab.title = 'nexAURAos';
-                    }
+                const deepTitle = this._getDeepTitle(tab.iframe);
+                if (deepTitle) {
+                    tab.title = deepTitle;
+                } else if (domain) {
+                    tab.title = this.formatDomainTitle(domain);
+                } else {
+                    tab.title = 'nexORAos';
                 }
                 
                 const titleElement = tab.element.querySelector('.tab-title');
@@ -4964,6 +4974,19 @@ if (this.isBlockedUrl(url)) {
                             this.createNewTabWithUrl(e.data.url);
                         }
                     }
+                    if (e.data && e.data.type === 'nexos-title-change' && e.data.title) {
+                        for (const [tabId, tab] of this.tabs) {
+                            if (tab.iframe && tab.iframe.contentWindow === e.source) {
+                                const titleElement = tab.element.querySelector('.tab-title');
+                                if (titleElement && tab.title !== e.data.title) {
+                                    tab.title = e.data.title;
+                                    titleElement.textContent = e.data.title;
+                                    titleElement.title = e.data.title;
+                                }
+                                break;
+                            }
+                        }
+                    }
                 });
 
                 const originalWindowOpen = window.open.bind(window);
@@ -5027,6 +5050,29 @@ if (this.isBlockedUrl(url)) {
                     nestedIframes.forEach((nested) => {
                         try { this.injectNewTabInterceptor(nested); } catch(e) {}
                     });
+
+                    try {
+                        const titleEl = iframeWin.document.querySelector('title');
+                        if (titleEl) {
+                            const titleObserver = new iframeWin.MutationObserver(() => {
+                                const newTitle = iframeWin.document.title;
+                                if (newTitle) {
+                                    window.postMessage({ type: 'nexos-title-change', title: newTitle }, '*');
+                                }
+                            });
+                            titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
+                        }
+                        const headEl = iframeWin.document.head;
+                        if (headEl) {
+                            const headObserver = new iframeWin.MutationObserver(() => {
+                                const newTitleEl = iframeWin.document.querySelector('title');
+                                if (newTitleEl && iframeWin.document.title) {
+                                    window.postMessage({ type: 'nexos-title-change', title: iframeWin.document.title }, '*');
+                                }
+                            });
+                            headObserver.observe(headEl, { childList: true, subtree: true });
+                        }
+                    } catch(e) {}
 
                     try {
                         const observer = new iframeWin.MutationObserver((mutations) => {
