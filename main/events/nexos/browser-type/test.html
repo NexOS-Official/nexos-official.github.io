@@ -3592,7 +3592,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const iframe = document.createElement('iframe');
                 iframe.className = 'tab-content';
                 iframe.dataset.tabId = tabId;
-                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals allow-top-navigation-by-user-activation');
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals allow-storage-access-by-user-activation');
                 iframe.src = tab.url;
                 this.contentArea.appendChild(iframe);
 
@@ -5242,7 +5242,7 @@ if (this.isBlockedUrl(url)) {
           <div class="window-title">${app.name}</div>
         </div>
         <div class="window-content">
-            <iframe src="${app.url || 'about:blank'}" class="window-iframe" title="${app.name} window" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals allow-top-navigation-by-user-activation"></iframe>
+            <iframe src="${app.url || 'about:blank'}" class="window-iframe" title="${app.name} window" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals allow-storage-access-by-user-activation"></iframe>
         </div>
         <div class="resize-handle top-left"></div>
         <div class="resize-handle top"></div>
@@ -7291,6 +7291,23 @@ setInterval(async () => {
     if (j.frozen && location.pathname !== "/locked") location.href = "/locked";
   } catch {}
 }, 1200);
+</script>
+<script>
+(function() {
+    var originalHref = window.location.href;
+    var allowedPaths = ['/locked', '/login'];
+    
+    window.addEventListener('beforeunload', function(e) {
+        var newPath = '';
+        try { newPath = window.location.pathname; } catch(ex) {}
+        var isAllowed = allowedPaths.some(function(p) { return newPath === p || newPath.startsWith(p); });
+        if (!isAllowed && document.activeElement && document.activeElement.tagName === 'IFRAME') {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        }
+    });
+})();
 </script>
 </body>
 </html>
