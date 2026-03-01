@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3593,6 +3592,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const iframe = document.createElement('iframe');
                 iframe.className = 'tab-content';
                 iframe.dataset.tabId = tabId;
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals');
                 iframe.src = tab.url;
                 this.contentArea.appendChild(iframe);
 
@@ -5018,30 +5018,6 @@ if (this.isBlockedUrl(url)) {
                             e.stopPropagation();
                             window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
                         }
-                        const topLink = e.target.closest('a[target="_top"], a[target="_parent"]');
-                        if (topLink && topLink.href) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const tab = self.tabs.get(self.activeTabId);
-                            if (tab) {
-                                const proxyUrl = '/active/embed.html?url=' + encodeURIComponent(topLink.href);
-                                tab.iframe.src = proxyUrl;
-                            }
-                        }
-                    }, true);
-
-                    iframeWin.document.addEventListener('submit', function(e) {
-                        const form = e.target;
-                        if (form && (form.target === '_top' || form.target === '_parent')) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const action = form.action || iframeWin.location.href;
-                            const tab = self.tabs.get(self.activeTabId);
-                            if (tab) {
-                                const proxyUrl = '/active/embed.html?url=' + encodeURIComponent(action);
-                                tab.iframe.src = proxyUrl;
-                            }
-                        }
                     }, true);
 
                     const nestedIframes = iframeWin.document.querySelectorAll('iframe');
@@ -5266,7 +5242,7 @@ if (this.isBlockedUrl(url)) {
           <div class="window-title">${app.name}</div>
         </div>
         <div class="window-content">
-            <iframe src="${app.url || 'about:blank'}" class="window-iframe" title="${app.name} window"></iframe>
+            <iframe src="${app.url || 'about:blank'}" class="window-iframe" title="${app.name} window" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals"></iframe>
         </div>
         <div class="resize-handle top-left"></div>
         <div class="resize-handle top"></div>
@@ -7307,7 +7283,7 @@ menu.addEventListener('mouseleave', hideMenu);
     setTimeout(initSearchSuggestions, 500);
 })();
 </script>
-        <script>
+<script>
 setInterval(async () => {
   try {
     const r = await fetch("/freeze-status", { cache: "no-store" });
@@ -7315,6 +7291,29 @@ setInterval(async () => {
     if (j.frozen && location.pathname !== "/locked") location.href = "/locked";
   } catch {}
 }, 1200);
+</script>
+<script>
+
+(function() {
+    var allowedNavigations = ['/locked', '/login'];
+    var currentHref = window.location.href;
+    
+    setInterval(function() {
+        if (window.location.href !== currentHref) {
+            var newPath = window.location.pathname;
+            var isAllowed = allowedNavigations.some(function(p) { return newPath === p || newPath.startsWith(p); });
+            if (!isAllowed) {
+                window.location.replace(currentHref);
+            } else {
+                currentHref = window.location.href;
+            }
+        }
+    }, 100);
+    
+    window.addEventListener('beforeunload', function(e) {
+
+    });
+})();
 </script>
 </body>
 </html>
