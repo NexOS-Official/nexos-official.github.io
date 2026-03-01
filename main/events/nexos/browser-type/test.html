@@ -4955,15 +4955,6 @@ if (this.isBlockedUrl(url)) {
             }
 
             setupNewTabInterception() {
-                const originalLocation = window.location.href;
-                window.addEventListener('beforeunload', (e) => {
-
-                });
-                
-                setInterval(() => {
-
-                }, 500);
-
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'nexos-open-new-tab' && e.data.url) {
                         if (this._isValidNewTabUrl(e.data.url)) {
@@ -5019,28 +5010,6 @@ if (this.isBlockedUrl(url)) {
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     };
 
-                    try {
-                        const topDescriptor = Object.getOwnPropertyDescriptor(iframeWin, 'top') || 
-                                              Object.getOwnPropertyDescriptor(iframeWin.__proto__, 'top') ||
-                                              Object.getOwnPropertyDescriptor(Window.prototype, 'top');
-                        
-                        if (topDescriptor) {
-                            Object.defineProperty(iframeWin, 'top', {
-                                get: function() { return iframeWin; },
-                                configurable: true
-                            });
-                        }
-                    } catch(e) {
-                    }
-
-                    try {
-                        Object.defineProperty(iframeWin, 'parent', {
-                            get: function() { return iframeWin; },
-                            configurable: true
-                        });
-                    } catch(e) {
-                    }
-
                     iframeWin.document.addEventListener('click', function(e) {
                         if (!e.isTrusted) return;
                         const link = e.target.closest('a[target="_blank"]');
@@ -5055,7 +5024,7 @@ if (this.isBlockedUrl(url)) {
                             e.stopPropagation();
                             const tab = self.tabs.get(self.activeTabId);
                             if (tab) {
-                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(topLink.href)}`;
+                                const proxyUrl = '/active/embed.html?url=' + encodeURIComponent(topLink.href);
                                 tab.iframe.src = proxyUrl;
                             }
                         }
@@ -5069,7 +5038,7 @@ if (this.isBlockedUrl(url)) {
                             const action = form.action || iframeWin.location.href;
                             const tab = self.tabs.get(self.activeTabId);
                             if (tab) {
-                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(action)}`;
+                                const proxyUrl = '/active/embed.html?url=' + encodeURIComponent(action);
                                 tab.iframe.src = proxyUrl;
                             }
                         }
