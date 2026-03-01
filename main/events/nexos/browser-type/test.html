@@ -1,13 +1,12 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NexOS ~ The browser built for freedom</title>
+    <title>Nexos by GhostEDU</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <link rel="icon" href="/ghost.svg" type="image/x-icon" />
+    <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
     <link rel="manifest" href="../manifest.json">
     <style>
         @font-face {
@@ -1230,7 +1229,7 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: google sans;
   overflow: hidden;
   height: 100vh;
   display: flex;
@@ -3113,27 +3112,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
                             const newUrl = e.data.url;
-                            const oldUrl = tab.currentUrl;
                             tab.currentUrl = newUrl;
                             this.addressBar.value = newUrl;
                             this.updateFavicon(tab, newUrl);
                             this.updateTabTitle(tab, newUrl);
-                            
-                            // Push to per-tab history if URL actually changed
-                            if (!tab._navigatingHistory && newUrl !== oldUrl) {
-                                const history = this.history[this.activeTabId];
-                                if (history) {
-                                    const currentIndex = this.historyIndex[this.activeTabId];
-                                    const currentExtracted = this.extractOriginalUrl(history[currentIndex] || '');
-                                    if (currentExtracted !== newUrl) {
-                                        const proxyUrl = `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
-                                        history.splice(currentIndex + 1);
-                                        history.push(proxyUrl);
-                                        this.historyIndex[this.activeTabId] = history.length - 1;
-                                        this.updateNavigationButtons();
-                                    }
-                                }
-                            }
                             
                             const isSecure = newUrl.startsWith('https://');
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
@@ -3611,6 +3593,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const iframe = document.createElement('iframe');
                 iframe.className = 'tab-content';
                 iframe.dataset.tabId = tabId;
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-downloads');
                 iframe.src = tab.url;
                 this.contentArea.appendChild(iframe);
 
@@ -4186,7 +4169,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
-                    const oldUrl = tab.currentUrl;
                     tab.currentUrl = originalUrl;
                     
                     if (originalUrl && this.isBlockedUrl(originalUrl)) {
@@ -4197,22 +4179,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     
                     if (originalUrl && originalUrl !== 'about:blank') {
-                        // Push to per-tab history on every iframe load (if not navigating via back/forward)
-                        if (!tab._navigatingHistory && originalUrl !== oldUrl) {
-                            const history = this.history[tabId];
-                            if (history) {
-                                const currentIndex = this.historyIndex[tabId];
-                                const currentExtracted = this.extractOriginalUrl(history[currentIndex] || '');
-                                if (currentExtracted !== originalUrl) {
-                                    const proxyUrl = tab.iframe.src || `/active/embed.html?url=${encodeURIComponent(originalUrl)}`;
-                                    history.splice(currentIndex + 1);
-                                    history.push(proxyUrl);
-                                    this.historyIndex[tabId] = history.length - 1;
-                                    this.updateNavigationButtons();
-                                }
-                            }
-                        }
-                        
                         this.updateTabInfo(tabId);
                         
                         if (this.activeTabId === tabId) {
@@ -4286,9 +4252,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             lucide.createIcons();
                         }
                     }
-                    
-                    // Update back/forward buttons for this tab's history
-                    this.updateNavigationButtons();
                 }
             }
 
@@ -4993,6 +4956,15 @@ if (this.isBlockedUrl(url)) {
             }
 
             setupNewTabInterception() {
+                const originalLocation = window.location.href;
+                window.addEventListener('beforeunload', (e) => {
+
+                });
+                
+                setInterval(() => {
+
+                }, 500);
+
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'nexos-open-new-tab' && e.data.url) {
                         if (this._isValidNewTabUrl(e.data.url)) {
@@ -5048,6 +5020,28 @@ if (this.isBlockedUrl(url)) {
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     };
 
+                    try {
+                        const topDescriptor = Object.getOwnPropertyDescriptor(iframeWin, 'top') || 
+                                              Object.getOwnPropertyDescriptor(iframeWin.__proto__, 'top') ||
+                                              Object.getOwnPropertyDescriptor(Window.prototype, 'top');
+                        
+                        if (topDescriptor) {
+                            Object.defineProperty(iframeWin, 'top', {
+                                get: function() { return iframeWin; },
+                                configurable: true
+                            });
+                        }
+                    } catch(e) {
+                    }
+
+                    try {
+                        Object.defineProperty(iframeWin, 'parent', {
+                            get: function() { return iframeWin; },
+                            configurable: true
+                        });
+                    } catch(e) {
+                    }
+
                     iframeWin.document.addEventListener('click', function(e) {
                         if (!e.isTrusted) return;
                         const link = e.target.closest('a[target="_blank"]');
@@ -5055,6 +5049,30 @@ if (this.isBlockedUrl(url)) {
                             e.preventDefault();
                             e.stopPropagation();
                             window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
+                        }
+                        const topLink = e.target.closest('a[target="_top"], a[target="_parent"]');
+                        if (topLink && topLink.href) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const tab = self.tabs.get(self.activeTabId);
+                            if (tab) {
+                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(topLink.href)}`;
+                                tab.iframe.src = proxyUrl;
+                            }
+                        }
+                    }, true);
+
+                    iframeWin.document.addEventListener('submit', function(e) {
+                        const form = e.target;
+                        if (form && (form.target === '_top' || form.target === '_parent')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const action = form.action || iframeWin.location.href;
+                            const tab = self.tabs.get(self.activeTabId);
+                            if (tab) {
+                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(action)}`;
+                                tab.iframe.src = proxyUrl;
+                            }
                         }
                     }, true);
 
@@ -5280,7 +5298,7 @@ if (this.isBlockedUrl(url)) {
           <div class="window-title">${app.name}</div>
         </div>
         <div class="window-content">
-            <iframe src="${app.url || 'about:blank'}" class="window-iframe" title="${app.name} window"></iframe>
+            <iframe src="${app.url || 'about:blank'}" class="window-iframe" title="${app.name} window" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-presentation allow-downloads"></iframe>
         </div>
         <div class="resize-handle top-left"></div>
         <div class="resize-handle top"></div>
@@ -7320,6 +7338,15 @@ menu.addEventListener('mouseleave', hideMenu);
 
     setTimeout(initSearchSuggestions, 500);
 })();
+</script>
+        <script>
+setInterval(async () => {
+  try {
+    const r = await fetch("/freeze-status", { cache: "no-store" });
+    const j = await r.json();
+    if (j.frozen && location.pathname !== "/locked") location.href = "/locked";
+  } catch {}
+}, 1200);
 </script>
 </body>
 </html>
