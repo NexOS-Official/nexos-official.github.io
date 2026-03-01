@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3248,6 +3249,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 document.getElementById('panicMenuItem').addEventListener('click', () => {
+                    this._allowTopNavigation = true;
                     window.location.href = 'https://google.com';
                 });
 
@@ -3592,6 +3594,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const iframe = document.createElement('iframe');
                 iframe.className = 'tab-content';
                 iframe.dataset.tabId = tabId;
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-presentation allow-popups-to-escape-sandbox allow-downloads');
                 iframe.src = tab.url;
                 this.contentArea.appendChild(iframe);
 
@@ -4960,6 +4963,19 @@ if (this.isBlockedUrl(url)) {
                             this.createNewTabWithUrl(e.data.url);
                         }
                     }
+                    if (e.data && e.data.type === 'nexos-redirect-intercept' && e.data.url) {
+                        const tab = this.tabs.get(this.activeTabId);
+                        if (tab) {
+                            const url = e.data.url;
+                            const proxyUrl = '/active/embed.html?url=' + encodeURIComponent(url);
+                            tab.iframe.src = proxyUrl;
+                            tab.url = proxyUrl;
+                            tab.currentUrl = url;
+                            this.addressBar.value = url;
+                            this.updateFavicon(tab, url);
+                            this.updateTabTitle(tab, url);
+                        }
+                    }
                 });
 
                 const originalWindowOpen = window.open.bind(window);
@@ -4970,7 +4986,7 @@ if (this.isBlockedUrl(url)) {
                         self._allowRealOpen = false;
                         return originalWindowOpen(url, target, features);
                     }
-                    if (url && typeof url === 'string' && url.includes('/active/')) {
+                    if (url && typeof url === 'string') {
                         if (self._isValidNewTabUrl(url)) {
                             self.createNewTabWithUrl(url);
                             return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
@@ -4979,6 +4995,13 @@ if (this.isBlockedUrl(url)) {
                     }
                     return originalWindowOpen(url, target, features);
                 };
+
+                window.addEventListener('beforeunload', function(e) {
+                    if (self._allowTopNavigation) {
+                        self._allowTopNavigation = false;
+                        return;
+                    }
+                });
             }
 
             createNewTabWithUrl(url) {
@@ -5003,19 +5026,86 @@ if (this.isBlockedUrl(url)) {
                                 resolved = new URL(url, iframeWin.location.href).href;
                             } catch(e) {}
                             if (self._isValidNewTabUrl(resolved)) {
-                                window.parent.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
+                                window.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
                             }
                         }
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
                     };
 
+                    try {
+                        const trapLocation = function(obj, propName) {
+                            try {
+                                const desc = Object.getOwnPropertyDescriptor(obj, propName);
+                                if (desc && !desc.configurable) return;
+                                Object.defineProperty(obj, propName, {
+                                    get: function() {
+                                        return new Proxy(window, {
+                                            set: function(target, prop, value) {
+                                                if (prop === 'location' || prop === 'href') {
+                                                    window.postMessage({ type: 'nexos-redirect-intercept', url: value }, '*');
+                                                    return true;
+                                                }
+                                                target[prop] = value;
+                                                return true;
+                                            },
+                                            get: function(target, prop) {
+                                                if (prop === 'location') {
+                                                    return new Proxy(iframeWin.location, {
+                                                        set: function(lt, lp, lv) {
+                                                            if (lp === 'href' || lp === 'replace' || lp === 'assign') {
+                                                                window.postMessage({ type: 'nexos-redirect-intercept', url: lv }, '*');
+                                                                return true;
+                                                            }
+                                                            return true;
+                                                        },
+                                                        get: function(lt, lp) {
+                                                            if (lp === 'replace' || lp === 'assign') {
+                                                                return function(url) {
+                                                                    window.postMessage({ type: 'nexos-redirect-intercept', url: url }, '*');
+                                                                };
+                                                            }
+                                                            return lt[lp];
+                                                        }
+                                                    });
+                                                }
+                                                if (typeof target[prop] === 'function') {
+                                                    return target[prop].bind(target);
+                                                }
+                                                return target[prop];
+                                            }
+                                        });
+                                    },
+                                    configurable: true
+                                });
+                            } catch(e) {}
+                        };
+
+                        trapLocation(iframeWin, 'top');
+                        trapLocation(iframeWin, 'parent');
+                    } catch(e) {}
+
+                    iframeWin.document.addEventListener('submit', function(e) {
+                        const form = e.target;
+                        if (form && (form.target === '_top' || form.target === '_parent')) {
+                            e.preventDefault();
+                            const action = form.action || iframeWin.location.href;
+                            window.postMessage({ type: 'nexos-redirect-intercept', url: action }, '*');
+                        }
+                    }, true);
+
                     iframeWin.document.addEventListener('click', function(e) {
                         if (!e.isTrusted) return;
-                        const link = e.target.closest('a[target="_blank"]');
-                        if (link && link.href && self._isValidNewTabUrl(link.href)) {
+                        const link = e.target.closest('a');
+                        if (!link || !link.href) return;
+                        
+                        if (link.target === '_top' || link.target === '_parent') {
                             e.preventDefault();
                             e.stopPropagation();
-                            window.parent.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
+                            window.postMessage({ type: 'nexos-redirect-intercept', url: link.href }, '*');
+                        } else if (link.target === '_blank' && self._isValidNewTabUrl(link.href)) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
                         }
                     }, true);
 
