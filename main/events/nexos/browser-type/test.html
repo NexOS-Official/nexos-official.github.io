@@ -3592,7 +3592,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const iframe = document.createElement('iframe');
                 iframe.className = 'tab-content';
                 iframe.dataset.tabId = tabId;
-                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals');
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals allow-top-navigation-by-user-activation');
                 iframe.src = tab.url;
                 this.contentArea.appendChild(iframe);
 
@@ -5242,7 +5242,7 @@ if (this.isBlockedUrl(url)) {
           <div class="window-title">${app.name}</div>
         </div>
         <div class="window-content">
-            <iframe src="${app.url || 'about:blank'}" class="window-iframe" title="${app.name} window" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals"></iframe>
+            <iframe src="${app.url || 'about:blank'}" class="window-iframe" title="${app.name} window" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-presentation allow-downloads allow-modals allow-top-navigation-by-user-activation"></iframe>
         </div>
         <div class="resize-handle top-left"></div>
         <div class="resize-handle top"></div>
@@ -7291,29 +7291,6 @@ setInterval(async () => {
     if (j.frozen && location.pathname !== "/locked") location.href = "/locked";
   } catch {}
 }, 1200);
-</script>
-<script>
-
-(function() {
-    var allowedNavigations = ['/locked', '/login'];
-    var currentHref = window.location.href;
-    
-    setInterval(function() {
-        if (window.location.href !== currentHref) {
-            var newPath = window.location.pathname;
-            var isAllowed = allowedNavigations.some(function(p) { return newPath === p || newPath.startsWith(p); });
-            if (!isAllowed) {
-                window.location.replace(currentHref);
-            } else {
-                currentHref = window.location.href;
-            }
-        }
-    }, 100);
-    
-    window.addEventListener('beforeunload', function(e) {
-
-    });
-})();
 </script>
 </body>
 </html>
