@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ghost | Backup</title>
+
+<style>
+@font-face {
+  font-family: "googlesans";
+  src: url("/assets/ghostincimgs/GoogleSans-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "googlesans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #ffffff;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 26px;
+  color: #111;
+}
+
+.card {
+  width: 100%;
+  max-width: 640px;
+  border: 1px solid #e6e6e6;
+  border-radius: 10px;
+  padding: 40px 34px 30px 34px;
+  position: relative;
+  background: #fff;
+}
+
+.logo {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+}
+
+.logo img {
+  width: 34px;
+}
+
+.top-spacer {
+  height: 42px;
+}
+
+h2 {
+  margin: 22px 0 6px 0;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 30px;
+}
+
+.section {
+  margin-bottom: 32px;
+}
+
+.section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+input[type="file"] {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d7d7d7;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fff;
+  cursor: pointer;
+}
+
+button {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #000;
+  color: #fff;
+  transition: opacity 0.15s ease;
+  margin-top: 10px;
+  width: 100%;
+}
+
+button:hover { opacity: 0.88; }
+
+.secondary {
+  background: #f5f5f5;
+  color: #111;
+  border: 1px solid #e6e6e6;
+}
+
+.secondary:hover {
+  background: #ededed;
+}
+
+.danger {
+  background: #000;
+}
+
+.note {
+  font-size: 13px;
+  color: #666;
+  margin-top: 6px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #000;
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.25s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <div class="logo">
+    <img src="/assets/ghostincimgs/ghost_dark_logo.svg" alt="Ghost">
+  </div>
+
+  <div class="top-spacer"></div>
+
+  <h2>Backup</h2>
+  <div class="subtitle">Manage your Ghost data</div>
+
+  <div class="section">
+    <h3>Export</h3>
+    <button id="exportFull">Download Full Backup (.ghost)</button>
+  </div>
+
+  <div class="section">
+    <h3>Import</h3>
+    <input type="file" id="importFile" accept=".json,.ghost">
+    <button id="restoreAll">Restore Everything</button>
+    <button id="restoreStorage" class="secondary">Restore LocalStorage Only</button>
+    <button id="restoreCookies" class="secondary">Restore Cookies Only</button>
+  </div>
+
+  <div class="section">
+    <h3>RESET</h3>
+    <button id="wipeAll" class="danger">Factory Reset</button>
+    <div class="note">This permanently deletes all local data.</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const toast = (msg) => {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 2500);
+};
+
+const BackupSystem = {
+
+  version: "2.1",
+
+  generate() {
+    return {
+      meta: {
+        version: this.version,
+        site: location.origin,
+        exportedAt: new Date().toISOString()
+      },
+      localStorage: { ...localStorage },
+      cookies: document.cookie
+        .split("; ")
+        .filter(Boolean)
+        .map(cookie => {
+          const [name, ...rest] = cookie.split("=");
+          return {
+            name,
+            value: rest.join("="),
+            path: "/"
+          };
+        })
+    };
+  },
+
+  download() {
+    const data = this.generate();
+
+    const blob = new Blob(
+      [JSON.stringify(data, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ghost-backup-${Date.now()}.ghost`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    toast("Backup downloaded.");
+  },
+
+  async readFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          resolve(JSON.parse(reader.result));
+        } catch {
+          reject();
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  },
+
+  validate(data) {
+    if (!data.meta || !data.localStorage || !data.cookies)
+      throw new Error("Invalid backup structure.");
+  },
+
+  restoreStorage(data) {
+    localStorage.clear();
+    Object.entries(data.localStorage).forEach(([k, v]) => {
+      localStorage.setItem(k, v);
+    });
+  },
+
+  restoreCookies(data) {
+    data.cookies.forEach(cookie => {
+      document.cookie = `${cookie.name}=${cookie.value};path=/`;
+    });
+  },
+
+  wipe() {
+    localStorage.clear();
+
+    document.cookie.split(";").forEach(cookie => {
+      const name = cookie.split("=")[0].trim();
+      document.cookie =
+        `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+    });
+  }
+};
+
+let importedData = null;
+
+document.getElementById("exportFull").onclick = () => {
+  BackupSystem.download();
+};
+
+document.getElementById("importFile").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    importedData = await BackupSystem.readFile(file);
+    BackupSystem.validate(importedData);
+    toast("Backup loaded successfully.");
+  } catch {
+    toast("Invalid backup file.");
+    importedData = null;
+  }
+};
+
+document.getElementById("restoreAll").onclick = () => {
+  if (!importedData) return toast("Import a backup first.");
+  if (!confirm("Restore EVERYTHING?")) return;
+
+  BackupSystem.restoreStorage(importedData);
+  BackupSystem.restoreCookies(importedData);
+
+  toast("Restore complete. Reloading...");
+  setTimeout(() => location.reload(), 1200);
+};
+
+document.getElementById("restoreStorage").onclick = () => {
+  if (!importedData) return toast("Import a backup first.");
+  BackupSystem.restoreStorage(importedData);
+  toast("LocalStorage restored.");
+};
+
+document.getElementById("restoreCookies").onclick = () => {
+  if (!importedData) return toast("Import a backup first.");
+  BackupSystem.restoreCookies(importedData);
+  toast("Cookies restored.");
+};
+
+document.getElementById("wipeAll").onclick = () => {
+  if (!confirm("Factory reset? This cannot be undone.")) return;
+  BackupSystem.wipe();
+  toast("All data wiped.");
+  setTimeout(() => location.reload(), 1200);
+};
+</script>
+
+</body>
+</html>
