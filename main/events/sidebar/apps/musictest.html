@@ -5,6 +5,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  // Break out of any parent iframe so YouTube embeds work correctly
+  if (window.top !== window.self) {
+    window.top.location.href = window.self.location.href;
+  }
+</script>
 <title>Ghost | music</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -463,12 +469,12 @@ async function findVideoIds(artist, title) {
   const cached = getCached(artist, title);
   if (cached?.length) return cached;
 
-  const q = `${artist} ${title} audio`;
+  const q = `${artist} ${title}`;
 
   // 1. Invidious — no key, CORS-enabled, works most places
   for (const host of INVIDIOUS) {
     try {
-      const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1`)
+      const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1&limit=10`)
         .then(r => r.json());
       const ids = data?.map?.(v => v.videoId).filter(Boolean).slice(0, 5);
       if (ids?.length) { setCached(artist, title, ids); return ids; }
@@ -479,7 +485,7 @@ async function findVideoIds(artist, title) {
   for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
     const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
     try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${key}`;
+      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=10&q=${encodeURIComponent(q)}&key=${key}`;
       const data = await fetch(url).then(r => r.json());
       if (data.error?.code === 403) { ytKeyIdx++; continue; }
       const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
@@ -505,11 +511,17 @@ async function doSearch(q) {
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=12`);
+    // Search broadly — no country/explicit filter so everything shows up
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50`);
     const data = await res.json();
     qSpn.style.display='none';
-    if (!data.results?.length) { qDrp.innerHTML='<div class="drop-msg">No results</div>'; return; }
-    renderDrop(data.results);
+    if (!data.results?.length) { qDrp.innerHTML='<div class="drop-msg">No results — try artist name + song title</div>'; return; }
+    // Dedupe by trackId, sort so explicit versions come first
+    const seen = new Set();
+    const results = data.results
+      .filter(t => { if (seen.has(t.trackId)) return false; seen.add(t.trackId); return true; })
+      .sort((a,b) => (b.trackExplicitness==='explicit'?1:0)-(a.trackExplicitness==='explicit'?1:0));
+    renderDrop(results);
   } catch { qSpn.style.display='none'; qDrp.innerHTML='<div class="drop-msg">Search failed</div>'; }
 }
 
