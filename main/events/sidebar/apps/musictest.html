@@ -436,11 +436,19 @@ window.onYouTubeIframeAPIReady = function() {
       },
       onError(e) {
         const track = ST.queue[ST.idx];
-        if (track?.ytIds?.length > track.ytTry + 1) {
+        if (!track) return;
+        if (track.ytIds?.length > track.ytTry + 1) {
+          // Try next ID in the list
           track.ytTry++;
           YT_player.loadVideoById(track.ytIds[track.ytTry]);
         } else {
-          toast('⚠ Blocked — try another');
+          // IDs exhausted — do a fresh findVideoIds search and try those
+          track.ytIds = null;
+          track.ytTry = 0;
+          findVideoIds(track.artist, track.title).then(ids => {
+            track.ytIds = ids;
+            YT_player.loadVideoById(ids[0]);
+          }).catch(() => toast('⚠ Could not play this track'));
         }
       }
     }
@@ -618,7 +626,7 @@ function renderDrop(tracks) {
     const artSm = t._fromYT ? (t.artLg || t.artSm) : (t.artworkUrl100||'');  // prefer high-res YT thumb
     const artLg = t._fromYT ? t.artLg : (artSm.replace('100x100bb','600x600bb'));
     const data = t._fromYT
-      ? { title:t.trackName, artist:t.artistName, album:'', artSm, artLg, durMs:null, ytIds:[t.ytId], ytTry:0 }
+      ? { title:t.trackName, artist:t.artistName, album:'', artSm, artLg, durMs:null, ytIds:null, ytTry:0 }
       : { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null };
     const id = 'tr_'+Math.random().toString(36).slice(2);
     (window._td=window._td||{})[id] = data;
