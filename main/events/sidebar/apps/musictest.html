@@ -439,33 +439,30 @@ const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(tag);
 
-// ─── YouTube API key ───────────────────────────────────────────────────────
-// Get a free key at: https://console.cloud.google.com
-//   1. Create a project → Enable "YouTube Data API v3"
-//   2. Credentials → Create API Key → paste it below
-const YT_API_KEY = 'AIzaSyA27tNlIpJbE8n4coZvZrv2L4SFlHHe9Uc';
-// ───────────────────────────────────────────────────────────────────────────
-
 const ytCache = {};
 
 async function findVideoIds(artist, title) {
-  const ck = `${artist}||${title}`.toLowerCase();
+  const ck = (artist + '||' + title).toLowerCase();
   if (ytCache[ck]?.length) return ytCache[ck];
 
-  if (!YT_API_KEY || YT_API_KEY === 'AIzaSyA27tNlIpJbE8n4coZvZrv2L4SFlHHe9Uc') {
-    toast('⚠ Add your YouTube API key to the code');
-    throw new Error('No API key');
+  const q = artist + ' ' + title + ' audio';
+  const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+
+  const proxies = [
+    u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  ];
+
+  for (const proxy of proxies) {
+    try {
+      const html = await fetch(proxy(ytUrl)).then(r => r.text());
+      const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+      const ids = [...new Set(matches.map(m => m[1]))].slice(0, 5);
+      if (ids.length) { ytCache[ck] = ids; return ids; }
+    } catch {}
   }
 
-  const q = `${artist} ${title} audio`;
-  const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${YT_API_KEY}`;
-
-  const data = await fetch(url).then(r => r.json());
-  if (data.error) throw new Error(data.error.message);
-  const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
-  if (!ids?.length) throw new Error('No results');
-  ytCache[ck] = ids;
-  return ids;
+  throw new Error('search failed');
 }
 let srchTmr=null;
 const qIn=G('q-in'), qDrp=G('q-drop'), qSpn=G('q-spin');
@@ -483,7 +480,7 @@ async function doSearch(q) {
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50`);
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=12`);
     const data = await res.json();
     qSpn.style.display='none';
     if (!data.results?.length) { qDrp.innerHTML='<div class="drop-msg">No results</div>'; return; }
