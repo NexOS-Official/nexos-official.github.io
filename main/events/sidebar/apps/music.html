@@ -1,5 +1,7 @@
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -437,52 +439,26 @@ const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(tag);
 
-const INVIDIOUS = [
-  'https://yewtu.be'
-];
-const YT_KEYS = [
-  'AIzaSyDXLg_yS0CXBmt6Z74cYVgQUlbIofou1J0',
-  'AIzaSyC9m5q9MGtX-B8mRrZKtaHPvGAmzF_AREM',
-  'AIzaSyD1gXCHnuLnPD849jU_7ZHvu37FSZTjWl4',
-  'AIzaSyBgaZs37ERC8OsdpsVaYubpwY-FP-9WzAg',
-  'AIzaSyClH13lpnqN8PhInA36UVAUED6_y4LwLwQ',
-  'AIzaSyAIX3PRpzMJ2CRYyKsSmt1YcImI9iREkSs',
-  'AIzaSyDUjW93ETtw57YNi4JdvELHkKBVhSrp2SY',
-  'AIzaSyA27tNlIpJbE8n4coZvZrv2L4SFlHHe9Uc',
-];
-let ytKeyIdx = 0;
-
-function cacheKey(artist, title) { return `yt:${artist}:${title}`.toLowerCase().slice(0, 120); }
-function getCached(artist, title) {
-  try { const v = localStorage.getItem(cacheKey(artist, title)); return v ? JSON.parse(v) : null; } catch { return null; }
-}
-function setCached(artist, title, ids) {
-  try { localStorage.setItem(cacheKey(artist, title), JSON.stringify(ids)); } catch {}
-}
+const ytCache = {};
 
 async function findVideoIds(artist, title) {
-  const cached = getCached(artist, title);
-  if (cached?.length) return cached;
+  const ck = (artist + '||' + title).toLowerCase();
+  if (ytCache[ck]?.length) return ytCache[ck];
 
-  const q = `${artist} ${title} audio`;
+  const q = artist + ' ' + title + ' audio';
+  const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
 
-  for (const host of INVIDIOUS) {
+  const proxies = [
+    u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  ];
+
+  for (const proxy of proxies) {
     try {
-      const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1`)
-        .then(r => r.json());
-      const ids = data?.map?.(v => v.videoId).filter(Boolean).slice(0, 5);
-      if (ids?.length) { setCached(artist, title, ids); return ids; }
-    } catch {}
-  }
-
-  for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
-    const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
-    try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${key}`;
-      const data = await fetch(url).then(r => r.json());
-      if (data.error?.code === 403) { ytKeyIdx++; continue; }
-      const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
-      if (ids?.length) { setCached(artist, title, ids); return ids; }
+      const html = await fetch(proxy(ytUrl)).then(r => r.text());
+      const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+      const ids = [...new Set(matches.map(m => m[1]))].slice(0, 5);
+      if (ids.length) { ytCache[ck] = ids; return ids; }
     } catch {}
   }
 
