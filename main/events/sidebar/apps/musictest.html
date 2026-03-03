@@ -571,12 +571,7 @@ async function ytMusicSearch(q) {
       const data = await fetch(url).then(r => r.json());
       if (data.error?.code === 403) { ytKeyIdx++; continue; }
 
-      const junk = /\blive\b|\bconcert\b|\btour\b|live performance|live session|podcast|radio station|roblox|minecraft|gaming|tutorial|interview|reaction|unboxing|compilation/i;
-
-      const results = (data.items || []).filter(item => {
-        // Only block things that are definitely not the studio song
-        return !junk.test(item.snippet.title);
-      }).map(item => ({
+      const results = (data.items || []).map(item => ({
         _fromYT: true,
         trackName: item.snippet.title
           .replace(/\s*[\(\[](official\s*(audio|video|music\s*video|lyric\s*video|visualizer)|lyrics?|explicit|hd)[\)\]]/gi, '')
@@ -599,7 +594,6 @@ async function ytMusicSearch(q) {
 
 
 async function doSearch(q) {
-  qSpn.style.display='both';
   qSpn.style.display='block';
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
