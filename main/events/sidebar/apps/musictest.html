@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -435,40 +437,43 @@ const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(tag);
 
-// Invidious public instances — open-source YT frontend with CORS JSON API
-// No API key, no proxy, works on school networks
 const INVIDIOUS = [
   'https://inv.nadeko.net',
   'https://invidious.privacydev.net',
   'https://yt.cdaut.de',
 ];
+const YT_KEYS = [
+  'AIzaSyDXLg_yS0CXBmt6Z74cYVgQUlbIofou1J0',
+  'AIzaSyC9m5q9MGtX-B8mRrZKtaHPvGAmzF_AREM',
+  'AIzaSyD1gXCHnuLnPD849jU_7ZHvu37FSZTjWl4',
+];
+let ytKeyIdx = 0;
 
 async function findVideoIds(artist, title) {
-  const q = encodeURIComponent(`${artist} ${title} audio`);
+  const q = `${artist} ${title} audio`;
 
-  // Invidious search API — real JSON, CORS enabled, no proxy needed
+  // 1. Invidious — no key, CORS-enabled, works most places
   for (const host of INVIDIOUS) {
     try {
-      const data = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId&page=1`)
+      const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1`)
         .then(r => r.json());
       const ids = data?.map?.(v => v.videoId).filter(Boolean).slice(0, 5);
       if (ids?.length) return ids;
     } catch {}
   }
 
-  // Last resort: corsproxy scrape
-  const ytSearch = `https://www.youtube.com/results?search_query=${q}`;
-  for (const url of [
-    `https://corsproxy.io/?${encodeURIComponent(ytSearch)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(ytSearch)}`,
-  ]) {
+  // 2. YouTube Data API v3 — works on school networks (googleapis.com always whitelisted)
+  for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
+    const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
     try {
-      const html = await fetch(url).then(r => r.text());
-      const ids = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)]
-        .map(m => m[1]).filter((v,i,a) => a.indexOf(v)===i).slice(0,5);
-      if (ids.length) return ids;
+      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${key}`;
+      const data = await fetch(url).then(r => r.json());
+      if (data.error?.code === 403) { ytKeyIdx++; continue; } // quota hit, try next key
+      const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
+      if (ids?.length) return ids;
     } catch {}
   }
+
   throw new Error('search failed');
 }
 let srchTmr=null;
