@@ -439,59 +439,33 @@ const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(tag);
 
-const INVIDIOUS = [
-  'https://invidious.io.lol',
-  'https://yewtu.be',
-  'https://inv.us.projectsegfau.lt',
-  'https://invidious.privacyredirect.com',
-  'https://invidious.nerdvpn.de',
-  'https://invidious.incogniweb.net',
-  'https://inv.nadeko.net',
-  'https://invidious.privacydev.net',
-  'https://yt.cdaut.de',
-];
-const YT_KEYS = [
-  'AIzaSyDXLg_yS0CXBmt6Z74cYVgQUlbIofou1J0',
-  'AIzaSyC9m5q9MGtX-B8mRrZKtaHPvGAmzF_AREM',
-  'AIzaSyD1gXCHnuLnPD849jU_7ZHvu37FSZTjWl4',
-];
-let ytKeyIdx = 0;
+// ─── YouTube API key ───────────────────────────────────────────────────────
+// Get a free key at: https://console.cloud.google.com
+//   1. Create a project → Enable "YouTube Data API v3"
+//   2. Credentials → Create API Key → paste it below
+const YT_API_KEY = 'AIzaSyA27tNlIpJbE8n4coZvZrv2L4SFlHHe9Uc';
+// ───────────────────────────────────────────────────────────────────────────
 
-function cacheKey(artist, title) { return `yt:${artist}:${title}`.toLowerCase().slice(0, 120); }
-function getCached(artist, title) {
-  try { const v = localStorage.getItem(cacheKey(artist, title)); return v ? JSON.parse(v) : null; } catch { return null; }
-}
-function setCached(artist, title, ids) {
-  try { localStorage.setItem(cacheKey(artist, title), JSON.stringify(ids)); } catch {}
-}
+const ytCache = {};
 
 async function findVideoIds(artist, title) {
-  const cached = getCached(artist, title);
-  if (cached?.length) return cached;
+  const ck = `${artist}||${title}`.toLowerCase();
+  if (ytCache[ck]?.length) return ytCache[ck];
+
+  if (!YT_API_KEY || YT_API_KEY === 'AIzaSyA27tNlIpJbE8n4coZvZrv2L4SFlHHe9Uc') {
+    toast('⚠ Add your YouTube API key to the code');
+    throw new Error('No API key');
+  }
 
   const q = `${artist} ${title} audio`;
+  const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${YT_API_KEY}`;
 
-  for (const host of INVIDIOUS) {
-    try {
-      const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1`)
-        .then(r => r.json());
-      const ids = data?.map?.(v => v.videoId).filter(Boolean).slice(0, 5);
-      if (ids?.length) { setCached(artist, title, ids); return ids; }
-    } catch {}
-  }
-
-  for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
-    const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
-    try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${key}`;
-      const data = await fetch(url).then(r => r.json());
-      if (data.error?.code === 403) { ytKeyIdx++; continue; }
-      const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
-      if (ids?.length) { setCached(artist, title, ids); return ids; }
-    } catch {}
-  }
-
-  throw new Error('search failed');
+  const data = await fetch(url).then(r => r.json());
+  if (data.error) throw new Error(data.error.message);
+  const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
+  if (!ids?.length) throw new Error('No results');
+  ytCache[ck] = ids;
+  return ids;
 }
 let srchTmr=null;
 const qIn=G('q-in'), qDrp=G('q-drop'), qSpn=G('q-spin');
