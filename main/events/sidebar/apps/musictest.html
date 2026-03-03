@@ -449,7 +449,20 @@ const YT_KEYS = [
 ];
 let ytKeyIdx = 0;
 
+// Cache video IDs in localStorage — same song never hits the API twice
+function cacheKey(artist, title) { return `yt:${artist}:${title}`.toLowerCase().slice(0, 120); }
+function getCached(artist, title) {
+  try { const v = localStorage.getItem(cacheKey(artist, title)); return v ? JSON.parse(v) : null; } catch { return null; }
+}
+function setCached(artist, title, ids) {
+  try { localStorage.setItem(cacheKey(artist, title), JSON.stringify(ids)); } catch {}
+}
+
 async function findVideoIds(artist, title) {
+  // Serve from cache instantly — zero API calls
+  const cached = getCached(artist, title);
+  if (cached?.length) return cached;
+
   const q = `${artist} ${title} audio`;
 
   // 1. Invidious — no key, CORS-enabled, works most places
@@ -458,19 +471,19 @@ async function findVideoIds(artist, title) {
       const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1`)
         .then(r => r.json());
       const ids = data?.map?.(v => v.videoId).filter(Boolean).slice(0, 5);
-      if (ids?.length) return ids;
+      if (ids?.length) { setCached(artist, title, ids); return ids; }
     } catch {}
   }
 
-  // 2. YouTube Data API v3 — works on school networks (googleapis.com always whitelisted)
+  // 2. YouTube Data API v3 — googleapis.com whitelisted on school networks
   for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
     const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
     try {
       const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${key}`;
       const data = await fetch(url).then(r => r.json());
-      if (data.error?.code === 403) { ytKeyIdx++; continue; } // quota hit, try next key
+      if (data.error?.code === 403) { ytKeyIdx++; continue; }
       const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
-      if (ids?.length) return ids;
+      if (ids?.length) { setCached(artist, title, ids); return ids; }
     } catch {}
   }
 
