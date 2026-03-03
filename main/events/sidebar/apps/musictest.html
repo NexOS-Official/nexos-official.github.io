@@ -200,19 +200,57 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi:hover .qi-rm{display:grid}
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
+/* ── Lyrics lines ── */
 .ll{
-  font-size:24px;line-height:1.4;color:var(--s3);font-weight:700;
-  padding:6px 0;border-radius:8px;
-  transition:color .3s,transform .3s,opacity .3s;cursor:pointer;
+  font-size:22px;line-height:1.45;color:rgba(255,255,255,0.18);font-weight:700;
+  padding:5px 0;border-radius:8px;
+  transition:color .5s cubic-bezier(.4,0,.2,1),
+             filter .5s cubic-bezier(.4,0,.2,1),
+             transform .5s cubic-bezier(.4,0,.2,1),
+             opacity .5s cubic-bezier(.4,0,.2,1),
+             font-size .4s cubic-bezier(.4,0,.2,1);
+  cursor:pointer;
+  filter:blur(2.5px);
+  transform-origin:left center;
+  will-change:transform,filter,color;
 }
-.ll:hover{color:var(--ink3)}
-.ll.past{color:var(--s3);opacity:.5}
-.ll.now{color:var(--ink);font-size:28px;transform:scale(1.02);transform-origin:left center}
-.ll.plain{cursor:default;font-size:16px;font-weight:500;color:var(--ink3)}
-.ll.plain:hover{color:var(--ink3)}
+.ll:hover{color:rgba(255,255,255,0.45);filter:blur(0px)}
+.ll.past{color:rgba(255,255,255,0.15);filter:blur(3px);opacity:.6}
+.ll.near{color:rgba(255,255,255,0.45);filter:blur(1px)}
+.ll.now{
+  color:#ffffff;font-size:26px;
+  transform:scale(1.03);
+  filter:blur(0px);
+  opacity:1;
+}
+/* paren sub-line */
+.ll-paren{
+  display:block;font-size:.6em;font-weight:600;
+  color:rgba(255,255,255,0.5);margin-top:2px;
+  letter-spacing:.01em;
+}
+.ll.now .ll-paren{color:rgba(255,255,255,0.75)}
+/* word-by-word highlight */
+.lw{transition:color .15s,filter .15s;color:inherit;filter:inherit}
+.lw.hit{color:#ffffff;filter:blur(0px) !important;text-shadow:0 0 20px rgba(252,60,108,.6)}
+/* plain lyrics */
+.ll.plain{cursor:default;font-size:15px;font-weight:500;color:rgba(255,255,255,0.5);filter:none}
+.ll.plain:hover{color:rgba(255,255,255,0.7)}
 .lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
 .lrc-empty svg{width:38px;height:38px;opacity:.22}
 .lrc-empty p{font-size:13px}
+/* word-sync toggle pill */
+.wsync-btn{
+  position:absolute;top:12px;right:60px;z-index:10;
+  height:28px;padding:0 12px;border-radius:14px;
+  background:var(--s2);border:1px solid var(--border);
+  display:none;align-items:center;gap:5px;cursor:pointer;
+  font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--ink3);transition:background .15s,color .15s,border-color .15s;
+}
+.wsync-btn.visible{display:flex}
+.wsync-btn.on{background:var(--pink);border-color:var(--pink);color:#fff}
+.wsync-btn svg{width:12px;height:12px}
 
 .q-empty-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--ink3);font-size:13px;text-align:center;line-height:1.6}
 
@@ -356,6 +394,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         <div id="lscroll"></div>
       </div>
 
+      <button class="wsync-btn" id="wsync-btn" title="Word sync">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h13"/></svg>
+        Word
+      </button>
       <button class="lyric-toggle" id="lyric-toggle" title="Toggle Lyrics">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M4 6h16M4 12h10M4 18h14"/>
@@ -566,12 +608,12 @@ async function searchLastFm(q) {
   } catch { return []; }
 }
 
-// Cover Art Archive: free, no key, uses MusicBrainz release IDs
+// ── Cover art fetcher: CAA → iTunes fallback ──────────────────────────────────
 const _artCache = {};
 async function fetchCoverArt(track) {
-  if (track.artworkUrl100) return; // already has art
+  if (track.artworkUrl100) return;
 
-  // --- MusicBrainz path: use Cover Art Archive with release MBID ---
+  // 1. Cover Art Archive (only works if we have a MusicBrainz release MBID)
   if (track._releaseMbid) {
     const mbid = track._releaseMbid;
     if (_artCache[mbid] !== undefined) {
@@ -579,42 +621,52 @@ async function fetchCoverArt(track) {
       return;
     }
     try {
-      const r = await fetch(`https://coverartarchive.org/release/${mbid}`, { headers: { 'Accept': 'application/json' } });
+      // CAA redirects, follow with no-cors is unreliable — use the JSON index endpoint directly
+      const r = await fetch(`https://coverartarchive.org/release/${mbid}`);
       if (r.ok) {
         const d = await r.json();
         const img = d.images?.find(i => i.front) || d.images?.[0];
         if (img) {
+          // Prefer 250/500 thumbnails; fall back to full image
           const sm = img.thumbnails?.['250'] || img.thumbnails?.small || img.image;
           const lg = img.thumbnails?.['500'] || img.thumbnails?.large || img.image;
-          _artCache[mbid] = sm; _artCache[mbid+'_lg'] = lg;
-          track.artworkUrl100 = sm; track._artLgOverride = lg;
-          return;
+          if (sm) {
+            _artCache[mbid] = sm; _artCache[mbid+'_lg'] = lg;
+            track.artworkUrl100 = sm; track._artLgOverride = lg;
+            return;
+          }
         }
       }
     } catch {}
     _artCache[mbid] = null;
   }
 
-  // --- Fallback for any track with no art: quick iTunes lookup by artist+title ---
-  if (!track.artworkUrl100) {
-    const ck = (track.artistName + '||' + track.trackName).toLowerCase();
-    if (_artCache[ck] !== undefined) {
-      if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
-      return;
-    }
-    try {
-      const q = encodeURIComponent(track.artistName + ' ' + track.trackName);
-      const r = await fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=1`);
+  // 2. iTunes art lookup — works for anything with an artist + title
+  const ck = (track.artistName + '||' + track.trackName).toLowerCase();
+  if (_artCache[ck] !== undefined) {
+    if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
+    return;
+  }
+  try {
+    const term = encodeURIComponent(track.artistName.trim() + ' ' + track.trackName.trim());
+    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
+    if (r.ok) {
       const d = await r.json();
-      const hit = d.results?.[0];
+      // Pick the result whose title/artist best matches
+      const tl = track.trackName.toLowerCase(), al = track.artistName.toLowerCase();
+      const hit = d.results?.find(h =>
+        h.trackName?.toLowerCase().includes(tl) || h.artistName?.toLowerCase().includes(al)
+      ) || d.results?.[0];
       if (hit?.artworkUrl100) {
         const sm = hit.artworkUrl100;
         const lg = sm.replace('100x100bb','600x600bb');
         _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
         track.artworkUrl100 = sm; track._artLgOverride = lg;
-      } else { _artCache[ck] = null; }
-    } catch {}
-  }
+        return;
+      }
+    }
+  } catch {}
+  _artCache[ck] = null;
 }
 
 function renderDrop(tracks) {
@@ -755,8 +807,17 @@ G('btn-pv').addEventListener('click',prevTrack);
 G('btn-nx').addEventListener('click',nextTrack);
 G('btn-pp').addEventListener('click',togglePlay);
 
+// ── Lyrics state ──────────────────────────────────────────────────────────────
+let wordSyncOn = false;
+G('wsync-btn').addEventListener('click', () => {
+  wordSyncOn = !wordSyncOn;
+  G('wsync-btn').classList.toggle('on', wordSyncOn);
+  if (ST.lrcType === 'synced') renderSynced();
+});
+
 async function fetchLyrics(title, artist) {
   ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
+  G('wsync-btn').classList.remove('visible','on'); wordSyncOn=false;
   const scroll=G('lscroll');
   G('lrc-empty-state').style.display='none';
   scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
@@ -777,13 +838,104 @@ async function fetchLyrics(title, artist) {
   }
   scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No lyrics found</p></div>';
 }
+
 async function lrclibGET(track,artist){try{const r=await fetch(`https://lrclib.net/api/get?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`,{headers:{'Lrclib-Client':'Wavelength/4.0'}});if(r.status===200)return await r.json();}catch{}return null;}
 async function lrclibSEARCH(track,artist){try{const r=await fetch(`https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`,{headers:{'Lrclib-Client':'Wavelength/4.0'}});if(r.ok){const a=await r.json();if(a?.length)return a.find(x=>x.syncedLyrics)||a.find(x=>x.plainLyrics)||null;}}catch{}return null;}
-function parseLRC(raw){return raw.split('\n').map(line=>{const m=line.match(/^\[(\d{1,3}):(\d{2}(?:\.\d+)?)\](.*)/);if(!m)return null;return{ms:parseInt(m[1])*60000+parseFloat(m[2])*1000,text:m[3].trim()};}).filter(Boolean);}
-function renderSynced(){G('lscroll').innerHTML=ST.lrc.map((l,i)=>`<div class="ll" id="ll${i}" onclick="seekLrc(${i})">${x(l.text)||'♪'}</div>`).join('');}
-function renderPlain(text){G('lscroll').innerHTML=text.replace(/\r\n/g,'\n').split('\n').map((l,i)=>`<div class="ll plain" id="ll${i}">${x(l)||' '}</div>`).join('');}
-function seekLrc(i){if(ST.lrcType==='synced'&&ST.lrc[i])YT_player.seekTo(ST.lrc[i].ms/1000);}
-function tickLrc(posMs){if(!ST.lrc.length)return;let active=0;for(let i=0;i<ST.lrc.length;i++){if(posMs>=ST.lrc[i].ms)active=i;else break;}if(active===ST.lrcActive)return;ST.lrcActive=active;document.querySelectorAll('#lscroll .ll').forEach((el,i)=>{el.classList.remove('now','past');if(i<active)el.classList.add('past');if(i===active)el.classList.add('now');});document.getElementById(`ll${active}`)?.scrollIntoView({block:'center',behavior:'smooth'});}
+
+function parseLRC(raw) {
+  // Parse both standard [mm:ss.xx]text and word-level <mm:ss.xx>word formats
+  return raw.split('\n').map(line => {
+    const m = line.match(/^\[(\d{1,3}):(\d{2}(?:\.\d+)?)\](.*)/);
+    if (!m) return null;
+    const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
+    const raw = m[3].trim();
+    // Parse word-level timestamps: <mm:ss.xx>word
+    const words = [];
+    const wRe = /<(\d{1,3}):(\d{2}(?:\.\d+)?)>([^<]*)/g;
+    let wm;
+    while ((wm = wRe.exec(raw)) !== null) {
+      const wMs = parseInt(wm[1])*60000 + parseFloat(wm[2])*1000;
+      const word = wm[3].trim();
+      if (word) words.push({ ms: wMs, word });
+    }
+    // Strip word timestamps to get plain text
+    const text = raw.replace(/<[^>]+>/g,'').trim();
+    return { ms, text, words };
+  }).filter(Boolean);
+}
+
+function splitParen(text) {
+  // Returns { main, paren } — splits "(content)" into sub-annotation
+  const pm = text.match(/^(.*?)\s*\(([^)]+)\)\s*(.*)$/);
+  if (pm) {
+    const main = (pm[1] + (pm[3] ? ' ' + pm[3] : '')).trim();
+    return { main: main || text, paren: pm[2] };
+  }
+  return { main: text, paren: null };
+}
+
+function renderLineHTML(line, i) {
+  const { main, paren } = splitParen(line.text || '♪');
+  const hasWords = line.words?.length > 0;
+  let mainHTML;
+  if (wordSyncOn && hasWords) {
+    // Render each word as a span for word-by-word highlighting
+    mainHTML = line.words.map((w, wi) =>
+      `<span class="lw" id="lw${i}_${wi}">${x(w.word)}</span>`
+    ).join(' ');
+  } else {
+    mainHTML = x(main);
+  }
+  const parenHTML = paren ? `<span class="ll-paren">(${x(paren)})</span>` : '';
+  return `<div class="ll" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}${parenHTML}</div>`;
+}
+
+function renderSynced() {
+  const hasAnyWords = ST.lrc.some(l => l.words?.length > 0);
+  G('wsync-btn').classList.toggle('visible', hasAnyWords);
+  G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
+}
+
+function renderPlain(text) {
+  G('lscroll').innerHTML = text.replace(/\r\n/g,'\n').split('\n').map((l, i) => {
+    const { main, paren } = splitParen(l || ' ');
+    const parenHTML = paren ? `<span class="ll-paren">(${x(paren)})</span>` : '';
+    return `<div class="ll plain" id="ll${i}">${x(main)}${parenHTML}</div>`;
+  }).join('');
+}
+
+function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
+
+function tickLrc(posMs) {
+  if (!ST.lrc.length) return;
+  // Find active line
+  let active = 0;
+  for (let i = 0; i < ST.lrc.length; i++) {
+    if (posMs >= ST.lrc[i].ms) active = i; else break;
+  }
+  // Update line classes
+  if (active !== ST.lrcActive) {
+    ST.lrcActive = active;
+    document.querySelectorAll('#lscroll .ll').forEach((el, i) => {
+      el.classList.remove('now','past','near');
+      if (i < active - 1) el.classList.add('past');
+      else if (i === active - 1 || i === active + 1) el.classList.add('near');
+      if (i === active) el.classList.add('now');
+    });
+    document.getElementById(`ll${active}`)?.scrollIntoView({ block:'center', behavior:'smooth' });
+  }
+  // Word-by-word highlighting
+  if (wordSyncOn && ST.lrc[active]?.words?.length) {
+    const words = ST.lrc[active].words;
+    const nextLineMs = ST.lrc[active+1]?.ms ?? (posMs + 99999);
+    words.forEach((w, wi) => {
+      const el = document.getElementById(`lw${active}_${wi}`);
+      if (!el) return;
+      const nextWms = words[wi+1]?.ms ?? nextLineMs;
+      el.classList.toggle('hit', posMs >= w.ms && posMs < nextWms);
+    });
+  }
+}
 
 document.addEventListener('keydown', e => {
   if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
