@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2540,6 +2541,9 @@ body {
         transform: translateY(0) scale(1);
         opacity: 1;
         pointer-events: auto;
+    }
+    #saveMenu {
+        right: 95px;
     }
 
     .search-suggestions {
@@ -6328,9 +6332,17 @@ menu.addEventListener('mouseleave', hideMenu);
                     <i data-lucide="user" width="15" height="15" style="color:#000"></i>
                 </button>
             </div>
+            <div style="position:relative;">
+                <button class="taskbar-quick-btn" id="qsSave" title="Save">
+                    <i data-lucide="download" width="15" height="15" style="color:#000"></i>
+                </button>
+            </div>
             
             <div id="profileMenu" class="profile-menu-popup">
                 <iframe src="/dashboard" style="width:100%;height:100%;border:none;"></iframe>
+            </div>
+            <div id="saveMenu" class="profile-menu-popup">
+                <iframe src="/save.html" style="width:100%;height:100%;border:none;"></iframe>
             </div>
             <button class="taskbar-quick-btn" id="qsPower" title="Power Off" style="color:#000;">
                 <i data-lucide="power" width="15" height="15" style="color:#000"></i>
@@ -6952,9 +6964,12 @@ menu.addEventListener('mouseleave', hideMenu);
 
         var profileBtn = document.getElementById('qsProfile');
         var profileMenu = document.getElementById('profileMenu');
+        var saveBtn = document.getElementById('qsSave');
+        var saveMenu = document.getElementById('saveMenu');
         if (profileBtn && profileMenu) {
             profileBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
+                if (saveMenu) saveMenu.classList.remove('visible');
                 if (profileMenu.classList.contains('visible')) {
                     profileMenu.classList.remove('visible');
                 } else {
@@ -6969,6 +6984,27 @@ menu.addEventListener('mouseleave', hideMenu);
             document.addEventListener('click', function(e) {
                 if (!profileMenu.contains(e.target) && e.target !== profileBtn && !profileBtn.contains(e.target)) {
                     profileMenu.classList.remove('visible');
+                }
+            });
+        }
+        if (saveBtn && saveMenu) {
+            saveBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (profileMenu) profileMenu.classList.remove('visible');
+                if (saveMenu.classList.contains('visible')) {
+                    saveMenu.classList.remove('visible');
+                } else {
+                    var ccWrapper = document.getElementById('ccAnncWrapper');
+                    var tdc = document.getElementById('timeDateContainer');
+                    if (ccWrapper) ccWrapper.classList.remove('visible');
+                    if (tdc) tdc.classList.remove('expanded');
+                    
+                    saveMenu.classList.add('visible');
+                }
+            });
+            document.addEventListener('click', function(e) {
+                if (!saveMenu.contains(e.target) && e.target !== saveBtn && !saveBtn.contains(e.target)) {
+                    saveMenu.classList.remove('visible');
                 }
             });
         }
@@ -7114,6 +7150,8 @@ menu.addEventListener('mouseleave', hideMenu);
         }
         var profileMenu = document.getElementById('profileMenu');
         if (profileMenu) profileMenu.classList.remove('visible');
+        var saveMenu = document.getElementById('saveMenu');
+        if (saveMenu) saveMenu.classList.remove('visible');
         var aiMenuModal = document.getElementById('aiMenuModal');
         if (aiMenuModal) aiMenuModal.classList.remove('show');
         var globalLayout = document.getElementById('global-layout-options-menu');
