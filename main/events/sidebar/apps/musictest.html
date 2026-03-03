@@ -519,7 +519,7 @@ async function ytMusicSearch(q) {
   for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
     const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
     try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&type=video&videoCategoryId=10&maxResults=10&q=${encodeURIComponent(q)}&key=${key}`;
+      const url = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&type=video&videoCategoryId=10&maxResults=10&q=${encodeURIComponent(q)}&key=${key}&regionCode=US`;
       const data = await fetch(url).then(r => r.json());
       if (data.error?.code === 403) { ytKeyIdx++; continue; }
       return (data.items || []).map(item => ({
@@ -617,7 +617,8 @@ async function loadTrack(idx) {
   markQI(idx); updateNP(track);
   ST.playing=false; ST.pos=0; ST.dur=0; syncPP();
 
-  if (!track.ytIds) {
+  // If no IDs yet, or IDs array is empty, go find them
+  if (!track.ytIds?.length) {
     setStatus('loading', 'Finding…');
     try {
       track.ytIds = await findVideoIds(track.artist, track.title);
@@ -630,7 +631,11 @@ async function loadTrack(idx) {
     }
   }
 
-  YT_player.loadVideoById(track.ytIds[track.ytTry]);
+  if (track.ytTry === undefined) track.ytTry = 0;
+  const vid = track.ytIds[track.ytTry];
+  if (!vid) { setStatus('err', 'No video ID'); toast('Could not find video'); return; }
+  G('cv-load').classList.add('on');
+  YT_player.loadVideoById(vid);
   fetchLyrics(track.title, track.artist);
 }
 
