@@ -79,7 +79,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   box-shadow:0 20px 60px rgba(0,0,0,.6);
   display:none;
 }
-.cover-art img{width:100%;height:100%;object-fit:cover;display:block}
+.cover-art img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
+.cover-art img.yt-thumb{object-fit:cover;transform:scale(1.35)}
 .cover-art.playing{animation:float 5s ease-in-out infinite}
 @keyframes float{0%,100%{transform:translateY(0) rotate(-.3deg)}50%{transform:translateY(-8px) rotate(.3deg)}}
 .cover-info{
@@ -129,6 +130,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .search-box svg{width:16px;height:16px;color:var(--ink3);flex-shrink:0}
 .search-box input{border:none;background:transparent;outline:none;font-family:inherit;font-size:14px;color:var(--ink);width:100%}
 .search-box input::placeholder{color:var(--ink3)}
+#src-toggle{background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;color:var(--ink3);display:flex;align-items:center;transition:color .15s,background .15s;flex-shrink:0}
+#src-toggle:hover{background:var(--s3);color:var(--ink)}
+#src-toggle.yt-mode{color:#ff0000}
 .spin{width:14px;height:14px;flex-shrink:0;border:2px solid var(--s3);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -332,6 +336,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input id="q-in" type="text" placeholder="Search songs, artists…" autocomplete="off" spellcheck="false">
         <div class="spin" id="q-spin"></div>
+        <button id="src-toggle" title="Toggle search source" onclick="toggleSearchSource()">
+          <svg id="src-icon-apple" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          <svg id="src-icon-yt" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:none"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+        </button>
       </div>
       <div class="drop" id="q-drop"></div>
     </div>
@@ -506,6 +514,19 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
+let searchSource = 'apple'; // 'apple' or 'yt'
+
+function toggleSearchSource() {
+  searchSource = searchSource === 'apple' ? 'yt' : 'apple';
+  const btn = G('src-toggle');
+  G('src-icon-apple').style.display = searchSource === 'apple' ? '' : 'none';
+  G('src-icon-yt').style.display    = searchSource === 'yt'    ? '' : 'none';
+  btn.classList.toggle('yt-mode', searchSource === 'yt');
+  qIn.placeholder = searchSource === 'yt' ? 'Search YouTube music…' : 'Search songs, artists…';
+  const q = qIn.value.trim();
+  if (q) doSearch(q);
+}
+
 async function iTunesSearch(term) {
   try {
     const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=50`);
@@ -515,60 +536,87 @@ async function iTunesSearch(term) {
 }
 
 async function ytMusicSearch(q) {
-  // Search YT API restricted to music category (videoCategoryId=10) so no gaming/meme videos
   for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
     const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
     try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&type=video&videoCategoryId=10&maxResults=10&q=${encodeURIComponent(q)}&key=${key}&regionCode=US`;
+      // No category filter — just search for "q topic" which YT uses for auto-generated music channels
+      const url = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&type=video&maxResults=20&q=${encodeURIComponent(q)}&key=${key}&regionCode=US`;
       const data = await fetch(url).then(r => r.json());
       if (data.error?.code === 403) { ytKeyIdx++; continue; }
-      return (data.items || []).map(item => ({
+
+      const results = (data.items || []).filter(item => {
+        const title = item.snippet.title.toLowerCase();
+        const channel = item.snippet.channelTitle.toLowerCase();
+
+        // Must look like a music result — channel is VEVO, Topic, or title contains known music patterns
+        const isMusicChannel = / - topic$|vevo|records|music|official$/i.test(item.snippet.channelTitle);
+        const isMusicTitle = /official (audio|video|music|lyric)|lyrics|ft\.|feat\.|prod\./i.test(item.snippet.title);
+
+        // Hard blocklist — definitely not music
+        const isJunk = /podcast|radio station|roblox|minecraft|gaming|let's play|tutorial|how to|review|react|compilation|mix \d|hour mix|\d hour|news|interview|trailer|unboxing/i.test(title);
+
+        return !isJunk && (isMusicChannel || isMusicTitle);
+      }).map(item => ({
         _fromYT: true,
-        trackName: item.snippet.title,
-        artistName: item.snippet.channelTitle.replace(/ - Topic$| VEVO$| Vevo$/i, ''),
+        trackName: item.snippet.title
+          .replace(/\s*[\(\[](Official (Audio|Video|Music Video|Lyric Video|Visualizer)|Lyrics?|prod\..*?)[\)\]]/gi, '')
+          .replace(/\s*-\s*Official (Audio|Video|Music Video)$/gi, '')
+          .trim(),
+        artistName: item.snippet.channelTitle
+          .replace(/ - Topic$| VEVO$| Vevo$| - Official$/i, '').trim(),
         artSm: item.snippet.thumbnails?.default?.url || null,
         artLg: item.snippet.thumbnails?.high?.url || null,
         ytId: item.id.videoId,
         durMs: null,
         album: '',
       }));
+
+      if (results.length) return results;
     } catch {}
   }
   return [];
 }
 
+
 async function doSearch(q) {
+  qSpn.style.display='both';
   qSpn.style.display='block';
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
   try {
-    // Run iTunes + YouTube search in parallel
-    const [itunesResults, ytResults] = await Promise.all([
-      iTunesSearch(q),
-      ytMusicSearch(q),
-    ]);
+    if (searchSource === 'yt') {
+      // YT-only mode
+      const ytResults = await ytMusicSearch(q);
+      qSpn.style.display='none';
+      if (!ytResults.length) { qDrp.innerHTML='<div class="drop-msg">No results found</div>'; return; }
+      renderDrop(ytResults);
+    } else {
+      // Apple mode: iTunes primary, YT appended at bottom
+      const [itunesResults, ytResults] = await Promise.all([iTunesSearch(q), ytMusicSearch(q)]);
+      const seen = new Set();
+      const deduped = itunesResults
+        .filter(t => { if (seen.has(t.trackId)) return false; seen.add(t.trackId); return true; })
+        .sort((a,b) => (b.trackExplicitness==='explicit'?1:0)-(a.trackExplicitness==='explicit'?1:0));
 
-    // Dedupe iTunes by trackId, sort explicit first
-    const seen = new Set();
-    const deduped = itunesResults
-      .filter(t => { if (seen.has(t.trackId)) return false; seen.add(t.trackId); return true; })
-      .sort((a,b) => (b.trackExplicitness==='explicit'?1:0)-(a.trackExplicitness==='explicit'?1:0));
+      // Only append YT results that iTunes genuinely didn't find
+      // If iTunes returned results, only show YT ones with completely different track names
+      const itunesKeys = new Set(deduped.map(t => t.trackName.toLowerCase().replace(/[^a-z0-9]/g,'')));
+      const ytFiltered = itunesResults.length > 0
+        ? ytResults.filter(t => !itunesKeys.has(t.trackName.toLowerCase().replace(/[^a-z0-9]/g,'')))
+        : ytResults; // iTunes found nothing — show all YT results
 
-    // Merge: iTunes first, then YT results that aren't already covered
-    const itunesKeys = new Set(deduped.map(t => (t.trackName+t.artistName).toLowerCase()));
-    const ytFiltered = ytResults.filter(t => !itunesKeys.has((t.trackName+t.artistName).toLowerCase()));
-    const merged = [...deduped, ...ytFiltered];
-
-    qSpn.style.display='none';
-    if (!merged.length) { qDrp.innerHTML='<div class="drop-msg">No results found</div>'; return; }
-    renderDrop(merged);
+      const merged = [...deduped, ...ytFiltered];
+      qSpn.style.display='none';
+      if (!merged.length) { qDrp.innerHTML='<div class="drop-msg">No results found</div>'; return; }
+      renderDrop(merged);
+    }
   } catch { qSpn.style.display='none'; qDrp.innerHTML='<div class="drop-msg">Search failed</div>'; }
 }
 
 function renderDrop(tracks) {
   qDrp.innerHTML = tracks.map(t => {
     // Handle both iTunes and YouTube-sourced results
-    const artSm = t._fromYT ? t.artSm : (t.artworkUrl100||'');
+    const artSm = t._fromYT ? (t.artLg || t.artSm) : (t.artworkUrl100||'');  // prefer high-res YT thumb
     const artLg = t._fromYT ? t.artLg : (artSm.replace('100x100bb','600x600bb'));
     const data = t._fromYT
       ? { title:t.trackName, artist:t.artistName, album:'', artSm, artLg, durMs:null, ytIds:[t.ytId], ytTry:0 }
@@ -647,6 +695,7 @@ function updateNP(track) {
   G('np-a').textContent=track.artist;
   if(track.artLg){
     G('cv-img').src=track.artLg;
+  if(track.ytIds) G('cv-img').classList.add('yt-thumb'); else G('cv-img').classList.remove('yt-thumb');
     G('cv-bg').src=track.artLg;
     G('cv-bg').classList.add('on');
   }
