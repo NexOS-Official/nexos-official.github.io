@@ -1,16 +1,12 @@
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script>
-  // Break out of any parent iframe so YouTube embeds work correctly
-  if (window.top !== window.self) {
-    window.top.location.href = window.self.location.href;
-  }
-</script>
 <title>Ghost | music</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -79,8 +75,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   box-shadow:0 20px 60px rgba(0,0,0,.6);
   display:none;
 }
-.cover-art img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
-.cover-art img.yt-thumb{object-fit:cover;transform:scale(1.35)}
+.cover-art img{width:100%;height:100%;object-fit:cover;display:block}
 .cover-art.playing{animation:float 5s ease-in-out infinite}
 @keyframes float{0%,100%{transform:translateY(0) rotate(-.3deg)}50%{transform:translateY(-8px) rotate(.3deg)}}
 .cover-info{
@@ -130,9 +125,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .search-box svg{width:16px;height:16px;color:var(--ink3);flex-shrink:0}
 .search-box input{border:none;background:transparent;outline:none;font-family:inherit;font-size:14px;color:var(--ink);width:100%}
 .search-box input::placeholder{color:var(--ink3)}
-#src-toggle{background:none;border:none;cursor:pointer;padding:4px;border-radius:6px;color:var(--ink3);display:flex;align-items:center;transition:color .15s,background .15s;flex-shrink:0}
-#src-toggle:hover{background:var(--s3);color:var(--ink)}
-#src-toggle.yt-mode{color:#ff0000}
 .spin{width:14px;height:14px;flex-shrink:0;border:2px solid var(--s3);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -336,10 +328,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <input id="q-in" type="text" placeholder="Search songs, artists…" autocomplete="off" spellcheck="false">
         <div class="spin" id="q-spin"></div>
-        <button id="src-toggle" title="Toggle search source" onclick="toggleSearchSource()">
-          <svg id="src-icon-apple" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-          <svg id="src-icon-yt" viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="display:none"><path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
-        </button>
       </div>
       <div class="drop" id="q-drop"></div>
     </div>
@@ -436,26 +424,11 @@ window.onYouTubeIframeAPIReady = function() {
       },
       onError(e) {
         const track = ST.queue[ST.idx];
-        if (!track) return;
-        if (track.ytIds?.length > track.ytTry + 1) {
+        if (track?.ytIds?.length > track.ytTry + 1) {
           track.ytTry++;
           YT_player.loadVideoById(track.ytIds[track.ytTry]);
-        } else if (!track._retriedSearch) {
-          // IDs exhausted — search fresh with "official audio" to get the right song
-          track._retriedSearch = true;
-          track.ytTry = 0;
-          const q = `${track.artist} ${track.title} official audio`;
-          const key = YT_KEYS[ytKeyIdx % YT_KEYS.length];
-          fetch(`https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=8&q=${encodeURIComponent(q)}&key=${key}`)
-            .then(r => r.json())
-            .then(data => {
-              const ids = (data.items||[]).map(i => i.id.videoId).filter(Boolean);
-              if (!ids.length) throw new Error('no results');
-              track.ytIds = ids;
-              YT_player.loadVideoById(ids[0]);
-            }).catch(() => toast('⚠ Could not play this track'));
         } else {
-          toast('⚠ Could not play this track');
+          toast('⚠ Blocked — try another');
         }
       }
     }
@@ -467,6 +440,12 @@ tag.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(tag);
 
 const INVIDIOUS = [
+  'https://invidious.io.lol',
+  'https://yewtu.be',
+  'https://inv.us.projectsegfau.lt',
+  'https://invidious.privacyredirect.com',
+  'https://invidious.nerdvpn.de',
+  'https://invidious.incogniweb.net',
   'https://inv.nadeko.net',
   'https://invidious.privacydev.net',
   'https://yt.cdaut.de',
@@ -478,8 +457,7 @@ const YT_KEYS = [
 ];
 let ytKeyIdx = 0;
 
-// Cache video IDs in localStorage — same song never hits the API twice
-function cacheKey(artist, title) { return `yt3:${artist}:${title}`.toLowerCase().slice(0, 120); }
+function cacheKey(artist, title) { return `yt:${artist}:${title}`.toLowerCase().slice(0, 120); }
 function getCached(artist, title) {
   try { const v = localStorage.getItem(cacheKey(artist, title)); return v ? JSON.parse(v) : null; } catch { return null; }
 }
@@ -491,38 +469,26 @@ async function findVideoIds(artist, title) {
   const cached = getCached(artist, title);
   if (cached?.length) return cached;
 
-  // Try multiple query formats — different songs are indexed differently on YT
-  const queries = [
-    `${artist} ${title} official audio`,  // Most specific — studio version
-    `${artist} - ${title}`,               // Standard YT music format
-    `${artist} ${title}`,                 // Simple fallback
-  ];
+  const q = `${artist} ${title} audio`;
 
-  // 1. Invidious
   for (const host of INVIDIOUS) {
-    for (const q of queries) {
-      try {
-        const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1&limit=10`).then(r => r.json());
-        const ids = Array.isArray(data) ? data.map(v => v.videoId).filter(Boolean).slice(0, 8) : [];
-        if (ids.length) { setCached(artist, title, ids); return ids; }
-      } catch {}
-    }
-    break; // only try first working invidious instance
+    try {
+      const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1`)
+        .then(r => r.json());
+      const ids = data?.map?.(v => v.videoId).filter(Boolean).slice(0, 5);
+      if (ids?.length) { setCached(artist, title, ids); return ids; }
+    } catch {}
   }
 
-  // 2. YouTube Data API v3
-  for (const q of queries) {
-    for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
-      const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
-      try {
-        const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=8&q=${encodeURIComponent(q)}&key=${key}`;
-        const data = await fetch(url).then(r => r.json());
-        if (data.error?.code === 403) { ytKeyIdx++; continue; }
-        const ids = (data.items||[]).map(i => i.id.videoId).filter(Boolean);
-        if (ids.length) { setCached(artist, title, ids); return ids; }
-      } catch {}
-    }
-    break; // only first query needed if it works
+  for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
+    const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
+    try {
+      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${key}`;
+      const data = await fetch(url).then(r => r.json());
+      if (data.error?.code === 403) { ytKeyIdx++; continue; }
+      const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
+      if (ids?.length) { setCached(artist, title, ids); return ids; }
+    } catch {}
   }
 
   throw new Error('search failed');
@@ -538,130 +504,30 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
-let searchSource = 'apple'; // 'apple' or 'yt'
-
-function toggleSearchSource() {
-  searchSource = searchSource === 'apple' ? 'yt' : 'apple';
-  const btn = G('src-toggle');
-  G('src-icon-apple').style.display = searchSource === 'apple' ? '' : 'none';
-  G('src-icon-yt').style.display    = searchSource === 'yt'    ? '' : 'none';
-  btn.classList.toggle('yt-mode', searchSource === 'yt');
-  qIn.placeholder = searchSource === 'yt' ? 'Search YouTube music…' : 'Search songs, artists…';
-  const q = qIn.value.trim();
-  if (q) doSearch(q);
-}
-
-async function iTunesSearch(term) {
-  try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=50`);
-    const data = await res.json();
-    return data.results || [];
-  } catch { return []; }
-}
-
-function formatYTItem(item) {
-  // Works for both YT API (item.snippet) and Invidious (flat object)
-  const title = item.title || item.snippet?.title || '';
-  const channel = item.author || item.snippet?.channelTitle || '';
-  const videoId = item.videoId || item.id?.videoId || '';
-  const thumb = item.videoThumbnails?.[0]?.url || item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url || null;
-  return {
-    _fromYT: true,
-    trackName: title
-      .replace(/\s*[\(\[](official\s*(audio|video|music\s*video|lyric\s*video|visualizer)|lyrics?|explicit|hd)[\)\]]/gi, '')
-      .replace(/\s*-\s*(official\s*(audio|video|music\s*video)|lyrics?)$/gi, '')
-      .trim(),
-    artistName: channel.replace(/ - Topic$| VEVO$| Vevo$| - Official$/i, '').trim(),
-    artSm: thumb,
-    artLg: item.snippet?.thumbnails?.high?.url || thumb,
-    ytId: videoId,
-    durMs: null,
-    album: '',
-  };
-}
-
-async function ytMusicSearch(q) {
-  const query = `${q} official audio`;
-
-  // 1. Invidious — no quota, no key, works great
-  for (const host of INVIDIOUS) {
-    try {
-      const url = `${host}/api/v1/search?q=${encodeURIComponent(query)}&type=video&page=1`;
-      const data = await fetch(url).then(r => r.json());
-      if (Array.isArray(data) && data.length) {
-        const results = data.slice(0, 15).map(formatYTItem).filter(r => r.ytId);
-        if (results.length) { console.log('[ytMusicSearch] Invidious ok:', results.length); return results; }
-      }
-    } catch(e) { console.warn('[ytMusicSearch] Invidious fail:', e.message); }
-  }
-
-  // 2. YT Data API v3 fallback
-  for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
-    const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
-    try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&type=video&maxResults=15&q=${encodeURIComponent(query)}&key=${key}`;
-      const data = await fetch(url).then(r => r.json());
-      if (data.error) { console.warn('[ytMusicSearch] YT API error:', data.error.code, data.error.message); if (data.error.code === 403) ytKeyIdx++; continue; }
-      const results = (data.items || []).map(formatYTItem).filter(r => r.ytId);
-      if (results.length) { console.log('[ytMusicSearch] YT API ok:', results.length); return results; }
-    } catch(e) { console.warn('[ytMusicSearch] YT API fail:', e.message); }
-  }
-
-  console.warn('[ytMusicSearch] all sources failed');
-  return [];
-}
-
-
 async function doSearch(q) {
   qSpn.style.display='block';
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
   try {
-    if (searchSource === 'yt') {
-      // YT-only mode
-      const ytResults = await ytMusicSearch(q);
-      qSpn.style.display='none';
-      if (!ytResults.length) { qDrp.innerHTML='<div class="drop-msg">No results found</div>'; return; }
-      renderDrop(ytResults);
-    } else {
-      // Apple mode: iTunes primary, YT appended at bottom
-      const [itunesResults, ytResults] = await Promise.all([iTunesSearch(q), ytMusicSearch(q)]);
-      const seen = new Set();
-      const deduped = itunesResults
-        .filter(t => { if (seen.has(t.trackId)) return false; seen.add(t.trackId); return true; })
-        .sort((a,b) => (b.trackExplicitness==='explicit'?1:0)-(a.trackExplicitness==='explicit'?1:0));
-
-      // Only append YT results that iTunes genuinely didn't find
-      // If iTunes returned results, only show YT ones with completely different track names
-      const itunesKeys = new Set(deduped.map(t => t.trackName.toLowerCase().replace(/[^a-z0-9]/g,'')));
-      const ytFiltered = itunesResults.length > 0
-        ? ytResults.filter(t => !itunesKeys.has(t.trackName.toLowerCase().replace(/[^a-z0-9]/g,'')))
-        : ytResults; // iTunes found nothing — show all YT results
-
-      const merged = [...deduped, ...ytFiltered];
-      qSpn.style.display='none';
-      if (!merged.length) { qDrp.innerHTML='<div class="drop-msg">No results found</div>'; return; }
-      renderDrop(merged);
-    }
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50`);
+    const data = await res.json();
+    qSpn.style.display='none';
+    if (!data.results?.length) { qDrp.innerHTML='<div class="drop-msg">No results</div>'; return; }
+    renderDrop(data.results);
   } catch { qSpn.style.display='none'; qDrp.innerHTML='<div class="drop-msg">Search failed</div>'; }
 }
 
 function renderDrop(tracks) {
   qDrp.innerHTML = tracks.map(t => {
-    // Handle both iTunes and YouTube-sourced results
-    const artSm = t._fromYT ? (t.artLg || t.artSm) : (t.artworkUrl100||'');  // prefer high-res YT thumb
-    const artLg = t._fromYT ? t.artLg : (artSm.replace('100x100bb','600x600bb'));
-    const data = t._fromYT
-      ? { title:t.trackName, artist:t.artistName, album:'', artSm, artLg, durMs:null, ytIds:[t.ytId], ytTry:0 }
-      : { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null };
+    const artSm = t.artworkUrl100||'';
+    const artLg = artSm.replace('100x100bb','600x600bb');
+    const data = { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null };
     const id = 'tr_'+Math.random().toString(36).slice(2);
     (window._td=window._td||{})[id] = data;
-    const sub = t._fromYT ? `${x(t.artistName)} · YouTube` : `${x(t.artistName)} · ${x(t.collectionName||'')}`;
-    const dur = t._fromYT ? '' : ms2t(t.trackTimeMillis);
     return `<div class="di" onclick="pickTrack('${id}')">
       <div class="di-art">${artSm?`<img src="${artSm}" alt="">`:'🎵'}</div>
-      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s">${sub}</div></div>
-      <span class="di-dur">${dur}</span>
+      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s">${x(t.artistName)} · ${x(t.collectionName||'')}</div></div>
+      <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
@@ -698,8 +564,7 @@ async function loadTrack(idx) {
   markQI(idx); updateNP(track);
   ST.playing=false; ST.pos=0; ST.dur=0; syncPP();
 
-  // If no IDs yet, or IDs array is empty, go find them
-  if (!track.ytIds?.length) {
+  if (!track.ytIds) {
     setStatus('loading', 'Finding…');
     try {
       track.ytIds = await findVideoIds(track.artist, track.title);
@@ -712,24 +577,8 @@ async function loadTrack(idx) {
     }
   }
 
-  if (track.ytTry === undefined) track.ytTry = 0;
-  const vid = track.ytIds[track.ytTry];
-  if (!vid) { setStatus('err', 'No video ID'); toast('Could not find video'); return; }
-  YT_player.loadVideoById(vid);
-  // Clean title/artist for lyrics search — YT titles often have "Artist - Title (Official Audio)"
-  let lyrTitle = track.title, lyrArtist = track.artist;
-  // If title contains " - ", it's probably "Artist - Title" format — split it
-  if (lyrTitle.includes(' - ')) {
-    const parts = lyrTitle.split(' - ');
-    lyrArtist = parts[0].trim();
-    lyrTitle = parts.slice(1).join(' - ').trim();
-  }
-  // Strip common suffixes
-  lyrTitle = lyrTitle
-    .replace(/\s*[\(\[](official\s*(audio|video|music\s*video|lyric\s*video|visualizer)|lyrics?|hd|4k|explicit)[\)\]]/gi, '')
-    .replace(/\s*-\s*(official\s*(audio|video)|lyrics?)$/gi, '')
-    .trim();
-  fetchLyrics(lyrTitle, lyrArtist);
+  YT_player.loadVideoById(track.ytIds[track.ytTry]);
+  fetchLyrics(track.title, track.artist);
 }
 
 function updateNP(track) {
@@ -740,7 +589,6 @@ function updateNP(track) {
   G('np-a').textContent=track.artist;
   if(track.artLg){
     G('cv-img').src=track.artLg;
-  if(track.ytIds) G('cv-img').classList.add('yt-thumb'); else G('cv-img').classList.remove('yt-thumb');
     G('cv-bg').src=track.artLg;
     G('cv-bg').classList.add('on');
   }
