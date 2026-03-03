@@ -1,174 +1,186 @@
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Wavelength</title>
+<title>Ghost | music</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:     #f4f1eb;
-  --surf:   #ffffff;
-  --s2:     #ece9e1;
-  --s3:     #e0dbd1;
-  --border: #d9d4c8;
-  --ink:    #1a1710;
-  --ink2:   #4e4a41;
-  --ink3:   #979185;
-  --green:  #1ed760;
-  --green2: #17a349;
-  --glow:   rgba(30,215,96,.13);
-  --red:    #e64040;
-  --orange: #ff5500;
-  --ph:     90px;
-  --sw:     284px;
-  --lw:     346px;
-  --r:      12px;
-  --rl:     20px;
+  --bg: #000000;
+  --surf: #1c1c1e;
+  --s2: #2c2c2e;
+  --s3: #3a3a3c;
+  --border: #38383a;
+  --ink: #ffffff;
+  --ink2: #b0b0b0;
+  --ink3: #6e6e73;
+  --pink: #fc3c6c;
+  --pink2: #e8355f;
+  --glow: rgba(252,60,108,.15);
+  --red: #ff453a;
+  --orange: #ff9f0a;
+  --r: 14px;
+  --rl: 20px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:var(--bg)}
-body{font-family:'Geist',sans-serif;color:var(--ink);display:flex;flex-direction:column}
-/* scrollbar */
-::-webkit-scrollbar{width:3px}
-::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:4px}
 
-/* ── LAYOUT ── */
-.shell{display:flex;flex:1;height:calc(100vh - var(--ph));overflow:hidden}
+.app{display:flex;height:100vh;padding:16px;gap:16px;overflow:hidden}
 
-/* ── SIDEBAR ── */
-.sidebar{
-  width:var(--sw);background:var(--surf);
-  border-right:1px solid var(--border);
-  display:flex;flex-direction:column;flex-shrink:0;overflow:hidden
+.left{
+  display:flex;flex-direction:column;gap:16px;
+  width:340px;flex-shrink:0;
 }
-.brand{padding:18px 18px 0;display:flex;align-items:center;gap:10px}
-.brand-icon{
-  width:34px;height:34px;background:var(--ink);
-  border-radius:10px;display:grid;place-items:center;flex-shrink:0
+.cover-wrap{
+  flex:1;min-height:0;
+  background:var(--surf);border-radius:var(--rl);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;position:relative;
 }
-.brand-icon svg{width:18px;height:18px}
-.brand-name{font-family:'Fraunces',serif;font-size:20px;font-weight:500;letter-spacing:-.3px}
+.cover-wrap .empty-cover{
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  color:var(--ink3);font-size:13px;
+}
+.idlewave{display:flex;align-items:flex-end;gap:3px;height:30px}
+.idlewave span{width:3.5px;background:var(--s3);border-radius:3px;animation:iw 2s ease-in-out infinite}
+.idlewave span:nth-child(1){height:8px;animation-delay:0s}
+.idlewave span:nth-child(2){height:16px;animation-delay:.18s}
+.idlewave span:nth-child(3){height:24px;animation-delay:.36s}
+.idlewave span:nth-child(4){height:12px;animation-delay:.54s}
+.idlewave span:nth-child(5){height:20px;animation-delay:.72s}
+@keyframes iw{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+.cover-img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  display:none;
+}
+.cover-bg{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  filter:blur(60px) saturate(1.8) brightness(.4);opacity:0;
+  transition:opacity .6s;pointer-events:none;
+}
+.cover-bg.on{opacity:1}
+.cover-art{
+  width:75%;aspect-ratio:1;border-radius:var(--rl);overflow:hidden;
+  position:relative;z-index:1;
+  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  display:none;
+}
+.cover-art img{width:100%;height:100%;object-fit:cover;display:block}
+.cover-art.playing{animation:float 5s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0) rotate(-.3deg)}50%{transform:translateY(-8px) rotate(.3deg)}}
+.cover-info{
+  position:absolute;bottom:20px;left:20px;right:20px;z-index:2;
+  display:none;
+}
+.cover-title{font-size:18px;font-weight:700;letter-spacing:-.3px;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+.cover-artist{font-size:13px;color:var(--pink);margin-top:2px;text-shadow:0 2px 10px rgba(0,0,0,.5)}
 
-/* search */
-.search-area{padding:13px 14px 0;position:relative}
+.controls-wrap{
+  background:var(--surf);border-radius:var(--rl);
+  padding:16px 20px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;
+}
+.ctrl-row{display:flex;align-items:center;justify-content:center;gap:12px}
+.icb{width:36px;height:36px;background:none;border:none;cursor:pointer;color:var(--ink3);border-radius:50%;display:grid;place-items:center;transition:color .14s,background .14s;flex-shrink:0}
+.icb svg{width:18px;height:18px}
+.icb:hover{color:var(--ink);background:var(--s2)}
+.icb.on{color:var(--pink)}
+.play-btn{width:50px;height:50px;flex-shrink:0;background:var(--ink);color:var(--bg);border:none;border-radius:50%;cursor:pointer;display:grid;place-items:center;transition:transform .15s}
+.play-btn svg{width:22px;height:22px}
+.play-btn:hover{transform:scale(1.08)}
+.play-btn:active{transform:scale(.95)}
+.prog-row{display:flex;align-items:center;gap:8px}
+.tt{font-size:10px;color:var(--ink3);font-variant-numeric:tabular-nums;min-width:32px;font-weight:500}
+.tt.r{text-align:right}
+.prog{flex:1;height:4px;background:var(--s3);border-radius:4px;cursor:pointer;position:relative;transition:height .14s}
+.prog:hover{height:6px}
+.prog-f{height:100%;background:var(--ink3);border-radius:4px;position:relative;pointer-events:none;transition:background .2s}
+.prog:hover .prog-f{background:var(--pink)}
+.prog-dot{position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:10px;height:10px;background:var(--ink);border-radius:50%;opacity:0;transition:opacity .14s;pointer-events:none}
+.prog:hover .prog-dot{opacity:1}
+.vol-row{display:flex;align-items:center;gap:8px;justify-content:center}
+.vol{width:100px;height:4px;background:var(--s3);border-radius:4px;cursor:pointer;position:relative;transition:height .14s}
+.vol:hover{height:6px}
+.vol-f{height:100%;background:var(--ink3);border-radius:4px;pointer-events:none;transition:background .2s}
+.vol:hover .vol-f{background:var(--pink)}
+
+.right{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0;overflow:hidden}
+.search-row{position:relative;flex-shrink:0}
 .search-box{
   display:flex;align-items:center;gap:9px;
-  background:var(--s2);border:1.5px solid transparent;
-  border-radius:11px;padding:9px 12px;
+  background:var(--surf);border:1.5px solid transparent;
+  border-radius:var(--r);padding:12px 16px;
   transition:border-color .18s,box-shadow .18s
 }
-.search-box:focus-within{
-  border-color:var(--green);background:var(--surf);
-  box-shadow:0 0 0 3px var(--glow)
-}
-.search-box svg{width:15px;height:15px;color:var(--ink3);flex-shrink:0}
-.search-box input{
-  border:none;background:transparent;outline:none;
-  font-family:'Geist',sans-serif;font-size:13.5px;color:var(--ink);width:100%
-}
+.search-box:focus-within{border-color:var(--pink);box-shadow:0 0 0 3px var(--glow)}
+.search-box svg{width:16px;height:16px;color:var(--ink3);flex-shrink:0}
+.search-box input{border:none;background:transparent;outline:none;font-family:inherit;font-size:14px;color:var(--ink);width:100%}
 .search-box input::placeholder{color:var(--ink3)}
-.spin{
-  width:14px;height:14px;flex-shrink:0;
-  border:2px solid var(--s3);border-top-color:var(--green);
-  border-radius:50%;animation:spin .55s linear infinite;display:none
-}
+.spin{width:14px;height:14px;flex-shrink:0;border:2px solid var(--s3);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;display:none}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 .drop{
-  position:absolute;top:calc(100% + 5px);left:14px;right:14px;
+  position:absolute;top:calc(100% + 6px);left:0;right:0;
   background:var(--surf);border:1px solid var(--border);
   border-radius:var(--r);
-  box-shadow:0 8px 28px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
+  box-shadow:0 12px 40px rgba(0,0,0,.5);
   z-index:400;max-height:370px;overflow-y:auto;display:none
 }
-.di{
-  display:flex;align-items:center;gap:11px;
-  padding:10px 13px;cursor:pointer;
-  border-bottom:1px solid var(--s2);
-  transition:background .12s
-}
+.di{display:flex;align-items:center;gap:11px;padding:10px 13px;cursor:pointer;border-bottom:1px solid var(--s2);transition:background .12s}
 .di:last-child{border-bottom:none}
 .di:hover{background:var(--s2)}
 .di:hover .di-add{opacity:1}
-.di-art{
-  width:40px;height:40px;border-radius:7px;
-  background:var(--s2);overflow:hidden;flex-shrink:0;
-  display:grid;place-items:center;font-size:17px
-}
+.di-art{width:42px;height:42px;border-radius:8px;background:var(--s2);overflow:hidden;flex-shrink:0;display:grid;place-items:center;font-size:17px}
 .di-art img{width:100%;height:100%;object-fit:cover;display:block}
 .di-inf{flex:1;min-width:0}
-.di-t{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.di-s{font-size:11.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.di-t{font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.di-s{font-size:11.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .di-dur{font-size:11px;color:var(--ink3);flex-shrink:0}
-.di-add{
-  width:24px;height:24px;border-radius:50%;
-  background:var(--green);display:grid;place-items:center;
-  flex-shrink:0;opacity:0;transition:opacity .14s
-}
-.di-add svg{width:13px;height:13px;fill:var(--ink)}
+.di-add{width:26px;height:26px;border-radius:50%;background:var(--pink);display:grid;place-items:center;flex-shrink:0;opacity:0;transition:opacity .14s}
+.di-add svg{width:13px;height:13px;fill:#fff}
 .drop-msg{padding:18px;text-align:center;font-size:13px;color:var(--ink3);line-height:1.6}
 
-/* status bar below search */
-.sc-status{
-  display:flex;align-items:center;gap:7px;
-  padding:7px 15px 0;font-size:11px;color:var(--ink3)
+.content-area{
+  flex:1;min-height:0;position:relative;
+  background:var(--surf);border-radius:var(--rl);
+  overflow:hidden;
 }
-.sc-dot{
-  width:7px;height:7px;border-radius:50%;background:var(--s3);
-  flex-shrink:0;transition:background .3s
+.results-panel,.lyrics-panel{
+  position:absolute;inset:0;
+  transition:opacity .35s ease, transform .35s ease;
+  overflow-y:auto;
 }
-.sc-dot.ok{background:var(--green)}
-.sc-dot.err{background:var(--red)}
-.sc-dot.loading{background:var(--orange);animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.results-panel{padding:16px;opacity:1;transform:translateX(0)}
+.results-panel.hidden{opacity:0;transform:translateX(-20px);pointer-events:none}
+.lyrics-panel{padding:30px 24px 60px;opacity:0;transform:translateX(20px);pointer-events:none}
+.lyrics-panel.active{opacity:1;transform:translateX(0);pointer-events:auto}
 
-/* URL add */
-.url-row{display:flex;gap:7px;padding:10px 14px 0}
-.url-in{
-  flex:1;min-width:0;padding:8px 11px;
-  border:1.5px solid var(--border);border-radius:9px;
-  font-family:'Geist',sans-serif;font-size:12px;
-  background:var(--s2);color:var(--ink);outline:none;
-  transition:border-color .15s
+.lyric-toggle{
+  position:absolute;bottom:14px;right:14px;z-index:10;
+  width:40px;height:40px;border-radius:50%;
+  background:var(--s2);border:1px solid var(--border);
+  display:grid;place-items:center;cursor:pointer;
+  transition:background .15s,color .15s,transform .15s;
+  color:var(--ink3);
 }
-.url-in:focus{border-color:var(--green);background:var(--surf)}
-.url-in::placeholder{color:var(--ink3)}
-.url-btn{
-  padding:8px 12px;flex-shrink:0;
-  background:var(--ink);color:#fff;border:none;border-radius:9px;
-  font-family:'Geist',sans-serif;font-size:12px;font-weight:600;
-  cursor:pointer;transition:background .15s,transform .1s
-}
-.url-btn:hover{background:#333}
-.url-btn:active{transform:scale(.97)}
+.lyric-toggle:hover{background:var(--s3);color:var(--ink);transform:scale(1.05)}
+.lyric-toggle.active{background:var(--pink);color:#fff;border-color:var(--pink)}
+.lyric-toggle svg{width:18px;height:18px}
 
-/* queue */
-.q-lbl{padding:14px 16px 5px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink3);flex-shrink:0}
-.q-scroll{flex:1;overflow-y:auto;padding:0 8px 12px}
-.q-empty{padding:20px 10px;text-align:center;font-size:12.5px;color:var(--ink3);line-height:1.65}
-.qi{
-  display:flex;align-items:center;gap:10px;
-  padding:8px 10px;border-radius:10px;cursor:pointer;
-  transition:background .12s;position:relative
-}
+.q-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink3);margin-bottom:10px}
+.qi{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;cursor:pointer;transition:background .12s;position:relative}
 .qi:hover{background:var(--s2)}
-.qi.now{background:rgba(30,215,96,.07)}
-.qi.now .qi-t{color:var(--green2);font-weight:600}
-.qi-th{
-  width:38px;height:38px;border-radius:7px;
-  background:var(--s2);overflow:hidden;flex-shrink:0;
-  display:grid;place-items:center;font-size:15px;position:relative
-}
-.qi-th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:7px}
-.now-ind{
-  position:absolute;inset:0;border-radius:7px;
-  background:rgba(30,215,96,.85);
-  display:flex;align-items:center;justify-content:center
-}
+.qi.now{background:rgba(252,60,108,.1)}
+.qi.now .qi-t{color:var(--pink);font-weight:600}
+.qi-th{width:40px;height:40px;border-radius:8px;background:var(--s2);overflow:hidden;flex-shrink:0;display:grid;place-items:center;font-size:15px;position:relative}
+.qi-th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px}
+.now-ind{position:absolute;inset:0;border-radius:8px;background:rgba(252,60,108,.85);display:flex;align-items:center;justify-content:center}
 .bars{display:flex;align-items:flex-end;gap:2px;height:14px}
 .bars b{width:2.5px;background:#fff;border-radius:2px;animation:ba .7s ease-in-out infinite}
 .bars b:nth-child(2){animation-name:bb}
@@ -177,298 +189,187 @@ body{font-family:'Geist',sans-serif;color:var(--ink);display:flex;flex-direction
 @keyframes bb{0%,100%{height:9px}50%{height:4px}}
 @keyframes bc{0%,100%{height:5px}50%{height:13px}}
 .qi-inf{flex:1;min-width:0}
-.qi-t{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qi-t{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
 .qi-a{font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .qi-rm{width:22px;height:22px;border:none;background:none;color:var(--ink3);font-size:16px;line-height:1;border-radius:50%;cursor:pointer;display:none;place-items:center;transition:background .12s,color .12s}
 .qi:hover .qi-rm{display:grid}
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
-/* ── CENTER ── */
-.center{
-  flex:1;overflow:hidden;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:40px 32px 20px;position:relative;background:var(--bg)
-}
-.glow{
-  position:absolute;width:460px;height:460px;
-  background:radial-gradient(circle,var(--glow) 0%,transparent 70%);
-  top:-80px;left:50%;transform:translateX(-50%);
-  pointer-events:none;opacity:0;transition:opacity 1.2s
-}
-.glow.on{opacity:1}
-.empty{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;animation:up .5s ease both}
-@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-.idlewave{display:flex;align-items:flex-end;gap:3px;height:36px;margin-bottom:4px}
-.idlewave span{width:4px;background:var(--s3);border-radius:3px;animation:iw 2s ease-in-out infinite}
-.idlewave span:nth-child(1){height:10px;animation-delay:0s}
-.idlewave span:nth-child(2){height:20px;animation-delay:.18s}
-.idlewave span:nth-child(3){height:30px;animation-delay:.36s}
-.idlewave span:nth-child(4){height:14px;animation-delay:.54s}
-.idlewave span:nth-child(5){height:24px;animation-delay:.72s}
-.idlewave span:nth-child(6){height:16px;animation-delay:.90s}
-.idlewave span:nth-child(7){height:28px;animation-delay:.50s}
-@keyframes iw{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
-.empty h2{font-family:'Fraunces',serif;font-size:24px;font-weight:500;color:var(--ink2)}
-.empty p{font-size:13.5px;color:var(--ink3);line-height:1.7;max-width:270px}
-.api-pill{display:flex;align-items:center;gap:6px;background:var(--surf);border:1px solid var(--border);border-radius:30px;padding:5px 13px;margin-top:4px;font-size:11px;color:var(--ink3)}
-.api-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
-
-/* now playing */
-.np{display:none;flex-direction:column;align-items:center;animation:up .4s ease both;width:100%;max-width:280px}
-.cover{
-  width:210px;height:210px;border-radius:var(--rl);
-  background:var(--s2);
-  box-shadow:0 18px 50px rgba(0,0,0,.16),0 5px 16px rgba(0,0,0,.09);
-  overflow:hidden;display:grid;place-items:center;font-size:60px;
-  flex-shrink:0;margin-bottom:26px;position:relative;transition:box-shadow .4s
-}
-.cover.playing{
-  animation:float 5s ease-in-out infinite;
-  box-shadow:0 26px 60px rgba(0,0,0,.2),0 0 36px var(--glow)
-}
-@keyframes float{0%,100%{transform:translateY(0) rotate(-.4deg)}50%{transform:translateY(-9px) rotate(.4deg)}}
-.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.cover-load{
-  position:absolute;inset:0;border-radius:var(--rl);
-  background:rgba(0,0,0,.32);display:none;align-items:center;justify-content:center
-}
-.cover-load.on{display:flex}
-.cover-load div{width:30px;height:30px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
-.np-info{text-align:center}
-.np-title{font-family:'Fraunces',serif;font-size:23px;font-weight:500;letter-spacing:-.3px;line-height:1.15;margin-bottom:5px}
-.np-artist{font-size:14px;color:var(--ink3)}
-.np-tags{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:10px;flex-wrap:wrap}
-.tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;letter-spacing:.3px;padding:3px 9px;border-radius:20px}
-.tag-sc{background:var(--orange);color:#fff}
-.tag-album{background:var(--s2);color:var(--ink3);border:1px solid var(--border)}
-
-/* ── LYRICS ── */
-.lyric-panel{
-  width:var(--lw);flex-shrink:0;
-  background:var(--surf);border-left:1px solid var(--border);
-  display:flex;flex-direction:column;overflow:hidden
-}
-.lyric-head{
-  padding:16px 20px 13px;border-bottom:1px solid var(--s2);
-  display:flex;align-items:center;justify-content:space-between;flex-shrink:0
-}
-.lyric-title{font-family:'Fraunces',serif;font-size:15px;font-weight:500}
-.lyric-badge{
-  font-size:10px;font-weight:600;text-transform:uppercase;
-  letter-spacing:.4px;color:var(--ink3);
-  background:var(--s2);padding:3px 9px;border-radius:20px
-}
-.lyric-badge.sync{background:rgba(30,215,96,.12);color:var(--green2)}
-.lyric-scroll{flex:1;overflow-y:auto;padding:20px 20px 60px;scroll-behavior:smooth}
 .ll{
-  font-size:15px;line-height:1.65;color:var(--ink3);
-  padding:5px 10px;border-radius:8px;margin:0 -10px;
-  transition:color .22s,font-size .22s,background .14s;cursor:pointer
+  font-size:24px;line-height:1.4;color:var(--s3);font-weight:700;
+  padding:6px 0;border-radius:8px;
+  transition:color .3s,transform .3s,opacity .3s;cursor:pointer;
 }
-.ll:hover{background:var(--s2);color:var(--ink2)}
-.ll.past{color:var(--s3)}
-.ll.now{color:var(--ink);font-size:18px;font-weight:600}
-.ll.plain{cursor:default}
-.ll.plain:hover{background:none;color:var(--ink3)}
+.ll:hover{color:var(--ink3)}
+.ll.past{color:var(--s3);opacity:.5}
+.ll.now{color:var(--ink);font-size:28px;transform:scale(1.02);transform-origin:left center}
+.ll.plain{cursor:default;font-size:16px;font-weight:500;color:var(--ink3)}
+.ll.plain:hover{color:var(--ink3)}
 .lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
 .lrc-empty svg{width:38px;height:38px;opacity:.22}
 .lrc-empty p{font-size:13px}
 
-/* ── PLAYER BAR ── */
-.player{
-  height:var(--ph);flex-shrink:0;
-  background:var(--surf);border-top:1px solid var(--border);
-  display:flex;align-items:center;padding:0 20px;gap:18px;
-  box-shadow:0 -2px 14px rgba(0,0,0,.05);z-index:10
-}
-.pb-l{display:flex;align-items:center;gap:12px;width:220px;flex-shrink:0}
-.pb-cov{width:50px;height:50px;border-radius:9px;background:var(--s2);overflow:hidden;flex-shrink:0;display:grid;place-items:center;font-size:22px;position:relative}
-.pb-cov img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.pb-meta{min-width:0}
-.pb-t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pb-a{font-size:11.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.pb-c{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;min-width:0}
-.ctrl{display:flex;align-items:center;gap:12px}
-.icb{width:30px;height:30px;background:none;border:none;cursor:pointer;color:var(--ink3);border-radius:50%;display:grid;place-items:center;transition:color .14s,background .14s;flex-shrink:0}
-.icb svg{width:17px;height:17px}
-.icb:hover{color:var(--ink);background:var(--s2)}
-.icb.on{color:var(--green2)}
-.play-btn{width:42px;height:42px;flex-shrink:0;background:var(--ink);color:#fff;border:none;border-radius:50%;cursor:pointer;display:grid;place-items:center;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:transform .15s,background .2s}
-.play-btn svg{width:20px;height:20px}
-.play-btn:hover{transform:scale(1.07);background:#222}
-.play-btn:active{transform:scale(.97)}
-.prog-row{width:100%;max-width:500px;display:flex;align-items:center;gap:9px}
-.tt{font-size:11px;color:var(--ink3);font-variant-numeric:tabular-nums;min-width:34px}
-.tt.r{text-align:right}
-.prog{flex:1;height:4px;background:var(--s3);border-radius:4px;cursor:pointer;position:relative;transition:height .14s}
-.prog:hover{height:6px}
-.prog-f{height:100%;background:var(--ink);border-radius:4px;position:relative;pointer-events:none;transition:background .2s}
-.prog:hover .prog-f{background:var(--green)}
-.prog-dot{position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:10px;height:10px;background:var(--ink);border-radius:50%;opacity:0;transition:opacity .14s;pointer-events:none}
-.prog:hover .prog-dot{opacity:1}
-.pb-r{display:flex;align-items:center;gap:8px;width:170px;flex-shrink:0;justify-content:flex-end}
-.vol{width:80px;height:4px;background:var(--s3);border-radius:4px;cursor:pointer;position:relative;transition:height .14s}
-.vol:hover{height:6px}
-.vol-f{height:100%;background:var(--ink3);border-radius:4px;pointer-events:none;transition:background .2s}
-.vol:hover .vol-f{background:var(--green)}
+.q-empty-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--ink3);font-size:13px;text-align:center;line-height:1.6}
 
-/* hidden YT player */
 #yt-host{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none}
 
-/* toast */
-.toast{position:fixed;bottom:calc(var(--ph) + 14px);left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:#fff;padding:9px 20px;border-radius:28px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;z-index:999;white-space:nowrap;transition:opacity .22s,transform .22s}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--s2);color:var(--ink);padding:10px 22px;border-radius:28px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;z-index:999;white-space:nowrap;transition:opacity .22s,transform .22s;backdrop-filter:blur(20px);border:1px solid var(--border)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.status-pill{
+  position:absolute;top:12px;left:12px;z-index:5;
+  display:flex;align-items:center;gap:6px;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(10px);
+  border:1px solid var(--border);border-radius:20px;
+  padding:4px 10px;font-size:10px;color:var(--ink3);
+}
+.st-dot{width:6px;height:6px;border-radius:50%;background:var(--s3);transition:background .3s}
+.st-dot.ok{background:#30d158}
+.st-dot.err{background:var(--red)}
+.st-dot.loading{background:var(--orange);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+@media(max-width:768px){
+  .app{flex-direction:column;padding:10px;gap:10px}
+  .left{width:100%;flex-direction:row;gap:10px;flex-shrink:0;height:auto}
+  .cover-wrap{
+    width:140px;height:140px;flex:none;border-radius:var(--r);
+  }
+  .cover-art{width:85%;border-radius:12px}
+  .cover-info{display:none !important}
+  .controls-wrap{flex:1;border-radius:var(--r);padding:12px;justify-content:center}
+  .play-btn{width:44px;height:44px}
+  .play-btn svg{width:20px;height:20px}
+  .vol-row{display:none}
+  .right{flex:1;min-height:0}
+  .content-area{border-radius:var(--r)}
+  .ll.now{font-size:22px}
+  .ll{font-size:18px}
+}
+@media(max-width:480px){
+  .cover-wrap{width:110px;height:110px}
+  .icb{width:30px;height:30px}
+  .icb svg{width:15px;height:15px}
+  .ctrl-row{gap:8px}
+  .play-btn{width:40px;height:40px}
+  .play-btn svg{width:18px;height:18px}
+}
 </style>
 </head>
 <body>
 
-<div id="yt-host" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none">
-  <div id="yt-player"></div>
-</div>
-
+<div id="yt-host"><div id="yt-player"></div></div>
 <div class="toast" id="toast"></div>
 
-<div class="shell">
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#1ed760" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/>
-        </svg>
+<div class="app">
+  <!-- LEFT: Cover + Controls -->
+  <div class="left">
+    <div class="cover-wrap" id="cover-wrap">
+      <img class="cover-bg" id="cv-bg" src="" alt="">
+      <div class="empty-cover" id="empty-cover">
+        <div class="idlewave"><span></span><span></span><span></span><span></span><span></span></div>
+        <span>Nothing playing</span>
       </div>
-      <span class="brand-name">Wavelength</span>
+      <div class="cover-art" id="cover-art">
+        <img id="cv-img" src="" alt="">
+      </div>
+      <div class="cover-info" id="cover-info">
+        <div class="cover-title" id="np-t">—</div>
+        <div class="cover-artist" id="np-a">—</div>
+      </div>
+      <div class="status-pill">
+        <div class="st-dot loading" id="sc-dot"></div>
+        <span id="sc-status-txt">Loading…</span>
+      </div>
     </div>
 
-    <div class="search-area">
+    <div class="controls-wrap">
+      <div class="ctrl-row">
+        <button class="icb" id="btn-sf" title="Shuffle (S)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        </button>
+        <button class="icb" id="btn-pv" title="Previous (P)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+        </button>
+        <button class="play-btn" id="btn-pp">
+          <svg id="pp-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="icb" id="btn-nx" title="Next (N)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm10.5-12v12H19V6h-2.5z"/></svg>
+        </button>
+        <button class="icb" id="btn-rp" title="Repeat (R)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+        </button>
+      </div>
+      <div class="prog-row">
+        <span class="tt" id="t-c">0:00</span>
+        <div class="prog" id="prog"><div class="prog-f" id="prog-f" style="width:0%"><div class="prog-dot"></div></div></div>
+        <span class="tt r" id="t-d">0:00</span>
+      </div>
+      <div class="vol-row">
+        <button class="icb" id="btn-vol" style="width:28px;height:28px">
+          <svg id="vol-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </button>
+        <div class="vol" id="vol-tr"><div class="vol-f" id="vol-f" style="width:80%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Search + Results/Lyrics -->
+  <div class="right">
+    <div class="search-row">
       <div class="search-box">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input id="q-in" type="text" placeholder="Search any song or artist…" autocomplete="off" spellcheck="false">
+        <input id="q-in" type="text" placeholder="Search songs, artists…" autocomplete="off" spellcheck="false">
         <div class="spin" id="q-spin"></div>
       </div>
       <div class="drop" id="q-drop"></div>
     </div>
 
-    <div class="sc-status">
-      <div class="sc-dot loading" id="sc-dot"></div>
-      <span id="sc-status-txt">Loading YouTube player…</span>
-    </div>
-
-    <div class="url-row">
-      <input id="url-in" class="url-in" type="text" placeholder="Or paste a YouTube URL…">
-      <button class="url-btn" id="url-btn">Add</button>
-    </div>
-
-    <div class="q-lbl">Queue</div>
-    <div class="q-scroll" id="q-list">
-      <div class="q-empty">Search for a song above,<br>or paste a SoundCloud URL ↑</div>
-    </div>
-  </aside>
-
-  <!-- CENTER -->
-  <main class="center">
-    <div class="glow" id="glow"></div>
-
-    <div class="empty" id="empty-st">
-      <div class="idlewave">
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <h2>Nothing playing yet</h2>
-      <p>Search any song — iTunes finds the cover art, YouTube plays the full track.</p>
-      <div class="api-pill">
-        <span class="api-dot"></span>
-        iTunes Search · YouTube · lrclib Lyrics
-      </div>
-    </div>
-
-    <div class="np" id="np">
-      <div class="cover" id="cover">
-        <span id="cv-ph">🎵</span>
-        <img id="cv-img" src="" alt="" style="display:none">
-        <div class="cover-load" id="cv-load"><div></div></div>
-      </div>
-      <div class="np-info">
-        <div class="np-title"  id="np-t">—</div>
-        <div class="np-artist" id="np-a">—</div>
-        <div class="np-tags">
-          <span class="tag tag-sc">
-            <svg width="12" height="9" viewBox="0 0 24 17" fill="white"><path d="M0 12c0 2.2 1.8 4 4 4h14.8c2.9 0 5.2-2.3 5.2-5.2 0-2.1-1.3-4-3.3-4.8.1-.4.1-.8.1-1.3C20.8 2.1 17.8 0 14.2 0c-2.5 0-4.7 1.3-6 3.3-.6-.3-1.3-.5-2-.5C3.2 2.8.9 5.1.9 8c0 .8.2 1.5.5 2.2C.5 10.6 0 11.3 0 12z"/></svg>
-            SoundCloud
-          </span>
-          <span class="tag tag-album" id="album-tag" style="display:none"></span>
+    <div class="content-area">
+      <!-- Results / Queue -->
+      <div class="results-panel" id="results-panel">
+        <div id="q-list">
+          <div class="q-empty-msg">
+            <div class="idlewave"><span></span><span></span><span></span><span></span><span></span></div>
+            Search for any song above
+          </div>
         </div>
       </div>
-    </div>
-  </main>
 
-  <!-- LYRICS -->
-  <div class="lyric-panel">
-    <div class="lyric-head">
-      <span class="lyric-title">Lyrics</span>
-      <span class="lyric-badge" id="lbadge">—</span>
-    </div>
-    <div class="lyric-scroll" id="lscroll">
-      <div class="lrc-empty">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/>
-        </svg>
-        <p>Play a track to see lyrics</p>
+      <!-- Lyrics -->
+      <div class="lyrics-panel" id="lyrics-panel">
+        <div class="lrc-empty" id="lrc-empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/>
+          </svg>
+          <p>Play a track to see lyrics</p>
+        </div>
+        <div id="lscroll"></div>
       </div>
-    </div>
-  </div>
-</div>
 
-<!-- PLAYER BAR -->
-<div class="player">
-  <div class="pb-l">
-    <div class="pb-cov" id="pb-cov">
-      <span id="pb-ph">🎵</span>
-      <img id="pb-img" src="" alt="" style="display:none">
-    </div>
-    <div class="pb-meta">
-      <div class="pb-t" id="pb-t">No track selected</div>
-      <div class="pb-a" id="pb-a">—</div>
-    </div>
-  </div>
-
-  <div class="pb-c">
-    <div class="ctrl">
-      <button class="icb" id="btn-sf" title="Shuffle (S)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-      </button>
-      <button class="icb" id="btn-pv" title="Previous">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-      </button>
-      <button class="play-btn" id="btn-pp">
-        <svg id="pp-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-      </button>
-      <button class="icb" id="btn-nx" title="Next (N)">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm10.5-12v12H19V6h-2.5z"/></svg>
-      </button>
-      <button class="icb" id="btn-rp" title="Repeat (R)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <button class="lyric-toggle" id="lyric-toggle" title="Toggle Lyrics">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6h16M4 12h10M4 18h14"/>
+        </svg>
       </button>
     </div>
-    <div class="prog-row">
-      <span class="tt" id="t-c">0:00</span>
-      <div class="prog" id="prog"><div class="prog-f" id="prog-f" style="width:0%"><div class="prog-dot"></div></div></div>
-      <span class="tt r" id="t-d">0:00</span>
-    </div>
-  </div>
-
-  <div class="pb-r">
-    <button class="icb" id="btn-vol">
-      <svg id="vol-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-        <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
-      </svg>
-    </button>
-    <div class="vol" id="vol-tr"><div class="vol-f" id="vol-f" style="width:80%"></div></div>
   </div>
 </div>
 
 <script>
 'use strict';
+
+let showingLyrics = false;
+G('lyric-toggle').addEventListener('click', () => {
+  showingLyrics = !showingLyrics;
+  G('lyric-toggle').classList.toggle('active', showingLyrics);
+  G('results-panel').classList.toggle('hidden', showingLyrics);
+  G('lyrics-panel').classList.toggle('active', showingLyrics);
+});
 
 const ST = {
   queue:[], idx:-1,
@@ -480,38 +381,26 @@ const ST = {
 function G(id){ return document.getElementById(id); }
 function ms2t(ms){ if(!ms||ms<0)return'0:00'; const s=Math.floor(ms/1000); return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
 function x(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 let toastTmr=null;
 function toast(msg){ const el=G('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('show'),2800); }
+function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-status-txt').textContent=msg; }
 
-function setStatus(state, msg) {
-  G('sc-dot').className = 'sc-dot ' + state;
-  G('sc-status-txt').textContent = msg;
-}
-
-/* ═══════════════════════════════════════════
-   YOUTUBE PLAYER
-═══════════════════════════════════════════ */
-let YT_player = null;
-let ytReady = false;
-let ticker = null;
+let YT_player = null, ytReady = false, ticker = null;
 
 window.onYouTubeIframeAPIReady = function() {
   YT_player = new YT.Player('yt-player', {
-    videoId: 'M7lc1UVf-VE', // placeholder — silent startup
+    videoId: 'M7lc1UVf-VE',
     playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1 },
     events: {
       onReady(e) {
         ytReady = true;
         e.target.setVolume(ST.vol * 100);
-        setStatus('ok', 'Ready — search anything!');
+        setStatus('ok', 'Ready');
       },
       onStateChange(e) {
         if (e.data === YT.PlayerState.PLAYING) {
           ST.playing = true; syncPP();
-          G('cover').classList.add('playing');
-          G('glow').classList.add('on');
-          G('cv-load').classList.remove('on');
+          G('cover-art').classList.add('playing');
           clearInterval(ticker);
           ticker = setInterval(() => {
             ST.pos = YT_player.getCurrentTime() * 1000;
@@ -521,10 +410,10 @@ window.onYouTubeIframeAPIReady = function() {
           }, 250);
         } else if (e.data === YT.PlayerState.PAUSED) {
           ST.playing = false; syncPP();
-          G('cover').classList.remove('playing');
+          G('cover-art').classList.remove('playing');
           clearInterval(ticker);
         } else if (e.data === YT.PlayerState.ENDED) {
-          G('cover').classList.remove('playing');
+          G('cover-art').classList.remove('playing');
           clearInterval(ticker);
           if (ST.repeat) { YT_player.seekTo(0); YT_player.playVideo(); }
           else nextTrack();
@@ -536,8 +425,7 @@ window.onYouTubeIframeAPIReady = function() {
           track.ytTry++;
           YT_player.loadVideoById(track.ytIds[track.ytTry]);
         } else {
-          G('cv-load').classList.remove('on');
-          toast('⚠ Blocked by YouTube — try another search');
+          toast('⚠ Blocked — try another');
         }
       }
     }
@@ -548,9 +436,6 @@ const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(tag);
 
-/* ═══════════════════════════════════════════
-   YOUTUBE SEARCH — via corsproxy, no API key
-═══════════════════════════════════════════ */
 async function findVideoIds(artist, title) {
   const q = encodeURIComponent(`${artist} ${title} audio`);
   const proxies = [
@@ -567,10 +452,6 @@ async function findVideoIds(artist, title) {
   }
   throw new Error('search failed');
 }
-
-/* ═══════════════════════════════════════════
-   ITUNES SEARCH
-═══════════════════════════════════════════ */
 let srchTmr=null;
 const qIn=G('q-in'), qDrp=G('q-drop'), qSpn=G('q-spin');
 qIn.addEventListener('input', e => {
@@ -580,7 +461,7 @@ qIn.addEventListener('input', e => {
   srchTmr = setTimeout(() => doSearch(q), 380);
 });
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
-document.addEventListener('click', e => { if (!e.target.closest('.search-area')) hideDrop(); });
+document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
 async function doSearch(q) {
   qSpn.style.display='block';
@@ -603,7 +484,7 @@ function renderDrop(tracks) {
     const id = 'tr_'+Math.random().toString(36).slice(2);
     (window._td=window._td||{})[id] = data;
     return `<div class="di" onclick="pickTrack('${id}')">
-      <div class="di-art">${artSm?`<img src="${artSm}" alt="">` :'🎵'}</div>
+      <div class="di-art">${artSm?`<img src="${artSm}" alt="">`:'🎵'}</div>
       <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s">${x(t.artistName)} · ${x(t.collectionName||'')}</div></div>
       <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
@@ -613,27 +494,10 @@ function renderDrop(tracks) {
 async function pickTrack(id) { hideDrop(); qIn.value=''; const t=window._td?.[id]; if(t) addAndPlay(t); }
 function hideDrop() { qDrp.style.display='none'; }
 
-/* ═══════════════════════════════════════════
-   URL ADD (YouTube URLs)
-═══════════════════════════════════════════ */
-G('url-btn').addEventListener('click', addFromUrl);
-G('url-in').addEventListener('keydown', e => { if(e.key==='Enter') addFromUrl(); });
-async function addFromUrl() {
-  const el=G('url-in'), url=el.value.trim();
-  if (!url) return;
-  const m = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-  if (!m) { toast('Paste a YouTube URL'); return; }
-  el.value='';
-  addAndPlay({ title:'YouTube track', artist:'YouTube', album:'', artSm:null, artLg:null, durMs:null, ytIds:[m[1]], ytTry:0 });
-}
-
-/* ═══════════════════════════════════════════
-   QUEUE
-═══════════════════════════════════════════ */
 function addAndPlay(track) { const i=ST.queue.length; ST.queue.push(track); appendQI(track,i); loadTrack(i); }
 
 function appendQI(track, i) {
-  const list=G('q-list'); list.querySelector('.q-empty')?.remove();
+  const list=G('q-list'); list.querySelector('.q-empty-msg')?.remove();
   const el=document.createElement('div');
   el.className='qi'; el.id=`qi${i}`; el.dataset.idx=i;
   el.innerHTML=`<div class="qi-th" id="qt${i}">${track.artSm?`<img src="${track.artSm}" alt="">`:'🎵'}</div>
@@ -643,7 +507,7 @@ function appendQI(track, i) {
   list.appendChild(el);
 }
 function rmQI(e,i) { e.stopPropagation(); ST.queue.splice(i,1); rebuildQ(); if(ST.idx===i){ST.idx=-1;resetNP();}else if(ST.idx>i)ST.idx--; }
-function rebuildQ() { const l=G('q-list'); l.innerHTML=''; if(!ST.queue.length){l.innerHTML='<div class="q-empty">Queue is empty</div>';return;} ST.queue.forEach((t,i)=>appendQI(t,i)); if(ST.idx>=0)markQI(ST.idx); }
+function rebuildQ() { const l=G('q-list'); l.innerHTML=''; if(!ST.queue.length){l.innerHTML='<div class="q-empty-msg">Queue is empty</div>';return;} ST.queue.forEach((t,i)=>appendQI(t,i)); if(ST.idx>=0)markQI(ST.idx); }
 function markQI(idx) {
   document.querySelectorAll('.qi').forEach(el => {
     const i=+el.dataset.idx; el.classList.toggle('now',i===idx);
@@ -652,27 +516,22 @@ function markQI(idx) {
   });
 }
 
-/* ═══════════════════════════════════════════
-   LOAD TRACK
-═══════════════════════════════════════════ */
 async function loadTrack(idx) {
   if (!ytReady || idx < 0 || idx >= ST.queue.length) return;
   ST.idx = idx;
   const track = ST.queue[idx];
   markQI(idx); updateNP(track);
-  G('cv-load').classList.add('on');
   ST.playing=false; ST.pos=0; ST.dur=0; syncPP();
 
   if (!track.ytIds) {
-    setStatus('loading', 'Finding on YouTube…');
+    setStatus('loading', 'Finding…');
     try {
       track.ytIds = await findVideoIds(track.artist, track.title);
       track.ytTry = 0;
-      setStatus('ok', 'Ready — search anything!');
+      setStatus('ok', 'Ready');
     } catch {
-      G('cv-load').classList.remove('on');
-      setStatus('err', 'Search failed');
-      toast('Could not find track — check connection');
+      setStatus('err', 'Failed');
+      toast('Could not find track');
       return;
     }
   }
@@ -682,28 +541,27 @@ async function loadTrack(idx) {
 }
 
 function updateNP(track) {
-  G('empty-st').style.display='none'; G('np').style.display='flex';
-  G('np-t').textContent=track.title; G('np-a').textContent=track.artist;
-  G('pb-t').textContent=track.title; G('pb-a').textContent=track.artist;
-  const hasArt=!!track.artLg;
-  G('cv-ph').style.display=hasArt?'none':''; G('cv-img').style.display=hasArt?'block':'none';
-  if(hasArt) G('cv-img').src=track.artLg;
-  G('pb-ph').style.display=hasArt?'none':''; G('pb-img').style.display=hasArt?'block':'none';
-  if(hasArt) G('pb-img').src=track.artSm||track.artLg;
-  const at=G('album-tag');
-  if(track.album){at.style.display='inline-flex';at.textContent=track.album;}else at.style.display='none';
+  G('empty-cover').style.display='none';
+  G('cover-art').style.display='block';
+  G('cover-info').style.display='block';
+  G('np-t').textContent=track.title;
+  G('np-a').textContent=track.artist;
+  if(track.artLg){
+    G('cv-img').src=track.artLg;
+    G('cv-bg').src=track.artLg;
+    G('cv-bg').classList.add('on');
+  }
 }
 function resetNP() {
-  G('empty-st').style.display=''; G('np').style.display='none';
-  G('cover').classList.remove('playing'); G('glow').classList.remove('on');
-  G('pb-t').textContent='No track selected'; G('pb-a').textContent='—';
+  G('empty-cover').style.display='';
+  G('cover-art').style.display='none';
+  G('cover-info').style.display='none';
+  G('cover-art').classList.remove('playing');
+  G('cv-bg').classList.remove('on');
   G('prog-f').style.width='0%'; G('t-c').textContent='0:00'; G('t-d').textContent='0:00';
   ST.playing=false; syncPP();
 }
 
-/* ═══════════════════════════════════════════
-   TRANSPORT
-═══════════════════════════════════════════ */
 function togglePlay() { if(!ytReady||ST.idx<0)return; ST.playing?YT_player.pauseVideo():YT_player.playVideo(); }
 function prevTrack() { if(!ST.queue.length)return; if(ST.pos>3000){YT_player.seekTo(0);return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
 function nextTrack() { if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
@@ -735,28 +593,25 @@ G('btn-pv').addEventListener('click',prevTrack);
 G('btn-nx').addEventListener('click',nextTrack);
 G('btn-pp').addEventListener('click',togglePlay);
 
-/* ═══════════════════════════════════════════
-   LYRICS
-═══════════════════════════════════════════ */
 async function fetchLyrics(title, artist) {
   ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
-  const badge=G('lbadge'), scroll=G('lscroll');
-  badge.textContent='—'; badge.className='lyric-badge';
-  scroll.innerHTML='<div class="lrc-empty"><p style="color:var(--ink3)">Finding lyrics…</p></div>';
+  const scroll=G('lscroll');
+  G('lrc-empty-state').style.display='none';
+  scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
   const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
   const ct=clean(title), ca=clean(artist);
   for (const [t,a] of [[ct,ca],[title,artist]]) {
     const d=await lrclibGET(t,a);
-    if(d?.syncedLyrics){const lines=parseLRC(d.syncedLyrics);if(lines.length){ST.lrc=lines;ST.lrcType='synced';badge.textContent='✦ SYNCED · lrclib';badge.className='lyric-badge sync';renderSynced();return;}}
-    if(d?.plainLyrics){ST.lrcType='plain';badge.textContent='lrclib';renderPlain(d.plainLyrics);return;}
+    if(d?.syncedLyrics){const lines=parseLRC(d.syncedLyrics);if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+    if(d?.plainLyrics){ST.lrcType='plain';renderPlain(d.plainLyrics);return;}
   }
   for (const [t,a] of [[ct,ca],[title,artist]]) {
     const d=await lrclibSEARCH(t,a);
-    if(d?.syncedLyrics){const lines=parseLRC(d.syncedLyrics);if(lines.length){ST.lrc=lines;ST.lrcType='synced';badge.textContent='✦ SYNCED · lrclib';badge.className='lyric-badge sync';renderSynced();return;}}
-    if(d?.plainLyrics){ST.lrcType='plain';badge.textContent='lrclib';renderPlain(d.plainLyrics);return;}
+    if(d?.syncedLyrics){const lines=parseLRC(d.syncedLyrics);if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+    if(d?.plainLyrics){ST.lrcType='plain';renderPlain(d.plainLyrics);return;}
   }
   for (const [a,t] of [[ca,ct],[artist,title]]) {
-    try { const r=await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(a)}/${encodeURIComponent(t)}`); if(r.ok){const d=await r.json();if(d.lyrics?.length>20){ST.lrcType='plain';badge.textContent='lyrics.ovh';renderPlain(d.lyrics);return;}} } catch {}
+    try { const r=await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(a)}/${encodeURIComponent(t)}`); if(r.ok){const d=await r.json();if(d.lyrics?.length>20){ST.lrcType='plain';renderPlain(d.lyrics);return;}} } catch {}
   }
   scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No lyrics found</p></div>';
 }
@@ -766,11 +621,8 @@ function parseLRC(raw){return raw.split('\n').map(line=>{const m=line.match(/^\[
 function renderSynced(){G('lscroll').innerHTML=ST.lrc.map((l,i)=>`<div class="ll" id="ll${i}" onclick="seekLrc(${i})">${x(l.text)||'♪'}</div>`).join('');}
 function renderPlain(text){G('lscroll').innerHTML=text.replace(/\r\n/g,'\n').split('\n').map((l,i)=>`<div class="ll plain" id="ll${i}">${x(l)||' '}</div>`).join('');}
 function seekLrc(i){if(ST.lrcType==='synced'&&ST.lrc[i])YT_player.seekTo(ST.lrc[i].ms/1000);}
-function tickLrc(posMs){if(!ST.lrc.length)return;let active=0;for(let i=0;i<ST.lrc.length;i++){if(posMs>=ST.lrc[i].ms)active=i;else break;}if(active===ST.lrcActive)return;ST.lrcActive=active;document.querySelectorAll('.ll').forEach((el,i)=>{el.classList.remove('now','past');if(i<active)el.classList.add('past');if(i===active)el.classList.add('now');});document.getElementById(`ll${active}`)?.scrollIntoView({block:'center',behavior:'smooth'});}
+function tickLrc(posMs){if(!ST.lrc.length)return;let active=0;for(let i=0;i<ST.lrc.length;i++){if(posMs>=ST.lrc[i].ms)active=i;else break;}if(active===ST.lrcActive)return;ST.lrcActive=active;document.querySelectorAll('#lscroll .ll').forEach((el,i)=>{el.classList.remove('now','past');if(i<active)el.classList.add('past');if(i===active)el.classList.add('now');});document.getElementById(`ll${active}`)?.scrollIntoView({block:'center',behavior:'smooth'});}
 
-/* ═══════════════════════════════════════════
-   KEYBOARD
-═══════════════════════════════════════════ */
 document.addEventListener('keydown', e => {
   if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
   const ok=ytReady&&ST.idx>=0;
@@ -785,6 +637,7 @@ document.addEventListener('keydown', e => {
     case 'KeyS': G('btn-sf').click(); break;
     case 'KeyR': G('btn-rp').click(); break;
     case 'KeyM': G('btn-vol').click(); break;
+    case 'KeyL': G('lyric-toggle').click(); break;
   }
 });
 </script>
