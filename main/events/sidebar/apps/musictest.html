@@ -435,27 +435,29 @@ const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
 document.head.appendChild(tag);
 
-// ── PUT YOUR FREE YOUTUBE API KEY HERE ──────────────────────────────
-// Get one free: https://console.cloud.google.com → YouTube Data API v3
-// Free quota: 10,000 units/day (~100 searches). Works on ANY network.
-const YT_API_KEY = 'YOUR_API_KEY_HERE';
-// ─────────────────────────────────────────────────────────────────────
+// Invidious public instances — open-source YT frontend with CORS JSON API
+// No API key, no proxy, works on school networks
+const INVIDIOUS = [
+  'https://inv.nadeko.net',
+  'https://invidious.privacydev.net',
+  'https://yt.cdaut.de',
+];
 
 async function findVideoIds(artist, title) {
-  const q = `${artist} ${title} audio`;
+  const q = encodeURIComponent(`${artist} ${title} audio`);
 
-  // 1. YouTube Data API v3 — works everywhere, no proxy, no blocks
-  if (YT_API_KEY !== 'YOUR_API_KEY_HERE') {
+  // Invidious search API — real JSON, CORS enabled, no proxy needed
+  for (const host of INVIDIOUS) {
     try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=5&q=${encodeURIComponent(q)}&key=${YT_API_KEY}`;
-      const data = await fetch(url).then(r => r.json());
-      const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
+      const data = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId&page=1`)
+        .then(r => r.json());
+      const ids = data?.map?.(v => v.videoId).filter(Boolean).slice(0, 5);
       if (ids?.length) return ids;
     } catch {}
   }
 
-  // 2. Proxy fallback (works on regular networks, may be blocked on school Chromebooks)
-  const ytSearch = `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`;
+  // Last resort: corsproxy scrape
+  const ytSearch = `https://www.youtube.com/results?search_query=${q}`;
   for (const url of [
     `https://corsproxy.io/?${encodeURIComponent(ytSearch)}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(ytSearch)}`,
