@@ -506,36 +506,81 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
+async function iTunesSearch(term) {
+  try {
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=50`);
+    const data = await res.json();
+    return data.results || [];
+  } catch { return []; }
+}
+
+async function ytMusicSearch(q) {
+  // Search YT API restricted to music category (videoCategoryId=10) so no gaming/meme videos
+  for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
+    const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
+    try {
+      const url = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&type=video&videoCategoryId=10&maxResults=10&q=${encodeURIComponent(q)}&key=${key}`;
+      const data = await fetch(url).then(r => r.json());
+      if (data.error?.code === 403) { ytKeyIdx++; continue; }
+      return (data.items || []).map(item => ({
+        _fromYT: true,
+        trackName: item.snippet.title,
+        artistName: item.snippet.channelTitle.replace(/ - Topic$| VEVO$| Vevo$/i, ''),
+        artSm: item.snippet.thumbnails?.default?.url || null,
+        artLg: item.snippet.thumbnails?.high?.url || null,
+        ytId: item.id.videoId,
+        durMs: null,
+        album: '',
+      }));
+    } catch {}
+  }
+  return [];
+}
+
 async function doSearch(q) {
   qSpn.style.display='block';
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
   try {
-    // Search broadly — no country/explicit filter so everything shows up
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50`);
-    const data = await res.json();
-    qSpn.style.display='none';
-    if (!data.results?.length) { qDrp.innerHTML='<div class="drop-msg">No results — try artist name + song title</div>'; return; }
-    // Dedupe by trackId, sort so explicit versions come first
+    // Run iTunes + YouTube search in parallel
+    const [itunesResults, ytResults] = await Promise.all([
+      iTunesSearch(q),
+      ytMusicSearch(q),
+    ]);
+
+    // Dedupe iTunes by trackId, sort explicit first
     const seen = new Set();
-    const results = data.results
+    const deduped = itunesResults
       .filter(t => { if (seen.has(t.trackId)) return false; seen.add(t.trackId); return true; })
       .sort((a,b) => (b.trackExplicitness==='explicit'?1:0)-(a.trackExplicitness==='explicit'?1:0));
-    renderDrop(results);
+
+    // Merge: iTunes first, then YT results that aren't already covered
+    const itunesKeys = new Set(deduped.map(t => (t.trackName+t.artistName).toLowerCase()));
+    const ytFiltered = ytResults.filter(t => !itunesKeys.has((t.trackName+t.artistName).toLowerCase()));
+    const merged = [...deduped, ...ytFiltered];
+
+    qSpn.style.display='none';
+    if (!merged.length) { qDrp.innerHTML='<div class="drop-msg">No results found</div>'; return; }
+    renderDrop(merged);
   } catch { qSpn.style.display='none'; qDrp.innerHTML='<div class="drop-msg">Search failed</div>'; }
 }
 
 function renderDrop(tracks) {
   qDrp.innerHTML = tracks.map(t => {
-    const artSm = t.artworkUrl100||'';
-    const artLg = artSm.replace('100x100bb','600x600bb');
-    const data = { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null };
+    // Handle both iTunes and YouTube-sourced results
+    const artSm = t._fromYT ? t.artSm : (t.artworkUrl100||'');
+    const artLg = t._fromYT ? t.artLg : (artSm.replace('100x100bb','600x600bb'));
+    const data = t._fromYT
+      ? { title:t.trackName, artist:t.artistName, album:'', artSm, artLg, durMs:null, ytIds:[t.ytId], ytTry:0 }
+      : { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null };
     const id = 'tr_'+Math.random().toString(36).slice(2);
     (window._td=window._td||{})[id] = data;
+    const sub = t._fromYT ? `${x(t.artistName)} · YouTube` : `${x(t.artistName)} · ${x(t.collectionName||'')}`;
+    const dur = t._fromYT ? '' : ms2t(t.trackTimeMillis);
     return `<div class="di" onclick="pickTrack('${id}')">
       <div class="di-art">${artSm?`<img src="${artSm}" alt="">`:'🎵'}</div>
-      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s">${x(t.artistName)} · ${x(t.collectionName||'')}</div></div>
-      <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
+      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s">${sub}</div></div>
+      <span class="di-dur">${dur}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
