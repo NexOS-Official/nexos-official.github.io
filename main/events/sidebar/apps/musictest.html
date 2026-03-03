@@ -559,37 +559,55 @@ async function iTunesSearch(term) {
   } catch { return []; }
 }
 
+function formatYTItem(item) {
+  // Works for both YT API (item.snippet) and Invidious (flat object)
+  const title = item.title || item.snippet?.title || '';
+  const channel = item.author || item.snippet?.channelTitle || '';
+  const videoId = item.videoId || item.id?.videoId || '';
+  const thumb = item.videoThumbnails?.[0]?.url || item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url || null;
+  return {
+    _fromYT: true,
+    trackName: title
+      .replace(/\s*[\(\[](official\s*(audio|video|music\s*video|lyric\s*video|visualizer)|lyrics?|explicit|hd)[\)\]]/gi, '')
+      .replace(/\s*-\s*(official\s*(audio|video|music\s*video)|lyrics?)$/gi, '')
+      .trim(),
+    artistName: channel.replace(/ - Topic$| VEVO$| Vevo$| - Official$/i, '').trim(),
+    artSm: thumb,
+    artLg: item.snippet?.thumbnails?.high?.url || thumb,
+    ytId: videoId,
+    durMs: null,
+    album: '',
+  };
+}
+
 async function ytMusicSearch(q) {
-  // Append "official audio" — this is the single most effective filter
-  // It biases results heavily toward studio recordings vs live/concert/fan videos
   const query = `${q} official audio`;
 
+  // 1. Invidious — no quota, no key, works great
+  for (const host of INVIDIOUS) {
+    try {
+      const url = `${host}/api/v1/search?q=${encodeURIComponent(query)}&type=video&page=1`;
+      const data = await fetch(url).then(r => r.json());
+      if (Array.isArray(data) && data.length) {
+        const results = data.slice(0, 15).map(formatYTItem).filter(r => r.ytId);
+        if (results.length) { console.log('[ytMusicSearch] Invidious ok:', results.length); return results; }
+      }
+    } catch(e) { console.warn('[ytMusicSearch] Invidious fail:', e.message); }
+  }
+
+  // 2. YT Data API v3 fallback
   for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
     const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
     try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&type=video&maxResults=20&q=${encodeURIComponent(query)}&key=${key}&regionCode=US`;
+      const url = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&type=video&maxResults=15&q=${encodeURIComponent(query)}&key=${key}`;
       const data = await fetch(url).then(r => r.json());
-      console.log('[ytMusicSearch] response:', JSON.stringify(data).slice(0, 300));
-      if (data.error) { console.warn('[ytMusicSearch] API error:', data.error.code, data.error.message); if (data.error.code === 403) { ytKeyIdx++; continue; } continue; }
-
-      const results = (data.items || []).map(item => ({
-        _fromYT: true,
-        trackName: item.snippet.title
-          .replace(/\s*[\(\[](official\s*(audio|video|music\s*video|lyric\s*video|visualizer)|lyrics?|explicit|hd)[\)\]]/gi, '')
-          .replace(/\s*-\s*(official\s*(audio|video|music\s*video)|lyrics?)$/gi, '')
-          .trim(),
-        artistName: item.snippet.channelTitle
-          .replace(/ - Topic$| VEVO$| Vevo$| - Official$/i, '').trim(),
-        artSm: item.snippet.thumbnails?.default?.url || null,
-        artLg: item.snippet.thumbnails?.high?.url || null,
-        ytId: item.id.videoId,
-        durMs: null,
-        album: '',
-      }));
-
-      if (results.length) return results;
-    } catch {}
+      if (data.error) { console.warn('[ytMusicSearch] YT API error:', data.error.code, data.error.message); if (data.error.code === 403) ytKeyIdx++; continue; }
+      const results = (data.items || []).map(formatYTItem).filter(r => r.ytId);
+      if (results.length) { console.log('[ytMusicSearch] YT API ok:', results.length); return results; }
+    } catch(e) { console.warn('[ytMusicSearch] YT API fail:', e.message); }
   }
+
+  console.warn('[ytMusicSearch] all sources failed');
   return [];
 }
 
