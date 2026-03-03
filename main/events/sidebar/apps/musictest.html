@@ -484,28 +484,38 @@ async function findVideoIds(artist, title) {
   const cached = getCached(artist, title);
   if (cached?.length) return cached;
 
-  // Query: "Artist - Title" is the standard YouTube music format
-  const q = `${artist} - ${title}`;
+  // Try multiple query formats — different songs are indexed differently on YT
+  const queries = [
+    `${artist} - ${title}`,       // Standard music format: "Nessa Barrett - Pins and Needles"
+    `${artist} ${title}`,         // Simple: "Nessa Barrett Pins and Needles"
+    `${title} ${artist}`,         // Reversed: "Pins and Needles Nessa Barrett"
+  ];
 
   // 1. Invidious
   for (const host of INVIDIOUS) {
-    try {
-      const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1&limit=10`).then(r => r.json());
-      const ids = Array.isArray(data) ? data.map(v => v.videoId).filter(Boolean).slice(0, 8) : [];
-      if (ids.length) { setCached(artist, title, ids); return ids; }
-    } catch {}
+    for (const q of queries) {
+      try {
+        const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1&limit=10`).then(r => r.json());
+        const ids = Array.isArray(data) ? data.map(v => v.videoId).filter(Boolean).slice(0, 8) : [];
+        if (ids.length) { setCached(artist, title, ids); return ids; }
+      } catch {}
+    }
+    break; // only try first working invidious instance
   }
 
-  // 2. YouTube Data API v3 — no category filter, just best match for the query
-  for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
-    const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
-    try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=8&q=${encodeURIComponent(q)}&key=${key}`;
-      const data = await fetch(url).then(r => r.json());
-      if (data.error?.code === 403) { ytKeyIdx++; continue; }
-      const ids = (data.items||[]).map(i => i.id.videoId).filter(Boolean);
-      if (ids.length) { setCached(artist, title, ids); return ids; }
-    } catch {}
+  // 2. YouTube Data API v3
+  for (const q of queries) {
+    for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
+      const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
+      try {
+        const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=8&q=${encodeURIComponent(q)}&key=${key}`;
+        const data = await fetch(url).then(r => r.json());
+        if (data.error?.code === 403) { ytKeyIdx++; continue; }
+        const ids = (data.items||[]).map(i => i.id.videoId).filter(Boolean);
+        if (ids.length) { setCached(artist, title, ids); return ids; }
+      } catch {}
+    }
+    break; // only first query needed if it works
   }
 
   throw new Error('search failed');
@@ -690,7 +700,20 @@ async function loadTrack(idx) {
   const vid = track.ytIds[track.ytTry];
   if (!vid) { setStatus('err', 'No video ID'); toast('Could not find video'); return; }
   YT_player.loadVideoById(vid);
-  fetchLyrics(track.title, track.artist);
+  // Clean title/artist for lyrics search — YT titles often have "Artist - Title (Official Audio)"
+  let lyrTitle = track.title, lyrArtist = track.artist;
+  // If title contains " - ", it's probably "Artist - Title" format — split it
+  if (lyrTitle.includes(' - ')) {
+    const parts = lyrTitle.split(' - ');
+    lyrArtist = parts[0].trim();
+    lyrTitle = parts.slice(1).join(' - ').trim();
+  }
+  // Strip common suffixes
+  lyrTitle = lyrTitle
+    .replace(/\s*[\(\[](official\s*(audio|video|music\s*video|lyric\s*video|visualizer)|lyrics?|hd|4k|explicit)[\)\]]/gi, '')
+    .replace(/\s*-\s*(official\s*(audio|video)|lyrics?)$/gi, '')
+    .trim();
+  fetchLyrics(lyrTitle, lyrArtist);
 }
 
 function updateNP(track) {
