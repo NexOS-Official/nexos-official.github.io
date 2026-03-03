@@ -524,7 +524,9 @@ async function searchMusicBrainz(q) {
     if (!data.recordings?.length) return [];
     return data.recordings.map(r => {
       const artist = r['artist-credit']?.[0]?.artist?.name || r['artist-credit']?.[0]?.name || 'Unknown';
-      const album = r.releases?.[0]?.title || '';
+      const release = r.releases?.[0];
+      const album = release?.title || '';
+      const releaseMbid = release?.id || null;
       return {
         trackName: r.title,
         artistName: artist,
@@ -532,6 +534,7 @@ async function searchMusicBrainz(q) {
         artworkUrl100: null,
         trackTimeMillis: r.length || null,
         _source: 'musicbrainz',
+        _releaseMbid: releaseMbid,
       };
     });
   } catch { return []; }
@@ -539,7 +542,7 @@ async function searchMusicBrainz(q) {
 
 async function searchLastFm(q) {
   try {
-    const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(q)}&limit=25&format=json&api_key=8548f98a6f6e4d9b9b4d4f6a7c3e1b2d`);
+    const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(q)}&limit=25&format=json&api_key=8548f98a6f6e4d9b9b4d4f6a7f3e1b2d`);
     const data = await res.json();
     const tracks = data?.results?.trackmatches?.track;
     if (!tracks?.length) return [];
@@ -548,24 +551,77 @@ async function searchLastFm(q) {
       const imgs = Array.isArray(t.image) ? t.image : [];
       const art = imgs.find(i=>i.size==='medium')?.['#text'] || imgs[0]?.['#text'] || null;
       const artLg = imgs.find(i=>i.size==='extralarge')?.['#text'] || art;
+      const BLANK = '2a96cbd8b46e442fc41c2b86b821562f';
       return {
         trackName: t.name,
         artistName: t.artist,
         collectionName: '',
-        artworkUrl100: (art && !art.includes('2a96cbd8b46e442fc41c2b86b821562f')) ? art : null,
-        _artLgOverride: (artLg && !artLg.includes('2a96cbd8b46e442fc41c2b86b821562f')) ? artLg : null,
+        artworkUrl100: (art && !art.includes(BLANK)) ? art : null,
+        _artLgOverride: (artLg && !artLg.includes(BLANK)) ? artLg : null,
         trackTimeMillis: null,
         _source: 'lastfm',
+        _needsArt: !(art && !art.includes(BLANK)),
       };
     });
   } catch { return []; }
+}
+
+// Cover Art Archive: free, no key, uses MusicBrainz release IDs
+const _artCache = {};
+async function fetchCoverArt(track) {
+  if (track.artworkUrl100) return; // already has art
+
+  // --- MusicBrainz path: use Cover Art Archive with release MBID ---
+  if (track._releaseMbid) {
+    const mbid = track._releaseMbid;
+    if (_artCache[mbid] !== undefined) {
+      if (_artCache[mbid]) { track.artworkUrl100 = _artCache[mbid]; track._artLgOverride = _artCache[mbid+'_lg']; }
+      return;
+    }
+    try {
+      const r = await fetch(`https://coverartarchive.org/release/${mbid}`, { headers: { 'Accept': 'application/json' } });
+      if (r.ok) {
+        const d = await r.json();
+        const img = d.images?.find(i => i.front) || d.images?.[0];
+        if (img) {
+          const sm = img.thumbnails?.['250'] || img.thumbnails?.small || img.image;
+          const lg = img.thumbnails?.['500'] || img.thumbnails?.large || img.image;
+          _artCache[mbid] = sm; _artCache[mbid+'_lg'] = lg;
+          track.artworkUrl100 = sm; track._artLgOverride = lg;
+          return;
+        }
+      }
+    } catch {}
+    _artCache[mbid] = null;
+  }
+
+  // --- Fallback for any track with no art: quick iTunes lookup by artist+title ---
+  if (!track.artworkUrl100) {
+    const ck = (track.artistName + '||' + track.trackName).toLowerCase();
+    if (_artCache[ck] !== undefined) {
+      if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
+      return;
+    }
+    try {
+      const q = encodeURIComponent(track.artistName + ' ' + track.trackName);
+      const r = await fetch(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=1`);
+      const d = await r.json();
+      const hit = d.results?.[0];
+      if (hit?.artworkUrl100) {
+        const sm = hit.artworkUrl100;
+        const lg = sm.replace('100x100bb','600x600bb');
+        _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
+        track.artworkUrl100 = sm; track._artLgOverride = lg;
+      } else { _artCache[ck] = null; }
+    } catch {}
+  }
 }
 
 function renderDrop(tracks) {
   qDrp.innerHTML = tracks.map(t => {
     const artSm = t.artworkUrl100||'';
     const artLg = t._artLgOverride || artSm.replace('100x100bb','600x600bb');
-    const data = { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null };
+    const data = { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null, _ref:t };
     const id = 'tr_'+Math.random().toString(36).slice(2);
     (window._td=window._td||{})[id] = data;
     return `<div class="di" onclick="pickTrack('${id}')">
@@ -575,7 +631,28 @@ function renderDrop(tracks) {
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
+  // Kick off background art hydration for tracks missing artwork
+  hydrateArt(Object.values(window._td || {}));
 }
+// After rendering, hydrate artwork for non-iTunes results in the background
+async function hydrateArt(tracks) {
+  const noArt = tracks.filter(t => !t.artworkUrl100);
+  if (!noArt.length) return;
+  await Promise.allSettled(noArt.map(async t => {
+    await fetchCoverArt(t);
+    if (!t.artworkUrl100) return;
+    // Find the _td entry whose _ref points to this track object
+    const id = Object.keys(window._td||{}).find(k => window._td[k]._ref === t);
+    if (!id) return;
+    const entry = window._td[id];
+    entry.artSm = t.artworkUrl100;
+    entry.artLg = t._artLgOverride || t.artworkUrl100;
+    // Update the thumbnail in the dropdown live
+    const row = document.querySelector(`[onclick="pickTrack('${id}')"] .di-art`);
+    if (row) row.innerHTML = `<img src="${t.artworkUrl100}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+  }));
+}
+
 async function pickTrack(id) { hideDrop(); qIn.value=''; const t=window._td?.[id]; if(t) addAndPlay(t); }
 function hideDrop() { qDrp.style.display='none'; }
 
