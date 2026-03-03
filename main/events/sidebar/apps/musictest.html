@@ -464,7 +464,7 @@ const YT_KEYS = [
 let ytKeyIdx = 0;
 
 // Cache video IDs in localStorage — same song never hits the API twice
-function cacheKey(artist, title) { return `yt:${artist}:${title}`.toLowerCase().slice(0, 120); }
+function cacheKey(artist, title) { return `yt3:${artist}:${title}`.toLowerCase().slice(0, 120); }
 function getCached(artist, title) {
   try { const v = localStorage.getItem(cacheKey(artist, title)); return v ? JSON.parse(v) : null; } catch { return null; }
 }
@@ -473,31 +473,30 @@ function setCached(artist, title, ids) {
 }
 
 async function findVideoIds(artist, title) {
-  // Serve from cache instantly — zero API calls
   const cached = getCached(artist, title);
   if (cached?.length) return cached;
 
-  const q = `${artist} ${title}`;
+  // Query: "Artist - Title" is the standard YouTube music format
+  const q = `${artist} - ${title}`;
 
-  // 1. Invidious — no key, CORS-enabled, works most places
+  // 1. Invidious
   for (const host of INVIDIOUS) {
     try {
-      const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1&limit=10`)
-        .then(r => r.json());
-      const ids = data?.map?.(v => v.videoId).filter(Boolean).slice(0, 5);
-      if (ids?.length) { setCached(artist, title, ids); return ids; }
+      const data = await fetch(`${host}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId&page=1&limit=10`).then(r => r.json());
+      const ids = Array.isArray(data) ? data.map(v => v.videoId).filter(Boolean).slice(0, 8) : [];
+      if (ids.length) { setCached(artist, title, ids); return ids; }
     } catch {}
   }
 
-  // 2. YouTube Data API v3 — googleapis.com whitelisted on school networks
+  // 2. YouTube Data API v3 — no category filter, just best match for the query
   for (let attempt = 0; attempt < YT_KEYS.length; attempt++) {
     const key = YT_KEYS[(ytKeyIdx + attempt) % YT_KEYS.length];
     try {
-      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=10&q=${encodeURIComponent(q)}&key=${key}`;
+      const url = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&maxResults=8&q=${encodeURIComponent(q)}&key=${key}`;
       const data = await fetch(url).then(r => r.json());
       if (data.error?.code === 403) { ytKeyIdx++; continue; }
-      const ids = data.items?.map(i => i.id.videoId).filter(Boolean);
-      if (ids?.length) { setCached(artist, title, ids); return ids; }
+      const ids = (data.items||[]).map(i => i.id.videoId).filter(Boolean);
+      if (ids.length) { setCached(artist, title, ids); return ids; }
     } catch {}
   }
 
@@ -682,7 +681,6 @@ async function loadTrack(idx) {
   if (track.ytTry === undefined) track.ytTry = 0;
   const vid = track.ytIds[track.ytTry];
   if (!vid) { setStatus('err', 'No video ID'); toast('Could not find video'); return; }
-  G('cv-load').classList.add('on');
   YT_player.loadVideoById(vid);
   fetchLyrics(track.title, track.artist);
 }
