@@ -569,7 +569,8 @@ async function ytMusicSearch(q) {
     try {
       const url = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&type=video&maxResults=20&q=${encodeURIComponent(query)}&key=${key}&regionCode=US`;
       const data = await fetch(url).then(r => r.json());
-      if (data.error?.code === 403) { ytKeyIdx++; continue; }
+      console.log('[ytMusicSearch] response:', JSON.stringify(data).slice(0, 300));
+      if (data.error) { console.warn('[ytMusicSearch] API error:', data.error.code, data.error.message); if (data.error.code === 403) { ytKeyIdx++; continue; } continue; }
 
       const results = (data.items || []).map(item => ({
         _fromYT: true,
