@@ -571,16 +571,11 @@ async function ytMusicSearch(q) {
       const data = await fetch(url).then(r => r.json());
       if (data.error?.code === 403) { ytKeyIdx++; continue; }
 
-      const junk = /live|concert|tour|performance|session|acoustic|cover|karaoke|nightcore|sped.?up|slowed|reverb|podcast|radio|roblox|minecraft|gaming|tutorial|interview|reaction|unboxing|compilation/i;
+      const junk = /\blive\b|\bconcert\b|\btour\b|live performance|live session|podcast|radio station|roblox|minecraft|gaming|tutorial|interview|reaction|unboxing|compilation/i;
 
       const results = (data.items || []).filter(item => {
-        const title = item.snippet.title;
-        // Block junk
-        if (junk.test(title)) return false;
-        // Must be from a music-looking channel OR have official/lyrics/audio in title
-        const isMusicChannel = / - topic$|vevo|records|music|official/i.test(item.snippet.channelTitle);
-        const isMusicTitle = /official|lyrics|audio|ft\.|feat\./i.test(title);
-        return isMusicChannel || isMusicTitle;
+        // Only block things that are definitely not the studio song
+        return !junk.test(item.snippet.title);
       }).map(item => ({
         _fromYT: true,
         trackName: item.snippet.title
