@@ -1043,6 +1043,7 @@ let ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
 let _xfading = false, _xfAnimId = null;
 let _activePlayer = 'A';
+let _lrcLocked = false; // prevents RAF loop from overwriting lyrics during xfade snap
 
 function _main()  { return _activePlayer === 'A' ? YT_player  : YT_playerB; }
 function _bench() { return _activePlayer === 'A' ? YT_playerB : YT_player;  }
@@ -1052,9 +1053,9 @@ function getPrecisePos() {
   return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
 }
 
-const XFADE_MS    = 8500;
-const LOOP_BACK_S = 12;
-const LRC_BLUR_PX = 16;
+const XFADE_MS    = 9000;  // total crossfade duration once bench is confirmed playing
+const LOOP_BACK_S = 12;    // seconds to loop back to
+const LRC_BLUR_PX = 18;    // max blur on lyrics panel during transition
 
 function _setMixingUI(on) {
   G('prog').classList.toggle('mixing', on);
@@ -1064,10 +1065,11 @@ function _setMixingUI(on) {
 function _cancelXfade() {
   if (_xfAnimId) { cancelAnimationFrame(_xfAnimId); _xfAnimId = null; }
   _xfading = false;
+  _lrcLocked = false;
   try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
   try { _bench().setVolume(0); } catch {}
   const sc = G('lscroll');
-  if (sc) { sc.style.transition = 'filter 0.5s ease'; sc.style.filter = ''; }
+  if (sc) { sc.style.transition = 'filter 0.6s ease'; sc.style.filter = ''; }
   _setMixingUI(false);
 }
 
@@ -1077,79 +1079,131 @@ function _startRepeatCrossfade(videoId) {
   _setMixingUI(true);
 
   const bench = _bench();
-  // Mute bench before loading so no audio bleed during buffering
+  // Silence bench fully before loading — prevents any audio bleed during buffering
   try { bench.setVolume(0); } catch {}
-  try { bench.loadVideoById({ videoId, startSeconds: LOOP_BACK_S }); } catch { _cancelXfade(); return; }
+
+  // Use cueVideoById instead of loadVideoById so bench buffers silently
+  // without autoplay, avoiding the main player stutter that loadVideoById causes
+  try { bench.cueVideoById({ videoId, startSeconds: LOOP_BACK_S }); }
+  catch { _cancelXfade(); return; }
 
   const sc = G('lscroll');
-  let t0 = null; // set only once bench is confirmed playing
+  let t0 = null;
+  let _lrcSnapped = false;
+  let _benchPlayCalled = false;
 
-  // Poll until bench is actually playing, THEN start the fade clock
+  // Poll: once bench is cued/ready, manually call playVideo then wait for PLAYING
   const waitForBench = setInterval(() => {
     if (!_xfading) { clearInterval(waitForBench); return; }
     let state = -1;
-    try { state = bench.getPlayerState(); } catch {}
-    if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
+    try { state = bench.getPlayerState(); } catch { return; }
+
+    // YT.PlayerState.VIDEO_CUED = 5
+    if (!_benchPlayCalled && (state === 5 || state === YT.PlayerState.PAUSED)) {
+      _benchPlayCalled = true;
+      bench.setVolume(0); // ensure still muted
+      bench.playVideo();  // start it playing silently
+    }
+
+    if (_benchPlayCalled && state === YT.PlayerState.PLAYING) {
       clearInterval(waitForBench);
-      // Keep bench muted until fade-in curve says otherwise — just confirm it's running
-      bench.setVolume(0);
+      bench.setVolume(0); // still muted — fade-in curve controls volume
       t0 = performance.now();
       _xfAnimId = requestAnimationFrame(tick);
     }
-  }, 80);
+  }, 100);
 
-  // Safety timeout — if bench never starts in 4s, abort
-  setTimeout(() => { if (_xfading && t0 === null) { clearInterval(waitForBench); _cancelXfade(); } }, 4000);
+  // Abort if bench never gets going in 5s
+  setTimeout(() => {
+    if (_xfading && t0 === null) { clearInterval(waitForBench); _cancelXfade(); }
+  }, 5000);
 
   function tick() {
     if (!_xfading || !ST.playing || t0 === null) { _cancelXfade(); return; }
     const p = Math.min(1, (performance.now() - t0) / XFADE_MS);
 
-    // ── Equal-power crossfade (constant-power DJ formula) ─────────────────────
-    // cos curve on main (1→0), sin curve on bench (0→1).
-    // Combined power = cos²+sin² = 1 at all points — no dip, true blend.
-    // Bench is delayed 15% so the returning song eases in, not jumps in.
-    const mainAngle  = (p * Math.PI) / 2;
-    const mainGain   = Math.cos(mainAngle);
+    // ── Equal-power crossfade ─────────────────────────────────────────────────
+    // cos/sin pair keeps combined power constant — no perceivable volume dip.
+    // Main fades from 1→small_floor, bench fades from 0→1 with a slight delay
+    // so the incoming song feels like it's rising up through the mix.
+    const mainAngle = (p * Math.PI) / 2;
+    const mainGain  = Math.cos(mainAngle);   // 1 → 0
 
-    const benchP     = Math.max(0, (p - 0.15) / 0.85);
+    // Bench entry delayed by 20% — gives the fade-out a head start
+    // so you hear the song "winding down" before the new loop appears
+    const benchP     = Math.max(0, (p - 0.20) / 0.80);
     const benchAngle = (benchP * Math.PI) / 2;
-    const benchGain  = Math.sin(benchAngle);
+    const benchGain  = Math.sin(benchAngle); // 0 → 1
 
-    // Subtle floor keeps the "music bed" of the ending song barely audible
-    const FLOOR     = 0.08;
-    const mainVol   = Math.max(0, (mainGain * (1 - FLOOR) + FLOOR) * ST.vol * 100);
-    const benchVol  = Math.max(0, benchGain * ST.vol * 100);
+    // Floor: keep a whisper of the ending song's music bed
+    const FLOOR    = 0.07;
+    const mainVol  = Math.max(0, (mainGain * (1 - FLOOR) + FLOOR) * ST.vol * 100);
+    const benchVol = Math.max(0, benchGain * ST.vol * 100);
 
     try { if (!ST.muted) _main().setVolume(Math.min(100, mainVol)); } catch {}
     try { if (!ST.muted) bench.setVolume(Math.min(100, benchVol)); } catch {}
 
-    // ── Lyrics blur: sin arc from 0→peak→0, matching audio crossover ─────────
+    // ── Lyrics: blur arcs up then back down, snap at peak ────────────────────
+    // sin(p*π) gives a natural 0→1→0 arc over the whole transition
     const blurArc = Math.sin(p * Math.PI);
     if (sc) {
-      sc.style.transition = 'filter 0.05s linear';
+      sc.style.transition = 'filter 0.04s linear';
       sc.style.filter = `blur(${(blurArc * LRC_BLUR_PX).toFixed(1)}px)`;
     }
 
-    // Snap lyrics to loop-back at blur peak (when both songs are equally loud)
-    if (p >= 0.47 && p <= 0.53 && ST.lrcType === 'synced') {
-      tickLrc(LOOP_BACK_S * 1000);
-      document.getElementById('ll' + ST.lrcActive)
-        ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    // At peak blur (≈50%), snap lyrics to loop-back position.
+    // Lock _lrcLocked so the RAF tickLrc loop doesn't overwrite it
+    // until after the blur has cleared and the new position is stable.
+    if (!_lrcSnapped && p >= 0.48) {
+      _lrcSnapped = true;
+      _lrcLocked  = true;
+      if (ST.lrcType === 'synced') {
+        // Force-update lrcActive to the right line for LOOP_BACK_S
+        const targetMs = LOOP_BACK_S * 1000;
+        let lo = 0, hi = ST.lrc.length - 1, target = 0;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          if (ST.lrc[mid].ms <= targetMs) { target = mid; lo = mid + 1; }
+          else hi = mid - 1;
+        }
+        ST.lrcActive = target;
+        // Re-render all line classes to match new position
+        document.querySelectorAll('#lscroll .ll').forEach((el, i) => {
+          el.classList.remove('now','past','near','near2');
+          if (i < target) el.classList.add('past');
+          else if (i === target) el.classList.add('now');
+          else if (i === target + 1) el.classList.add('near');
+          else if (i === target + 2) el.classList.add('near2');
+          el.style.filter = Math.abs(i - target) >= 3
+            ? `blur(${Math.min(5, (Math.abs(i - target) - 2) * 1.5).toFixed(1)}px)` : '';
+        });
+        document.getElementById('ll' + target)
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      }
+    }
+
+    // Unlock lyrics once blur has mostly cleared on the way back down
+    if (_lrcLocked && p > 0.75) {
+      _lrcLocked = false;
     }
 
     if (p >= 1) {
-      // Crossfade complete — silence old main, swap, restore
-      try { _main().setVolume(0); _main().pauseVideo(); } catch {}
+      // Swap: old main → pause+silence, new main (bench) takes over
+      const oldMain = _main();
       _activePlayer = _activePlayer === 'A' ? 'B' : 'A';
+      try { oldMain.setVolume(0); oldMain.pauseVideo(); } catch {}
       try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
-      _lastYtPosMs  = LOOP_BACK_S * 1000;
+
+      // Sync position tracking to new main
+      _lastYtPosMs  = (_main().getCurrentTime?.() ?? LOOP_BACK_S) * 1000;
       _lastYtPollMs = performance.now();
-      if (sc) { sc.style.transition = 'filter 0.5s ease'; sc.style.filter = ''; }
+
+      if (sc) { sc.style.transition = 'filter 0.6s ease'; sc.style.filter = ''; }
       _setMixingUI(false);
+      _lrcLocked = false;
       _xfading = false; _xfAnimId = null;
 
-      // Restart ticker on new main so position tracking stays accurate
+      // Restart ticker pointed at new main
       clearInterval(ticker);
       ticker = setInterval(_tickerFn, 250);
       return;
@@ -1159,7 +1213,7 @@ function _startRepeatCrossfade(videoId) {
   }
 }
 
-// Extracted ticker body so it can be restarted cleanly after player swap
+// Ticker body — extracted so it's identical whether started from onStateChange or post-swap
 function _tickerFn() {
   try {
     ST.pos = _main().getCurrentTime() * 1000;
@@ -1205,13 +1259,15 @@ function _makePlayer(divId, isA) {
             ST._rafRunning = true;
             const rafLoop = () => {
               if (!ST._rafRunning) return;
-              if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
+              if (ST.lrcType === 'synced' && !_lrcLocked) tickLrc(getPrecisePos());
               requestAnimationFrame(rafLoop);
             };
             requestAnimationFrame(rafLoop);
           }
         } else if (e.data === YT.PlayerState.PAUSED) {
-          if (_xfading) return; // bench pausing/buffering during xfade — ignore
+          // Ignore PAUSED events entirely during a crossfade — the old main gets
+          // paused programmatically at swap time, which would otherwise kill playback
+          if (_xfading) return;
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
