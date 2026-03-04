@@ -938,6 +938,22 @@ function createPlaylistFromModal() {
   openNewPlaylistModal();
 }
 
+// Image proxy: images.weserv.nl is a free image CDN proxy that works on most networks
+// Try direct first; if it fails (school blocks mzstatic.com), fall back to weserv
+function proxyImg(url) {
+  if (!url) return '';
+  // Already a proxy or data URL
+  if (url.startsWith('data:') || url.includes('weserv.nl') || url.includes('fanart.tv')) return url;
+  return url; // Return direct — mzstatic is almost never blocked. weserv fallback on onerror.
+}
+function proxyImgFallback(img) {
+  // Called via onerror — try weserv.nl as fallback
+  if (!img.src.includes('wsrv.nl')) {
+    const orig = img.getAttribute('data-src') || img.src;
+    img.src = 'https://wsrv.nl/?url=' + encodeURIComponent(orig) + '&w=300';
+  }
+}
+
 const ST = {
   queue:[], idx:-1,
   playing:false, shuffle:false, repeat:false, muted:false,
@@ -957,7 +973,7 @@ let YT_player = null, ytReady = false, ticker = null;
 window.onYouTubeIframeAPIReady = function() {
   YT_player = new YT.Player('yt-player', {
     videoId: 'M7lc1UVf-VE',
-    playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1 },
+    playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1, origin: window.location.origin, host: 'https://www.youtube-nocookie.com' },
     events: {
       onReady(e) {
         ytReady = true;
@@ -999,9 +1015,23 @@ window.onYouTubeIframeAPIReady = function() {
   });
 };
 
+// Try YouTube IFrame API — detect if blocked (school networks)
 const tag = document.createElement('script');
 tag.src = 'https://www.youtube.com/iframe_api';
+tag.onerror = () => {
+  setStatus('err', 'YouTube blocked');
+  toast('⚠ YouTube is blocked on this network — playback unavailable');
+  G('sc-status-txt').textContent = 'YouTube blocked';
+};
 document.head.appendChild(tag);
+
+// Timeout: if onYouTubeIframeAPIReady hasn't fired in 8s, YouTube is blocked
+setTimeout(() => {
+  if (!ytReady) {
+    setStatus('err', 'YouTube blocked');
+    G('sc-status-txt').textContent = 'YouTube blocked';
+  }
+}, 8000);
 
 const ytCache = {};
 
@@ -1249,7 +1279,7 @@ function renderDrop(tracks) {
     const aArt = (t.artworkUrl100||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const srcBadge = (t._source && t._source!=='itunes') ? ` <span style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.5px">[${t._source}]</span>` : '';
     return `<div class="di" onclick="pickTrack('${id}')">
-      <div class="di-art">${artSm?`<img src="${artSm}" alt="">`:'🎵'}</div>
+      <div class="di-art">${artSm?`<img src="${artSm}" data-src="${artSm}" onerror="proxyImgFallback(this)" alt="">`:'🎵'}</div>
       <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName?' · '+x(t.collectionName):''}${srcBadge}</div></div>
       <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
@@ -1283,7 +1313,7 @@ function appendQI(track, i) {
   const list=G('q-list'); list.querySelector('.q-empty-msg')?.remove();
   const el=document.createElement('div');
   el.className='qi'; el.id=`qi${i}`; el.dataset.idx=i;
-  el.innerHTML=`<div class="qi-th" id="qt${i}">${track.artSm?`<img src="${track.artSm}" alt="">`:'🎵'}</div>
+  el.innerHTML=`<div class="qi-th" id="qt${i}">${track.artSm?`<img src="${track.artSm}" data-src="${track.artSm}" onerror="proxyImgFallback(this)" alt="">`:'🎵'}</div>
     <div class="qi-inf"><div class="qi-t">${x(track.title)}</div><div class="qi-a">${x(track.artist)}</div></div>
     <button class="qi-rm" onclick="rmQI(event,${i})">×</button>`;
   el.addEventListener('click', e => { if(!e.target.classList.contains('qi-rm')) loadTrack(i); });
@@ -1349,11 +1379,12 @@ function updateNP(track) {
   G('np-a').onclick=()=>openArtistProfile(track.artist, track.artSm||'');
   const art = track.artLg || track.artSm;
   if(art){
-    G('cv-img').src=art;
-    G('cv-bg').src=art;
+    const artUrl = proxyImg(art);
+    G('cv-img').src=artUrl; G('cv-img').setAttribute('data-src',artUrl); G('cv-img').onerror=function(){proxyImgFallback(this)};
+    G('cv-bg').src=artUrl;
     G('cv-bg').classList.add('on');
     const lrcBg = G('lrc-bg');
-    lrcBg.style.backgroundImage = `url('${art}')`;
+    lrcBg.style.backgroundImage = `url('${artUrl}')`;
     lrcBg.classList.add('on');
   }
 }
@@ -1661,39 +1692,37 @@ async function fetchArtistData(artistName) {
     if (match) artistId = match.artistId;
   }
 
-  // Collect attribute-search tracks — filter to exact artist name only
+  // Collect tracks — attribute=artistTerm already scopes to this artist, trust it
   let tracks = [];
-  if (attrRes.status === 'fulfilled' && attrRes.value) {
-    tracks = (attrRes.value.results || []).filter(t =>
-      t.wrapperType === 'track' &&
-      t.kind === 'song' &&
-      t.artistName?.toLowerCase() === al
-    );
+  if (attrRes.status === 'fulfilled' && attrRes.value?.results) {
+    tracks = attrRes.value.results.filter(t => t.kind === 'song');
   }
 
-  // If we have an artistId, also do the lookup (different set of tracks, sorted by popularity)
+  // artistId lookup gives a different (popularity-sorted) set — merge it in
   if (artistId) {
     try {
       const lr = await fetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=50&country=US`);
       if (lr.ok) {
         const ld = await lr.json();
-        const lookupTracks = (ld.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
-        // Merge: add lookup tracks not already in attribute results
+        // lookup result[0] is the artist object, rest are songs
+        const lookupTracks = (ld.results || []).filter(r => r.kind === 'song');
         for (const lt of lookupTracks) {
           const dup = tracks.some(t => t.trackName?.toLowerCase() === lt.trackName?.toLowerCase());
-          if (!dup) tracks.push(lt);
+          if (!dup) tracks.unshift(lt); // lookup tracks are popularity-sorted, put them first
         }
       }
     } catch {}
   }
 
-  // Still empty? Last resort: plain song search filtered to exact artist
+  // Still empty? Broad search, loosely filter to artist name starts-with
   if (!tracks.length) {
     try {
       const lr = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`);
       if (lr.ok) {
         const ld = await lr.json();
-        tracks = (ld.results || []).filter(t => t.artistName?.toLowerCase() === al);
+        tracks = (ld.results || []).filter(t =>
+          t.kind === 'song' && t.artistName?.toLowerCase().includes(al.split(' ')[0])
+        );
       }
     } catch {}
   }
@@ -1747,7 +1776,7 @@ function renderArtistProfile(artistName, tracks, heroImg, container) {
   const rowsHTML = tracks.length ? tracks.map((t, i) => {
     const sm = t.artworkUrl100 || '';
     const lg = sm.replace('100x100bb','600x600bb');
-    const artCell = sm ? `<img src="${sm}" alt="">` : '🎵';
+    const artCell = sm ? `<img src="${sm}" data-src="${sm}" onerror="proxyImgFallback(this)" alt="">` : '🎵';
     const id = 'apt_'+Math.random().toString(36).slice(2);
     (window._td=window._td||{})[id] = {
       title: t.trackName, artist: t.artistName||artistName,
