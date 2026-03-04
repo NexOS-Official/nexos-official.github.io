@@ -1547,156 +1547,110 @@ const wordSyncOn = true;
 
 async function fetchLyrics(title, artist) {
   ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
-  const scroll=G('lscroll');
-  G('lrc-empty-state').style.display='none';
-  scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
-  const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
-  const ct=clean(title), ca=clean(artist);
-  const alts = ct!==title||ca!==artist;
+  const scroll = G('lscroll');
+  G('lrc-empty-state').style.display = 'none';
+  scroll.innerHTML = '<div class="lrc-empty"><p>Finding lyrics…</p></div>';
 
-  // ── PHASE 1: Race all sources simultaneously for word-level lyrics ──────────
-  // Sources that can return per-word timestamps get priority
-  const wordLevelRace = [
-    lyricsOvhFetch(ct, ca),                       // lyrics.ovh (plain, used as last fallback)
+  const clean = s => s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
+  const ct = clean(title), ca = clean(artist);
+  const alts = ct !== title || ca !== artist;
+
+  // Fire all sources simultaneously — fastest reliable one wins
+  const fetches = [
     lrclibGET(ct, ca),
-    alts ? lrclibGET(title, artist) : null,
     lrclibSEARCH(ct, ca),
+    megalobizSearch(ct, ca),
+    alts ? lrclibGET(title, artist) : null,
     alts ? lrclibSEARCH(title, artist) : null,
-    neteaseFetch(ct, ca),
-    alts ? neteaseFetch(title, artist) : null,
+    alts ? megalobizSearch(title, artist) : null,
   ].filter(Boolean);
 
-  // Collect results in parallel — use the best one (word-timed > line-timed)
-  const results = await Promise.allSettled(wordLevelRace);
+  const results = await Promise.allSettled(fetches);
   const candidates = results
-    .filter(r => r.status === 'fulfilled' && r.value)
+    .filter(r => r.status === 'fulfilled' && r.value?.syncedLyrics)
     .map(r => r.value);
 
-  // Prefer sources that have actual per-word timestamps embedded in LRC
-  const scoreLyric = d => {
-    if (!d) return -1;
-    if (d._wordSynced) return 3;   // netease word-level
-    if (d.syncedLyrics?.includes('<')) return 2; // enhanced LRC with <mm:ss> word tags
-    if (d.syncedLyrics) return 1;  // plain line-synced LRC
-    return 0;
-  };
-  candidates.sort((a, b) => scoreLyric(b) - scoreLyric(a));
+  // Prefer enhanced LRC (has embedded <mm:ss.xx> word tags) over plain line-synced
+  candidates.sort((a, b) => {
+    const score = d => (d.syncedLyrics?.includes('<') ? 1 : 0);
+    return score(b) - score(a);
+  });
 
   for (const d of candidates) {
-    if (d._wordSynced) {
-      // Already parsed word-level lines from Netease
-      ST.lrc = d._wordSynced; ST.lrcType = 'synced'; renderSynced(); return;
-    }
-    if (d.syncedLyrics) {
-      const lines = buildWordTimings(parseLRC(d.syncedLyrics));
-      if (lines.length) { ST.lrc=lines; ST.lrcType='synced'; renderSynced(); return; }
-    }
+    const lines = buildWordTimings(parseLRC(d.syncedLyrics));
+    if (lines.length) { ST.lrc = lines; ST.lrcType = 'synced'; renderSynced(); return; }
   }
 
-  scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
+  scroll.innerHTML = '<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
 }
 
+// ── lrclib.net ─────────────────────────────────────────────────────────────────
+// Best free synced-lyrics DB (~3M songs). CORS-friendly, no auth needed.
 async function lrclibGET(track, artist) {
   try {
     const url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
     const r = await proxyFetch(url, {}, 6000);
-    if (r.ok) return await r.json();
+    if (r.ok) { const d = await r.json(); if (d?.syncedLyrics) return d; }
   } catch {}
   return null;
 }
+
 async function lrclibSEARCH(track, artist) {
   try {
     const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
     const r = await proxyFetch(url, {}, 6000);
     if (r.ok) {
-      const a = await r.json();
-      if (a?.length) return a.find(x => x.syncedLyrics) || a.find(x => x.plainLyrics) || null;
+      const arr = await r.json();
+      if (arr?.length) return arr.find(x => x.syncedLyrics) || null;
     }
   } catch {}
   return null;
 }
 
-// ── Netease Music — best source for word-level "kara" timestamps ─────────────
-// Uses the public NeteaseCloudMusicApi (open instances) which returns
-// per-word highlight timestamps via the /lyric/new endpoint
-async function neteaseFetch(track, artist) {
-  const NETEASE_HOSTS = [
-    'https://neteasecloudmusicapi-topaz.vercel.app',
-    'https://ncm-api-nine.vercel.app',
-  ];
-  for (const host of NETEASE_HOSTS) {
-    try {
-      // Step 1: search for the song ID
-      const sq = encodeURIComponent(track + ' ' + artist);
-      const sr = await fetch(`${host}/search?keywords=${sq}&limit=5`, { signal: AbortSignal.timeout(5000) });
-      if (!sr.ok) continue;
-      const sd = await sr.json();
-      const songs = sd?.result?.songs;
-      if (!songs?.length) continue;
-      // Pick best match — prefer artist name match
-      const al = artist.toLowerCase();
-      const song = songs.find(s => s.artists?.some(a => a.name?.toLowerCase().includes(al.split(' ')[0]))) || songs[0];
-      const songId = song.id;
+// ── Megalobiz ──────────────────────────────────────────────────────────────────
+// Human-curated LRC database — huge for Western pop/rap/rock.
+// No official API, so we: 1) search via their public search endpoint,
+// 2) scrape the LRC page content. Routed through CORS proxy since it's
+// a regular website. Returns standard syncedLyrics string on success.
+async function megalobizSearch(track, artist) {
+  try {
+    const q = encodeURIComponent(track + ' ' + artist);
+    const searchUrl = `https://www.megalobiz.com/search/all?qry=${q}&entity_type=lrc_maker`;
+    const r = await proxyFetch(searchUrl, {}, 7000);
+    if (!r.ok) return null;
+    const html = await r.text();
 
-      // Step 2: fetch lyrics with word-level kara data
-      const lr = await fetch(`${host}/lyric/new?id=${songId}`, { signal: AbortSignal.timeout(5000) });
-      if (!lr.ok) continue;
-      const ld = await lr.json();
+    // Parse search results — each result is an anchor like /lrc/maker/Title.XXXXXXX
+    const linkRe = /href="(\/lrc\/maker\/[^"]+\.\d+)"/g;
+    const links = [];
+    let m;
+    while ((m = linkRe.exec(html)) !== null && links.length < 3) {
+      links.push('https://www.megalobiz.com' + m[1]);
+    }
+    if (!links.length) return null;
 
-      // yrc = word-level JSON lyrics (best)
-      if (ld?.yrc?.lyric) {
-        const lines = parseYRC(ld.yrc.lyric);
-        if (lines.length) return { _wordSynced: lines };
-      }
-      // klyric = enhanced LRC with word timestamps
-      if (ld?.klyric?.lyric) {
-        const lines = buildWordTimings(parseLRC(ld.klyric.lyric));
-        if (lines.length) return { syncedLyrics: ld.klyric.lyric };
-      }
-      // lrc = regular line-synced
-      if (ld?.lrc?.lyric) {
-        return { syncedLyrics: ld.lrc.lyric };
-      }
-    } catch {}
-  }
+    // Fetch the first matching LRC page and extract the raw LRC text
+    for (const link of links) {
+      try {
+        const pr = await proxyFetch(link, {}, 6000);
+        if (!pr.ok) continue;
+        const phtml = await pr.text();
+        // The LRC content lives inside a <span id="lrc_content"> or similar pre block
+        const lrcMatch = phtml.match(/id="lrc_content"[^>]*>([\s\S]*?)<\/span>/i)
+                      || phtml.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+        if (!lrcMatch) continue;
+        // Decode HTML entities and clean up
+        const raw = lrcMatch[1]
+          .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+          .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').trim();
+        // Validate it looks like an LRC file
+        if (raw.includes('[') && raw.match(/\[\d{1,3}:\d{2}/)) {
+          return { syncedLyrics: raw };
+        }
+      } catch {}
+    }
+  } catch {}
   return null;
-}
-
-// Parse Netease YRC format — JSON-based per-word timestamps
-// Format: {"t":12340,"c":[{"tx":"Hello","li":0},{"tx":" world","li":1}]}
-function parseYRC(yrcStr) {
-  const lines = [];
-  for (const raw of yrcStr.split('\n')) {
-    const trimmed = raw.trim();
-    if (!trimmed) continue;
-    // Standard LRC header lines e.g. [ar:Artist]
-    if (/^\[\w+:/.test(trimmed)) continue;
-    try {
-      // YRC line format: [lineStartMs,lineDurMs]{"t":...}
-      const lineHeader = trimmed.match(/^\[(\d+),(\d+)\](.*)/);
-      if (!lineHeader) continue;
-      const lineMs = parseInt(lineHeader[1]);
-      const jsonPart = lineHeader[3];
-      if (!jsonPart) { lines.push({ ms: lineMs, text: '', words: [], beatDur: 600 }); continue; }
-      const obj = JSON.parse(jsonPart);
-      if (!obj?.c?.length) continue;
-      const words = [];
-      let fullText = '';
-      for (const chunk of obj.c) {
-        const word = (chunk.tx || '').trimEnd();
-        if (!word) continue;
-        words.push({ ms: obj.t + (chunk.li || 0), word });
-        fullText += (fullText ? ' ' : '') + word;
-      }
-      lines.push({ ms: lineMs, text: fullText, words, _wordTimed: words });
-    } catch {}
-  }
-  return lines;
-}
-
-// lyrics.ovh — plain text only, used as absolute last resort (no sync)
-async function lyricsOvhFetch(track, artist) {
-  return null; // plain lyrics not displayed in sync view, skip
 }
 
 function parseLRC(rawStr) {
