@@ -111,6 +111,40 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .prog:hover .prog-f{background:var(--pink)}
 .prog-dot{position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:10px;height:10px;background:var(--ink);border-radius:50%;opacity:0;transition:opacity .14s;pointer-events:none}
 .prog:hover .prog-dot{opacity:1}
+
+/* Mixing state */
+.prog.mixing{height:5px !important}
+.prog.mixing .prog-f{
+  background:linear-gradient(90deg, rgba(255,255,255,0.6), #ffffff, rgba(255,255,255,0.6)) !important;
+  background-size:200% 100% !important;
+  animation:mixShimmer 1.4s ease-in-out infinite !important;
+  box-shadow:0 0 8px 2px rgba(255,255,255,0.35), 0 0 18px 4px rgba(255,255,255,0.15) !important;
+  transition:none !important;
+}
+@keyframes mixShimmer{
+  0%{background-position:200% 0}
+  100%{background-position:-200% 0}
+}
+.mixing-label{
+  text-align:center;
+  font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
+  color:rgba(255,255,255,0);
+  text-shadow:none;
+  transition:color .4s ease, text-shadow .4s ease;
+  margin-top:2px;
+  height:12px;
+  pointer-events:none;
+  user-select:none;
+}
+.mixing-label.on{
+  color:rgba(255,255,255,0.9);
+  text-shadow:0 0 8px rgba(255,255,255,0.8), 0 0 20px rgba(255,255,255,0.4);
+  animation:mixLabelPulse 1.6s ease-in-out infinite;
+}
+@keyframes mixLabelPulse{
+  0%,100%{opacity:0.7}
+  50%{opacity:1}
+}
 .vol-row{display:flex;align-items:center;gap:8px;justify-content:center}
 .vol{width:100px;height:4px;background:var(--s3);border-radius:4px;cursor:pointer;position:relative;transition:height .14s}
 .vol:hover{height:6px}
@@ -601,6 +635,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         <div class="prog" id="prog"><div class="prog-f" id="prog-f" style="width:0%"><div class="prog-dot"></div></div></div>
         <span class="tt r" id="t-d">0:00</span>
       </div>
+      <div class="mixing-label" id="mixing-label">mixing</div>
       <div class="vol-row">
         <button class="icb" id="btn-vol" style="width:28px;height:28px">
           <svg id="vol-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1021,20 +1056,23 @@ function getPrecisePos() {
   return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
 }
 
-const XFADE_MS    = 8000;   // total crossfade window in ms
+const XFADE_MS    = 9000;   // total crossfade window in ms
 const LOOP_BACK_S = 12;     // loop back to ~12s in — past intro, ~3rd lyric line
-const DUCK_FLOOR  = 0.12;   // main player never goes fully silent (keeps music bed)
-const LRC_BLUR_PX = 16;     // max px of blur applied to lyrics during transition
+const LRC_BLUR_PX = 16;     // max px of blur on lyrics during transition
+
+function _setMixingUI(on) {
+  G('prog').classList.toggle('mixing', on);
+  G('mixing-label').classList.toggle('on', on);
+}
 
 function _cancelXfade() {
   if (_xfAnimId) { cancelAnimationFrame(_xfAnimId); _xfAnimId = null; }
   _xfading = false;
-  // Restore clean volume state
   try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
   try { _bench().setVolume(0); } catch {}
-  // Clear lyrics blur instantly
   const sc = G('lscroll');
-  if (sc) { sc.style.transition = 'filter 0.35s ease'; sc.style.filter = ''; }
+  if (sc) { sc.style.transition = 'filter 0.5s ease'; sc.style.filter = ''; }
+  _setMixingUI(false);
 }
 
 function _startRepeatCrossfade(videoId) {
@@ -1042,59 +1080,58 @@ function _startRepeatCrossfade(videoId) {
   _xfading = true;
   const t0 = performance.now();
 
-  // Prime bench player silently at the loop-back point
   const bench = _bench();
   try { bench.loadVideoById({ videoId, startSeconds: LOOP_BACK_S }); bench.setVolume(0); }
   catch { _xfading = false; return; }
 
+  _setMixingUI(true);
   const sc = G('lscroll');
 
   function tick() {
     if (!_xfading || !ST.playing) { _cancelXfade(); return; }
     const p = Math.min(1, (performance.now() - t0) / XFADE_MS); // 0 → 1
 
-    // ── Main player: vol fades from 1.0 → DUCK_FLOOR ────────────────────────
-    // Slow at first, then accelerates — sounds like the song is naturally ending
-    const outT = p;
-    const outEased = outT < 0.5
-      ? 2 * outT * outT                        // ease-in first half
-      : 1 - Math.pow(-2 * outT + 2, 2) / 2;   // ease-out second half
-    const mainVol = (1 - outEased * (1 - DUCK_FLOOR)) * ST.vol * 100;
-    try { if (!ST.muted) _main().setVolume(Math.max(0, mainVol)); } catch {}
+    // ── Equal-power crossfade ─────────────────────────────────────────────────
+    // Standard DJ/audio formula: uses cos/sin so the combined power stays
+    // constant throughout — no volume dip in the middle, sounds like blending.
+    // Main: cos curve  (1 → 0),  Bench: sin curve  (0 → 1)
+    // Bench entry is delayed 18% so the loop-start feels intentional not abrupt.
+    const fadeAngle = (p * Math.PI) / 2;           // 0 → π/2
+    const mainGain  = Math.cos(fadeAngle);          // 1 → 0, smooth
+    const benchRaw  = Math.max(0, (p - 0.18) / 0.82);
+    const benchAngle = (benchRaw * Math.PI) / 2;
+    const benchGain = Math.sin(benchAngle);         // 0 → 1, smooth
 
-    // ── Bench player: vol fades from 0 → 1.0, delayed start ─────────────────
-    // Starts rising at 20% through so you hear overlap, not a gap
-    const inDelay = 0.20;
-    const inT = Math.max(0, (p - inDelay) / (1 - inDelay));
-    const inEased = 1 - Math.pow(1 - inT, 3); // cubic ease-out — snappy rise, smooth settle
-    const benchVol = inEased * ST.vol * 100;
-    try { if (!ST.muted) bench.setVolume(Math.max(0, benchVol)); } catch {}
+    // Keep a subtle music-bed floor on main so it never fully cuts
+    const FLOOR = 0.10;
+    const mainVol  = (mainGain * (1 - FLOOR) + FLOOR) * ST.vol * 100;
+    const benchVol = benchGain * ST.vol * 100;
 
-    // ── Lyrics blur: peaks at ~45% then clears back out ───────────────────────
-    // Simulates the "dissolve" effect Apple Music uses on lyrics between loops
-    const blurT = p < 0.45 ? p / 0.45 : (1 - p) / 0.55;
-    const blurEased = blurT * blurT;
+    try { if (!ST.muted) _main().setVolume(Math.max(0, Math.min(100, mainVol))); } catch {}
+    try { if (!ST.muted) bench.setVolume(Math.max(0, Math.min(100, benchVol))); } catch {}
+
+    // ── Lyrics blur — peaks at crossover point (~50%), clears back out ────────
+    // sin(p*π) naturally arcs from 0→1→0 over the full transition
+    const blurEased = Math.sin(p * Math.PI);
     if (sc) {
-      sc.style.transition = 'filter 0.08s linear';
+      sc.style.transition = 'filter 0.06s linear';
       sc.style.filter = `blur(${(blurEased * LRC_BLUR_PX).toFixed(1)}px)`;
     }
 
-    // ── At blur peak, snap lyrics position to loop-back ───────────────────────
-    if (p >= 0.44 && p <= 0.48 && ST.lrcType === 'synced') {
+    // Snap lyrics to loop-back at the blur peak
+    if (p >= 0.46 && p <= 0.50 && ST.lrcType === 'synced') {
       tickLrc(LOOP_BACK_S * 1000);
-      // Smooth-scroll lyrics to match
       document.getElementById('ll' + ST.lrcActive)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
 
     if (p >= 1) {
-      // ── Swap active player ────────────────────────────────────────────────
       try { _main().setVolume(0); _main().stopVideo(); } catch {}
       _activePlayer = _activePlayer === 'A' ? 'B' : 'A';
       try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
-      // Re-attach ticker to new main player
       _lastYtPosMs = LOOP_BACK_S * 1000;
       _lastYtPollMs = performance.now();
-      if (sc) { sc.style.transition = 'filter 0.4s ease'; sc.style.filter = ''; }
+      if (sc) { sc.style.transition = 'filter 0.5s ease'; sc.style.filter = ''; }
+      _setMixingUI(false);
       _xfading = false; _xfAnimId = null;
       return;
     }
@@ -1102,9 +1139,8 @@ function _startRepeatCrossfade(videoId) {
     _xfAnimId = requestAnimationFrame(tick);
   }
 
-  // Short buffer delay — gives bench player time to actually start playing
-  // before we begin raising its volume
-  setTimeout(() => { if (_xfading) _xfAnimId = requestAnimationFrame(tick); }, 500);
+  // 600ms buffer — bench player needs to be actually playing before we raise its volume
+  setTimeout(() => { if (_xfading) _xfAnimId = requestAnimationFrame(tick); }, 600);
 }
 
 // ── Player factory ─────────────────────────────────────────────────────────────
