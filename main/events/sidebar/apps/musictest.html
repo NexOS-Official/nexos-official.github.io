@@ -1009,16 +1009,48 @@ async function findVideoIds(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
   if (ytCache[ck]?.length) return ytCache[ck];
 
-  const q = artist + ' ' + title + ' audio';
-  const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+  const q = encodeURIComponent(artist + ' ' + title + ' audio');
 
+  // Method 1: YouTube Data API v3 — direct Google CDN, works on school networks
+  const YT_KEYS = [
+    'AIzaSyDtONEwFwkbJINmtTpFOBu1bUMmBFx0FtY',
+    'AIzaSyC3s9hwdFCSOCiRPxz-jEHPdcD4WGCKhMY',
+  ];
+  for (const key of YT_KEYS) {
+    try {
+      const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&videoCategoryId=10&maxResults=5&q=${q}&key=${key}`;
+      const r = await fetch(apiUrl);
+      if (r.ok) {
+        const d = await r.json();
+        const ids = (d.items || []).map(i => i.id?.videoId).filter(Boolean);
+        if (ids.length) { ytCache[ck] = ids; return ids; }
+      }
+    } catch {}
+  }
+
+  // Method 2: Invidious public instances (privacy-friendly YT frontend, school-friendly)
+  const invidious = [
+    'https://inv.nadeko.net',
+    'https://invidious.privacyredirect.com',
+    'https://yt.cdaut.de',
+  ];
+  for (const host of invidious) {
+    try {
+      const r = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId`);
+      if (r.ok) {
+        const d = await r.json();
+        const ids = (Array.isArray(d) ? d : []).map(v => v.videoId).filter(Boolean).slice(0,5);
+        if (ids.length) { ytCache[ck] = ids; return ids; }
+      }
+    } catch {}
+  }
+
+  // Method 3: CORS proxy scrape fallback (personal Chromebook / unfiltered networks)
+  const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(artist + ' ' + title + ' audio');
   const proxies = [
     u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
     u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-    u => 'https://thingproxy.freeboard.io/fetch/' + u,
-    u => 'https://cors-anywhere.herokuapp.com/' + u,
   ];
-
   for (const proxy of proxies) {
     try {
       const html = await fetch(proxy(ytUrl)).then(r => r.text());
@@ -1608,84 +1640,94 @@ async function openArtistProfile(artistName, hintArt) {
 }
 
 async function fetchArtistData(artistName) {
-  // Step 1: Get iTunes artistId for exact match + artist image
   let artistImg = null;
   let artistId = null;
+  const al = artistName.toLowerCase();
+
+  // Run artist lookup and attribute search in parallel
+  const [artistRes, attrRes] = await Promise.allSettled([
+    // Get artistId
+    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=5&country=US`)
+      .then(r => r.ok ? r.json() : null).catch(() => null),
+    // Attribute search — most reliable for getting exact artist tracks
+    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&attribute=artistTerm&limit=50&country=US`)
+      .then(r => r.ok ? r.json() : null).catch(() => null),
+  ]);
+
+  // Extract artistId from entity search
+  if (artistRes.status === 'fulfilled' && artistRes.value) {
+    const match = artistRes.value.results?.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase() === al)
+               || artistRes.value.results?.find(r => r.wrapperType === 'artist');
+    if (match) artistId = match.artistId;
+  }
+
+  // Collect attribute-search tracks — filter to exact artist name only
   let tracks = [];
+  if (attrRes.status === 'fulfilled' && attrRes.value) {
+    tracks = (attrRes.value.results || []).filter(t =>
+      t.wrapperType === 'track' &&
+      t.kind === 'song' &&
+      t.artistName?.toLowerCase() === al
+    );
+  }
 
-  try {
-    // Search for the artist entity to get artistId and artist image
-    const aRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=5&country=US`);
-    if (aRes.ok) {
-      const aData = await aRes.json();
-      // Find best matching artist
-      const al = artistName.toLowerCase();
-      const artist = aData.results?.find(r => r.wrapperType==='artist' && r.artistName?.toLowerCase() === al)
-                  || aData.results?.find(r => r.wrapperType==='artist');
-      if (artist) {
-        artistId = artist.artistId;
-        // iTunes doesn't give artist photos directly, but we can get one from their top track art
-      }
-    }
-  } catch {}
-
-  // Step 2: Fetch top songs by artistId (exact match, no noise)
+  // If we have an artistId, also do the lookup (different set of tracks, sorted by popularity)
   if (artistId) {
     try {
-      const tRes = await fetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=50&country=US`);
-      if (tRes.ok) {
-        const tData = await tRes.json();
-        // First result is the artist, rest are tracks
-        tracks = (tData.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
+      const lr = await fetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=50&country=US`);
+      if (lr.ok) {
+        const ld = await lr.json();
+        const lookupTracks = (ld.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
+        // Merge: add lookup tracks not already in attribute results
+        for (const lt of lookupTracks) {
+          const dup = tracks.some(t => t.trackName?.toLowerCase() === lt.trackName?.toLowerCase());
+          if (!dup) tracks.push(lt);
+        }
       }
     } catch {}
   }
 
-  // Step 3: Fallback — if no artistId or no tracks, do a strict attribute search
+  // Still empty? Last resort: plain song search filtered to exact artist
   if (!tracks.length) {
     try {
-      const fRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&attribute=artistTerm&limit=50&country=US`);
-      if (fRes.ok) {
-        const fData = await fRes.json();
-        const al = artistName.toLowerCase();
-        tracks = (fData.results||[]).filter(t =>
-          t.artistName?.toLowerCase() === al ||
-          t.artistName?.toLowerCase().startsWith(al)
-        );
+      const lr = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`);
+      if (lr.ok) {
+        const ld = await lr.json();
+        tracks = (ld.results || []).filter(t => t.artistName?.toLowerCase() === al);
       }
     } catch {}
   }
 
-  // Step 4: Get a real artist photo from MusicBrainz (they have artist images)
-  try {
-    const mbArtistRes = await fetch(
-      `https://musicbrainz.org/ws/2/artist/?query=artist:${encodeURIComponent('"'+artistName+'"')}&limit=3&fmt=json`,
-      { headers: { 'User-Agent': 'GhostMusic/1.0 (ghost@music.app)' } }
-    );
-    if (mbArtistRes.ok) {
-      const mbData = await mbArtistRes.json();
-      const al = artistName.toLowerCase();
-      const mbArtist = mbData.artists?.find(a => a.name?.toLowerCase() === al)
-                    || mbData.artists?.[0];
-      if (mbArtist?.id) {
-        // Try to get artist image from fanart.tv via MB artist ID
-        try {
-          const ftRes = await fetch(`https://webservice.fanart.tv/v3/music/${mbArtist.id}?api_key=93ede23094c445c6b09ba012e1a04f09`);
-          if (ftRes.ok) {
-            const ftData = await ftRes.json();
-            const thumb = ftData.artistthumb?.[0]?.url || ftData.hdmusiclogo?.[0]?.url;
-            if (thumb) artistImg = thumb;
-          }
-        } catch {}
-      }
-    }
-  } catch {}
+  // Artist photo: fanart.tv via MusicBrainz ID (run async, don't block track rendering)
+  const mbPhotoPromise = (async () => {
+    try {
+      const mbRes = await fetch(
+        `https://musicbrainz.org/ws/2/artist/?query=artist:%22${encodeURIComponent(artistName)}%22&limit=3&fmt=json`,
+        { headers: { 'User-Agent': 'GhostMusic/1.0 (ghost@music.app)' } }
+      );
+      if (!mbRes.ok) return null;
+      const mbData = await mbRes.json();
+      const mbArtist = mbData.artists?.find(a => a.name?.toLowerCase() === al) || mbData.artists?.[0];
+      if (!mbArtist?.id) return null;
+      const ftRes = await fetch(`https://webservice.fanart.tv/v3/music/${mbArtist.id}?api_key=93ede23094c445c6b09ba012e1a04f09`);
+      if (!ftRes.ok) return null;
+      const ftData = await ftRes.json();
+      return ftData.artistthumb?.[0]?.url || ftData.artistbackground?.[0]?.url || null;
+    } catch { return null; }
+  })();
 
-  // Fallback: use a high-res version of the first track's artwork as hero
-  if (!artistImg && tracks.length) {
+  // Use best available art for hero — high-res track art while photo loads
+  if (tracks.length) {
     const firstArt = tracks.find(t => t.artworkUrl100)?.artworkUrl100;
     if (firstArt) artistImg = firstArt.replace('100x100bb', '600x600bb');
   }
+
+  // Wait for photo (with 3s timeout so it doesn't hang)
+  const photo = await Promise.race([
+    mbPhotoPromise,
+    new Promise(res => setTimeout(() => res(null), 3000)),
+  ]);
+  if (photo) artistImg = photo;
 
   return { tracks: tracks.slice(0, 50), artistImg };
 }
