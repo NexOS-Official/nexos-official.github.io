@@ -279,6 +279,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
 
+/* ♪ beat dots */
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
   height:1em;vertical-align:middle;
@@ -1014,6 +1015,8 @@ async function findVideoIds(artist, title) {
   const proxies = [
     u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
     u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    u => 'https://thingproxy.freeboard.io/fetch/' + u,
+    u => 'https://cors-anywhere.herokuapp.com/' + u,
   ];
 
   for (const proxy of proxies) {
@@ -1043,36 +1046,48 @@ async function doSearch(q) {
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
 
-  const [itunesRes, mbRes, lastfmRes] = await Promise.allSettled([
-    searchItunes(q),
-    searchMusicBrainz(q),
-    searchLastFm(q),
-  ]);
+  // Primary: iTunes (already relevance-ranked, has art, has duration)
+  let combined = await searchItunes(q);
 
-  let combined = [];
-  if (itunesRes.status==='fulfilled') combined.push(...itunesRes.value);
-
-  for (const src of [mbRes, lastfmRes]) {
-    if (src.status!=='fulfilled') continue;
-    for (const t of src.value) {
-      const isDupe = combined.some(e =>
-        e.trackName.toLowerCase()===t.trackName.toLowerCase() &&
-        e.artistName.toLowerCase()===t.artistName.toLowerCase()
-      );
-      if (!isDupe) combined.push(t);
+  // Only fall back to MB/LastFM if iTunes is dry
+  if (combined.length < 4) {
+    const [mbRes, lastfmRes] = await Promise.allSettled([
+      searchMusicBrainz(q),
+      searchLastFm(q),
+    ]);
+    for (const src of [mbRes, lastfmRes]) {
+      if (src.status!=='fulfilled') continue;
+      for (const t of src.value) {
+        const isDupe = combined.some(e =>
+          e.trackName.toLowerCase()===t.trackName.toLowerCase() &&
+          e.artistName.toLowerCase()===t.artistName.toLowerCase()
+        );
+        if (!isDupe) combined.push(t);
+      }
     }
   }
 
   qSpn.style.display='none';
   if (!combined.length) { qDrp.innerHTML='<div class="drop-msg">No results</div>'; return; }
-  renderDrop(combined);
+  // Limit to top 25 — anything beyond that is noise
+  renderDrop(combined.slice(0, 25));
 }
 
 async function searchItunes(q) {
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US`);
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US`);
+    if (!res.ok) return [];
     const data = await res.json();
-    return data.results || [];
+    const results = data.results || [];
+    // Sort: exact title matches first, then by trackCount (popularity proxy via collectionArtistId)
+    // iTunes already returns by relevance so just ensure exact matches surface first
+    const ql = q.toLowerCase();
+    results.sort((a, b) => {
+      const aExact = a.trackName?.toLowerCase() === ql ? 0 : 1;
+      const bExact = b.trackName?.toLowerCase() === ql ? 0 : 1;
+      return aExact - bExact;
+    });
+    return results;
   } catch { return []; }
 }
 
@@ -1131,10 +1146,41 @@ const _artCache = {};
 async function fetchCoverArt(track) {
   if (track.artworkUrl100) return;
 
+  const ck = ((track.artistName||'') + '||' + (track.trackName||'')).toLowerCase();
+  if (_artCache[ck] !== undefined) {
+    if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
+    return;
+  }
+
+  // Always try iTunes first — works everywhere including school Chromebooks
+  try {
+    const term = encodeURIComponent((track.artistName||'').trim() + ' ' + (track.trackName||'').trim());
+    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
+    if (r.ok) {
+      const d = await r.json();
+      const tl = (track.trackName||'').toLowerCase();
+      const al = (track.artistName||'').toLowerCase();
+      const hit = d.results?.find(h =>
+        h.trackName?.toLowerCase() === tl && h.artistName?.toLowerCase() === al
+      ) || d.results?.find(h =>
+        h.trackName?.toLowerCase().includes(tl) || h.artistName?.toLowerCase().includes(al)
+      ) || d.results?.[0];
+      if (hit?.artworkUrl100) {
+        const sm = hit.artworkUrl100;
+        const lg = sm.replace('100x100bb','600x600bb');
+        _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
+        track.artworkUrl100 = sm; track._artLgOverride = lg;
+        return;
+      }
+    }
+  } catch {}
+
+  // Secondary: Cover Art Archive (may be blocked on school networks)
   if (track._releaseMbid) {
     const mbid = track._releaseMbid;
     if (_artCache[mbid] !== undefined) {
       if (_artCache[mbid]) { track.artworkUrl100 = _artCache[mbid]; track._artLgOverride = _artCache[mbid+'_lg']; }
+      _artCache[ck] = _artCache[mbid]; _artCache[ck+'_lg'] = _artCache[mbid+'_lg'];
       return;
     }
     try {
@@ -1147,6 +1193,7 @@ async function fetchCoverArt(track) {
           const lg = img.thumbnails?.['500'] || img.thumbnails?.large || img.image;
           if (sm) {
             _artCache[mbid] = sm; _artCache[mbid+'_lg'] = lg;
+            _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
             track.artworkUrl100 = sm; track._artLgOverride = lg;
             return;
           }
@@ -1156,29 +1203,6 @@ async function fetchCoverArt(track) {
     _artCache[mbid] = null;
   }
 
-  const ck = (track.artistName + '||' + track.trackName).toLowerCase();
-  if (_artCache[ck] !== undefined) {
-    if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
-    return;
-  }
-  try {
-    const term = encodeURIComponent(track.artistName.trim() + ' ' + track.trackName.trim());
-    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
-    if (r.ok) {
-      const d = await r.json();
-      const tl = track.trackName.toLowerCase(), al = track.artistName.toLowerCase();
-      const hit = d.results?.find(h =>
-        h.trackName?.toLowerCase().includes(tl) || h.artistName?.toLowerCase().includes(al)
-      ) || d.results?.[0];
-      if (hit?.artworkUrl100) {
-        const sm = hit.artworkUrl100;
-        const lg = sm.replace('100x100bb','600x600bb');
-        _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
-        track.artworkUrl100 = sm; track._artLgOverride = lg;
-        return;
-      }
-    }
-  } catch {}
   _artCache[ck] = null;
 }
 
@@ -1189,9 +1213,12 @@ function renderDrop(tracks) {
     const data = { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null, _ref:t };
     const id = 'tr_'+Math.random().toString(36).slice(2);
     (window._td=window._td||{})[id] = data;
+    const aName = (t.artistName||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const aArt = (t.artworkUrl100||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const srcBadge = (t._source && t._source!=='itunes') ? ` <span style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.5px">[${t._source}]</span>` : '';
     return `<div class="di" onclick="pickTrack('${id}')">
       <div class="di-art">${artSm?`<img src="${artSm}" alt="">`:'🎵'}</div>
-      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile(t.artistName,t.artworkUrl100||\'\')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName?' · '+x(t.collectionName):''}${t._source&&t._source!=='itunes'?' <span style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.5px">['+t._source+']</span>':''}</div></div>
+      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName?' · '+x(t.collectionName):''}${srcBadge}</div></div>
       <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
@@ -1264,6 +1291,7 @@ async function loadTrack(idx) {
   YT_player.loadVideoById(track.ytIds[track.ytTry]);
   fetchLyrics(track.title, track.artist);
 
+  // If no art yet (e.g. MusicBrainz source), fetch it now and update cover once resolved
   if (!track.artSm && !track.artLg) {
     const _refTrack = { artworkUrl100: null, _artLgOverride: null, _releaseMbid: track._releaseMbid, artistName: track.artist, trackName: track.title };
     fetchCoverArt(_refTrack).then(() => {
@@ -1271,6 +1299,7 @@ async function loadTrack(idx) {
         track.artSm = _refTrack.artworkUrl100;
         track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
         updateNP(track);
+        // also patch queue thumbnail
         const th = document.getElementById('qt' + idx);
         if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
       }
@@ -1374,6 +1403,7 @@ function parseLRC(rawStr) {
     const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
     const raw = m[3];
 
+    // Try to extract enhanced word-level timestamps: <mm:ss.xx>word
     const wTagRe = /<(\d{1,3}):(\d{2}\.\d+)>([^<]*)/g;
     let wm; const wTimed = [];
     while ((wm = wTagRe.exec(raw)) !== null) {
@@ -1404,21 +1434,26 @@ function buildWordTimings(lrc) {
     const rawWords = line.text.split(/\s+/).filter(Boolean);
 
     if (!rawWords.length) {
+      // ♪ instrumental — compute beat duration from gap, aim for ~4 beats
       const gapMs = Math.max(400, nextMs - lineMs);
       const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
       return { ...line, words: [], beatDur };
     }
 
+    // If the LRC had per-word timestamps embedded, use those — they are exact
     if (line._wordTimed?.length) {
       return { ...line, words: line._wordTimed };
     }
 
+    // Syllable-weighted distribution fallback
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a,b)=>a+b, 0);
+    // Use 90% of available time — leave natural tail before next line
     const usable = duration * 0.90;
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
+      // Weight short words (≤3 chars) slightly less — they're usually unstressed
       const weight = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
       cursor += (weight / syls.reduce((a,b,j)=>a+(b*(rawWords[j].replace(/[^a-z]/gi,'').length<=3?0.7:1)),0)) * usable;
       return { ms: wordMs, word };
@@ -1455,6 +1490,7 @@ function renderLineHTML(line, i) {
 }
 
 function renderSynced() {
+  // Clear word state cache so new song starts fresh
   Object.keys(_lwState).forEach(k => delete _lwState[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
@@ -1463,6 +1499,7 @@ function renderSynced() {
 
 function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
 
+// Per-word state cache to skip redundant DOM writes
 const _lwState = {};
 
 function _setLwState(id, cls, pct) {
@@ -1478,9 +1515,11 @@ function _setLwState(id, cls, pct) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
+  // Small lookahead so words light up right as they are sung (not after)
   const AHEAD = 60;
   const t = posMs + AHEAD;
 
+  // Binary search for active line
   let lo = 0, hi = ST.lrc.length - 1, active = 0;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
@@ -1505,14 +1544,16 @@ function tickLrc(posMs) {
     document.getElementById('ll'+active)
       ?.scrollIntoView({ block:'center', behavior:'smooth' });
 
+    // Snap previous line's words to fully done
     if (prev >= 0) {
       (ST.lrc[prev]?.words || []).forEach((w, wi) => {
         _setLwState('lw'+prev+'_'+wi, 'done', '100%');
       });
     }
+    // Reset new active line's words to upcoming
     (ST.lrc[active]?.words || []).forEach((w, wi) => {
       const id = 'lw'+active+'_'+wi;
-      delete _lwState[id]; 
+      delete _lwState[id]; // force re-render
       _setLwState(id, 'upcoming', '0%');
     });
   }
@@ -1521,6 +1562,7 @@ function tickLrc(posMs) {
   if (!words?.length) return;
 
   const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
+  // Last word should end when the next line starts (but cap stretch to avoid runaway)
   const lastWordEnd = Math.min(nextLineMs, words[words.length-1].ms + 1800);
 
   for (let wi = 0; wi < words.length; wi++) {
@@ -1540,63 +1582,135 @@ function tickLrc(posMs) {
 }
 
 
+// ── ARTIST PROFILE ─────────────────────────────────────────────────────────
 const _artistCache = {};
 
 async function openArtistProfile(artistName, hintArt) {
   showPanel('artist');
   const inner = G('artist-panel-inner');
   const bg = G('artist-bg');
-  inner.innerHTML = '<div class="artist-loading"><div class="spin" style="display:block !important;width:18px;height:18px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;"></div><span>Loading artist…</span></div>';
-  bg.style.backgroundImage = hintArt ? `url('${hintArt}')` : '';
-  bg.classList.toggle('on', !!hintArt);
+  const spinHTML = '<div class="artist-loading"><div style="width:18px;height:18px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0;"></div><span>Loading artist…</span></div>';
+  inner.innerHTML = spinHTML;
+  if (hintArt) { bg.style.backgroundImage = `url('${hintArt}')`; bg.classList.add('on'); }
 
   const ck = artistName.toLowerCase().trim();
-  let tracks = _artistCache[ck];
-  if (!tracks) {
-    tracks = await fetchArtistTracks(artistName);
-    _artistCache[ck] = tracks;
+  let cached = _artistCache[ck];
+  if (!cached) {
+    cached = await fetchArtistData(artistName);
+    _artistCache[ck] = cached;
   }
 
-  const artImg = tracks.find(t => t.artSm)?.artSm || hintArt || '';
-  if (artImg) {
-    bg.style.backgroundImage = `url('${artImg}')`;
-    bg.classList.add('on');
-  }
+  const { tracks, artistImg } = cached;
+  const heroImg = artistImg || hintArt || tracks.find(t=>t.artworkUrl100)?.artworkUrl100 || '';
+  if (heroImg) { bg.style.backgroundImage = `url('${heroImg}')`; bg.classList.add('on'); }
 
-  renderArtistProfile(artistName, tracks, artImg, inner);
+  renderArtistProfile(artistName, tracks, heroImg, inner);
 }
 
-async function fetchArtistTracks(artistName) {
-  const results = await Promise.allSettled([
-    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&attribute=artistTerm&country=US`).then(r=>r.json()).then(d=>d.results||[]).catch(()=>[]),
-    fetch(`https://musicbrainz.org/ws/2/recording/?query=artist:${encodeURIComponent(artistName)}&limit=25&fmt=json`,{headers:{'User-Agent':'GhostMusic/1.0 (ghost@music.app)'}}).then(r=>r.json()).then(d=>(d.recordings||[]).map(r=>({trackName:r.title,artistName:(r['artist-credit']?.[0]?.artist?.name||artistName),collectionName:r.releases?.[0]?.title||'',artworkUrl100:null,trackTimeMillis:r.length||null,_source:'musicbrainz',_releaseMbid:r.releases?.[0]?.id||null}))).catch(()=>[]),
-  ]);
+async function fetchArtistData(artistName) {
+  // Step 1: Get iTunes artistId for exact match + artist image
+  let artistImg = null;
+  let artistId = null;
+  let tracks = [];
 
-  let itunes = results[0].status==='fulfilled' ? results[0].value : [];
-  let mb = results[1].status==='fulfilled' ? results[1].value : [];
+  try {
+    // Search for the artist entity to get artistId and artist image
+    const aRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=5&country=US`);
+    if (aRes.ok) {
+      const aData = await aRes.json();
+      // Find best matching artist
+      const al = artistName.toLowerCase();
+      const artist = aData.results?.find(r => r.wrapperType==='artist' && r.artistName?.toLowerCase() === al)
+                  || aData.results?.find(r => r.wrapperType==='artist');
+      if (artist) {
+        artistId = artist.artistId;
+        // iTunes doesn't give artist photos directly, but we can get one from their top track art
+      }
+    }
+  } catch {}
 
-  const al = artistName.toLowerCase();
-  itunes = itunes.filter(t => t.artistName?.toLowerCase() === al || t.artistName?.toLowerCase().includes(al));
-
-  for (const t of mb) {
-    const dup = itunes.some(e => e.trackName?.toLowerCase() === t.trackName?.toLowerCase());
-    if (!dup) itunes.push(t);
+  // Step 2: Fetch top songs by artistId (exact match, no noise)
+  if (artistId) {
+    try {
+      const tRes = await fetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=50&country=US`);
+      if (tRes.ok) {
+        const tData = await tRes.json();
+        // First result is the artist, rest are tracks
+        tracks = (tData.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
+      }
+    } catch {}
   }
 
-  return itunes.slice(0, 40);
+  // Step 3: Fallback — if no artistId or no tracks, do a strict attribute search
+  if (!tracks.length) {
+    try {
+      const fRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&attribute=artistTerm&limit=50&country=US`);
+      if (fRes.ok) {
+        const fData = await fRes.json();
+        const al = artistName.toLowerCase();
+        tracks = (fData.results||[]).filter(t =>
+          t.artistName?.toLowerCase() === al ||
+          t.artistName?.toLowerCase().startsWith(al)
+        );
+      }
+    } catch {}
+  }
+
+  // Step 4: Get a real artist photo from MusicBrainz (they have artist images)
+  try {
+    const mbArtistRes = await fetch(
+      `https://musicbrainz.org/ws/2/artist/?query=artist:${encodeURIComponent('"'+artistName+'"')}&limit=3&fmt=json`,
+      { headers: { 'User-Agent': 'GhostMusic/1.0 (ghost@music.app)' } }
+    );
+    if (mbArtistRes.ok) {
+      const mbData = await mbArtistRes.json();
+      const al = artistName.toLowerCase();
+      const mbArtist = mbData.artists?.find(a => a.name?.toLowerCase() === al)
+                    || mbData.artists?.[0];
+      if (mbArtist?.id) {
+        // Try to get artist image from fanart.tv via MB artist ID
+        try {
+          const ftRes = await fetch(`https://webservice.fanart.tv/v3/music/${mbArtist.id}?api_key=93ede23094c445c6b09ba012e1a04f09`);
+          if (ftRes.ok) {
+            const ftData = await ftRes.json();
+            const thumb = ftData.artistthumb?.[0]?.url || ftData.hdmusiclogo?.[0]?.url;
+            if (thumb) artistImg = thumb;
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+
+  // Fallback: use a high-res version of the first track's artwork as hero
+  if (!artistImg && tracks.length) {
+    const firstArt = tracks.find(t => t.artworkUrl100)?.artworkUrl100;
+    if (firstArt) artistImg = firstArt.replace('100x100bb', '600x600bb');
+  }
+
+  return { tracks: tracks.slice(0, 50), artistImg };
 }
 
-function renderArtistProfile(artistName, tracks, artImg, container) {
-  const artHTML = artImg
-    ? `<img src="${artImg}" alt="" onerror="this.style.display='none'">`
+function renderArtistProfile(artistName, tracks, heroImg, container) {
+  const avatarHTML = heroImg
+    ? `<img src="${heroImg}" alt="" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\"font-size:36px\">🎤</span>'">`
     : `<span style="font-size:36px">🎤</span>`;
 
+  const playAllId = 'apl_'+Math.random().toString(36).slice(2);
+  window['_apl_'+playAllId] = tracks.map(t=>({
+    title: t.trackName, artist: t.artistName||artistName,
+    artSm: t.artworkUrl100||null,
+    artLg: (t.artworkUrl100||'').replace('100x100bb','600x600bb')||null,
+  }));
+
   const rowsHTML = tracks.length ? tracks.map((t, i) => {
-    const sm = t.artworkUrl100 || t.artSm || '';
+    const sm = t.artworkUrl100 || '';
+    const lg = sm.replace('100x100bb','600x600bb');
     const artCell = sm ? `<img src="${sm}" alt="">` : '🎵';
     const id = 'apt_'+Math.random().toString(36).slice(2);
-    const td = { title: t.trackName, artist: t.artistName||artistName, artSm: sm||null, artLg: (t._artLgOverride||sm.replace('100x100bb','600x600bb'))||null, durMs: t.trackTimeMillis||null, _releaseMbid: t._releaseMbid||null };
-    (window._td=window._td||{})[id] = td;
+    (window._td=window._td||{})[id] = {
+      title: t.trackName, artist: t.artistName||artistName,
+      artSm: sm||null, artLg: lg||null, durMs: t.trackTimeMillis||null,
+    };
     return `<div class="artist-track-row" onclick="pickTrack('${id}')">
       <div class="artist-track-num">${i+1}</div>
       <div class="artist-track-art">${artCell}</div>
@@ -1607,17 +1721,14 @@ function renderArtistProfile(artistName, tracks, artImg, container) {
       <div class="artist-track-dur">${ms2t(t.trackTimeMillis||0)}</div>
       <div class="artist-track-add" onclick="event.stopPropagation();pickTrack('${id}')"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
-  }).join('') : '<div class="artist-loading"><span>No tracks found</span></div>';
-
-  const playAllId = 'apl_'+Math.random().toString(36).slice(2);
-  window['_apl_'+playAllId] = tracks.map((t,i)=>({title:t.trackName,artist:t.artistName||artistName,artSm:t.artworkUrl100||null,artLg:t._artLgOverride||null,_releaseMbid:t._releaseMbid||null}));
+  }).join('') : '<div class="artist-loading" style="padding:30px 0"><span>No tracks found</span></div>';
 
   container.innerHTML = `
     <div class="artist-hero">
-      <div class="artist-avatar">${artHTML}</div>
+      <div class="artist-avatar">${avatarHTML}</div>
       <div class="artist-hero-info">
         <div class="artist-name-big">${x(artistName)}</div>
-        <div class="artist-meta">${tracks.length} track${tracks.length!==1?'s':''} found</div>
+        <div class="artist-meta">${tracks.length} song${tracks.length!==1?'s':''}</div>
         <button class="artist-play-all" onclick="playAllArtist('_apl_${playAllId}')">▶ Play All</button>
       </div>
     </div>
@@ -1633,7 +1744,7 @@ function playAllArtist(key) {
   tracks.forEach(t => { const i = ST.queue.length; ST.queue.push({...t}); appendQI(t, i); });
   loadTrack(0);
   showPanel('queue');
-  toast('Playing artist radio');
+  toast('Playing artist');
 }
 
 document.addEventListener('keydown', e => {
