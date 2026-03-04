@@ -1092,6 +1092,20 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
+// Reliable iTunes fetch — tries direct, falls back to CORS proxy automatically
+async function itunesFetch(url) {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) return await r.json();
+  } catch(e) { console.warn('iTunes direct:', e.message); }
+  // Proxy fallback
+  try {
+    const r = await fetch('https://corsproxy.io/?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(6000) });
+    if (r.ok) return await r.json();
+  } catch(e) { console.warn('iTunes proxy:', e.message); }
+  return null;
+}
+
 async function doSearch(q) {
   qSpn.style.display='block';
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
@@ -1123,48 +1137,30 @@ function scoreTrack(t, ql, words) {
   const tl = (t.trackName || '').toLowerCase();
   const al = (t.artistName || '').toLowerCase();
   let s = 0;
+  // Title scoring
   if (tl === ql) s += 100;
-  else if (tl.startsWith(ql)) s += 60;
-  else if (words.every(w => tl.includes(w))) s += 40;
-  else s += words.filter(w => tl.includes(w) || al.includes(w)).length * 8;
-  if (words.some(w => al.includes(w))) s += 15;
+  else if (tl.startsWith(ql)) s += 70;
+  else if (words.every(w => tl.includes(w))) s += 45;
+  else s += words.filter(w => tl.includes(w)).length * 10;
+  // Artist name exact match — huge boost (handles "NF" the rapper vs song titled "NF")
+  if (al === ql) s += 80;
+  else if (al.startsWith(ql)) s += 50;
+  else if (words.every(w => al.includes(w))) s += 30;
+  // Quality signals
   if (t.artworkUrl100) s += 5;
   if (t.trackTimeMillis > 60000) s += 5;
+  if ((t.trackCount || 0) > 5) s += 3; // album with multiple tracks = real release
   return s;
 }
 
 async function searchItunes(q) {
   const ql = q.toLowerCase().trim();
   const words = ql.split(/\s+/).filter(Boolean);
-  const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US`;
-
-  // Try direct first
-  let results = null;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (res.ok) {
-      const data = await res.json();
-      results = data.results || [];
-    }
-  } catch(e) {
-    console.warn('iTunes direct failed:', e.message);
-  }
-
-  // If direct failed (CORS block on some setups), try via proxy
-  if (!results) {
-    try {
-      const proxied = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
-      const res = await fetch(proxied, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) {
-        const data = await res.json();
-        results = data.results || [];
-      }
-    } catch(e) {
-      console.warn('iTunes proxy failed:', e.message);
-    }
-  }
-
-  if (!results || !results.length) return [];
+  const data = await itunesFetch(
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US`
+  );
+  if (!data?.results?.length) return [];
+  const results = data.results;
   results.sort((a, b) => scoreTrack(b, ql, words) - scoreTrack(a, ql, words));
   return results.slice(0, 25);
 }
@@ -1696,56 +1692,36 @@ async function fetchArtistData(artistName) {
   let artistId = null;
   const al = artistName.toLowerCase();
 
-  // Run artist lookup and attribute search in parallel
-  const [artistRes, attrRes] = await Promise.allSettled([
-    // Get artistId
-    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=5&country=US`)
-      .then(r => r.ok ? r.json() : null).catch(() => null),
-    // Attribute search — most reliable for getting exact artist tracks
-    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&attribute=artistTerm&limit=50&country=US`)
-      .then(r => r.ok ? r.json() : null).catch(() => null),
+  // Step 1: get artistId + attribute tracks in parallel — all via itunesFetch (auto-proxied)
+  const [artistData, attrData] = await Promise.all([
+    itunesFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=5&country=US`),
+    itunesFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&attribute=artistTerm&limit=50&country=US`),
   ]);
 
-  // Extract artistId from entity search
-  if (artistRes.status === 'fulfilled' && artistRes.value) {
-    const match = artistRes.value.results?.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase() === al)
-               || artistRes.value.results?.find(r => r.wrapperType === 'artist');
+  // Extract artistId
+  if (artistData?.results) {
+    const match = artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase() === al)
+               || artistData.results.find(r => r.wrapperType === 'artist');
     if (match) artistId = match.artistId;
   }
 
-  // Collect tracks — attribute=artistTerm already scopes to this artist, trust it
-  let tracks = [];
-  if (attrRes.status === 'fulfilled' && attrRes.value?.results) {
-    tracks = attrRes.value.results.filter(t => t.kind === 'song');
-  }
+  // Attribute tracks — already scoped to this artist by iTunes
+  let tracks = (attrData?.results || []).filter(t => t.kind === 'song');
 
-  // artistId lookup gives a different (popularity-sorted) set — merge it in
+  // Step 2: artistId lookup — popularity-sorted, different set — merge in
   if (artistId) {
-    try {
-      const lr = await fetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=50&country=US`);
-      if (lr.ok) {
-        const ld = await lr.json();
-        // lookup result[0] is the artist object, rest are songs
-        const lookupTracks = (ld.results || []).filter(r => r.kind === 'song');
-        for (const lt of lookupTracks) {
-          const dup = tracks.some(t => t.trackName?.toLowerCase() === lt.trackName?.toLowerCase());
-          if (!dup) tracks.unshift(lt); // lookup tracks are popularity-sorted, put them first
-        }
-      }
-    } catch {}
+    const ld = await itunesFetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=50&country=US`);
+    const lookupTracks = (ld?.results || []).filter(r => r.kind === 'song');
+    for (const lt of lookupTracks) {
+      const dup = tracks.some(t => t.trackName?.toLowerCase() === lt.trackName?.toLowerCase());
+      if (!dup) tracks.unshift(lt);
+    }
   }
 
-  // Still empty? Broad search, loosely filter to artist name starts-with
+  // Step 3: still empty — plain search filtered to exact artist name
   if (!tracks.length) {
-    try {
-      const lr = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`);
-      if (lr.ok) {
-        const ld = await lr.json();
-        tracks = (ld.results || []).filter(t =>
-          t.kind === 'song' && t.artistName?.toLowerCase().includes(al.split(' ')[0])
-        );
-      }
-    } catch {}
+    const ld = await itunesFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`);
+    tracks = (ld?.results || []).filter(t => t.kind === 'song' && t.artistName?.toLowerCase() === al);
   }
 
   // Artist photo: fanart.tv via MusicBrainz ID (run async, don't block track rendering)
