@@ -725,6 +725,8 @@ function showPanel(name) {
 
   if (name === 'lyrics' && ST.lrcType === 'synced') {
     renderSynced();
+    // Snap immediately to current playback position so lyrics aren't "off"
+    requestAnimationFrame(() => tickLrc(ST.pos));
   }
 
   G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
@@ -1111,26 +1113,36 @@ async function doSearch(q) {
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
 
-  // iTunes is primary — has art, duration, and is relevance-ranked
-  let combined = await searchItunes(q);
+  // iTunes always first — best quality, has art and duration
+  const itunesTracks = await searchItunes(q);
 
-  // Show iTunes results immediately if we have them, fill gaps with MB
-  if (combined.length < 8) {
-    try {
-      const mbTracks = await searchMusicBrainz(q);
-      for (const t of mbTracks) {
-        const isDupe = combined.some(e =>
-          e.trackName.toLowerCase()===t.trackName.toLowerCase() &&
-          e.artistName.toLowerCase()===t.artistName.toLowerCase()
-        );
-        if (!isDupe) combined.push(t);
-      }
-    } catch {}
+  // Render iTunes results immediately while MB loads in background
+  if (itunesTracks.length) {
+    qSpn.style.display='none';
+    renderDrop(itunesTracks);
   }
 
+  // MB as secondary — only add tracks not already in iTunes results
+  try {
+    const mbTracks = await searchMusicBrainz(q);
+    const newMb = mbTracks.filter(t =>
+      !itunesTracks.some(e =>
+        e.trackName.toLowerCase() === t.trackName.toLowerCase() &&
+        e.artistName.toLowerCase() === t.artistName.toLowerCase()
+      )
+    );
+    if (newMb.length) {
+      // Append MB results after iTunes — never before
+      const combined = [...itunesTracks, ...newMb].slice(0, 30);
+      qSpn.style.display='none';
+      renderDrop(combined);
+    }
+  } catch {}
+
   qSpn.style.display='none';
-  if (!combined.length) { qDrp.innerHTML='<div class="drop-msg">No results</div>'; return; }
-  renderDrop(combined.slice(0, 25));
+  if (!itunesTracks.length && !qDrp.querySelector('.di')) {
+    qDrp.innerHTML='<div class="drop-msg">No results</div>';
+  }
 }
 
 function scoreTrack(t, ql, words) {
