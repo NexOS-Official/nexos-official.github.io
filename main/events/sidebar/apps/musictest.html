@@ -1043,7 +1043,8 @@ let ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
 let _xfading = false, _xfAnimId = null;
 let _activePlayer = 'A';
-let _lrcLocked = false; // prevents RAF loop from overwriting lyrics during xfade snap
+let _lrcLocked = false;
+let _swapping = false; // blocks all state-change handling during player swap
 
 function _main()  { return _activePlayer === 'A' ? YT_player  : YT_playerB; }
 function _bench() { return _activePlayer === 'A' ? YT_playerB : YT_player;  }
@@ -1063,6 +1064,7 @@ function _setMixingUI(on) {
 }
 
 function _cancelXfade() {
+  if (_swapping) return; // mid-swap — don't interfere
   if (_xfAnimId) { cancelAnimationFrame(_xfAnimId); _xfAnimId = null; }
   _xfading = false;
   _lrcLocked = false;
@@ -1188,22 +1190,31 @@ function _startRepeatCrossfade(videoId) {
     }
 
     if (p >= 1) {
-      // Swap: old main → pause+silence, new main (bench) takes over
+      // ── Atomic swap ───────────────────────────────────────────────────────
+      // _swapping blocks state-change handlers during the swap window so
+      // the async PAUSED event from oldMain.pauseVideo() can't kill playback.
+      _swapping = true;
+      _xfading  = false;
+      _xfAnimId = null;
+      _lrcLocked = false;
+
       const oldMain = _main();
       _activePlayer = _activePlayer === 'A' ? 'B' : 'A';
-      try { oldMain.setVolume(0); oldMain.pauseVideo(); } catch {}
-      try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
 
-      // Sync position tracking to new main
+      try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
+      try { oldMain.setVolume(0); oldMain.pauseVideo(); } catch {}
+
       _lastYtPosMs  = (_main().getCurrentTime?.() ?? LOOP_BACK_S) * 1000;
       _lastYtPollMs = performance.now();
 
       if (sc) { sc.style.transition = 'filter 0.6s ease'; sc.style.filter = ''; }
       _setMixingUI(false);
-      _lrcLocked = false;
-      _xfading = false; _xfAnimId = null;
 
-      // Restart ticker pointed at new main
+      // Keep _swapping true for 400ms — long enough for the async PAUSED
+      // callback from oldMain to fire and be ignored, short enough to not
+      // block legitimate user pauses
+      setTimeout(() => { _swapping = false; }, 400);
+
       clearInterval(ticker);
       ticker = setInterval(_tickerFn, 250);
       return;
@@ -1244,10 +1255,14 @@ function _makePlayer(divId, isA) {
         else ytReadyB = true;
       },
       onStateChange(e) {
+        // Block all handling during player swap — async callbacks from pauseVideo()
+        // on the old main would otherwise kill ST.playing / the ticker
+        if (_swapping) return;
+
         // Evaluate iAmMain dynamically — _activePlayer can change after swap
         const iAmMain = () => (isA && _activePlayer === 'A') || (!isA && _activePlayer === 'B');
 
-        // Bench firing PLAYING during crossfade is expected — ignore it
+        // Bench events during crossfade — ignore entirely
         if (!iAmMain()) return;
 
         if (e.data === YT.PlayerState.PLAYING) {
