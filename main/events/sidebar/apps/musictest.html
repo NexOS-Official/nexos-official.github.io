@@ -1080,48 +1080,61 @@ function _startRepeatCrossfade(videoId) {
   _xfading = true;
   _setMixingUI(true);
 
+function _startRepeatCrossfade(videoId) {
+  if (_xfading) return;
+  _xfading = true;
+  _setMixingUI(true);
+
   const bench = _bench();
-  // Silence bench fully before loading — prevents any audio bleed during buffering
+  // Hard-mute bench before and after load — belt AND suspenders
   try { bench.setVolume(0); } catch {}
 
-  // Use cueVideoById instead of loadVideoById so bench buffers silently
-  // without autoplay, avoiding the main player stutter that loadVideoById causes
-  try { bench.cueVideoById({ videoId, startSeconds: LOOP_BACK_S }); }
+  // loadVideoById is more reliable than cueVideoById for actually starting
+  // playback from a specific time across all browsers.
+  // Bench's onStateChange is already guarded by iAmMain() so its PLAYING event
+  // won't affect ST.playing — but we also set _benchMuted so that if by some
+  // timing miracle audio leaks, the first volume call kills it.
+  let _benchReady = false;
+  window._benchMuted = true; // read by onStateChange PLAYING for bench player
+
+  try { bench.loadVideoById({ videoId, startSeconds: LOOP_BACK_S }); }
   catch { _cancelXfade(); return; }
+  try { bench.setVolume(0); } catch {}
 
   const sc = G('lscroll');
   let t0 = null;
   let _lrcSnapped = false;
-  let _benchPlayCalled = false;
 
-  // Poll: once bench is cued/ready, manually call playVideo then wait for PLAYING
+  // Wait for bench to be confirmed PLAYING before starting fade clock
   const waitForBench = setInterval(() => {
     if (!_xfading) { clearInterval(waitForBench); return; }
     let state = -1;
     try { state = bench.getPlayerState(); } catch { return; }
+    // Force-mute every poll in case YouTube reset volume
+    try { bench.setVolume(0); } catch {}
 
-    // YT.PlayerState.VIDEO_CUED = 5
-    if (!_benchPlayCalled && (state === 5 || state === YT.PlayerState.PAUSED)) {
-      _benchPlayCalled = true;
-      bench.setVolume(0); // ensure still muted
-      bench.playVideo();  // start it playing silently
-    }
-
-    if (_benchPlayCalled && state === YT.PlayerState.PLAYING) {
+    if (state === YT.PlayerState.PLAYING) {
       clearInterval(waitForBench);
-      bench.setVolume(0); // still muted — fade-in curve controls volume
+      window._benchMuted = false;
+      bench.setVolume(0);
       t0 = performance.now();
       _xfAnimId = requestAnimationFrame(tick);
     }
-  }, 100);
+  }, 80);
 
-  // Abort if bench never gets going in 5s
+  // Abort if bench never plays in 5s — avoids leaving main vol stuck low
   setTimeout(() => {
     if (_xfading && t0 === null) { clearInterval(waitForBench); _cancelXfade(); }
   }, 5000);
 
   function tick() {
-    if (!_xfading || !ST.playing || t0 === null) { _cancelXfade(); return; }
+    if (!_xfading || t0 === null) { _cancelXfade(); return; }
+    // Check main is still actually running — if it ended naturally before xfade
+    // finished, fall back to hard loop
+    let mainState = -1;
+    try { mainState = _main().getPlayerState(); } catch {}
+    if (mainState === YT.PlayerState.ENDED) { _cancelXfade(); if (ST.repeat) { _main().seekTo(LOOP_BACK_S); _main().playVideo(); } return; }
+
     const p = Math.min(1, (performance.now() - t0) / XFADE_MS);
 
     // ── Equal-power crossfade ─────────────────────────────────────────────────
@@ -1255,15 +1268,18 @@ function _makePlayer(divId, isA) {
         else ytReadyB = true;
       },
       onStateChange(e) {
-        // Block all handling during player swap — async callbacks from pauseVideo()
-        // on the old main would otherwise kill ST.playing / the ticker
+        // Block all handling during player swap
         if (_swapping) return;
 
-        // Evaluate iAmMain dynamically — _activePlayer can change after swap
         const iAmMain = () => (isA && _activePlayer === 'A') || (!isA && _activePlayer === 'B');
 
-        // Bench events during crossfade — ignore entirely
-        if (!iAmMain()) return;
+        // For bench player: always keep it muted while _benchMuted is set
+        if (!iAmMain()) {
+          if (e.data === YT.PlayerState.PLAYING && window._benchMuted) {
+            try { (isA ? YT_player : YT_playerB).setVolume(0); } catch {}
+          }
+          return;
+        }
 
         if (e.data === YT.PlayerState.PLAYING) {
           ST.playing = true; syncPP();
