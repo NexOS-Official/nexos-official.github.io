@@ -1342,43 +1342,51 @@ async function fetchCoverArt(track) {
 function renderDrop(itunesTracks, mbTracks) {
   const tracks = [...itunesTracks, ...mbTracks];
   const mbStart = itunesTracks.length;
+  const mbIds = [];
+  window._td = window._td || {};
+
   qDrp.innerHTML = tracks.map((t, idx) => {
-    const artSm = t.artworkUrl100||'';
-    const artLg = t._artLgOverride || artSm.replace('100x100bb','600x600bb');
-    const data = { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null, _ref:t };
-    const id = 'tr_'+Math.random().toString(36).slice(2);
-    (window._td=window._td||{})[id] = data;
+    const artSm = t.artworkUrl100 || '';
+    const artLg = t._artLgOverride || (artSm ? artSm.replace('100x100bb','600x600bb') : '');
+    const id = 'tr_' + Math.random().toString(36).slice(2);
+    window._td[id] = {
+      title: t.trackName, artist: t.artistName,
+      album: t.collectionName||'', artSm: artSm||null, artLg: artLg||null,
+      durMs: t.trackTimeMillis||null, _source: t._source||null,
+      _releaseMbid: t._releaseMbid||null, _ref: t
+    };
+    if (idx >= mbStart) mbIds.push(id);
+
     const aName = (t.artistName||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const aArt = (t.artworkUrl100||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const srcBadge = (t._source && t._source!=='itunes') ? ` <span style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.5px">[${t._source}]</span>` : '';
-    const sepHTML = (idx === mbStart && mbTracks.length > 0) ? '<div style="padding:6px 13px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink3);text-transform:uppercase;opacity:.5;border-top:1px solid var(--s2);">More from MusicBrainz</div>' : '';
+    const aArt  = artSm.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const srcBadge = (t._source && t._source !== 'itunes')
+      ? ` <span style="font-size:9px;opacity:.45;text-transform:uppercase;letter-spacing:.5px">[${t._source}]</span>` : '';
+    const sepHTML = (idx === mbStart && mbTracks.length > 0)
+      ? '<div style="padding:6px 13px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink3);text-transform:uppercase;opacity:.5;border-top:1px solid var(--s2);">More from MusicBrainz</div>' : '';
     return sepHTML + `<div class="di" onclick="pickTrack('${id}')">
-      <div class="di-art">${artSm?`<img src="${artSm}" data-src="${artSm}" onerror="proxyImgFallback(this)" alt="">`:'🎵'}</div>
-      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName?' · '+x(t.collectionName):''}${srcBadge}</div></div>
+      <div class="di-art" id="da_${id}">${artSm ? `<img src="${artSm}" data-src="${artSm}" onerror="proxyImgFallback(this)" alt="">` : '🎵'}</div>
+      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName ? ' · '+x(t.collectionName) : ''}${srcBadge}</div></div>
       <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
-  hydrateArt(mbTracks);
-}
-async function hydrateArt(mbTrackList) {
-  // Only MB tracks need art hydration — iTunes tracks always have art
-  if (!mbTrackList?.length) return;
-  const tdEntries = Object.values(window._td || {});
-  const tdEntries_filtered = tdEntries.filter(e => !e.artSm && e._ref && mbTrackList.some(mb => mb.trackName === (e._ref?.trackName||e.title) && mb.artistName === (e._ref?.artistName||e.artist)));
 
-  const needsArt = tdEntries_filtered.length ? tdEntries_filtered : tdEntries.filter(e => !e.artSm && e._ref);
-  if (!needsArt.length) return;
-  await Promise.allSettled(needsArt.map(async entry => {
+  hydrateArt(mbIds);
+}
+
+async function hydrateArt(ids) {
+  if (!ids?.length) return;
+  await Promise.allSettled(ids.map(async id => {
+    const entry = window._td?.[id];
+    if (!entry || entry.artSm) return;
     const srcTrack = entry._ref;
+    if (!srcTrack) return;
     await fetchCoverArt(srcTrack);
     if (!srcTrack.artworkUrl100) return;
     entry.artSm = srcTrack.artworkUrl100;
     entry.artLg = srcTrack._artLgOverride || srcTrack.artworkUrl100;
-    const id = Object.keys(window._td||{}).find(k => window._td[k] === entry);
-    if (!id) return;
-    const row = document.querySelector(`[onclick="pickTrack('${id}')"] .di-art`);
-    if (row) row.innerHTML = `<img src="${srcTrack.artworkUrl100}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+    const cell = document.getElementById('da_' + id);
+    if (cell) cell.innerHTML = `<img src="${entry.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">`;
   }));
 }
 
