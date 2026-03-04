@@ -1025,13 +1025,16 @@ tag.onerror = () => {
 };
 document.head.appendChild(tag);
 
-// Timeout: if onYouTubeIframeAPIReady hasn't fired in 8s, YouTube is blocked
+// If YouTube script loads but player never fires, it's blocked at embed level
+let _ytScriptLoaded = false;
+tag.onload = () => { _ytScriptLoaded = true; };
 setTimeout(() => {
-  if (!ytReady) {
-    setStatus('err', 'YouTube blocked');
-    G('sc-status-txt').textContent = 'YouTube blocked';
+  if (!ytReady && _ytScriptLoaded) {
+    // Script loaded but player didn't init — embed blocked
+    setStatus('err', 'Playback blocked');
+    G('sc-status-txt').textContent = 'Embed blocked';
   }
-}, 8000);
+}, 10000);
 
 const ytCache = {};
 
@@ -1041,32 +1044,18 @@ async function findVideoIds(artist, title) {
 
   const q = encodeURIComponent(artist + ' ' + title + ' audio');
 
-  // Method 1: YouTube Data API v3 — direct Google CDN, works on school networks
-  const YT_KEYS = [
-    'AIzaSyDtONEwFwkbJINmtTpFOBu1bUMmBFx0FtY',
-    'AIzaSyC3s9hwdFCSOCiRPxz-jEHPdcD4WGCKhMY',
-  ];
-  for (const key of YT_KEYS) {
-    try {
-      const apiUrl = `https://www.googleapis.com/youtube/v3/search?part=id&type=video&videoCategoryId=10&maxResults=5&q=${q}&key=${key}`;
-      const r = await fetch(apiUrl);
-      if (r.ok) {
-        const d = await r.json();
-        const ids = (d.items || []).map(i => i.id?.videoId).filter(Boolean);
-        if (ids.length) { ytCache[ck] = ids; return ids; }
-      }
-    } catch {}
-  }
-
-  // Method 2: Invidious public instances (privacy-friendly YT frontend, school-friendly)
+  // Method 1: Invidious API — open-source YT frontend with public APIs
+  // These are community-run instances. We try several in case one is down.
   const invidious = [
     'https://inv.nadeko.net',
     'https://invidious.privacyredirect.com',
+    'https://iv.melmac.space',
+    'https://invidious.nerdvpn.de',
     'https://yt.cdaut.de',
   ];
   for (const host of invidious) {
     try {
-      const r = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId`);
+      const r = await fetch(`${host}/api/v1/search?q=${q}&type=video`, { signal: AbortSignal.timeout(4000) });
       if (r.ok) {
         const d = await r.json();
         const ids = (Array.isArray(d) ? d : []).map(v => v.videoId).filter(Boolean).slice(0,5);
@@ -1075,7 +1064,7 @@ async function findVideoIds(artist, title) {
     } catch {}
   }
 
-  // Method 3: CORS proxy scrape fallback (personal Chromebook / unfiltered networks)
+  // Method 2: CORS proxy scrape of youtube.com
   const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(artist + ' ' + title + ' audio');
   const proxies = [
     u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
@@ -1083,7 +1072,7 @@ async function findVideoIds(artist, title) {
   ];
   for (const proxy of proxies) {
     try {
-      const html = await fetch(proxy(ytUrl)).then(r => r.text());
+      const html = await fetch(proxy(ytUrl), { signal: AbortSignal.timeout(6000) }).then(r => r.text());
       const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
       const ids = [...new Set(matches.map(m => m[1]))].slice(0, 5);
       if (ids.length) { ytCache[ck] = ids; return ids; }
@@ -1108,49 +1097,76 @@ async function doSearch(q) {
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
 
-  // Primary: iTunes (already relevance-ranked, has art, has duration)
+  // iTunes is primary — has art, duration, and is relevance-ranked
   let combined = await searchItunes(q);
 
-  // Only fall back to MB/LastFM if iTunes is dry
-  if (combined.length < 4) {
-    const [mbRes, lastfmRes] = await Promise.allSettled([
-      searchMusicBrainz(q),
-      searchLastFm(q),
-    ]);
-    for (const src of [mbRes, lastfmRes]) {
-      if (src.status!=='fulfilled') continue;
-      for (const t of src.value) {
+  // Show iTunes results immediately if we have them, fill gaps with MB
+  if (combined.length < 8) {
+    try {
+      const mbTracks = await searchMusicBrainz(q);
+      for (const t of mbTracks) {
         const isDupe = combined.some(e =>
           e.trackName.toLowerCase()===t.trackName.toLowerCase() &&
           e.artistName.toLowerCase()===t.artistName.toLowerCase()
         );
         if (!isDupe) combined.push(t);
       }
-    }
+    } catch {}
   }
 
   qSpn.style.display='none';
   if (!combined.length) { qDrp.innerHTML='<div class="drop-msg">No results</div>'; return; }
-  // Limit to top 25 — anything beyond that is noise
   renderDrop(combined.slice(0, 25));
 }
 
+function scoreTrack(t, ql, words) {
+  const tl = (t.trackName || '').toLowerCase();
+  const al = (t.artistName || '').toLowerCase();
+  let s = 0;
+  if (tl === ql) s += 100;
+  else if (tl.startsWith(ql)) s += 60;
+  else if (words.every(w => tl.includes(w))) s += 40;
+  else s += words.filter(w => tl.includes(w) || al.includes(w)).length * 8;
+  if (words.some(w => al.includes(w))) s += 15;
+  if (t.artworkUrl100) s += 5;
+  if (t.trackTimeMillis > 60000) s += 5;
+  return s;
+}
+
 async function searchItunes(q) {
+  const ql = q.toLowerCase().trim();
+  const words = ql.split(/\s+/).filter(Boolean);
+  const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US`;
+
+  // Try direct first
+  let results = null;
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    const results = data.results || [];
-    // Sort: exact title matches first, then by trackCount (popularity proxy via collectionArtistId)
-    // iTunes already returns by relevance so just ensure exact matches surface first
-    const ql = q.toLowerCase();
-    results.sort((a, b) => {
-      const aExact = a.trackName?.toLowerCase() === ql ? 0 : 1;
-      const bExact = b.trackName?.toLowerCase() === ql ? 0 : 1;
-      return aExact - bExact;
-    });
-    return results;
-  } catch { return []; }
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      const data = await res.json();
+      results = data.results || [];
+    }
+  } catch(e) {
+    console.warn('iTunes direct failed:', e.message);
+  }
+
+  // If direct failed (CORS block on some setups), try via proxy
+  if (!results) {
+    try {
+      const proxied = 'https://corsproxy.io/?url=' + encodeURIComponent(url);
+      const res = await fetch(proxied, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        results = data.results || [];
+      }
+    } catch(e) {
+      console.warn('iTunes proxy failed:', e.message);
+    }
+  }
+
+  if (!results || !results.length) return [];
+  results.sort((a, b) => scoreTrack(b, ql, words) - scoreTrack(a, ql, words));
+  return results.slice(0, 25);
 }
 
 async function searchMusicBrainz(q) {
@@ -1331,7 +1347,12 @@ function markQI(idx) {
 }
 
 async function loadTrack(idx) {
-  if (!ytReady || idx < 0 || idx >= ST.queue.length) return;
+  if (idx < 0 || idx >= ST.queue.length) return;
+  if (!ytReady) {
+    setStatus('err', 'YouTube blocked');
+    toast('⚠ YouTube is blocked on this network. Try a personal device or hotspot.');
+    return;
+  }
   ST.idx = idx;
   const track = ST.queue[idx];
   markQI(idx); updateNP(track); syncHeartBtn();
