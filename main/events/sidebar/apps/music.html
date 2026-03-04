@@ -242,6 +242,12 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   opacity:.85;
   font-size:26px;
 }
+.ll.near2{
+  color:rgba(255,255,255,0.32);
+  filter:blur(2.5px);
+  opacity:.6;
+  font-size:24px;
+}
 .ll.now{
   color:#ffffff;
   font-size:32px;
@@ -279,6 +285,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
 
+/* ♪ beat dots */
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
   height:1em;vertical-align:middle;
@@ -462,6 +469,57 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .st-dot.loading{background:var(--orange);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
+.artist-panel-bg{
+  position:absolute;inset:0;
+  background-size:cover;background-position:center top;
+  filter:blur(50px) saturate(1.4) brightness(.25);
+  transform:scale(1.2);
+  pointer-events:none;z-index:0;
+  opacity:0;transition:opacity .7s;
+}
+.artist-panel-bg.on{opacity:1}
+.artist-panel-inner{position:relative;z-index:1;padding:20px 18px 70px;}
+.artist-hero{display:flex;align-items:flex-end;gap:16px;margin-bottom:24px;}
+.artist-avatar{
+  width:90px;height:90px;border-radius:50%;
+  background:var(--s2);flex-shrink:0;overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  display:grid;place-items:center;font-size:32px;
+}
+.artist-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.artist-hero-info{flex:1;min-width:0}
+.artist-name-big{font-size:26px;font-weight:900;letter-spacing:-.5px;line-height:1.1}
+.artist-meta{font-size:12px;color:var(--ink3);margin-top:4px}
+.artist-play-all{
+  background:var(--pink);border:none;color:#fff;
+  font-size:12px;font-weight:700;padding:8px 18px;
+  border-radius:20px;cursor:pointer;margin-top:10px;
+  transition:transform .15s;
+}
+.artist-play-all:hover{transform:scale(1.05)}
+.artist-section-lbl{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--ink3);margin-bottom:10px;
+}
+.artist-track-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:10px;cursor:pointer;
+  transition:background .12s;
+}
+.artist-track-row:hover{background:rgba(255,255,255,.07)}
+.artist-track-num{width:22px;text-align:right;font-size:12px;color:var(--ink3);flex-shrink:0}
+.artist-track-art{width:38px;height:38px;border-radius:6px;background:var(--s2);flex-shrink:0;overflow:hidden;display:grid;place-items:center;font-size:14px}
+.artist-track-art img{width:100%;height:100%;object-fit:cover;display:block}
+.artist-track-inf{flex:1;min-width:0}
+.artist-track-t{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artist-track-alb{font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.artist-track-dur{font-size:11px;color:var(--ink3);flex-shrink:0}
+.artist-track-add{width:24px;height:24px;border-radius:50%;background:var(--pink);display:grid;place-items:center;flex-shrink:0;opacity:0;transition:opacity .14s;flex-shrink:0}
+.artist-track-add svg{width:12px;height:12px;fill:#fff}
+.artist-track-row:hover .artist-track-add{opacity:1}
+.artist-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--ink3);font-size:13px}
+.artist-loading .spin{display:block !important}
+
 @media(max-width:768px){
   .app{flex-direction:column;padding:10px;gap:10px}
   .left{width:100%;flex-direction:row;gap:10px;flex-shrink:0;height:auto}
@@ -609,6 +667,18 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 
 
+      <div class="side-panel" id="artist-panel" style="padding:0;overflow:hidden;">
+        <div class="artist-panel-bg" id="artist-bg"></div>
+        <div style="position:absolute;top:12px;left:12px;z-index:10;">
+          <button class="pl-back" id="artist-back" onclick="showPanel('queue')" style="background:rgba(0,0,0,.4);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+        </div>
+        <div class="lrc-scroll-outer" style="z-index:1;padding-top:16px;">
+          <div class="artist-panel-inner" id="artist-panel-inner">
+            <div class="artist-loading"><div class="spin"></div><span>Loading artist…</span></div>
+          </div>
+        </div>
+      </div>
+
       <div class="panel-nav">
         <button class="pnb" id="pnb-lyrics" title="Lyrics (L)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
@@ -657,10 +727,14 @@ function showPanel(name) {
   G('likes-panel').classList.toggle('active', name === 'likes');
   G('playlists-panel').classList.toggle('active', name === 'playlists');
   G('pl-detail-panel').classList.toggle('active', name === 'pl-detail');
+  G('artist-panel').classList.toggle('active', name === 'artist');
 
   if (name === 'lyrics' && ST.lrcType === 'synced') {
     renderSynced();
+    // Snap immediately to current playback position so lyrics aren't "off"
+    requestAnimationFrame(() => tickLrc(getPrecisePos()));
   }
+
 
   G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
   G('pnb-likes').classList.toggle('active', name === 'likes');
@@ -873,6 +947,22 @@ function createPlaylistFromModal() {
   openNewPlaylistModal();
 }
 
+// Image proxy: images.weserv.nl is a free image CDN proxy that works on most networks
+// Try direct first; if it fails (school blocks mzstatic.com), fall back to weserv
+function proxyImg(url) {
+  if (!url) return '';
+  // Already a proxy or data URL
+  if (url.startsWith('data:') || url.includes('weserv.nl') || url.includes('fanart.tv')) return url;
+  return url; // Return direct — mzstatic is almost never blocked. weserv fallback on onerror.
+}
+function proxyImgFallback(img) {
+  // Called via onerror — try weserv.nl as fallback
+  if (!img.src.includes('wsrv.nl')) {
+    const orig = img.getAttribute('data-src') || img.src;
+    img.src = 'https://wsrv.nl/?url=' + encodeURIComponent(orig) + '&w=300';
+  }
+}
+
 const ST = {
   queue:[], idx:-1,
   playing:false, shuffle:false, repeat:false, muted:false,
@@ -887,12 +977,39 @@ let toastTmr=null;
 function toast(msg){ const el=G('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('show'),2800); }
 function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-status-txt').textContent=msg; }
 
+// Universal proxy-aware fetch — tries direct first, then multiple CORS proxies
+// Works even when school blocks the target domain directly
+const PROXIES = [
+  u => u, // direct
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+  u => 'https://thingproxy.freeboard.io/fetch/' + u,
+];
+
+async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
+  const tryOne = proxy => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(proxy(url), { ...opts, signal: AbortSignal.timeout(timeoutMs) });
+      if (r.ok) res(r); else rej(r.status);
+    } catch(e) { rej(e); }
+  });
+  // Fire all in parallel, return first success
+  return Promise.any(PROXIES.map(tryOne));
+}
+
 let YT_player = null, ytReady = false, ticker = null;
+let _lastYtPollMs = 0, _lastYtPosMs = 0;
+
+function getPrecisePos() {
+  const elapsed = performance.now() - _lastYtPollMs;
+  return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
+}
 
 window.onYouTubeIframeAPIReady = function() {
   YT_player = new YT.Player('yt-player', {
-    videoId: 'M7lc1UVf-VE',
-    playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1 },
+    videoId: '',
+    playerVars: { autoplay:0, controls:0, rel:0, modestbranding:1, origin:window.location.origin },
     events: {
       onReady(e) {
         ytReady = true;
@@ -907,36 +1024,66 @@ window.onYouTubeIframeAPIReady = function() {
           ticker = setInterval(() => {
             ST.pos = YT_player.getCurrentTime() * 1000;
             ST.dur = YT_player.getDuration() * 1000;
+            _lastYtPosMs = ST.pos;
+            _lastYtPollMs = performance.now();
             syncBar();
-            if (ST.lrcType === 'synced') tickLrc(ST.pos);
-          }, 50);
+          }, 250);
+          if (!ST._rafRunning) {
+            ST._rafRunning = true;
+            const rafLoop = () => {
+              if (!ST._rafRunning) return;
+              if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
+              requestAnimationFrame(rafLoop);
+            };
+            requestAnimationFrame(rafLoop);
+          }
         } else if (e.data === YT.PlayerState.PAUSED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
-          clearInterval(ticker);
+          clearInterval(ticker); ST._rafRunning = false;
         } else if (e.data === YT.PlayerState.ENDED) {
+          ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
-          clearInterval(ticker);
+          clearInterval(ticker); ST._rafRunning = false;
           if (ST.repeat) { YT_player.seekTo(0); YT_player.playVideo(); }
           else nextTrack();
         }
       },
       onError(e) {
         const track = ST.queue[ST.idx];
-        if (track?.ytIds?.length > track.ytTry + 1) {
-          track.ytTry++;
+        if (track?.ytIds?.length > (track.ytTry||0) + 1) {
+          track.ytTry = (track.ytTry||0) + 1;
           YT_player.loadVideoById(track.ytIds[track.ytTry]);
         } else {
-          toast('⚠ Blocked — try another');
+          setStatus('err', 'Video unavailable');
+          toast('⚠ Video unavailable — try another');
         }
       }
     }
   });
 };
 
-const tag = document.createElement('script');
-tag.src = 'https://www.youtube.com/iframe_api';
-document.head.appendChild(tag);
+// Load IFrame API — try youtube.com then youtube-nocookie.com
+(function loadYTAPI() {
+  setStatus('loading', 'Connecting…');
+  function tryScript(src, cb) {
+    const s = document.createElement('script');
+    s.src = src; s.onload = cb;
+    s.onerror = () => cb(true);
+    document.head.appendChild(s);
+  }
+  tryScript('https://www.youtube.com/iframe_api', function(err) {
+    if (!err) return; // success — onYouTubeIframeAPIReady will fire
+    // youtube.com blocked, try nocookie
+    tryScript('https://www.youtube-nocookie.com/iframe_api', function(err2) {
+      if (err2) {
+        setStatus('err', 'YouTube blocked');
+        toast('⚠ YouTube is blocked on this network');
+      }
+    });
+  });
+  setTimeout(() => { if (!ytReady) setStatus('err', 'YouTube blocked'); }, 12000);
+})();
 
 const ytCache = {};
 
@@ -944,22 +1091,45 @@ async function findVideoIds(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
   if (ytCache[ck]?.length) return ytCache[ck];
 
-  const q = artist + ' ' + title + ' audio';
-  const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+  const searchQ = artist + ' ' + title + ' audio';
 
-  const proxies = [
-    u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
-    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-  ];
-
-  for (const proxy of proxies) {
-    try {
-      const html = await fetch(proxy(ytUrl)).then(r => r.text());
-      const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-      const ids = [...new Set(matches.map(m => m[1]))].slice(0, 5);
-      if (ids.length) { ytCache[ck] = ids; return ids; }
-    } catch {}
+  function extractIds(html) {
+    const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+    return [...new Set(matches.map(m => m[1]))].slice(0, 6);
   }
+
+  // Method 1: scrape YouTube search via proxyFetch (races all proxies)
+  try {
+    const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(searchQ);
+    const r = await proxyFetch(ytUrl, {}, 6000);
+    const html = await r.text();
+    const ids = extractIds(html);
+    if (ids.length) { ytCache[ck] = ids; return ids; }
+  } catch {}
+
+  // Method 2: Invidious JSON API (different servers, different block lists)
+  const invidious = [
+    'https://inv.nadeko.net',
+    'https://invidious.privacyredirect.com',
+    'https://yt.cdaut.de',
+    'https://iv.melmac.space',
+  ];
+  const q = encodeURIComponent(searchQ);
+  const tryInv = host => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId`, {
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!r.ok) return rej();
+      const d = await r.json();
+      const ids = (Array.isArray(d) ? d : []).map(v => v.videoId).filter(Boolean).slice(0, 6);
+      if (ids.length) res(ids); else rej();
+    } catch { rej(); }
+  });
+  try {
+    const ids = await Promise.any(invidious.map(tryInv));
+    ytCache[ck] = ids; return ids;
+  } catch {}
 
   throw new Error('search failed');
 }
@@ -974,49 +1144,99 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
+// iTunes fetch — direct first, then CORS proxies in parallel as fallback
+async function itunesFetch(url) {
+  // Try direct fetch first (works on personal devices)
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) return await r.json();
+  } catch {}
+  // Fallback: race all proxies simultaneously
+  const enc = encodeURIComponent(url);
+  const proxied = [
+    'https://corsproxy.io/?url=' + enc,
+    'https://api.allorigins.win/raw?url=' + enc,
+    'https://api.codetabs.com/v1/proxy?quest=' + enc,
+  ];
+  const tryOne = u => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(u, { signal: AbortSignal.timeout(6000) });
+      if (!r.ok) return rej();
+      const j = await r.json();
+      if (j?.results !== undefined || j?.artistId !== undefined) res(j); else rej();
+    } catch { rej(); }
+  });
+  try { return await Promise.any(proxied.map(tryOne)); } catch { return null; }
+}
+
 async function doSearch(q) {
   qSpn.style.display='block';
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
 
-  const [itunesRes, mbRes, lastfmRes] = await Promise.allSettled([
-    searchItunes(q),
-    searchMusicBrainz(q),
-    searchLastFm(q),
-  ]);
-
-  let combined = [];
-  if (itunesRes.status==='fulfilled') combined.push(...itunesRes.value);
-
-  for (const src of [mbRes, lastfmRes]) {
-    if (src.status!=='fulfilled') continue;
-    for (const t of src.value) {
-      const isDupe = combined.some(e =>
-        e.trackName.toLowerCase()===t.trackName.toLowerCase() &&
-        e.artistName.toLowerCase()===t.artistName.toLowerCase()
-      );
-      if (!isDupe) combined.push(t);
-    }
-  }
-
+  // iTunes ALWAYS first and always on top — never show MB until iTunes resolves
+  const itunesTracks = await searchItunes(q);
   qSpn.style.display='none';
-  if (!combined.length) { qDrp.innerHTML='<div class="drop-msg">No results</div>'; return; }
-  renderDrop(combined);
+
+  if (itunesTracks.length) {
+    // iTunes found results — show them immediately
+    renderDrop(itunesTracks, []);
+
+    // Then append MB-only results below as supplemental
+    searchMusicBrainz(q).then(mbTracks => {
+      const newMb = mbTracks.filter(mb =>
+        !itunesTracks.some(it =>
+          it.trackName.toLowerCase() === mb.trackName.toLowerCase() &&
+          it.artistName.toLowerCase() === mb.artistName.toLowerCase()
+        )
+      );
+      if (newMb.length) renderDrop(itunesTracks, newMb);
+    }).catch(() => {});
+
+  } else {
+    // iTunes completely failed — show a clear error, no MB fallback
+    // (MB showing as primary results is confusing and low quality)
+    qDrp.innerHTML = '<div class="drop-msg">⚠ Search unavailable — check your connection and try again</div>';
+  }
+}
+
+function scoreTrack(t, ql, words) {
+  const tl = (t.trackName || '').toLowerCase();
+  const al = (t.artistName || '').toLowerCase();
+  let s = 0;
+  // Title scoring
+  if (tl === ql) s += 100;
+  else if (tl.startsWith(ql)) s += 70;
+  else if (words.every(w => tl.includes(w))) s += 45;
+  else s += words.filter(w => tl.includes(w)).length * 10;
+  // Artist name exact match — huge boost (handles "NF" the rapper vs song titled "NF")
+  if (al === ql) s += 80;
+  else if (al.startsWith(ql)) s += 50;
+  else if (words.every(w => al.includes(w))) s += 30;
+  // Quality signals
+  if (t.artworkUrl100) s += 5;
+  if (t.trackTimeMillis > 60000) s += 5;
+  if ((t.trackCount || 0) > 5) s += 3; // album with multiple tracks = real release
+  return s;
 }
 
 async function searchItunes(q) {
-  try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US`);
-    const data = await res.json();
-    return data.results || [];
-  } catch { return []; }
+  const ql = q.toLowerCase().trim();
+  const words = ql.split(/\s+/).filter(Boolean);
+  const data = await itunesFetch(
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US`
+  );
+  if (!data?.results?.length) return [];
+  const results = data.results;
+  results.sort((a, b) => scoreTrack(b, ql, words) - scoreTrack(a, ql, words));
+  return results.slice(0, 25);
 }
 
 async function searchMusicBrainz(q) {
   try {
-    const res = await fetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(q)}&limit=25&fmt=json`, {
+    const res = await proxyFetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(q)}&limit=25&fmt=json`, {
       headers: { 'User-Agent': 'GhostMusic/1.0 (ghost@music.app)' }
-    });
+    }, 8000);
     const data = await res.json();
     if (!data.recordings?.length) return [];
     return data.recordings.map(r => {
@@ -1067,10 +1287,41 @@ const _artCache = {};
 async function fetchCoverArt(track) {
   if (track.artworkUrl100) return;
 
+  const ck = ((track.artistName||'') + '||' + (track.trackName||'')).toLowerCase();
+  if (_artCache[ck] !== undefined) {
+    if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
+    return;
+  }
+
+  // Always try iTunes first — works everywhere including school Chromebooks
+  try {
+    const term = encodeURIComponent((track.artistName||'').trim() + ' ' + (track.trackName||'').trim());
+    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
+    if (r.ok) {
+      const d = await r.json();
+      const tl = (track.trackName||'').toLowerCase();
+      const al = (track.artistName||'').toLowerCase();
+      const hit = d.results?.find(h =>
+        h.trackName?.toLowerCase() === tl && h.artistName?.toLowerCase() === al
+      ) || d.results?.find(h =>
+        h.trackName?.toLowerCase().includes(tl) || h.artistName?.toLowerCase().includes(al)
+      ) || d.results?.[0];
+      if (hit?.artworkUrl100) {
+        const sm = hit.artworkUrl100;
+        const lg = sm.replace('100x100bb','600x600bb');
+        _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
+        track.artworkUrl100 = sm; track._artLgOverride = lg;
+        return;
+      }
+    }
+  } catch {}
+
+  // Secondary: Cover Art Archive (may be blocked on school networks)
   if (track._releaseMbid) {
     const mbid = track._releaseMbid;
     if (_artCache[mbid] !== undefined) {
       if (_artCache[mbid]) { track.artworkUrl100 = _artCache[mbid]; track._artLgOverride = _artCache[mbid+'_lg']; }
+      _artCache[ck] = _artCache[mbid]; _artCache[ck+'_lg'] = _artCache[mbid+'_lg'];
       return;
     }
     try {
@@ -1083,6 +1334,7 @@ async function fetchCoverArt(track) {
           const lg = img.thumbnails?.['500'] || img.thumbnails?.large || img.image;
           if (sm) {
             _artCache[mbid] = sm; _artCache[mbid+'_lg'] = lg;
+            _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
             track.artworkUrl100 = sm; track._artLgOverride = lg;
             return;
           }
@@ -1092,62 +1344,57 @@ async function fetchCoverArt(track) {
     _artCache[mbid] = null;
   }
 
-  const ck = (track.artistName + '||' + track.trackName).toLowerCase();
-  if (_artCache[ck] !== undefined) {
-    if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
-    return;
-  }
-  try {
-    const term = encodeURIComponent(track.artistName.trim() + ' ' + track.trackName.trim());
-    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
-    if (r.ok) {
-      const d = await r.json();
-      const tl = track.trackName.toLowerCase(), al = track.artistName.toLowerCase();
-      const hit = d.results?.find(h =>
-        h.trackName?.toLowerCase().includes(tl) || h.artistName?.toLowerCase().includes(al)
-      ) || d.results?.[0];
-      if (hit?.artworkUrl100) {
-        const sm = hit.artworkUrl100;
-        const lg = sm.replace('100x100bb','600x600bb');
-        _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
-        track.artworkUrl100 = sm; track._artLgOverride = lg;
-        return;
-      }
-    }
-  } catch {}
   _artCache[ck] = null;
 }
 
-function renderDrop(tracks) {
-  qDrp.innerHTML = tracks.map(t => {
-    const artSm = t.artworkUrl100||'';
-    const artLg = t._artLgOverride || artSm.replace('100x100bb','600x600bb');
-    const data = { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null, _ref:t };
-    const id = 'tr_'+Math.random().toString(36).slice(2);
-    (window._td=window._td||{})[id] = data;
-    return `<div class="di" onclick="pickTrack('${id}')">
-      <div class="di-art">${artSm?`<img src="${artSm}" alt="">`:'🎵'}</div>
-      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s">${x(t.artistName)}${t.collectionName?' · '+x(t.collectionName):''}${t._source&&t._source!=='itunes'?' <span style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.5px">['+t._source+']</span>':''}</div></div>
+function renderDrop(itunesTracks, mbTracks) {
+  const tracks = [...itunesTracks, ...mbTracks];
+  const mbStart = itunesTracks.length;
+  const mbIds = [];
+  window._td = window._td || {};
+
+  qDrp.innerHTML = tracks.map((t, idx) => {
+    const artSm = t.artworkUrl100 || '';
+    const artLg = t._artLgOverride || (artSm ? artSm.replace('100x100bb','600x600bb') : '');
+    const id = 'tr_' + Math.random().toString(36).slice(2);
+    window._td[id] = {
+      title: t.trackName, artist: t.artistName,
+      album: t.collectionName||'', artSm: artSm||null, artLg: artLg||null,
+      durMs: t.trackTimeMillis||null, _source: t._source||null,
+      _releaseMbid: t._releaseMbid||null, _ref: t
+    };
+    if (idx >= mbStart) mbIds.push(id);
+
+    const aName = (t.artistName||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const aArt  = artSm.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const srcBadge = (t._source && t._source !== 'itunes')
+      ? ` <span style="font-size:9px;opacity:.45;text-transform:uppercase;letter-spacing:.5px">[${t._source}]</span>` : '';
+    const sepHTML = (idx === mbStart && mbTracks.length > 0)
+      ? '<div style="padding:6px 13px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink3);text-transform:uppercase;opacity:.5;border-top:1px solid var(--s2);">More from MusicBrainz</div>' : '';
+    return sepHTML + `<div class="di" onclick="pickTrack('${id}')">
+      <div class="di-art" id="da_${id}">${artSm ? `<img src="${artSm}" data-src="${artSm}" onerror="proxyImgFallback(this)" alt="">` : '🎵'}</div>
+      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName ? ' · '+x(t.collectionName) : ''}${srcBadge}</div></div>
       <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
-  hydrateArt(Object.values(window._td || {}));
-}
-async function hydrateArt(tdEntries) {
 
-  const needsArt = tdEntries.filter(e => !e.artSm && e._ref);
-  if (!needsArt.length) return;
-  await Promise.allSettled(needsArt.map(async entry => {
+  hydrateArt(mbIds);
+}
+
+async function hydrateArt(ids) {
+  if (!ids?.length) return;
+  await Promise.allSettled(ids.map(async id => {
+    const entry = window._td?.[id];
+    if (!entry || entry.artSm) return;
     const srcTrack = entry._ref;
+    if (!srcTrack) return;
     await fetchCoverArt(srcTrack);
     if (!srcTrack.artworkUrl100) return;
     entry.artSm = srcTrack.artworkUrl100;
     entry.artLg = srcTrack._artLgOverride || srcTrack.artworkUrl100;
-    const id = Object.keys(window._td||{}).find(k => window._td[k] === entry);
-    if (!id) return;
-    const row = document.querySelector(`[onclick="pickTrack('${id}')"] .di-art`);
-    if (row) row.innerHTML = `<img src="${srcTrack.artworkUrl100}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+    const cell = document.getElementById('da_' + id);
+    if (cell) cell.innerHTML = `<img src="${entry.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">`;
   }));
 }
 
@@ -1160,7 +1407,7 @@ function appendQI(track, i) {
   const list=G('q-list'); list.querySelector('.q-empty-msg')?.remove();
   const el=document.createElement('div');
   el.className='qi'; el.id=`qi${i}`; el.dataset.idx=i;
-  el.innerHTML=`<div class="qi-th" id="qt${i}">${track.artSm?`<img src="${track.artSm}" alt="">`:'🎵'}</div>
+  el.innerHTML=`<div class="qi-th" id="qt${i}">${track.artSm?`<img src="${track.artSm}" data-src="${track.artSm}" onerror="proxyImgFallback(this)" alt="">`:'🎵'}</div>
     <div class="qi-inf"><div class="qi-t">${x(track.title)}</div><div class="qi-a">${x(track.artist)}</div></div>
     <button class="qi-rm" onclick="rmQI(event,${i})">×</button>`;
   el.addEventListener('click', e => { if(!e.target.classList.contains('qi-rm')) loadTrack(i); });
@@ -1178,7 +1425,12 @@ function markQI(idx) {
 }
 
 async function loadTrack(idx) {
-  if (!ytReady || idx < 0 || idx >= ST.queue.length) return;
+  if (idx < 0 || idx >= ST.queue.length) return;
+  if (!ytReady) {
+    setStatus('err', 'YouTube blocked');
+    toast('⚠ YouTube is blocked on this network. Try a personal device or hotspot.');
+    return;
+  }
   ST.idx = idx;
   const track = ST.queue[idx];
   markQI(idx); updateNP(track); syncHeartBtn();
@@ -1200,16 +1452,32 @@ async function loadTrack(idx) {
   YT_player.loadVideoById(track.ytIds[track.ytTry]);
   fetchLyrics(track.title, track.artist);
 
+  // If no art yet (e.g. MusicBrainz source), fetch it now and update cover immediately when resolved
   if (!track.artSm && !track.artLg) {
-    const _refTrack = { artworkUrl100: null, _artLgOverride: null, _releaseMbid: track._releaseMbid, artistName: track.artist, trackName: track.title };
+    const _refTrack = {
+      artworkUrl100: null, _artLgOverride: null,
+      _releaseMbid: track._releaseMbid,
+      artistName: track.artist, trackName: track.title
+    };
     fetchCoverArt(_refTrack).then(() => {
-      if (_refTrack.artworkUrl100 && ST.queue[ST.idx] === track) {
-        track.artSm = _refTrack.artworkUrl100;
-        track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
-        updateNP(track);
-        const th = document.getElementById('qt' + idx);
-        if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
-      }
+      if (!_refTrack.artworkUrl100) return;
+      // Only update if this track is still the active one
+      if (ST.queue[ST.idx] !== track) return;
+      track.artSm = _refTrack.artworkUrl100;
+      track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
+      // Directly update every cover surface so nothing is stale
+      const artUrl = track.artLg || track.artSm;
+      G('cv-img').src = artUrl;
+      G('cv-img').setAttribute('data-src', artUrl);
+      G('cv-bg').src = artUrl;
+      G('cv-bg').classList.add('on');
+      G('cover-art').style.display = 'block';
+      const lrcBg = G('lrc-bg');
+      lrcBg.style.backgroundImage = `url('${artUrl}')`;
+      lrcBg.classList.add('on');
+      // Patch queue thumbnail
+      const th = document.getElementById('qt' + idx);
+      if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
     });
   }
 }
@@ -1220,13 +1488,16 @@ function updateNP(track) {
   G('cover-info').style.display='block';
   G('np-t').textContent=track.title;
   G('np-a').textContent=track.artist;
+  G('np-a').style.cursor='pointer';
+  G('np-a').onclick=()=>openArtistProfile(track.artist, track.artSm||'');
   const art = track.artLg || track.artSm;
   if(art){
-    G('cv-img').src=art;
-    G('cv-bg').src=art;
+    const artUrl = proxyImg(art);
+    G('cv-img').src=artUrl; G('cv-img').setAttribute('data-src',artUrl); G('cv-img').onerror=function(){proxyImgFallback(this)};
+    G('cv-bg').src=artUrl;
     G('cv-bg').classList.add('on');
     const lrcBg = G('lrc-bg');
-    lrcBg.style.backgroundImage = `url('${art}')`;
+    lrcBg.style.backgroundImage = `url('${artUrl}')`;
     lrcBg.classList.add('on');
   }
 }
@@ -1280,12 +1551,15 @@ async function fetchLyrics(title, artist) {
   scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
   const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
   const ct=clean(title), ca=clean(artist);
-  for (const [t,a] of [[ct,ca],[title,artist]]) {
-    const d=await lrclibGET(t,a);
+
+  // Run both GET attempts in parallel for speed
+  const [r1, r2] = await Promise.all([lrclibGET(ct, ca), ct!==title||ca!==artist ? lrclibGET(title, artist) : Promise.resolve(null)]);
+  for (const d of [r1, r2]) {
     if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
   }
-  for (const [t,a] of [[ct,ca],[title,artist]]) {
-    const d=await lrclibSEARCH(t,a);
+  // Search fallback — also parallel
+  const [s1, s2] = await Promise.all([lrclibSEARCH(ct, ca), ct!==title||ca!==artist ? lrclibSEARCH(title, artist) : Promise.resolve(null)]);
+  for (const d of [s1, s2]) {
     if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
   }
   scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
@@ -1294,20 +1568,41 @@ async function fetchLyrics(title, artist) {
 async function lrclibGET(track, artist) {
   try {
     const url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await fetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } });
-    if (r.status === 200) return await r.json();
+    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
+    if (r.status === 200 || r.ok) return await r.json();
   } catch {}
   return null;
 }
-async function lrclibSEARCH(track,artist){try{const r=await fetch(`https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`,{headers:{'Lrclib-Client':'Wavelength/4.0'}});if(r.ok){const a=await r.json();if(a?.length)return a.find(x=>x.syncedLyrics)||a.find(x=>x.plainLyrics)||null;}}catch{}return null;}
+async function lrclibSEARCH(track, artist) {
+  try {
+    const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
+    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
+    if (r.ok) {
+      const a = await r.json();
+      if (a?.length) return a.find(x => x.syncedLyrics) || a.find(x => x.plainLyrics) || null;
+    }
+  } catch {}
+  return null;
+}
 
 function parseLRC(rawStr) {
   return rawStr.split('\n').map(line => {
     const m = line.match(/^\[(\d{1,3}):(\d{2}(?:\.\d+)?)\](.*)/);
     if (!m) return null;
     const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
-    const text = m[3].replace(/<[^>]+>/g,'').trim();
-    return { ms, text };
+    const raw = m[3];
+
+    // Try to extract enhanced word-level timestamps: <mm:ss.xx>word
+    const wTagRe = /<(\d{1,3}):(\d{2}\.\d+)>([^<]*)/g;
+    let wm; const wTimed = [];
+    while ((wm = wTagRe.exec(raw)) !== null) {
+      const wMs = parseInt(wm[1])*60000 + parseFloat(wm[2])*1000;
+      const word = wm[3].trim();
+      if (word) wTimed.push({ ms: wMs, word });
+    }
+
+    const text = raw.replace(/<[^>]+>/g,'').trim();
+    return { ms, text, _wordTimed: wTimed.length > 0 ? wTimed : null };
   }).filter(Boolean);
 }
 
@@ -1326,18 +1621,30 @@ function buildWordTimings(lrc) {
     const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
     const duration = Math.max(400, nextMs - lineMs - 80);
     const rawWords = line.text.split(/\s+/).filter(Boolean);
+
     if (!rawWords.length) {
+      // ♪ instrumental — compute beat duration from gap, aim for ~4 beats
       const gapMs = Math.max(400, nextMs - lineMs);
       const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
       return { ...line, words: [], beatDur };
     }
+
+    // If the LRC had per-word timestamps embedded, use those — they are exact
+    if (line._wordTimed?.length) {
+      return { ...line, words: line._wordTimed };
+    }
+
+    // Syllable-weighted distribution fallback
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a,b)=>a+b, 0);
-    const usable = duration * 0.92;
+    // Use 90% of available time — leave natural tail before next line
+    const usable = duration * 0.90;
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
-      cursor += (syls[wi] / totalSyls) * usable;
+      // Weight short words (≤3 chars) slightly less — they're usually unstressed
+      const weight = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
+      cursor += (weight / syls.reduce((a,b,j)=>a+(b*(rawWords[j].replace(/[^a-z]/gi,'').length<=3?0.7:1)),0)) * usable;
       return { ms: wordMs, word };
     });
     return { ...line, words };
@@ -1372,6 +1679,7 @@ function renderLineHTML(line, i) {
 }
 
 function renderSynced() {
+  // Clear word state cache so new song starts fresh
   Object.keys(_lwState).forEach(k => delete _lwState[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
@@ -1380,6 +1688,7 @@ function renderSynced() {
 
 function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
 
+// Per-word state cache to skip redundant DOM writes
 const _lwState = {};
 
 function _setLwState(id, cls, pct) {
@@ -1395,9 +1704,11 @@ function _setLwState(id, cls, pct) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  const AHEAD = 60;
+  // Lookahead: compensate for rendering lag — words light up exactly as sung
+  const AHEAD = 80;
   const t = posMs + AHEAD;
 
+  // Binary search for active line
   let lo = 0, hi = ST.lrc.length - 1, active = 0;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
@@ -1409,27 +1720,33 @@ function tickLrc(posMs) {
     const prev = ST.lrcActive;
     ST.lrcActive = active;
 
-    document.querySelectorAll('#lscroll .ll').forEach((el, i) => {
-      el.classList.remove('now','past','near');
+    // Batch DOM updates — collect all lines once, update in one pass
+    const lines = document.querySelectorAll('#lscroll .ll');
+    lines.forEach((el, i) => {
+      el.classList.remove('now','past','near','near2');
       const dist = i - active;
       const absDist = Math.abs(dist);
       if (dist < 0) el.classList.add('past');
       else if (absDist === 1) el.classList.add('near');
+      else if (absDist === 2) el.classList.add('near2');
       if (i === active) el.classList.add('now');
-      el.style.filter = absDist >= 3 ? `blur(${Math.min(6, absDist)}px)` : '';
+      // Progressive blur: lines farther away blur more
+      el.style.filter = absDist >= 3 ? `blur(${Math.min(5, (absDist - 2) * 1.5).toFixed(1)}px)` : '';
     });
 
     document.getElementById('ll'+active)
       ?.scrollIntoView({ block:'center', behavior:'smooth' });
 
+    // Snap previous line's words to fully done
     if (prev >= 0) {
       (ST.lrc[prev]?.words || []).forEach((w, wi) => {
         _setLwState('lw'+prev+'_'+wi, 'done', '100%');
       });
     }
+    // Reset new active line's words to upcoming
     (ST.lrc[active]?.words || []).forEach((w, wi) => {
       const id = 'lw'+active+'_'+wi;
-      delete _lwState[id];
+      delete _lwState[id]; // force re-render
       _setLwState(id, 'upcoming', '0%');
     });
   }
@@ -1438,7 +1755,8 @@ function tickLrc(posMs) {
   if (!words?.length) return;
 
   const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
-  const lastWordEnd = Math.min(nextLineMs, words[words.length-1].ms + 1800);
+  // Last word ends when next line starts, capped to avoid runaway stretch
+  const lastWordEnd = Math.min(nextLineMs - 50, words[words.length-1].ms + 2200);
 
   for (let wi = 0; wi < words.length; wi++) {
     const wStart = words[wi].ms;
@@ -1450,10 +1768,146 @@ function tickLrc(posMs) {
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
     } else {
-      const pct = ((t - wStart) / (wEnd - wStart)) * 100;
-      _setLwState(id, 'now-word', pct.toFixed(1)+'%');
+      // Ease-in-out the fill so it feels natural, not robotic
+      const raw = (t - wStart) / (wEnd - wStart);
+      const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
+      _setLwState(id, 'now-word', (eased * 100).toFixed(1)+'%');
     }
   }
+}
+
+
+// ── ARTIST PROFILE ─────────────────────────────────────────────────────────
+const _artistCache = {};
+
+async function openArtistProfile(artistName, hintArt) {
+  showPanel('artist');
+  const inner = G('artist-panel-inner');
+  const bg = G('artist-bg');
+  const spinHTML = '<div class="artist-loading"><div style="width:18px;height:18px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0;"></div><span>Loading artist…</span></div>';
+  inner.innerHTML = spinHTML;
+  if (hintArt) { bg.style.backgroundImage = `url('${hintArt}')`; bg.classList.add('on'); }
+
+  const ck = artistName.toLowerCase().trim();
+  let cached = _artistCache[ck];
+  if (!cached) {
+    cached = await fetchArtistData(artistName);
+    _artistCache[ck] = cached;
+  }
+
+  const { tracks, artistImg } = cached;
+  const heroImg = artistImg || hintArt || tracks.find(t=>t.artworkUrl100)?.artworkUrl100 || '';
+  if (heroImg) { bg.style.backgroundImage = `url('${heroImg}')`; bg.classList.add('on'); }
+
+  renderArtistProfile(artistName, tracks, heroImg, inner);
+}
+
+async function fetchArtistData(artistName) {
+  let artistImg = null;
+  let artistId = null;
+  const al = artistName.toLowerCase();
+
+  // Step 1: Find iTunes artistId via entity search
+  const artistData = await itunesFetch(
+    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
+  );
+  if (artistData?.results) {
+    const match =
+      artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase() === al) ||
+      artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase().startsWith(al.split(' ')[0])) ||
+      artistData.results.find(r => r.wrapperType === 'artist');
+    if (match) artistId = match.artistId;
+  }
+
+  let tracks = [];
+
+  // Step 2: Lookup by artistId — gets full discography reliably
+  if (artistId) {
+    const ld = await itunesFetch(
+      `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`
+    );
+    tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
+  }
+
+  // Step 3: Fallback — direct search filtered to artist name
+  if (tracks.length < 3) {
+    const ld = await itunesFetch(
+      `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`
+    );
+    const extra = (ld?.results || []).filter(t =>
+      t.wrapperType === 'track' && t.kind === 'song' &&
+      t.artistName?.toLowerCase().includes(al.split(' ')[0])
+    );
+    // Merge, dedupe by trackId
+    const seen = new Set(tracks.map(t => t.trackId));
+    for (const t of extra) if (!seen.has(t.trackId)) { tracks.push(t); seen.add(t.trackId); }
+  }
+
+  // Sort by popularity (playCount not available, use trackNumber + collectionName as proxy)
+  // iTunes returns them roughly in popularity order already, keep that order.
+
+  // Artist hero image: use highest-res album art available — skip fanart.tv (unreliable)
+  const artTrack = tracks.find(t => t.artworkUrl100);
+  if (artTrack) artistImg = artTrack.artworkUrl100.replace('100x100bb', '600x600bb');
+
+  return { tracks: tracks.slice(0, 60), artistImg };
+}
+
+function renderArtistProfile(artistName, tracks, heroImg, container) {
+  const avatarHTML = heroImg
+    ? `<img src="${heroImg}" alt="" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\"font-size:36px\">🎤</span>'">`
+    : `<span style="font-size:36px">🎤</span>`;
+
+  const playAllId = 'apl_'+Math.random().toString(36).slice(2);
+  window['_apl_'+playAllId] = tracks.map(t=>({
+    title: t.trackName, artist: t.artistName||artistName,
+    artSm: t.artworkUrl100||null,
+    artLg: (t.artworkUrl100||'').replace('100x100bb','600x600bb')||null,
+  }));
+
+  const rowsHTML = tracks.length ? tracks.map((t, i) => {
+    const sm = t.artworkUrl100 || '';
+    const lg = sm.replace('100x100bb','600x600bb');
+    const artCell = sm ? `<img src="${sm}" data-src="${sm}" onerror="proxyImgFallback(this)" alt="">` : '🎵';
+    const id = 'apt_'+Math.random().toString(36).slice(2);
+    (window._td=window._td||{})[id] = {
+      title: t.trackName, artist: t.artistName||artistName,
+      artSm: sm||null, artLg: lg||null, durMs: t.trackTimeMillis||null,
+    };
+    return `<div class="artist-track-row" onclick="pickTrack('${id}')">
+      <div class="artist-track-num">${i+1}</div>
+      <div class="artist-track-art">${artCell}</div>
+      <div class="artist-track-inf">
+        <div class="artist-track-t">${x(t.trackName)}</div>
+        <div class="artist-track-alb">${x(t.collectionName||'')}</div>
+      </div>
+      <div class="artist-track-dur">${ms2t(t.trackTimeMillis||0)}</div>
+      <div class="artist-track-add" onclick="event.stopPropagation();pickTrack('${id}')"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
+    </div>`;
+  }).join('') : '<div class="artist-loading" style="padding:30px 0"><span>No tracks found</span></div>';
+
+  container.innerHTML = `
+    <div class="artist-hero">
+      <div class="artist-avatar">${avatarHTML}</div>
+      <div class="artist-hero-info">
+        <div class="artist-name-big">${x(artistName)}</div>
+        <div class="artist-meta">${tracks.length} song${tracks.length!==1?'s':''}</div>
+        <button class="artist-play-all" onclick="playAllArtist('_apl_${playAllId}')">▶ Play All</button>
+      </div>
+    </div>
+    <div class="artist-section-lbl">Songs</div>
+    ${rowsHTML}
+  `;
+}
+
+function playAllArtist(key) {
+  const tracks = window[key]; if (!tracks?.length) return;
+  ST.queue = []; ST.idx = -1;
+  G('q-list').innerHTML = '';
+  tracks.forEach(t => { const i = ST.queue.length; ST.queue.push({...t}); appendQI(t, i); });
+  loadTrack(0);
+  showPanel('queue');
+  toast('Playing artist');
 }
 
 document.addEventListener('keydown', e => {
