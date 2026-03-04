@@ -1169,7 +1169,7 @@ async function searchItunes(q) {
   const ql = q.toLowerCase().trim();
   const words = ql.split(/\s+/).filter(Boolean);
   const data = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US&explicit=Yes`
   );
   if (!data?.results?.length) return [];
   const results = data.results;
@@ -1707,7 +1707,7 @@ async function fetchArtistData(artistName) {
   // Step 1: get artistId + attribute tracks in parallel — all via itunesFetch (auto-proxied)
   const [artistData, attrData] = await Promise.all([
     itunesFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=5&country=US`),
-    itunesFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&attribute=artistTerm&limit=50&country=US`),
+    itunesFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&attribute=artistTerm&limit=50&country=US&explicit=Yes`),
   ]);
 
   // Extract artistId
@@ -1722,7 +1722,7 @@ async function fetchArtistData(artistName) {
 
   // Step 2: artistId lookup — popularity-sorted, different set — merge in
   if (artistId) {
-    const ld = await itunesFetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=50&country=US`);
+    const ld = await itunesFetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=50&country=US&explicit=Yes`);
     const lookupTracks = (ld?.results || []).filter(r => r.kind === 'song');
     for (const lt of lookupTracks) {
       const dup = tracks.some(t => t.trackName?.toLowerCase() === lt.trackName?.toLowerCase());
@@ -1732,7 +1732,7 @@ async function fetchArtistData(artistName) {
 
   // Step 3: still empty — plain search filtered to exact artist name
   if (!tracks.length) {
-    const ld = await itunesFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`);
+    const ld = await itunesFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US&explicit=Yes`);
     tracks = (ld?.results || []).filter(t => t.kind === 'song' && t.artistName?.toLowerCase() === al);
   }
 
