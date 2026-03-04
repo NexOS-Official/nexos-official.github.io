@@ -1,10 +1,3 @@
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -241,6 +234,12 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   filter:blur(1.5px);
   opacity:.85;
   font-size:26px;
+}
+.ll.near2{
+  color:rgba(255,255,255,0.32);
+  filter:blur(2.5px);
+  opacity:.6;
+  font-size:24px;
 }
 .ll.now{
   color:#ffffff;
@@ -673,6 +672,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         </div>
       </div>
 
+      <div id="lrc-offset-controls" style="position:absolute;bottom:62px;left:14px;z-index:10;display:none;flex-direction:column;gap:4px;align-items:center;">
+        <button onclick="_lrcOffset+=200" title="Lyrics too late" style="width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--border);color:var(--ink3);font-size:14px;cursor:pointer;display:grid;place-items:center;">−</button>
+        <button onclick="_lrcOffset-=200" title="Lyrics too early" style="width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--border);color:var(--ink3);font-size:14px;cursor:pointer;display:grid;place-items:center;">+</button>
+      </div>
       <div class="panel-nav">
         <button class="pnb" id="pnb-lyrics" title="Lyrics (L)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
@@ -726,8 +729,10 @@ function showPanel(name) {
   if (name === 'lyrics' && ST.lrcType === 'synced') {
     renderSynced();
     // Snap immediately to current playback position so lyrics aren't "off"
-    requestAnimationFrame(() => tickLrc(ST.pos));
+    requestAnimationFrame(() => tickLrc(getPrecisePos()));
   }
+  const offsetCtrl = G('lrc-offset-controls');
+  if (offsetCtrl) offsetCtrl.style.display = name === 'lyrics' ? 'flex' : 'none';
 
   G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
   G('pnb-likes').classList.toggle('active', name === 'likes');
@@ -971,6 +976,13 @@ function toast(msg){ const el=G('toast'); el.textContent=msg; el.classList.add('
 function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-status-txt').textContent=msg; }
 
 let YT_player = null, ytReady = false, ticker = null;
+// High-precision lyric sync: interpolate position between YT polls
+let _lastYtPollMs = 0, _lastYtPosMs = 0, _lrcOffset = 0;
+function getPrecisePos() {
+  // Interpolate between last real YT position and now using wall-clock
+  const wallElapsed = performance.now() - _lastYtPollMs;
+  return _lastYtPosMs + (ST.playing ? wallElapsed : 0);
+}
 
 window.onYouTubeIframeAPIReady = function() {
   YT_player = new YT.Player('yt-player', {
@@ -987,19 +999,34 @@ window.onYouTubeIframeAPIReady = function() {
           ST.playing = true; syncPP();
           G('cover-art').classList.add('playing');
           clearInterval(ticker);
-          ticker = setInterval(() => {
+          // Poll YT API every 250ms (cheap), interpolate position every rAF for smooth sync
+          let rafId = null;
+          const pollYT = () => {
             ST.pos = YT_player.getCurrentTime() * 1000;
             ST.dur = YT_player.getDuration() * 1000;
+            _lastYtPosMs = ST.pos + _lrcOffset;
+            _lastYtPollMs = performance.now();
             syncBar();
-            if (ST.lrcType === 'synced') tickLrc(ST.pos);
-          }, 30);
+          };
+          pollYT();
+          ticker = setInterval(pollYT, 250);
+          const rafLoop = () => {
+            if (!ST.playing) return;
+            if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
+            rafId = requestAnimationFrame(rafLoop);
+          };
+          ST._rafId = rafId;
+          requestAnimationFrame(rafLoop);
         } else if (e.data === YT.PlayerState.PAUSED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
           clearInterval(ticker);
+          if (ST._rafId) { cancelAnimationFrame(ST._rafId); ST._rafId = null; }
         } else if (e.data === YT.PlayerState.ENDED) {
+          ST.playing = false;
           G('cover-art').classList.remove('playing');
           clearInterval(ticker);
+          if (ST._rafId) { cancelAnimationFrame(ST._rafId); ST._rafId = null; }
           if (ST.repeat) { YT_player.seekTo(0); YT_player.playVideo(); }
           else nextTrack();
         }
@@ -1044,42 +1071,56 @@ async function findVideoIds(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
   if (ytCache[ck]?.length) return ytCache[ck];
 
-  const q = encodeURIComponent(artist + ' ' + title);
+  const q = encodeURIComponent(artist + ' ' + title + ' audio');
 
-  // Method 1: Invidious API — open-source YT frontend with public APIs
-  // These are community-run instances. We try several in case one is down.
+  // Race ALL Invidious instances simultaneously — first winner wins, much faster than serial
   const invidious = [
     'https://inv.nadeko.net',
     'https://invidious.privacyredirect.com',
     'https://iv.melmac.space',
     'https://invidious.nerdvpn.de',
     'https://yt.cdaut.de',
+    'https://invidious.io.lol',
+    'https://invidious.fdn.fr',
   ];
-  for (const host of invidious) {
-    try {
-      const r = await fetch(`${host}/api/v1/search?q=${q}&type=video`, { signal: AbortSignal.timeout(4000) });
-      if (r.ok) {
-        const d = await r.json();
-        const ids = (Array.isArray(d) ? d : []).map(v => v.videoId).filter(Boolean).slice(0,5);
-        if (ids.length) { ytCache[ck] = ids; return ids; }
-      }
-    } catch {}
-  }
 
-  // Method 2: CORS proxy scrape of youtube.com
+  // Helper: try one instance, resolve with ids or reject
+  const tryInv = host => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId`, {
+        signal: AbortSignal.timeout(3500)
+      });
+      if (!r.ok) return rej();
+      const d = await r.json();
+      const ids = (Array.isArray(d) ? d : []).map(v => v.videoId).filter(Boolean).slice(0, 6);
+      if (ids.length) res(ids); else rej();
+    } catch { rej(); }
+  });
+
+  // Promise.any — resolves as soon as the FIRST instance responds with results
+  try {
+    const ids = await Promise.any(invidious.map(tryInv));
+    ytCache[ck] = ids; return ids;
+  } catch {}
+
+  // Fallback: CORS proxy scrape — try both proxies in parallel
   const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(artist + ' ' + title + ' audio');
   const proxies = [
     u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
     u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
   ];
-  for (const proxy of proxies) {
+  const tryProxy = pfn => new Promise(async (res, rej) => {
     try {
-      const html = await fetch(proxy(ytUrl), { signal: AbortSignal.timeout(6000) }).then(r => r.text());
+      const html = await fetch(pfn(ytUrl), { signal: AbortSignal.timeout(5000) }).then(r => r.text());
       const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-      const ids = [...new Set(matches.map(m => m[1]))].slice(0, 5);
-      if (ids.length) { ytCache[ck] = ids; return ids; }
-    } catch {}
-  }
+      const ids = [...new Set(matches.map(m => m[1]))].slice(0, 6);
+      if (ids.length) res(ids); else rej();
+    } catch { rej(); }
+  });
+  try {
+    const ids = await Promise.any(proxies.map(tryProxy));
+    ytCache[ck] = ids; return ids;
+  } catch {}
 
   throw new Error('search failed');
 }
@@ -1169,7 +1210,7 @@ async function searchItunes(q) {
   const ql = q.toLowerCase().trim();
   const words = ql.split(/\s+/).filter(Boolean);
   const data = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US`
   );
   if (!data?.results?.length) return [];
   const results = data.results;
@@ -1382,18 +1423,32 @@ async function loadTrack(idx) {
   YT_player.loadVideoById(track.ytIds[track.ytTry]);
   fetchLyrics(track.title, track.artist);
 
-  // If no art yet (e.g. MusicBrainz source), fetch it now and update cover once resolved
+  // If no art yet (e.g. MusicBrainz source), fetch it now and update cover immediately when resolved
   if (!track.artSm && !track.artLg) {
-    const _refTrack = { artworkUrl100: null, _artLgOverride: null, _releaseMbid: track._releaseMbid, artistName: track.artist, trackName: track.title };
+    const _refTrack = {
+      artworkUrl100: null, _artLgOverride: null,
+      _releaseMbid: track._releaseMbid,
+      artistName: track.artist, trackName: track.title
+    };
     fetchCoverArt(_refTrack).then(() => {
-      if (_refTrack.artworkUrl100 && ST.queue[ST.idx] === track) {
-        track.artSm = _refTrack.artworkUrl100;
-        track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
-        updateNP(track);
-        // also patch queue thumbnail
-        const th = document.getElementById('qt' + idx);
-        if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
-      }
+      if (!_refTrack.artworkUrl100) return;
+      // Only update if this track is still the active one
+      if (ST.queue[ST.idx] !== track) return;
+      track.artSm = _refTrack.artworkUrl100;
+      track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
+      // Directly update every cover surface so nothing is stale
+      const artUrl = track.artLg || track.artSm;
+      G('cv-img').src = artUrl;
+      G('cv-img').setAttribute('data-src', artUrl);
+      G('cv-bg').src = artUrl;
+      G('cv-bg').classList.add('on');
+      G('cover-art').style.display = 'block';
+      const lrcBg = G('lrc-bg');
+      lrcBg.style.backgroundImage = `url('${artUrl}')`;
+      lrcBg.classList.add('on');
+      // Patch queue thumbnail
+      const th = document.getElementById('qt' + idx);
+      if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
     });
   }
 }
@@ -1462,17 +1517,21 @@ const wordSyncOn = true;
 
 async function fetchLyrics(title, artist) {
   ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
+  _lrcOffset = 0; // reset per-song drift correction
   const scroll=G('lscroll');
   G('lrc-empty-state').style.display='none';
   scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
   const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
   const ct=clean(title), ca=clean(artist);
-  for (const [t,a] of [[ct,ca],[title,artist]]) {
-    const d=await lrclibGET(t,a);
+
+  // Run both GET attempts in parallel for speed
+  const [r1, r2] = await Promise.all([lrclibGET(ct, ca), ct!==title||ca!==artist ? lrclibGET(title, artist) : Promise.resolve(null)]);
+  for (const d of [r1, r2]) {
     if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
   }
-  for (const [t,a] of [[ct,ca],[title,artist]]) {
-    const d=await lrclibSEARCH(t,a);
+  // Search fallback — also parallel
+  const [s1, s2] = await Promise.all([lrclibSEARCH(ct, ca), ct!==title||ca!==artist ? lrclibSEARCH(title, artist) : Promise.resolve(null)]);
+  for (const d of [s1, s2]) {
     if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
   }
   scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
@@ -1607,8 +1666,8 @@ function _setLwState(id, cls, pct) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  // Small lookahead so words light up right as they are sung (not after)
-  const AHEAD = 60;
+  // Lookahead: compensate for rendering lag — words light up exactly as sung
+  const AHEAD = 80;
   const t = posMs + AHEAD;
 
   // Binary search for active line
@@ -1623,14 +1682,18 @@ function tickLrc(posMs) {
     const prev = ST.lrcActive;
     ST.lrcActive = active;
 
-    document.querySelectorAll('#lscroll .ll').forEach((el, i) => {
-      el.classList.remove('now','past','near');
+    // Batch DOM updates — collect all lines once, update in one pass
+    const lines = document.querySelectorAll('#lscroll .ll');
+    lines.forEach((el, i) => {
+      el.classList.remove('now','past','near','near2');
       const dist = i - active;
       const absDist = Math.abs(dist);
       if (dist < 0) el.classList.add('past');
       else if (absDist === 1) el.classList.add('near');
+      else if (absDist === 2) el.classList.add('near2');
       if (i === active) el.classList.add('now');
-      el.style.filter = absDist >= 3 ? `blur(${Math.min(6, absDist)}px)` : '';
+      // Progressive blur: lines farther away blur more
+      el.style.filter = absDist >= 3 ? `blur(${Math.min(5, (absDist - 2) * 1.5).toFixed(1)}px)` : '';
     });
 
     document.getElementById('ll'+active)
@@ -1654,8 +1717,8 @@ function tickLrc(posMs) {
   if (!words?.length) return;
 
   const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
-  // Last word should end when the next line starts (but cap stretch to avoid runaway)
-  const lastWordEnd = Math.min(nextLineMs, words[words.length-1].ms + 1800);
+  // Last word ends when next line starts, capped to avoid runaway stretch
+  const lastWordEnd = Math.min(nextLineMs - 50, words[words.length-1].ms + 2200);
 
   for (let wi = 0; wi < words.length; wi++) {
     const wStart = words[wi].ms;
@@ -1667,8 +1730,10 @@ function tickLrc(posMs) {
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
     } else {
-      const pct = ((t - wStart) / (wEnd - wStart)) * 100;
-      _setLwState(id, 'now-word', pct.toFixed(1)+'%');
+      // Ease-in-out the fill so it feels natural, not robotic
+      const raw = (t - wStart) / (wEnd - wStart);
+      const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
+      _setLwState(id, 'now-word', (eased * 100).toFixed(1)+'%');
     }
   }
 }
