@@ -335,7 +335,7 @@ body{font-family:var(--font-body);color:var(--ink);-webkit-font-smoothing:antial
     </div>
     <div class="controls-wrap">
       <div class="np-line" id="np-line">
-        <div class="np-art-sm" id="np-art-sm">🎵</div>
+        <div class="np-art-sm" id="np-art-sm">N/A</div>
         <div class="np-txt">
           <div class="np-idle" id="np-idle">Nothing playing</div>
           <div class="np-title" id="np-ctrl-t" style="display:none"></div>
@@ -540,14 +540,14 @@ function tryRestoreSession(){
   const shouldPlay=s.wasPlaying!==false;
   if(track.ytIds?.length){
     setStatus('loading','Resuming…');
-    YT_player.cueVideoById(track.ytIds[track.ytTry||0],seekTo);
-    ST._pendingRestore={seekTo,shouldPlay};
+    if(shouldPlay){ST._restoreSeek=seekTo;YT_player.loadVideoById({videoId:track.ytIds[track.ytTry||0],startSeconds:Math.max(0,seekTo-1)});}
+    else{YT_player.cueVideoById(track.ytIds[track.ytTry||0],seekTo);ST._pendingRestore={seekTo,shouldPlay:false};}
   }else{
     setStatus('loading','Finding…');
     findVideoIds(track.artist,track.title).then(ids=>{
       track.ytIds=ids;track.ytTry=0;
-      YT_player.cueVideoById(ids[0],seekTo);
-      ST._pendingRestore={seekTo,shouldPlay};
+      if(shouldPlay){ST._restoreSeek=seekTo;YT_player.loadVideoById({videoId:ids[0],startSeconds:Math.max(0,seekTo-1)});}
+      else{YT_player.cueVideoById(ids[0],seekTo);ST._pendingRestore={seekTo,shouldPlay:false};}
       setStatus('ok','Ready');
     }).catch(()=>setStatus('err','Failed'));
   }
@@ -594,7 +594,7 @@ function renderLikes(){
   const el=G('likes-list');
   if(!likes.length){el.innerHTML='<div class="lk-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><p>No liked songs yet</p></div>';return;}
   el.innerHTML=likes.map((lk,i)=>`<div class="lk-row" onclick="playLikedSong(${i})">
-    <div class="lk-thumb">${lk.artSm?`<img src="${xe(lk.artSm)}" alt="">`:'🎵'}</div>
+    <div class="lk-thumb">${lk.artSm?`<img src="${xe(lk.artSm)}" alt="">`:'N/A'}</div>
     <div class="lk-inf"><div class="lk-t">${xe(lk.title)}</div><div class="lk-a">${xe(lk.artist)}</div></div>
     <button class="lk-rm" onclick="event.stopPropagation();unlikeAt(${i})" title="Unlike">×</button>
   </div>`).join('');
@@ -612,7 +612,7 @@ function renderPlaylists(){
   if(!playlists.length){el.innerHTML='<div class="lk-empty" style="height:60%;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;opacity:.18"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No playlists yet</p></div>';return;}
   el.innerHTML=playlists.map((pl,i)=>{
     const arts=pl.tracks.slice(0,4).map(t=>t.artSm).filter(Boolean);
-    const thumbHTML=arts.length>=4?`<div class="pl-cover-grid">${arts.map(a=>`<img src="${xe(a)}" alt="">`).join('')}</div>`:arts.length?`<img src="${xe(arts[0])}" alt="" style="width:100%;height:100%;object-fit:cover">`:'🎵';
+    const thumbHTML=arts.length>=4?`<div class="pl-cover-grid">${arts.map(a=>`<img src="${xe(a)}" alt="">`).join('')}</div>`:arts.length?`<img src="${xe(arts[0])}" alt="" style="width:100%;height:100%;object-fit:cover">`:'N/A';
     return`<div class="pl-card" onclick="openPlaylist(${i})">
       <div class="pl-cover">${thumbHTML}</div>
       <div class="pl-inf"><div class="pl-name">${xe(pl.name)}</div><div class="pl-count">${pl.tracks.length} song${pl.tracks.length!==1?'s':''}</div></div>
@@ -625,7 +625,7 @@ function renderPlaylistDetail(){
   const pl=playlists[activePlId];const el=G('pl-detail-list');
   if(!pl||!pl.tracks.length){el.innerHTML='<div class="lk-empty" style="height:50%;justify-content:center"><p style="font-size:11px;color:var(--ink3);text-align:center">No songs yet.<br>Right-click a queue item to add.</p></div>';return;}
   el.innerHTML=pl.tracks.map((t,i)=>`<div class="lk-row" onclick="playFromPlaylist(${i})">
-    <div class="lk-thumb">${t.artSm?`<img src="${xe(t.artSm)}" alt="">`:'🎵'}</div>
+    <div class="lk-thumb">${t.artSm?`<img src="${xe(t.artSm)}" alt="">`:'N/A'}</div>
     <div class="lk-inf"><div class="lk-t">${xe(t.title)}</div><div class="lk-a">${xe(t.artist)}</div></div>
     <button class="lk-rm" onclick="event.stopPropagation();removePlTrack(${i})" title="Remove">×</button>
   </div>`).join('');
@@ -683,7 +683,7 @@ function openAtpModal(track){
   else{
     listEl.innerHTML=playlists.map((pl,i)=>{
       const arts=pl.tracks.slice(0,1).map(t=>t.artSm).filter(Boolean);
-      const thumbHTML=arts.length?`<img src="${xe(arts[0])}" alt="">`:'🎵';
+      const thumbHTML=arts.length?`<img src="${xe(arts[0])}" alt="">`:'N/A';
       return`<div class="modal-pl-row" onclick="addToPlaylist(${i})">
         <div class="modal-pl-thumb">${thumbHTML}</div>
         <div class="modal-pl-name">${xe(pl.name)}</div>
@@ -726,14 +726,15 @@ window.onYouTubeIframeAPIReady=function(){
       },
       onStateChange(e){
         if(ST._pendingRestore&&(e.data===YT.PlayerState.CUED||e.data===YT.PlayerState.BUFFERING||e.data===YT.PlayerState.PAUSED)){
-          const{seekTo,shouldPlay}=ST._pendingRestore;
+          const{seekTo}=ST._pendingRestore;
           ST._pendingRestore=null;
           YT_player.seekTo(seekTo,true);
-          if(shouldPlay){YT_player.playVideo();}
-          else{ST.playing=false;syncPP();setTimeout(()=>{ST.pos=seekTo*1000;ST.dur=(YT_player.getDuration()||0)*1000;syncBar();},400);}
+          ST.playing=false;syncPP();
+          setTimeout(()=>{ST.pos=seekTo*1000;ST.dur=(YT_player.getDuration()||0)*1000;syncBar();},400);
           return;
         }
         if(e.data===YT.PlayerState.PLAYING){
+          if(ST._restoreSeek!=null){const s=ST._restoreSeek;ST._restoreSeek=null;YT_player.seekTo(s,true);}
           ST.playing=true;syncPP();G('cover-art').classList.add('playing');
           clearInterval(ticker);
           const pollYT=()=>{
@@ -888,7 +889,7 @@ function renderDrop(tracks){
     const aArt=(t.artworkUrl100||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const srcBadge=(t._source&&t._source!=='itunes')?` <span style="font-size:9px;opacity:.4;text-transform:uppercase;letter-spacing:.5px">[${t._source}]</span>`:'';
     return`<div class="di" onclick="pickTrack('${id}')">
-      <div class="di-art">${artSm?`<img src="${artSm}" data-src="${artSm}" onerror="proxyImgFallback(this)" alt="">`:'🎵'}</div>
+      <div class="di-art">${artSm?`<img src="${artSm}" data-src="${artSm}" onerror="proxyImgFallback(this)" alt="">`:'N/A'}</div>
       <div class="di-inf"><div class="di-t">${xe(t.trackName)}</div><div class="di-s"><span onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.2)">${xe(t.artistName)}</span>${t.collectionName?' · '+xe(t.collectionName):''}${srcBadge}</div></div>
       <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
@@ -937,7 +938,7 @@ function appendQI(track,i){
     <div class="qi-drag" title="Drag to reorder">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/></svg>
     </div>
-    <div class="qi-th ${track.artSm?'':'skel'}" id="qt${i}">${track.artSm?`<img src="${track.artSm}" data-src="${track.artSm}" onerror="proxyImgFallback(this)" alt="">`:'🎵'}</div>
+    <div class="qi-th ${track.artSm?'':'skel'}" id="qt${i}">${track.artSm?`<img src="${track.artSm}" data-src="${track.artSm}" onerror="proxyImgFallback(this)" alt="">`:'N/A'}</div>
     <div class="qi-inf"><div class="qi-t">${xe(track.title)}</div><div class="qi-a">${xe(track.artist)}</div></div>
     <button class="qi-rm" onclick="rmQI(event,${i})">×</button>
   `;
@@ -1041,7 +1042,7 @@ function updateNP(track){
   G('np-ctrl-a').textContent=track.artist;
   G('np-ctrl-a').onclick=()=>openArtistProfile(track.artist,track.artSm||'');
   const npArt=G('np-art-sm');
-  if(track.artSm){npArt.innerHTML=`<img src="${xe(track.artSm)}" alt="">`;}else{npArt.innerHTML='🎵';}
+  if(track.artSm){npArt.innerHTML=`<img src="${xe(track.artSm)}" alt="">`;}else{npArt.innerHTML='N/A';}
   const art=track.artLg||track.artSm;
   if(art){
     G('cv-img').src=art;G('cv-img').setAttribute('data-src',art);
@@ -1060,7 +1061,7 @@ function resetNP(){
   G('prog-f').style.width='0%';G('t-c').textContent='0:00';G('t-d').textContent='0:00';
   G('np-idle').style.display='block';
   G('np-ctrl-t').style.display='none';G('np-ctrl-a').style.display='none';
-  G('np-art-sm').innerHTML='🎵';
+  G('np-art-sm').innerHTML='N/A';
   ST.playing=false;syncPP();
 }
 
@@ -1255,7 +1256,7 @@ function renderArtistProfile(artistName,tracks,heroImg,container){
   window['_apl_'+playAllId]=tracks.map(t=>({title:t.trackName,artist:t.artistName||artistName,artSm:t.artworkUrl100||null,artLg:(t.artworkUrl100||'').replace('100x100bb','600x600bb')||null}));
   const rowsHTML=tracks.length?tracks.map((t,i)=>{
     const sm=t.artworkUrl100||'',lg=sm.replace('100x100bb','600x600bb');
-    const artCell=sm?`<img src="${sm}" data-src="${sm}" onerror="proxyImgFallback(this)" alt="">`:'🎵';
+    const artCell=sm?`<img src="${sm}" data-src="${sm}" onerror="proxyImgFallback(this)" alt="">`:'N/A';
     const id='apt_'+Math.random().toString(36).slice(2);
     (window._td=window._td||{})[id]={title:t.trackName,artist:t.artistName||artistName,artSm:sm||null,artLg:lg||null,durMs:t.trackTimeMillis||null};
     return`<div class="artist-track-row" onclick="pickTrack('${id}')">
