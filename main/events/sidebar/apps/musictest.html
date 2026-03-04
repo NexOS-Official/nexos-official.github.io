@@ -462,6 +462,57 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .st-dot.loading{background:var(--orange);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
+.artist-panel-bg{
+  position:absolute;inset:0;
+  background-size:cover;background-position:center top;
+  filter:blur(50px) saturate(1.4) brightness(.25);
+  transform:scale(1.2);
+  pointer-events:none;z-index:0;
+  opacity:0;transition:opacity .7s;
+}
+.artist-panel-bg.on{opacity:1}
+.artist-panel-inner{position:relative;z-index:1;padding:20px 18px 70px;}
+.artist-hero{display:flex;align-items:flex-end;gap:16px;margin-bottom:24px;}
+.artist-avatar{
+  width:90px;height:90px;border-radius:50%;
+  background:var(--s2);flex-shrink:0;overflow:hidden;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+  display:grid;place-items:center;font-size:32px;
+}
+.artist-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.artist-hero-info{flex:1;min-width:0}
+.artist-name-big{font-size:26px;font-weight:900;letter-spacing:-.5px;line-height:1.1}
+.artist-meta{font-size:12px;color:var(--ink3);margin-top:4px}
+.artist-play-all{
+  background:var(--pink);border:none;color:#fff;
+  font-size:12px;font-weight:700;padding:8px 18px;
+  border-radius:20px;cursor:pointer;margin-top:10px;
+  transition:transform .15s;
+}
+.artist-play-all:hover{transform:scale(1.05)}
+.artist-section-lbl{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--ink3);margin-bottom:10px;
+}
+.artist-track-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;border-radius:10px;cursor:pointer;
+  transition:background .12s;
+}
+.artist-track-row:hover{background:rgba(255,255,255,.07)}
+.artist-track-num{width:22px;text-align:right;font-size:12px;color:var(--ink3);flex-shrink:0}
+.artist-track-art{width:38px;height:38px;border-radius:6px;background:var(--s2);flex-shrink:0;overflow:hidden;display:grid;place-items:center;font-size:14px}
+.artist-track-art img{width:100%;height:100%;object-fit:cover;display:block}
+.artist-track-inf{flex:1;min-width:0}
+.artist-track-t{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.artist-track-alb{font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.artist-track-dur{font-size:11px;color:var(--ink3);flex-shrink:0}
+.artist-track-add{width:24px;height:24px;border-radius:50%;background:var(--pink);display:grid;place-items:center;flex-shrink:0;opacity:0;transition:opacity .14s;flex-shrink:0}
+.artist-track-add svg{width:12px;height:12px;fill:#fff}
+.artist-track-row:hover .artist-track-add{opacity:1}
+.artist-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--ink3);font-size:13px}
+.artist-loading .spin{display:block !important}
+
 @media(max-width:768px){
   .app{flex-direction:column;padding:10px;gap:10px}
   .left{width:100%;flex-direction:row;gap:10px;flex-shrink:0;height:auto}
@@ -609,6 +660,18 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 
 
+      <div class="side-panel" id="artist-panel" style="padding:0;overflow:hidden;">
+        <div class="artist-panel-bg" id="artist-bg"></div>
+        <div style="position:absolute;top:12px;left:12px;z-index:10;">
+          <button class="pl-back" id="artist-back" onclick="showPanel('queue')" style="background:rgba(0,0,0,.4);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+        </div>
+        <div class="lrc-scroll-outer" style="z-index:1;padding-top:16px;">
+          <div class="artist-panel-inner" id="artist-panel-inner">
+            <div class="artist-loading"><div class="spin"></div><span>Loading artist…</span></div>
+          </div>
+        </div>
+      </div>
+
       <div class="panel-nav">
         <button class="pnb" id="pnb-lyrics" title="Lyrics (L)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
@@ -657,6 +720,7 @@ function showPanel(name) {
   G('likes-panel').classList.toggle('active', name === 'likes');
   G('playlists-panel').classList.toggle('active', name === 'playlists');
   G('pl-detail-panel').classList.toggle('active', name === 'pl-detail');
+  G('artist-panel').classList.toggle('active', name === 'artist');
 
   if (name === 'lyrics' && ST.lrcType === 'synced') {
     renderSynced();
@@ -909,7 +973,7 @@ window.onYouTubeIframeAPIReady = function() {
             ST.dur = YT_player.getDuration() * 1000;
             syncBar();
             if (ST.lrcType === 'synced') tickLrc(ST.pos);
-          }, 50);
+          }, 30);
         } else if (e.data === YT.PlayerState.PAUSED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
@@ -1127,7 +1191,7 @@ function renderDrop(tracks) {
     (window._td=window._td||{})[id] = data;
     return `<div class="di" onclick="pickTrack('${id}')">
       <div class="di-art">${artSm?`<img src="${artSm}" alt="">`:'🎵'}</div>
-      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s">${x(t.artistName)}${t.collectionName?' · '+x(t.collectionName):''}${t._source&&t._source!=='itunes'?' <span style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.5px">['+t._source+']</span>':''}</div></div>
+      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile(t.artistName,t.artworkUrl100||\'\')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName?' · '+x(t.collectionName):''}${t._source&&t._source!=='itunes'?' <span style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.5px">['+t._source+']</span>':''}</div></div>
       <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
@@ -1220,6 +1284,8 @@ function updateNP(track) {
   G('cover-info').style.display='block';
   G('np-t').textContent=track.title;
   G('np-a').textContent=track.artist;
+  G('np-a').style.cursor='pointer';
+  G('np-a').onclick=()=>openArtistProfile(track.artist, track.artSm||'');
   const art = track.artLg || track.artSm;
   if(art){
     G('cv-img').src=art;
@@ -1306,8 +1372,18 @@ function parseLRC(rawStr) {
     const m = line.match(/^\[(\d{1,3}):(\d{2}(?:\.\d+)?)\](.*)/);
     if (!m) return null;
     const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
-    const text = m[3].replace(/<[^>]+>/g,'').trim();
-    return { ms, text };
+    const raw = m[3];
+
+    const wTagRe = /<(\d{1,3}):(\d{2}\.\d+)>([^<]*)/g;
+    let wm; const wTimed = [];
+    while ((wm = wTagRe.exec(raw)) !== null) {
+      const wMs = parseInt(wm[1])*60000 + parseFloat(wm[2])*1000;
+      const word = wm[3].trim();
+      if (word) wTimed.push({ ms: wMs, word });
+    }
+
+    const text = raw.replace(/<[^>]+>/g,'').trim();
+    return { ms, text, _wordTimed: wTimed.length > 0 ? wTimed : null };
   }).filter(Boolean);
 }
 
@@ -1326,18 +1402,25 @@ function buildWordTimings(lrc) {
     const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
     const duration = Math.max(400, nextMs - lineMs - 80);
     const rawWords = line.text.split(/\s+/).filter(Boolean);
+
     if (!rawWords.length) {
       const gapMs = Math.max(400, nextMs - lineMs);
       const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
       return { ...line, words: [], beatDur };
     }
+
+    if (line._wordTimed?.length) {
+      return { ...line, words: line._wordTimed };
+    }
+
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a,b)=>a+b, 0);
-    const usable = duration * 0.92;
+    const usable = duration * 0.90;
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
-      cursor += (syls[wi] / totalSyls) * usable;
+      const weight = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
+      cursor += (weight / syls.reduce((a,b,j)=>a+(b*(rawWords[j].replace(/[^a-z]/gi,'').length<=3?0.7:1)),0)) * usable;
       return { ms: wordMs, word };
     });
     return { ...line, words };
@@ -1429,7 +1512,7 @@ function tickLrc(posMs) {
     }
     (ST.lrc[active]?.words || []).forEach((w, wi) => {
       const id = 'lw'+active+'_'+wi;
-      delete _lwState[id];
+      delete _lwState[id]; 
       _setLwState(id, 'upcoming', '0%');
     });
   }
@@ -1454,6 +1537,103 @@ function tickLrc(posMs) {
       _setLwState(id, 'now-word', pct.toFixed(1)+'%');
     }
   }
+}
+
+
+const _artistCache = {};
+
+async function openArtistProfile(artistName, hintArt) {
+  showPanel('artist');
+  const inner = G('artist-panel-inner');
+  const bg = G('artist-bg');
+  inner.innerHTML = '<div class="artist-loading"><div class="spin" style="display:block !important;width:18px;height:18px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;"></div><span>Loading artist…</span></div>';
+  bg.style.backgroundImage = hintArt ? `url('${hintArt}')` : '';
+  bg.classList.toggle('on', !!hintArt);
+
+  const ck = artistName.toLowerCase().trim();
+  let tracks = _artistCache[ck];
+  if (!tracks) {
+    tracks = await fetchArtistTracks(artistName);
+    _artistCache[ck] = tracks;
+  }
+
+  const artImg = tracks.find(t => t.artSm)?.artSm || hintArt || '';
+  if (artImg) {
+    bg.style.backgroundImage = `url('${artImg}')`;
+    bg.classList.add('on');
+  }
+
+  renderArtistProfile(artistName, tracks, artImg, inner);
+}
+
+async function fetchArtistTracks(artistName) {
+  const results = await Promise.allSettled([
+    fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&attribute=artistTerm&country=US`).then(r=>r.json()).then(d=>d.results||[]).catch(()=>[]),
+    fetch(`https://musicbrainz.org/ws/2/recording/?query=artist:${encodeURIComponent(artistName)}&limit=25&fmt=json`,{headers:{'User-Agent':'GhostMusic/1.0 (ghost@music.app)'}}).then(r=>r.json()).then(d=>(d.recordings||[]).map(r=>({trackName:r.title,artistName:(r['artist-credit']?.[0]?.artist?.name||artistName),collectionName:r.releases?.[0]?.title||'',artworkUrl100:null,trackTimeMillis:r.length||null,_source:'musicbrainz',_releaseMbid:r.releases?.[0]?.id||null}))).catch(()=>[]),
+  ]);
+
+  let itunes = results[0].status==='fulfilled' ? results[0].value : [];
+  let mb = results[1].status==='fulfilled' ? results[1].value : [];
+
+  const al = artistName.toLowerCase();
+  itunes = itunes.filter(t => t.artistName?.toLowerCase() === al || t.artistName?.toLowerCase().includes(al));
+
+  for (const t of mb) {
+    const dup = itunes.some(e => e.trackName?.toLowerCase() === t.trackName?.toLowerCase());
+    if (!dup) itunes.push(t);
+  }
+
+  return itunes.slice(0, 40);
+}
+
+function renderArtistProfile(artistName, tracks, artImg, container) {
+  const artHTML = artImg
+    ? `<img src="${artImg}" alt="" onerror="this.style.display='none'">`
+    : `<span style="font-size:36px">🎤</span>`;
+
+  const rowsHTML = tracks.length ? tracks.map((t, i) => {
+    const sm = t.artworkUrl100 || t.artSm || '';
+    const artCell = sm ? `<img src="${sm}" alt="">` : '🎵';
+    const id = 'apt_'+Math.random().toString(36).slice(2);
+    const td = { title: t.trackName, artist: t.artistName||artistName, artSm: sm||null, artLg: (t._artLgOverride||sm.replace('100x100bb','600x600bb'))||null, durMs: t.trackTimeMillis||null, _releaseMbid: t._releaseMbid||null };
+    (window._td=window._td||{})[id] = td;
+    return `<div class="artist-track-row" onclick="pickTrack('${id}')">
+      <div class="artist-track-num">${i+1}</div>
+      <div class="artist-track-art">${artCell}</div>
+      <div class="artist-track-inf">
+        <div class="artist-track-t">${x(t.trackName)}</div>
+        <div class="artist-track-alb">${x(t.collectionName||'')}</div>
+      </div>
+      <div class="artist-track-dur">${ms2t(t.trackTimeMillis||0)}</div>
+      <div class="artist-track-add" onclick="event.stopPropagation();pickTrack('${id}')"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
+    </div>`;
+  }).join('') : '<div class="artist-loading"><span>No tracks found</span></div>';
+
+  const playAllId = 'apl_'+Math.random().toString(36).slice(2);
+  window['_apl_'+playAllId] = tracks.map((t,i)=>({title:t.trackName,artist:t.artistName||artistName,artSm:t.artworkUrl100||null,artLg:t._artLgOverride||null,_releaseMbid:t._releaseMbid||null}));
+
+  container.innerHTML = `
+    <div class="artist-hero">
+      <div class="artist-avatar">${artHTML}</div>
+      <div class="artist-hero-info">
+        <div class="artist-name-big">${x(artistName)}</div>
+        <div class="artist-meta">${tracks.length} track${tracks.length!==1?'s':''} found</div>
+        <button class="artist-play-all" onclick="playAllArtist('_apl_${playAllId}')">▶ Play All</button>
+      </div>
+    </div>
+    <div class="artist-section-lbl">Songs</div>
+    ${rowsHTML}
+  `;
+}
+
+function playAllArtist(key) {
+  const tracks = window[key]; if (!tracks?.length) return;
+  ST.queue = []; ST.idx = -1;
+  G('q-list').innerHTML = '';
+  tracks.forEach(t => { const i = ST.queue.length; ST.queue.push({...t}); appendQI(t, i); });
+  loadTrack(0);
+  showPanel('queue');
+  toast('Playing artist radio');
 }
 
 document.addEventListener('keydown', e => {
