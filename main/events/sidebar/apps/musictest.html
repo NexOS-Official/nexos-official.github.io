@@ -1139,18 +1139,26 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
-// Reliable iTunes fetch — tries direct, falls back to CORS proxy automatically
+// iTunes fetch — tries direct + 3 CORS proxies all in parallel, first winner wins
 async function itunesFetch(url) {
-  try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (r.ok) return await r.json();
-  } catch(e) { console.warn('iTunes direct:', e.message); }
-  // Proxy fallback
-  try {
-    const r = await fetch('https://corsproxy.io/?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(6000) });
-    if (r.ok) return await r.json();
-  } catch(e) { console.warn('iTunes proxy:', e.message); }
-  return null;
+  const tryUrl = u => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(u, { signal: AbortSignal.timeout(6000) });
+      if (!r.ok) return rej('status ' + r.status);
+      const j = await r.json();
+      if (j && (j.results !== undefined || j.artistId !== undefined)) res(j); else rej('bad json');
+    } catch(e) { rej(e.message); }
+  });
+
+  const enc = encodeURIComponent(url);
+  const attempts = [
+    tryUrl(url),
+    tryUrl('https://corsproxy.io/?url=' + enc),
+    tryUrl('https://api.allorigins.win/raw?url=' + enc),
+    tryUrl('https://api.codetabs.com/v1/proxy?quest=' + enc),
+  ];
+
+  try { return await Promise.any(attempts); } catch { return null; }
 }
 
 async function doSearch(q) {
@@ -1158,27 +1166,29 @@ async function doSearch(q) {
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
 
-  // iTunes ALWAYS first — render immediately as soon as it returns
+  // iTunes ALWAYS first and always on top — never show MB until iTunes resolves
   const itunesTracks = await searchItunes(q);
   qSpn.style.display='none';
 
   if (itunesTracks.length) {
+    // iTunes found results — show them immediately
     renderDrop(itunesTracks, []);
-  }
 
-  // MB runs after — results always appended below iTunes, never above
-  searchMusicBrainz(q).then(mbTracks => {
-    const newMb = mbTracks.filter(mb =>
-      !itunesTracks.some(it =>
-        it.trackName.toLowerCase() === mb.trackName.toLowerCase() &&
-        it.artistName.toLowerCase() === mb.artistName.toLowerCase()
-      )
-    );
-    if (newMb.length) renderDrop(itunesTracks, newMb);
-  }).catch(() => {});
+    // Then append MB-only results below as supplemental
+    searchMusicBrainz(q).then(mbTracks => {
+      const newMb = mbTracks.filter(mb =>
+        !itunesTracks.some(it =>
+          it.trackName.toLowerCase() === mb.trackName.toLowerCase() &&
+          it.artistName.toLowerCase() === mb.artistName.toLowerCase()
+        )
+      );
+      if (newMb.length) renderDrop(itunesTracks, newMb);
+    }).catch(() => {});
 
-  if (!itunesTracks.length) {
-    qDrp.innerHTML='<div class="drop-msg">No results found</div>';
+  } else {
+    // iTunes completely failed — show a clear error, no MB fallback
+    // (MB showing as primary results is confusing and low quality)
+    qDrp.innerHTML = '<div class="drop-msg">⚠ Search unavailable — check your connection and try again</div>';
   }
 }
 
