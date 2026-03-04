@@ -5,6 +5,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -549,7 +550,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 </head>
 <body>
 
-<div id="yt-host"><iframe id="yt-iframe" allow="autoplay" allowfullscreen style="width:1px;height:1px;position:fixed;left:-9999px;top:-9999px;pointer-events:none;border:none;" src="about:blank"></iframe></div>
+<audio id="audio-el" preload="auto" crossorigin="anonymous"></audio>
 <div class="toast" id="toast"></div>
 
 <div class="app">
@@ -731,10 +732,8 @@ function showPanel(name) {
 
   if (name === 'lyrics' && ST.lrcType === 'synced') {
     renderSynced();
-    // Snap immediately to current playback position so lyrics aren't "off"
-    requestAnimationFrame(() => tickLrc(getPrecisePos()));
+    requestAnimationFrame(() => tickLrc(audioEl.currentTime * 1000));
   }
-
 
   G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
   G('pnb-likes').classList.toggle('active', name === 'likes');
@@ -970,6 +969,9 @@ const ST = {
   lrc:[], lrcType:'none', lrcActive:-1,
 };
 
+const audioEl = document.getElementById('audio-el');
+let playerReady = true; // HTML5 audio is always ready
+
 function G(id){ return document.getElementById(id); }
 function ms2t(ms){ if(!ms||ms<0)return'0:00'; const s=Math.floor(ms/1000); return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
 function x(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -978,9 +980,8 @@ function toast(msg){ const el=G('toast'); el.textContent=msg; el.classList.add('
 function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-status-txt').textContent=msg; }
 
 // Universal proxy-aware fetch — tries direct first, then multiple CORS proxies
-// Works even when school blocks the target domain directly
 const PROXIES = [
-  u => u, // direct
+  u => u,
   u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
   u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
   u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
@@ -994,150 +995,159 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
       if (r.ok) res(r); else rej(r.status);
     } catch(e) { rej(e); }
   });
-  // Fire all in parallel, return first success
   return Promise.any(PROXIES.map(tryOne));
 }
 
-// ── YouTube postMessage player ─────────────────────────────────────────────
-let ytReady = false, ticker = null;
-let _lastYtPollMs = 0, _lastYtPosMs = 0;
-let _ytCurrentVideoId = null;
-let _ytState = -1; // -1=unstarted, 1=playing, 2=paused, 0=ended
+// ── HTML5 AUDIO ENGINE (no YouTube dependency) ──────────────────────────
+// Uses Invidious / Piped proxy instances to get direct audio stream URLs
+// These are NOT blocked by school filters since they're on random domains
 
-function getPrecisePos() {
-  const elapsed = performance.now() - _lastYtPollMs;
-  return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 350) : 0);
+const INVIDIOUS_INSTANCES = [
+  'https://inv.nadeko.net',
+  'https://invidious.privacyredirect.com',
+  'https://yt.cdaut.de',
+  'https://iv.melmac.space',
+  'https://invidious.nerdvpn.de',
+  'https://inv.tux.pizza',
+  'https://invidious.protokoll-11.de',
+  'https://invidious.materialio.us',
+];
+
+const PIPED_INSTANCES = [
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.adminforge.de',
+  'https://api.piped.projectsegfau.lt',
+  'https://pipedapi.in.projectsegfau.lt',
+  'https://pipedapi.leptons.xyz',
+];
+
+// Try to get audio stream URL from Invidious
+async function getAudioFromInvidious(videoId) {
+  const tryInstance = host => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(`${host}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`, {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!r.ok) return rej();
+      const data = await r.json();
+      // Look for audio-only adaptive formats first
+      const audioFormats = (data.adaptiveFormats || [])
+        .filter(f => f.type?.startsWith('audio/'))
+        .sort((a,b) => (b.bitrate||0) - (a.bitrate||0));
+      if (audioFormats.length) {
+        // Prefer audio/mp4 or audio/webm
+        const mp4 = audioFormats.find(f => f.type?.includes('mp4'));
+        const best = mp4 || audioFormats[0];
+        return res(best.url);
+      }
+      // Fall back to format streams (video+audio combined)
+      const streams = data.formatStreams || [];
+      if (streams.length) return res(streams[0].url);
+      rej();
+    } catch { rej(); }
+  });
+  return Promise.any(INVIDIOUS_INSTANCES.map(tryInstance));
 }
 
-function ytCmd(func, args) {
-  const iframe = G('yt-iframe');
-  if (!iframe?.contentWindow) return;
-  iframe.contentWindow.postMessage(JSON.stringify({ event:'command', func, args: args||[] }), '*');
+// Try to get audio stream URL from Piped
+async function getAudioFromPiped(videoId) {
+  const tryInstance = host => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(`${host}/streams/${videoId}`, {
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!r.ok) return rej();
+      const data = await r.json();
+      // Piped returns audioStreams array
+      const audioStreams = (data.audioStreams || [])
+        .filter(s => s.url)
+        .sort((a,b) => (b.bitrate||0) - (a.bitrate||0));
+      if (audioStreams.length) {
+        const mp4 = audioStreams.find(s => s.mimeType?.includes('mp4') || s.codec?.includes('mp4a'));
+        const best = mp4 || audioStreams[0];
+        return res(best.url);
+      }
+      rej();
+    } catch { rej(); }
+  });
+  return Promise.any(PIPED_INSTANCES.map(tryInstance));
 }
 
-function ytLoad(videoId) {
-  const iframe = G('yt-iframe');
-  if (!iframe) return;
-  _ytCurrentVideoId = videoId;
-  _ytState = -1;
-  ST.dur = 0;
-  _lastYtPosMs = 0;
-  _lastYtPollMs = performance.now();
-  // Stop any existing playback cleanly
-  clearInterval(ticker);
-  ST._rafRunning = false;
-  ST.playing = false;
-  iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&enablejsapi=1&playsinline=1`;
-  setStatus('loading', 'Loading…');
+// Master function: try all methods to get a playable audio URL
+async function getAudioStreamUrl(videoId) {
+  // Race Invidious and Piped simultaneously
+  try {
+    return await Promise.any([
+      getAudioFromInvidious(videoId),
+      getAudioFromPiped(videoId),
+    ]);
+  } catch {
+    throw new Error('All audio sources failed');
+  }
 }
 
-function ytPlay()  { ytCmd('playVideo'); }
-function ytPause() { ytCmd('pauseVideo'); }
-function ytSeek(s) { ytCmd('seekTo', [s, true]); _lastYtPosMs = s * 1000; _lastYtPollMs = performance.now(); }
-function ytVol(v)  { ytCmd('setVolume', [Math.round(v * 100)]); }
+// ── Audio element event handlers ──────────────────────────────────────
+audioEl.volume = ST.vol;
 
-window.addEventListener('message', e => {
-  if (!e.data) return;
-  let d;
-  try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
-  if (!d) return;
-
-  // onStateChange — numeric state in d.info
-  if (d.event === 'onStateChange' && typeof d.info === 'number') {
-    const newState = d.info;
-    if (newState === _ytState) return; // ignore duplicate state events
-    _ytState = newState;
-    if (newState === 1) _onYtPlaying();
-    else if (newState === 2) _onYtPaused();
-    else if (newState === 0) _onYtEnded();
-    else if (newState === 5) ytPlay(); // cued → play
-  }
-
-  // infoDelivery — time/duration updates, NO state changes handled here
-  if (d.event === 'infoDelivery' && d.info && typeof d.info === 'object') {
-    if (d.info.currentTime !== undefined && ST.playing) {
-      _lastYtPosMs = d.info.currentTime * 1000;
-      _lastYtPollMs = performance.now();
-    }
-    if (d.info.duration > 0) ST.dur = d.info.duration * 1000;
-  }
-
-  if (d.event === 'onError') {
-    const track = ST.queue[ST.idx];
-    if (track?.ytIds?.length > (track.ytTry || 0) + 1) {
-      track.ytTry = (track.ytTry || 0) + 1;
-      ytLoad(track.ytIds[track.ytTry]);
-    } else {
-      setStatus('err', 'Video unavailable');
-      toast('⚠ Video unavailable — try another');
-    }
-  }
-});
-
-function _onYtPlaying() {
+audioEl.addEventListener('playing', () => {
   ST.playing = true; syncPP();
   G('cover-art').classList.add('playing');
-  setStatus('ok', 'Ready');
-  clearInterval(ticker);
-  ticker = setInterval(() => {
-    if (!ST.playing) return;
-    // Advance position by wall clock between infoDelivery updates
-    const elapsed = performance.now() - _lastYtPollMs;
-    ST.pos = _lastYtPosMs + elapsed;
-    ST.dur = ST.dur || 240000;
-    syncBar();
-  }, 250);
   if (!ST._rafRunning) {
     ST._rafRunning = true;
     const rafLoop = () => {
       if (!ST._rafRunning) return;
-      if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
+      ST.pos = audioEl.currentTime * 1000;
+      ST.dur = audioEl.duration * 1000 || 0;
+      syncBar();
+      if (ST.lrcType === 'synced') tickLrc(audioEl.currentTime * 1000);
       requestAnimationFrame(rafLoop);
     };
     requestAnimationFrame(rafLoop);
   }
-}
-function _onYtPaused() {
+});
+
+audioEl.addEventListener('pause', () => {
   ST.playing = false; syncPP();
   G('cover-art').classList.remove('playing');
-  clearInterval(ticker);
   ST._rafRunning = false;
-}
-function _onYtEnded() {
+});
+
+audioEl.addEventListener('ended', () => {
   ST.playing = false; syncPP();
   G('cover-art').classList.remove('playing');
-  clearInterval(ticker);
   ST._rafRunning = false;
-  if (ST.repeat) ytLoad(_ytCurrentVideoId);
+  if (ST.repeat) { audioEl.currentTime = 0; audioEl.play(); }
   else nextTrack();
+});
+
+audioEl.addEventListener('error', () => {
+  const track = ST.queue[ST.idx];
+  if (track?.ytIds?.length > (track.ytTry||0) + 1) {
+    track.ytTry = (track.ytTry||0) + 1;
+    playVideoId(track.ytIds[track.ytTry]);
+  } else {
+    setStatus('err', 'Audio unavailable');
+    toast('Could not load audio — try another track');
+  }
+});
+
+async function playVideoId(videoId) {
+  setStatus('loading', 'Getting audio…');
+  try {
+    const url = await getAudioStreamUrl(videoId);
+    audioEl.src = url;
+    audioEl.load();
+    await audioEl.play();
+    setStatus('ok', 'Playing');
+  } catch {
+    // If direct stream fails, try proxying the stream URL
+    setStatus('err', 'Audio failed');
+    toast('Could not get audio stream');
+  }
 }
 
-const YT_player = {
-  loadVideoById: id => ytLoad(id),
-  playVideo:     () => ytPlay(),
-  pauseVideo:    () => ytPause(),
-  seekTo:        s  => ytSeek(s),
-  setVolume:     v  => ytVol(v / 100),
-  getCurrentTime:() => getPrecisePos() / 1000,
-  getDuration:   () => ST.dur / 1000,
-};
-
-(function initYouTube() {
-  setStatus('loading', 'Connecting…');
-  const iframe = G('yt-iframe');
-  // Load a real video silently to verify iframe works
-  iframe.addEventListener('load', () => {
-    if (iframe.src && iframe.src !== 'about:blank' && !ytReady) {
-      ytReady = true;
-      ytVol(ST.vol);
-      setStatus('ok', 'Ready');
-    }
-  });
-  // Pre-warm with a short silent test — if this loads, YT embeds work
-  iframe.src = 'https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?enablejsapi=1&mute=1&autoplay=0';
-  // After 6s if still not ok, mark as blocked
-  setTimeout(() => { if (!ytReady) setStatus('err', 'YouTube blocked'); }, 8000);
-})();
+// Initialize — no YouTube script needed!
+setStatus('ok', 'Ready');
 
 const ytCache = {};
 
@@ -1480,11 +1490,6 @@ function markQI(idx) {
 
 async function loadTrack(idx) {
   if (idx < 0 || idx >= ST.queue.length) return;
-  if (!ytReady) {
-    setStatus('err', 'YouTube blocked');
-    toast('⚠ YouTube is blocked on this network. Try a personal device or hotspot.');
-    return;
-  }
   ST.idx = idx;
   const track = ST.queue[idx];
   markQI(idx); updateNP(track); syncHeartBtn();
@@ -1503,7 +1508,7 @@ async function loadTrack(idx) {
     }
   }
 
-  YT_player.loadVideoById(track.ytIds[track.ytTry]);
+  playVideoId(track.ytIds[track.ytTry || 0]);
   fetchLyrics(track.title, track.artist);
 
   // If no art yet (e.g. MusicBrainz source), fetch it now and update cover immediately when resolved
@@ -1565,8 +1570,8 @@ function resetNP() {
   ST.playing=false; syncPP();
 }
 
-function togglePlay() { if(!ytReady||ST.idx<0)return; ST.playing?YT_player.pauseVideo():YT_player.playVideo(); }
-function prevTrack() { if(!ST.queue.length)return; if(ST.pos>3000){YT_player.seekTo(0);return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
+function togglePlay() { if(ST.idx<0)return; ST.playing?audioEl.pause():audioEl.play().catch(()=>{}); }
+function prevTrack() { if(!ST.queue.length)return; if(ST.pos>3000){audioEl.currentTime=0;return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
 function nextTrack() { if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
 function rnd() { return Math.floor(Math.random()*ST.queue.length); }
 function syncPP() { G('pp-ico').innerHTML=ST.playing?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>'; }
