@@ -1064,14 +1064,21 @@ function _setMixingUI(on) {
 }
 
 function _cancelXfade() {
-  if (_swapping) return; // mid-swap — don't interfere
+  if (_swapping) return;
   if (_xfAnimId) { cancelAnimationFrame(_xfAnimId); _xfAnimId = null; }
   _xfading = false;
   _lrcLocked = false;
   try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
   try { _bench().setVolume(0); } catch {}
   const sc = G('lscroll');
-  if (sc) { sc.style.transition = 'filter 0.6s ease'; sc.style.filter = ''; }
+  if (sc) {
+    sc.style.transition = 'filter 0.5s ease';
+    sc.style.filter = '';
+    // Clear any inline filters stuck on individual lyric lines
+    sc.querySelectorAll('.ll').forEach(el => { el.style.filter = ''; });
+  }
+  // Force tickLrc to fully re-render line states
+  ST.lrcActive = -1;
   _setMixingUI(false);
 }
 
@@ -1171,8 +1178,18 @@ function _startRepeatCrossfade(videoId) {
       try { oldMain.setVolume(0); oldMain.pauseVideo(); } catch {}
       _lastYtPosMs  = (_main().getCurrentTime?.() ?? LOOP_BACK_S) * 1000;
       _lastYtPollMs = performance.now();
-      if (sc) { sc.style.transition = 'filter 0.6s ease'; sc.style.filter = ''; }
+
+      // Clear lscroll container blur
+      if (sc) { sc.style.transition = 'filter 0.5s ease'; sc.style.filter = ''; }
       _setMixingUI(false);
+
+      // Clear ALL inline filters on individual lyric lines — they were set
+      // during the snap and tickLrc only re-clears them when active line changes,
+      // so if the active line is already correct they'd stay blurred forever.
+      document.querySelectorAll('#lscroll .ll').forEach(el => { el.style.filter = ''; });
+      // Force tickLrc to re-render by invalidating lrcActive
+      ST.lrcActive = -1;
+
       setTimeout(() => { _swapping = false; }, 400);
       clearInterval(ticker);
       ticker = setInterval(_tickerFn, 250);
