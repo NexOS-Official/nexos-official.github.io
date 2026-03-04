@@ -551,7 +551,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 </head>
 <body>
 
-<div id="yt-host"><div id="yt-player"></div></div>
+<div id="yt-host"><div id="yt-player"></div><div id="yt-player-b"></div></div>
 <div class="toast" id="toast"></div>
 
 <div class="app">
@@ -1000,105 +1000,148 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
   return Promise.any(PROXIES.map(tryOne));
 }
 
-let YT_player = null, ytReady = false, ticker = null;
+// ── Dual-player crossfade system ──────────────────────────────────────────────
+// Two hidden YT iframes: one plays (main), one pre-loads (bench).
+// On repeat, bench loads the same video at LOOP_BACK_S, then we crossfade
+// volumes between them so the song genuinely overlaps itself — real crossfade,
+// not a fake fade-out/seek/fade-in on a single player.
+
+let YT_player = null, YT_playerB = null;
+let ytReady = false, ytReadyB = false;
+let ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
-let _xfading = false; // true while crossfade-repeat is in progress
+let _xfading = false, _xfAnimId = null;
+let _activePlayer = 'A'; // which player is currently driving UI
+
+function _main()  { return _activePlayer === 'A' ? YT_player  : YT_playerB; }
+function _bench() { return _activePlayer === 'A' ? YT_playerB : YT_player;  }
 
 function getPrecisePos() {
   const elapsed = performance.now() - _lastYtPollMs;
   return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
 }
 
-// ── Crossfade-repeat helpers ──────────────────────────────────────────────────
-// FADE_DUR: how long (ms) the fade-out + seek + fade-in takes total
-// FADE_OUT: portion spent fading out before seek
-// LOOP_BACK_S: how many seconds into the song to loop back to
-const XFADE_DUR_MS   = 7000;   // 7 s total crossfade window
-const XFADE_OUT_MS   = 3500;   // first 3.5 s = fade out
-const XFADE_IN_MS    = 3500;   // last 3.5 s = fade in (after seek)
-const LOOP_BACK_S    = 12;     // seek back to ~12 s in (past any intro, ~3-4th lyric line)
-
-let _xfStart = null;     // performance.now() when fade-out started
-let _xfAnimId = null;    // rAF handle for crossfade animation
+const XFADE_MS    = 8000;   // total crossfade window in ms
+const LOOP_BACK_S = 12;     // loop back to ~12s in — past intro, ~3rd lyric line
+const DUCK_FLOOR  = 0.12;   // main player never goes fully silent (keeps music bed)
+const LRC_BLUR_PX = 16;     // max px of blur applied to lyrics during transition
 
 function _cancelXfade() {
   if (_xfAnimId) { cancelAnimationFrame(_xfAnimId); _xfAnimId = null; }
   _xfading = false;
-  _xfStart = null;
+  // Restore clean volume state
+  try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
+  try { _bench().setVolume(0); } catch {}
+  // Clear lyrics blur instantly
+  const sc = G('lscroll');
+  if (sc) { sc.style.transition = 'filter 0.35s ease'; sc.style.filter = ''; }
 }
 
-function _startRepeatCrossfade() {
+function _startRepeatCrossfade(videoId) {
   if (_xfading) return;
   _xfading = true;
-  _xfStart = performance.now();
-  let didSeek = false;
+  const t0 = performance.now();
+
+  // Prime bench player silently at the loop-back point
+  const bench = _bench();
+  try { bench.loadVideoById({ videoId, startSeconds: LOOP_BACK_S }); bench.setVolume(0); }
+  catch { _xfading = false; return; }
+
+  const sc = G('lscroll');
 
   function tick() {
     if (!_xfading || !ST.playing) { _cancelXfade(); return; }
-    const elapsed = performance.now() - _xfStart;
+    const p = Math.min(1, (performance.now() - t0) / XFADE_MS); // 0 → 1
 
-    if (!didSeek && elapsed >= XFADE_OUT_MS) {
-      // Fade-out complete — seek to loop point and start fade in
-      didSeek = true;
-      YT_player.seekTo(LOOP_BACK_S);
-      // Reset lyrics to loop-back position
-      if (ST.lrcType === 'synced') tickLrc(LOOP_BACK_S * 1000);
+    // ── Main player: vol fades from 1.0 → DUCK_FLOOR ────────────────────────
+    // Slow at first, then accelerates — sounds like the song is naturally ending
+    const outT = p;
+    const outEased = outT < 0.5
+      ? 2 * outT * outT                        // ease-in first half
+      : 1 - Math.pow(-2 * outT + 2, 2) / 2;   // ease-out second half
+    const mainVol = (1 - outEased * (1 - DUCK_FLOOR)) * ST.vol * 100;
+    try { if (!ST.muted) _main().setVolume(Math.max(0, mainVol)); } catch {}
+
+    // ── Bench player: vol fades from 0 → 1.0, delayed start ─────────────────
+    // Starts rising at 20% through so you hear overlap, not a gap
+    const inDelay = 0.20;
+    const inT = Math.max(0, (p - inDelay) / (1 - inDelay));
+    const inEased = 1 - Math.pow(1 - inT, 3); // cubic ease-out — snappy rise, smooth settle
+    const benchVol = inEased * ST.vol * 100;
+    try { if (!ST.muted) bench.setVolume(Math.max(0, benchVol)); } catch {}
+
+    // ── Lyrics blur: peaks at ~45% then clears back out ───────────────────────
+    // Simulates the "dissolve" effect Apple Music uses on lyrics between loops
+    const blurT = p < 0.45 ? p / 0.45 : (1 - p) / 0.55;
+    const blurEased = blurT * blurT;
+    if (sc) {
+      sc.style.transition = 'filter 0.08s linear';
+      sc.style.filter = `blur(${(blurEased * LRC_BLUR_PX).toFixed(1)}px)`;
     }
 
-    if (elapsed < XFADE_OUT_MS) {
-      // Fading out: vol goes from 100% → 0% using ease-in curve
-      const t = elapsed / XFADE_OUT_MS;
-      const eased = t * t; // ease-in: slow at first, accelerates down
-      const vol = (1 - eased) * ST.vol * 100;
-      if (!ST.muted) YT_player.setVolume(Math.max(0, vol));
-    } else {
-      // Fading in: vol goes from 0% → 100% using ease-out curve
-      const t = Math.min(1, (elapsed - XFADE_OUT_MS) / XFADE_IN_MS);
-      const eased = 1 - (1 - t) * (1 - t); // ease-out: fast at first, decelerates up
-      const vol = eased * ST.vol * 100;
-      if (!ST.muted) YT_player.setVolume(Math.min(ST.vol * 100, vol));
+    // ── At blur peak, snap lyrics position to loop-back ───────────────────────
+    if (p >= 0.44 && p <= 0.48 && ST.lrcType === 'synced') {
+      tickLrc(LOOP_BACK_S * 1000);
+      // Smooth-scroll lyrics to match
+      document.getElementById('ll' + ST.lrcActive)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
 
-      if (t >= 1) {
-        // Crossfade complete — restore full volume, done
-        if (!ST.muted) YT_player.setVolume(ST.vol * 100);
-        _cancelXfade();
-        return;
-      }
+    if (p >= 1) {
+      // ── Swap active player ────────────────────────────────────────────────
+      try { _main().setVolume(0); _main().stopVideo(); } catch {}
+      _activePlayer = _activePlayer === 'A' ? 'B' : 'A';
+      try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
+      // Re-attach ticker to new main player
+      _lastYtPosMs = LOOP_BACK_S * 1000;
+      _lastYtPollMs = performance.now();
+      if (sc) { sc.style.transition = 'filter 0.4s ease'; sc.style.filter = ''; }
+      _xfading = false; _xfAnimId = null;
+      return;
     }
 
     _xfAnimId = requestAnimationFrame(tick);
   }
 
-  _xfAnimId = requestAnimationFrame(tick);
+  // Short buffer delay — gives bench player time to actually start playing
+  // before we begin raising its volume
+  setTimeout(() => { if (_xfading) _xfAnimId = requestAnimationFrame(tick); }, 500);
 }
 
-window.onYouTubeIframeAPIReady = function() {
-  YT_player = new YT.Player('yt-player', {
+// ── Player factory ─────────────────────────────────────────────────────────────
+function _makePlayer(divId, isA) {
+  return new YT.Player(divId, {
     videoId: '',
-    playerVars: { autoplay:0, controls:0, rel:0, modestbranding:1, origin:window.location.origin },
+    playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1, origin: window.location.origin },
     events: {
       onReady(e) {
-        ytReady = true;
-        e.target.setVolume(ST.vol * 100);
-        setStatus('ok', 'Ready');
+        e.target.setVolume(isA ? ST.vol * 100 : 0);
+        if (isA) { ytReady = true; setStatus('ok', 'Ready'); }
+        else ytReadyB = true;
       },
       onStateChange(e) {
+        // Only the active/main player drives global UI state
+        const iAmMain = (isA && _activePlayer === 'A') || (!isA && _activePlayer === 'B');
+        if (!iAmMain) return;
+
         if (e.data === YT.PlayerState.PLAYING) {
           ST.playing = true; syncPP();
           G('cover-art').classList.add('playing');
           clearInterval(ticker);
           ticker = setInterval(() => {
-            ST.pos = YT_player.getCurrentTime() * 1000;
-            ST.dur = YT_player.getDuration() * 1000;
+            try {
+              ST.pos = _main().getCurrentTime() * 1000;
+              ST.dur = _main().getDuration() * 1000;
+            } catch { return; }
             _lastYtPosMs = ST.pos;
             _lastYtPollMs = performance.now();
             syncBar();
-
-            // ── Trigger crossfade-repeat when close to end ──────────────────
+            // Trigger crossfade when close enough to end
             if (ST.repeat && !_xfading && ST.dur > 0) {
-              const remaining = ST.dur - ST.pos;
-              if (remaining <= XFADE_DUR_MS && remaining > 0) {
-                _startRepeatCrossfade();
+              const rem = ST.dur - ST.pos;
+              if (rem > 0 && rem <= XFADE_MS) {
+                const track = ST.queue[ST.idx];
+                const vid = track?.ytIds?.[track.ytTry ?? 0];
+                if (vid) _startRepeatCrossfade(vid);
               }
             }
           }, 250);
@@ -1116,24 +1159,23 @@ window.onYouTubeIframeAPIReady = function() {
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
           _cancelXfade();
-          // Restore volume in case user paused mid-fade
-          if (!ST.muted) YT_player.setVolume(ST.vol * 100);
         } else if (e.data === YT.PlayerState.ENDED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
           _cancelXfade();
-          // Crossfade should have prevented ENDED from ever firing in repeat mode,
-          // but handle it as a hard fallback just in case
-          if (ST.repeat) { YT_player.seekTo(LOOP_BACK_S); YT_player.playVideo(); }
+          // Hard fallback — crossfade should have caught this
+          if (ST.repeat) { _main().seekTo(LOOP_BACK_S); _main().playVideo(); }
           else nextTrack();
         }
       },
-      onError(e) {
+      onError() {
+        const iAmMain = (isA && _activePlayer === 'A') || (!isA && _activePlayer === 'B');
+        if (!iAmMain) return;
         const track = ST.queue[ST.idx];
-        if (track?.ytIds?.length > (track.ytTry||0) + 1) {
-          track.ytTry = (track.ytTry||0) + 1;
-          YT_player.loadVideoById(track.ytIds[track.ytTry]);
+        if (track?.ytIds?.length > (track.ytTry || 0) + 1) {
+          track.ytTry = (track.ytTry || 0) + 1;
+          _main().loadVideoById(track.ytIds[track.ytTry]);
         } else {
           setStatus('err', 'Video unavailable');
           toast('⚠ Video unavailable — try another');
@@ -1141,6 +1183,11 @@ window.onYouTubeIframeAPIReady = function() {
       }
     }
   });
+}
+
+window.onYouTubeIframeAPIReady = function() {
+  YT_player  = _makePlayer('yt-player',   true);
+  YT_playerB = _makePlayer('yt-player-b', false);
 };
 
 // Load IFrame API — try youtube.com then youtube-nocookie.com
@@ -1528,7 +1575,7 @@ async function loadTrack(idx) {
     }
   }
 
-  YT_player.loadVideoById(track.ytIds[track.ytTry]);
+  _main().loadVideoById(track.ytIds[track.ytTry]);
   fetchLyrics(track.title, track.artist);
 
   // If no art yet (e.g. MusicBrainz source), fetch it now and update cover immediately when resolved
@@ -1590,9 +1637,9 @@ function resetNP() {
   ST.playing=false; syncPP();
 }
 
-function togglePlay() { if(!ytReady||ST.idx<0)return; ST.playing?YT_player.pauseVideo():YT_player.playVideo(); }
-function prevTrack() { _cancelXfade(); if(!ST.muted)YT_player.setVolume(ST.vol*100); if(!ST.queue.length)return; if(ST.pos>3000){YT_player.seekTo(0);return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
-function nextTrack() { _cancelXfade(); if(!ST.muted)YT_player.setVolume(ST.vol*100); if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
+function togglePlay() { if(!ytReady||ST.idx<0)return; ST.playing?_main().pauseVideo():_main().playVideo(); }
+function prevTrack() { _cancelXfade(); if(!ST.muted)_main().setVolume(ST.vol*100); if(!ST.queue.length)return; if(ST.pos>3000){_main().seekTo(0);return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
+function nextTrack() { _cancelXfade(); if(!ST.muted)_main().setVolume(ST.vol*100); if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
 function rnd() { return Math.floor(Math.random()*ST.queue.length); }
 function syncPP() { G('pp-ico').innerHTML=ST.playing?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>'; }
 function syncBar() { if(!ST.dur)return; G('prog-f').style.width=Math.min(100,ST.pos/ST.dur*100).toFixed(2)+'%'; G('t-c').textContent=ms2t(ST.pos); G('t-d').textContent=ms2t(ST.dur); }
@@ -1600,19 +1647,19 @@ function syncBar() { if(!ST.dur)return; G('prog-f').style.width=Math.min(100,ST.
 G('prog').addEventListener('click', e => {
   if(!ST.dur||ST.idx<0)return;
   _cancelXfade();
-  if (!ST.muted) YT_player.setVolume(ST.vol * 100);
+  if (!ST.muted) _main().setVolume(ST.vol * 100);
   const r=e.currentTarget.getBoundingClientRect();
-  YT_player.seekTo(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(ST.dur/1000));
+  _main().seekTo(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(ST.dur/1000));
 });
 G('vol-tr').addEventListener('click', e => {
   const r=e.currentTarget.getBoundingClientRect();
   ST.vol=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
   G('vol-f').style.width=(ST.vol*100)+'%';
-  if(ytReady&&!ST.muted) YT_player.setVolume(ST.vol*100);
+  if(ytReady&&!ST.muted) _main().setVolume(ST.vol*100);
 });
 G('btn-vol').addEventListener('click', () => {
   ST.muted=!ST.muted; G('btn-vol').classList.toggle('on',ST.muted);
-  if(ytReady) YT_player.setVolume(ST.muted?0:ST.vol*100);
+  if(ytReady) _main().setVolume(ST.muted?0:ST.vol*100);
   G('vol-ico').innerHTML=ST.muted
     ?'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2"/>'
     :'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>';
@@ -1868,7 +1915,7 @@ function renderSynced() {
 
 
 
-function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
+function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) _main().seekTo(ST.lrc[i].ms/1000); }
 
 // Per-word state cache to skip redundant DOM writes
 const _lwState = {};
@@ -2097,10 +2144,10 @@ document.addEventListener('keydown', e => {
   const ok=ytReady&&ST.idx>=0;
   switch(e.code){
     case 'Space': e.preventDefault(); togglePlay(); break;
-    case 'ArrowRight': e.preventDefault(); if(ok)YT_player.seekTo(YT_player.getCurrentTime()+10); break;
-    case 'ArrowLeft':  e.preventDefault(); if(ok)YT_player.seekTo(Math.max(0,YT_player.getCurrentTime()-10)); break;
-    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)YT_player.setVolume(ST.vol*100);break;
-    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)YT_player.setVolume(ST.vol*100);break;
+    case 'ArrowRight': e.preventDefault(); if(ok)_main().seekTo(_main().getCurrentTime()+10); break;
+    case 'ArrowLeft':  e.preventDefault(); if(ok)_main().seekTo(Math.max(0,_main().getCurrentTime()-10)); break;
+    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)_main().setVolume(ST.vol*100);break;
+    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)_main().setVolume(ST.vol*100);break;
     case 'KeyN': nextTrack(); break;
     case 'KeyP': prevTrack(); break;
     case 'KeyS': G('btn-sf').click(); break;
