@@ -159,22 +159,27 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .results-panel,.lyrics-panel{
   position:absolute;inset:0;
   transition:opacity .3s ease;
-  overflow-y:auto;
 }
-.results-panel{padding:16px;opacity:1}
+.results-panel{padding:16px;opacity:1;overflow-y:auto;}
 .results-panel.hidden{opacity:0;pointer-events:none}
+/* lyrics panel: fixed position, no scroll on self — child scrolls */
 .lyrics-panel{
-  padding:30px 24px 80px;opacity:0;pointer-events:none;
-  position:relative;
+  opacity:0;pointer-events:none;overflow:hidden;
 }
 .lyrics-panel.active{opacity:1;pointer-events:auto}
+/* inner scroll container — this scrolls, not the panel */
+.lrc-scroll-outer{
+  position:absolute;inset:0;overflow-y:auto;
+  padding:30px 24px 80px;
+  z-index:1;
+}
 /* blurred album art background inside lyrics panel */
 .lrc-bg{
   position:absolute;inset:0;
   background-size:cover;background-position:center;
   filter:blur(40px) saturate(1.6) brightness(.35);
   transform:scale(1.15);
-  opacity:0;transition:opacity .8s ease, background-image .8s ease;
+  opacity:0;transition:opacity .8s ease;
   pointer-events:none;z-index:0;
 }
 .lrc-bg.on{opacity:1}
@@ -258,29 +263,47 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .ll.now .ll-paren{color:rgba(255,255,255,0.7)}
 
-/* ── Word-by-word karaoke — Apple style, pure white, no pink ── */
+/* ── Word-by-word karaoke — Apple Music style ── */
+/* upcoming words on active line: dim grey, no blur on text (line handles blur via .ll) */
 .ll.now .lw{
   display:inline-block;
-  color:rgba(255,255,255,0.25);
-  filter:blur(1.5px);
-  transition:color .15s ease, filter .15s ease, text-shadow .15s ease;
+  color:rgba(255,255,255,0.3);
+  -webkit-text-fill-color:rgba(255,255,255,0.3);
+  background:none;
+  transition:color .2s ease, -webkit-text-fill-color .2s ease;
 }
-/* sung words stay fully white */
+/* current word: crisp white with subtle inner-feeling glow using background-clip trick */
+.ll.now .lw.now-word{
+  /* background-clip:text gives the glow INSIDE the letter shapes */
+  background:linear-gradient(135deg,
+    rgba(255,255,255,1) 0%,
+    rgba(230,240,255,1) 50%,
+    rgba(255,255,255,1) 100%
+  );
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  /* Minimal outer halo — very tight, barely there */
+  filter:drop-shadow(0 0 2px rgba(255,255,255,0.55))
+         drop-shadow(0 0 6px rgba(255,255,255,0.12));
+  /* Entry animation — sweeps in from slightly dim */
+  animation:wordlit .13s ease-out forwards;
+  transition:filter .05s ease;
+}
+@keyframes wordlit{
+  from{opacity:.5;filter:drop-shadow(0 0 0px rgba(255,255,255,0))}
+  to{opacity:1;filter:drop-shadow(0 0 2px rgba(255,255,255,0.55)) drop-shadow(0 0 6px rgba(255,255,255,0.12))}
+}
+/* done: plain white, no tricks needed */
 .ll.now .lw.done{
   color:#ffffff;
-  filter:blur(0px);
-  text-shadow:0 0 20px rgba(255,255,255,0.45);
-  transition:color .1s ease, filter .1s ease, text-shadow .1s ease;
-}
-/* the single current word — pure white, crisp white glow only */
-.ll.now .lw.now-word{
-  color:#ffffff;
-  filter:blur(0px);
-  text-shadow:
-    0 0 30px rgba(255,255,255,1),
-    0 0 16px rgba(255,255,255,0.8),
-    0 0 60px rgba(255,255,255,0.3);
-  transition:color .06s ease, filter .06s ease, text-shadow .06s ease;
+  -webkit-text-fill-color:#ffffff;
+  background:none;
+  -webkit-background-clip:unset;
+  background-clip:unset;
+  filter:none;
+  text-shadow:none;
+  transition:color .1s ease, filter .1s ease;
 }
 /* plain (unsynced) lyrics */
 .ll.plain{cursor:default;font-size:18px;font-weight:600;color:rgba(255,255,255,0.55);filter:none;opacity:1}
@@ -583,15 +606,17 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
       <!-- Lyrics -->
       <div class="lyrics-panel" id="lyrics-panel">
         <div class="lrc-bg" id="lrc-bg"></div>
-        <div class="lrc-empty-state-wrap">
-          <div class="lrc-empty" id="lrc-empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/>
-            </svg>
-            <p>Play a track to see lyrics</p>
+        <div class="lrc-scroll-outer" id="lrc-scroll-outer">
+          <div class="lrc-empty-state-wrap">
+            <div class="lrc-empty" id="lrc-empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/>
+              </svg>
+              <p>Play a track to see lyrics</p>
+            </div>
           </div>
+          <div id="lscroll"></div>
         </div>
-        <div id="lscroll"></div>
       </div>
 
       <!-- Liked Songs Panel -->
@@ -1033,7 +1058,7 @@ async function doSearch(q) {
 
 async function searchItunes(q) {
   try {
-    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US&explicit=Yes`);
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=50&country=US`);
     const data = await res.json();
     return data.results || [];
   } catch { return []; }
