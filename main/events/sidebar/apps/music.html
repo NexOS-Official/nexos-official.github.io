@@ -1199,6 +1199,19 @@ async function loadTrack(idx) {
 
   YT_player.loadVideoById(track.ytIds[track.ytTry]);
   fetchLyrics(track.title, track.artist);
+
+  if (!track.artSm && !track.artLg) {
+    const _refTrack = { artworkUrl100: null, _artLgOverride: null, _releaseMbid: track._releaseMbid, artistName: track.artist, trackName: track.title };
+    fetchCoverArt(_refTrack).then(() => {
+      if (_refTrack.artworkUrl100 && ST.queue[ST.idx] === track) {
+        track.artSm = _refTrack.artworkUrl100;
+        track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
+        updateNP(track);
+        const th = document.getElementById('qt' + idx);
+        if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+      }
+    });
+  }
 }
 
 function updateNP(track) {
@@ -1320,10 +1333,11 @@ function buildWordTimings(lrc) {
     }
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a,b)=>a+b, 0);
+    const usable = duration * 0.92;
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
-      cursor += (syls[wi] / totalSyls) * duration;
+      cursor += (syls[wi] / totalSyls) * usable;
       return { ms: wordMs, word };
     });
     return { ...line, words };
@@ -1358,6 +1372,7 @@ function renderLineHTML(line, i) {
 }
 
 function renderSynced() {
+  Object.keys(_lwState).forEach(k => delete _lwState[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
 
@@ -1365,12 +1380,29 @@ function renderSynced() {
 
 function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
 
+const _lwState = {};
+
+function _setLwState(id, cls, pct) {
+  const prev = _lwState[id];
+  if (prev && prev.cls === cls && (cls !== 'now-word' || prev.pct === pct)) return;
+  _lwState[id] = { cls, pct };
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'lw ' + cls;
+  el.style.setProperty('--pct', pct);
+}
+
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  let active = 0;
-  for (let i = 0; i < ST.lrc.length; i++) {
-    if (posMs >= ST.lrc[i].ms) active = i;
+  const AHEAD = 60;
+  const t = posMs + AHEAD;
+
+  let lo = 0, hi = ST.lrc.length - 1, active = 0;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (ST.lrc[mid].ms <= t) { active = mid; lo = mid + 1; }
+    else hi = mid - 1;
   }
 
   if (active !== ST.lrcActive) {
@@ -1379,11 +1411,12 @@ function tickLrc(posMs) {
 
     document.querySelectorAll('#lscroll .ll').forEach((el, i) => {
       el.classList.remove('now','past','near');
-      const dist = Math.abs(i - active);
-      if (i < active) el.classList.add('past');
-      else if (dist === 1) el.classList.add('near');
+      const dist = i - active;
+      const absDist = Math.abs(dist);
+      if (dist < 0) el.classList.add('past');
+      else if (absDist === 1) el.classList.add('near');
       if (i === active) el.classList.add('now');
-      el.style.filter = dist >= 3 ? `blur(${Math.min(6, dist)}px)` : '';
+      el.style.filter = absDist >= 3 ? `blur(${Math.min(6, absDist)}px)` : '';
     });
 
     document.getElementById('ll'+active)
@@ -1391,44 +1424,34 @@ function tickLrc(posMs) {
 
     if (prev >= 0) {
       (ST.lrc[prev]?.words || []).forEach((w, wi) => {
-        const el = document.getElementById('lw'+prev+'_'+wi);
-        if (!el) return;
-        el.className = 'lw done';
-        el.style.setProperty('--pct','100%');
+        _setLwState('lw'+prev+'_'+wi, 'done', '100%');
       });
     }
     (ST.lrc[active]?.words || []).forEach((w, wi) => {
-      const el = document.getElementById('lw'+active+'_'+wi);
-      if (!el) return;
-      el.className = 'lw upcoming';
-      el.style.setProperty('--pct','0%');
+      const id = 'lw'+active+'_'+wi;
+      delete _lwState[id];
+      _setLwState(id, 'upcoming', '0%');
     });
   }
 
   const words = ST.lrc[active]?.words;
   if (!words?.length) return;
-  const nextLineMs = ST.lrc[active+1]?.ms ?? (posMs + 4000);
+
+  const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
+  const lastWordEnd = Math.min(nextLineMs, words[words.length-1].ms + 1800);
 
   for (let wi = 0; wi < words.length; wi++) {
     const wStart = words[wi].ms;
-    const wEnd   = words[wi+1]?.ms ?? nextLineMs;
-    const el = document.getElementById('lw'+active+'_'+wi);
-    if (!el) continue;
+    const wEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
+    const id = 'lw'+active+'_'+wi;
 
-    if (posMs < wStart) {
-      if (!el.classList.contains('upcoming')) {
-        el.className = 'lw upcoming';
-        el.style.setProperty('--pct','0%');
-      }
-    } else if (posMs >= wEnd) {
-      if (!el.classList.contains('done')) {
-        el.className = 'lw done';
-        el.style.setProperty('--pct','100%');
-      }
+    if (t < wStart) {
+      _setLwState(id, 'upcoming', '0%');
+    } else if (t >= wEnd) {
+      _setLwState(id, 'done', '100%');
     } else {
-      const pct = ((posMs - wStart) / (wEnd - wStart)) * 100;
-      el.className = 'lw now-word';
-      el.style.setProperty('--pct', pct.toFixed(1)+'%');
+      const pct = ((t - wStart) / (wEnd - wStart)) * 100;
+      _setLwState(id, 'now-word', pct.toFixed(1)+'%');
     }
   }
 }
