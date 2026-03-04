@@ -163,8 +163,23 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .results-panel{padding:16px;opacity:1}
 .results-panel.hidden{opacity:0;pointer-events:none}
-.lyrics-panel{padding:30px 24px 60px;opacity:0;pointer-events:none}
+.lyrics-panel{
+  padding:30px 24px 80px;opacity:0;pointer-events:none;
+  position:relative;
+}
 .lyrics-panel.active{opacity:1;pointer-events:auto}
+/* blurred album art background inside lyrics panel */
+.lrc-bg{
+  position:absolute;inset:0;
+  background-size:cover;background-position:center;
+  filter:blur(40px) saturate(1.6) brightness(.35);
+  transform:scale(1.15);
+  opacity:0;transition:opacity .8s ease, background-image .8s ease;
+  pointer-events:none;z-index:0;
+}
+.lrc-bg.on{opacity:1}
+#lscroll{position:relative;z-index:1;}
+.lrc-empty-state-wrap{position:relative;z-index:1;}
 
 .lyric-toggle{
   position:absolute;bottom:14px;right:14px;z-index:10;
@@ -200,61 +215,77 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi:hover .qi-rm{display:grid}
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
-/* ── Lyrics lines ── */
+/* ── Lyrics lines — Apple Music style ── */
 .ll{
-  font-size:22px;line-height:1.45;color:rgba(255,255,255,0.18);font-weight:700;
-  padding:5px 0;border-radius:8px;
-  transition:color .5s cubic-bezier(.4,0,.2,1),
-             filter .5s cubic-bezier(.4,0,.2,1),
-             transform .5s cubic-bezier(.4,0,.2,1),
-             opacity .5s cubic-bezier(.4,0,.2,1),
-             font-size .4s cubic-bezier(.4,0,.2,1);
-  cursor:pointer;
-  filter:blur(2.5px);
+  font-size:28px;line-height:1.35;font-weight:800;
+  padding:4px 0;border-radius:8px;cursor:pointer;
+  color:rgba(255,255,255,0.22);
+  filter:blur(3px);
+  opacity:.7;
   transform-origin:left center;
-  will-change:transform,filter,color;
+  /* smooth all transitions */
+  transition:
+    color .55s cubic-bezier(.4,0,.2,1),
+    filter .55s cubic-bezier(.4,0,.2,1),
+    opacity .55s cubic-bezier(.4,0,.2,1),
+    font-size .4s cubic-bezier(.34,1.56,.64,1);
+  will-change:color,filter,opacity;
 }
-.ll:hover{color:rgba(255,255,255,0.45);filter:blur(0px)}
-.ll.past{color:rgba(255,255,255,0.15);filter:blur(3px);opacity:.6}
-.ll.near{color:rgba(255,255,255,0.45);filter:blur(1px)}
+/* far-past lines — barely visible */
+.ll.past{
+  color:rgba(255,255,255,0.12);
+  filter:blur(4px);
+  opacity:.45;
+}
+/* one line above/below active — readable but soft */
+.ll.near{
+  color:rgba(255,255,255,0.5);
+  filter:blur(1.5px);
+  opacity:.85;
+  font-size:26px;
+}
+/* active line */
 .ll.now{
-  color:#ffffff;font-size:26px;
-  transform:scale(1.03);
+  color:#ffffff;
+  font-size:32px;
   filter:blur(0px);
   opacity:1;
 }
 /* paren sub-line */
 .ll-paren{
-  display:block;font-size:.6em;font-weight:600;
-  color:rgba(255,255,255,0.5);margin-top:2px;
-  letter-spacing:.01em;
+  display:block;font-size:.58em;font-weight:600;
+  color:rgba(255,255,255,0.45);margin-top:3px;
 }
-.ll.now .ll-paren{color:rgba(255,255,255,0.75)}
-/* ── Word-by-word karaoke ── */
-/* Base: upcoming words on active line — dim, slightly blurred */
+.ll.now .ll-paren{color:rgba(255,255,255,0.7)}
+
+/* ── Word-by-word karaoke — Apple style, pure white, no pink ── */
 .ll.now .lw{
-  color:rgba(255,255,255,0.28);
-  filter:blur(1.2px);
-  transition:color .18s ease, filter .18s ease, text-shadow .18s ease;
   display:inline-block;
+  color:rgba(255,255,255,0.25);
+  filter:blur(1.5px);
+  transition:color .15s ease, filter .15s ease, text-shadow .15s ease;
 }
-/* Already-sung words on the active line — stay fully lit, no blur */
+/* sung words stay fully white */
 .ll.now .lw.done{
-  color:rgba(255,255,255,0.82);
+  color:#ffffff;
   filter:blur(0px);
-  text-shadow:none;
+  text-shadow:0 0 20px rgba(255,255,255,0.45);
+  transition:color .1s ease, filter .1s ease, text-shadow .1s ease;
 }
-/* The single current word — full white, bright pink glow, no blur */
+/* the single current word — pure white, crisp white glow only */
 .ll.now .lw.now-word{
   color:#ffffff;
   filter:blur(0px);
-  text-shadow:0 0 28px rgba(255,255,255,0.9), 0 0 12px rgba(252,60,108,0.7);
-  transform:scale(1.04);
-  transition:color .08s ease, filter .08s ease, text-shadow .08s ease, transform .08s ease;
+  text-shadow:
+    0 0 30px rgba(255,255,255,1),
+    0 0 16px rgba(255,255,255,0.8),
+    0 0 60px rgba(255,255,255,0.3);
+  transition:color .06s ease, filter .06s ease, text-shadow .06s ease;
 }
-/* plain lyrics */
-.ll.plain{cursor:default;font-size:15px;font-weight:500;color:rgba(255,255,255,0.5);filter:none}
-.ll.plain:hover{color:rgba(255,255,255,0.7)}
+/* plain (unsynced) lyrics */
+.ll.plain{cursor:default;font-size:18px;font-weight:600;color:rgba(255,255,255,0.55);filter:none;opacity:1}
+.ll.plain:hover{color:rgba(255,255,255,0.8)}
+.ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
 .lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
 .lrc-empty svg{width:38px;height:38px;opacity:.22}
 .lrc-empty p{font-size:13px}
@@ -551,11 +582,14 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
       <!-- Lyrics -->
       <div class="lyrics-panel" id="lyrics-panel">
-        <div class="lrc-empty" id="lrc-empty-state">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/>
-          </svg>
-          <p>Play a track to see lyrics</p>
+        <div class="lrc-bg" id="lrc-bg"></div>
+        <div class="lrc-empty-state-wrap">
+          <div class="lrc-empty" id="lrc-empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/>
+            </svg>
+            <p>Play a track to see lyrics</p>
+          </div>
         </div>
         <div id="lscroll"></div>
       </div>
@@ -1211,10 +1245,15 @@ function updateNP(track) {
   G('cover-info').style.display='block';
   G('np-t').textContent=track.title;
   G('np-a').textContent=track.artist;
-  if(track.artLg){
-    G('cv-img').src=track.artLg;
-    G('cv-bg').src=track.artLg;
+  const art = track.artLg || track.artSm;
+  if(art){
+    G('cv-img').src=art;
+    G('cv-bg').src=art;
     G('cv-bg').classList.add('on');
+    // Lyrics panel blurred bg — use CSS background-image so transition works
+    const lrcBg = G('lrc-bg');
+    lrcBg.style.backgroundImage = `url('${art}')`;
+    lrcBg.classList.add('on');
   }
 }
 function resetNP() {
@@ -1401,9 +1440,13 @@ function tickLrc(posMs) {
     const els = document.querySelectorAll('#lscroll .ll');
     els.forEach((el, i) => {
       el.classList.remove('now','past','near');
+      const dist = Math.abs(i - active);
       if (i < active) el.classList.add('past');
-      else if (i === active + 1 || i === active - 1) el.classList.add('near');
+      else if (dist === 1) el.classList.add('near');
       if (i === active) el.classList.add('now');
+      // Progressive blur via inline style for lines far away
+      if (dist >= 3) el.style.filter = `blur(${Math.min(6, dist)}px)`;
+      else if (i !== active) el.style.filter = '';
     });
     document.getElementById('ll'+active)?.scrollIntoView({ block:'center', behavior:'smooth' });
 
