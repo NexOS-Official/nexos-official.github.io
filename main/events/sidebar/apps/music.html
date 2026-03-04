@@ -278,6 +278,29 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
+
+.beat-dots{
+  display:inline-flex;align-items:flex-end;gap:7px;
+  height:1em;vertical-align:middle;
+}
+.beat-dots span{
+  width:8px;height:8px;border-radius:50%;
+  background:rgba(255,255,255,0.28);
+  display:inline-block;
+  transform:translateY(0);
+  transition:background .3s;
+}
+.ll.now .beat-dots span{
+  background:#ffffff;
+  animation:beatbounce var(--beat-dur,600ms) ease-in-out infinite;
+}
+.ll.now .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) / 3)}
+.ll.now .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) / 3 * 2)}
+@keyframes beatbounce{
+  0%,100%{transform:translateY(0)}
+  40%{transform:translateY(-10px)}
+  60%{transform:translateY(-8px)}
+}
 .lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
 .lrc-empty svg{width:38px;height:38px;opacity:.22}
 .lrc-empty p{font-size:13px}
@@ -1290,7 +1313,11 @@ function buildWordTimings(lrc) {
     const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
     const duration = Math.max(400, nextMs - lineMs - 80);
     const rawWords = line.text.split(/\s+/).filter(Boolean);
-    if (!rawWords.length) return { ...line, words: [] };
+    if (!rawWords.length) {
+      const gapMs = Math.max(400, nextMs - lineMs);
+      const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
+      return { ...line, words: [], beatDur };
+    }
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a,b)=>a+b, 0);
     let cursor = lineMs;
@@ -1315,11 +1342,18 @@ function splitParen(text) {
 function renderLineHTML(line, i) {
   const { main, paren } = splitParen(line.text || '♪');
   const parenHTML = paren ? `<span class="ll-paren">(${x(paren)})</span>` : '';
-  const mainHTML = line.words?.length
-    ? line.words.map((w, wi) =>
-        `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`
-      ).join(' ')
-    : x(main);
+  const isNote = !line.words?.length && (!line.text || line.text.trim() === '♪' || line.text.trim() === '');
+  let mainHTML;
+  if (isNote) {
+    const beatDur = line.beatDur ?? 600;
+    mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
+  } else {
+    mainHTML = line.words?.length
+      ? line.words.map((w, wi) =>
+          `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`
+        ).join(' ')
+      : x(main);
+  }
   return `<div class="ll" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}${parenHTML}</div>`;
 }
 
