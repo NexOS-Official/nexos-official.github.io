@@ -1202,27 +1202,29 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
-// iTunes JSONP fetch — bypasses CORS entirely, no proxy needed.
-// Works on every network including school content filters.
-function itunesFetch(url) {
-  return new Promise(resolve => {
-    const cbName = '_itcb' + Math.random().toString(36).slice(2);
-    const sep = url.includes('?') ? '&' : '?';
-    const scriptUrl = url + sep + 'callback=' + cbName;
-    let done = false;
-    const cleanup = () => {
-      done = true;
-      delete window[cbName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-    };
-    window[cbName] = data => { cleanup(); resolve(data); };
-    const script = document.createElement('script');
-    script.src = scriptUrl;
-    script.onerror = () => { cleanup(); resolve(null); };
-    // Timeout after 8s
-    setTimeout(() => { if (!done) { cleanup(); resolve(null); } }, 8000);
-    document.head.appendChild(script);
+// iTunes fetch — direct first, then CORS proxies in parallel as fallback
+async function itunesFetch(url) {
+  // Try direct fetch first (works on personal devices)
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) return await r.json();
+  } catch {}
+  // Fallback: race all proxies simultaneously
+  const enc = encodeURIComponent(url);
+  const proxied = [
+    'https://corsproxy.io/?url=' + enc,
+    'https://api.allorigins.win/raw?url=' + enc,
+    'https://api.codetabs.com/v1/proxy?quest=' + enc,
+  ];
+  const tryOne = u => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(u, { signal: AbortSignal.timeout(6000) });
+      if (!r.ok) return rej();
+      const j = await r.json();
+      if (j?.results !== undefined || j?.artistId !== undefined) res(j); else rej();
+    } catch { rej(); }
   });
+  try { return await Promise.any(proxied.map(tryOne)); } catch { return null; }
 }
 
 async function doSearch(q) {
