@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -672,10 +679,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         </div>
       </div>
 
-      <div id="lrc-offset-controls" style="position:absolute;bottom:62px;left:14px;z-index:10;display:none;flex-direction:column;gap:4px;align-items:center;">
-        <button onclick="_lrcOffset+=200" title="Lyrics too late" style="width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--border);color:var(--ink3);font-size:14px;cursor:pointer;display:grid;place-items:center;">−</button>
-        <button onclick="_lrcOffset-=200" title="Lyrics too early" style="width:32px;height:32px;border-radius:50%;background:var(--s2);border:1px solid var(--border);color:var(--ink3);font-size:14px;cursor:pointer;display:grid;place-items:center;">+</button>
-      </div>
       <div class="panel-nav">
         <button class="pnb" id="pnb-lyrics" title="Lyrics (L)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
@@ -731,8 +734,7 @@ function showPanel(name) {
     // Snap immediately to current playback position so lyrics aren't "off"
     requestAnimationFrame(() => tickLrc(getPrecisePos()));
   }
-  const offsetCtrl = G('lrc-offset-controls');
-  if (offsetCtrl) offsetCtrl.style.display = name === 'lyrics' ? 'flex' : 'none';
+
 
   G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
   G('pnb-likes').classList.toggle('active', name === 'likes');
@@ -977,11 +979,11 @@ function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-st
 
 let YT_player = null, ytReady = false, ticker = null;
 // High-precision lyric sync: interpolate position between YT polls
-let _lastYtPollMs = 0, _lastYtPosMs = 0, _lrcOffset = 0;
+let _lastYtPollMs = 0, _lastYtPosMs = 0;
 function getPrecisePos() {
-  // Interpolate between last real YT position and now using wall-clock
-  const wallElapsed = performance.now() - _lastYtPollMs;
-  return _lastYtPosMs + (ST.playing ? wallElapsed : 0);
+  // Interpolate between last known YT position + wall-clock elapsed = sub-poll accuracy
+  const elapsed = performance.now() - _lastYtPollMs;
+  return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
 }
 
 window.onYouTubeIframeAPIReady = function() {
@@ -1000,33 +1002,32 @@ window.onYouTubeIframeAPIReady = function() {
           G('cover-art').classList.add('playing');
           clearInterval(ticker);
           // Poll YT API every 250ms (cheap), interpolate position every rAF for smooth sync
-          let rafId = null;
           const pollYT = () => {
             ST.pos = YT_player.getCurrentTime() * 1000;
             ST.dur = YT_player.getDuration() * 1000;
-            _lastYtPosMs = ST.pos + _lrcOffset;
+            _lastYtPosMs = ST.pos;
             _lastYtPollMs = performance.now();
             syncBar();
           };
           pollYT();
           ticker = setInterval(pollYT, 250);
+          ST._rafRunning = true;
           const rafLoop = () => {
-            if (!ST.playing) return;
+            if (!ST._rafRunning) return;
             if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
-            rafId = requestAnimationFrame(rafLoop);
+            requestAnimationFrame(rafLoop);
           };
-          ST._rafId = rafId;
           requestAnimationFrame(rafLoop);
         } else if (e.data === YT.PlayerState.PAUSED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
           clearInterval(ticker);
-          if (ST._rafId) { cancelAnimationFrame(ST._rafId); ST._rafId = null; }
+          ST._rafRunning = false;
         } else if (e.data === YT.PlayerState.ENDED) {
           ST.playing = false;
           G('cover-art').classList.remove('playing');
           clearInterval(ticker);
-          if (ST._rafId) { cancelAnimationFrame(ST._rafId); ST._rafId = null; }
+          ST._rafRunning = false;
           if (ST.repeat) { YT_player.seekTo(0); YT_player.playVideo(); }
           else nextTrack();
         }
@@ -1071,24 +1072,48 @@ async function findVideoIds(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
   if (ytCache[ck]?.length) return ytCache[ck];
 
-  const q = encodeURIComponent(artist + ' ' + title + ' audio');
+  const searchQ = artist + ' ' + title + ' audio';
+  const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(searchQ);
 
-  // Race ALL Invidious instances simultaneously — first winner wins, much faster than serial
+  // Extract video IDs from raw YouTube HTML
+  function extractIds(html) {
+    const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+    return [...new Set(matches.map(m => m[1]))].slice(0, 6);
+  }
+
+  // Try CORS proxies in parallel — these work on school Chromebooks
+  const corsProxies = [
+    'https://corsproxy.io/?url=' + encodeURIComponent(ytUrl),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(ytUrl),
+    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(ytUrl),
+  ];
+
+  const tryProxy = url => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) return rej();
+      const html = await r.text();
+      const ids = extractIds(html);
+      if (ids.length) res(ids); else rej();
+    } catch { rej(); }
+  });
+
+  try {
+    const ids = await Promise.any(corsProxies.map(tryProxy));
+    ytCache[ck] = ids; return ids;
+  } catch {}
+
+  // Last resort: Invidious (may work on some networks)
   const invidious = [
     'https://inv.nadeko.net',
     'https://invidious.privacyredirect.com',
-    'https://iv.melmac.space',
-    'https://invidious.nerdvpn.de',
     'https://yt.cdaut.de',
-    'https://invidious.io.lol',
-    'https://invidious.fdn.fr',
   ];
-
-  // Helper: try one instance, resolve with ids or reject
+  const q = encodeURIComponent(searchQ);
   const tryInv = host => new Promise(async (res, rej) => {
     try {
       const r = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId`, {
-        signal: AbortSignal.timeout(3500)
+        signal: AbortSignal.timeout(4000)
       });
       if (!r.ok) return rej();
       const d = await r.json();
@@ -1096,29 +1121,8 @@ async function findVideoIds(artist, title) {
       if (ids.length) res(ids); else rej();
     } catch { rej(); }
   });
-
-  // Promise.any — resolves as soon as the FIRST instance responds with results
   try {
     const ids = await Promise.any(invidious.map(tryInv));
-    ytCache[ck] = ids; return ids;
-  } catch {}
-
-  // Fallback: CORS proxy scrape — try both proxies in parallel
-  const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(artist + ' ' + title + ' audio');
-  const proxies = [
-    u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
-    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-  ];
-  const tryProxy = pfn => new Promise(async (res, rej) => {
-    try {
-      const html = await fetch(pfn(ytUrl), { signal: AbortSignal.timeout(5000) }).then(r => r.text());
-      const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-      const ids = [...new Set(matches.map(m => m[1]))].slice(0, 6);
-      if (ids.length) res(ids); else rej();
-    } catch { rej(); }
-  });
-  try {
-    const ids = await Promise.any(proxies.map(tryProxy));
     ytCache[ck] = ids; return ids;
   } catch {}
 
@@ -1154,35 +1158,27 @@ async function doSearch(q) {
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
 
-  // iTunes always first — best quality, has art and duration
+  // iTunes ALWAYS first — render immediately as soon as it returns
   const itunesTracks = await searchItunes(q);
+  qSpn.style.display='none';
 
-  // Render iTunes results immediately while MB loads in background
   if (itunesTracks.length) {
-    qSpn.style.display='none';
-    renderDrop(itunesTracks);
+    renderDrop(itunesTracks, []);
   }
 
-  // MB as secondary — only add tracks not already in iTunes results
-  try {
-    const mbTracks = await searchMusicBrainz(q);
-    const newMb = mbTracks.filter(t =>
-      !itunesTracks.some(e =>
-        e.trackName.toLowerCase() === t.trackName.toLowerCase() &&
-        e.artistName.toLowerCase() === t.artistName.toLowerCase()
+  // MB runs after — results always appended below iTunes, never above
+  searchMusicBrainz(q).then(mbTracks => {
+    const newMb = mbTracks.filter(mb =>
+      !itunesTracks.some(it =>
+        it.trackName.toLowerCase() === mb.trackName.toLowerCase() &&
+        it.artistName.toLowerCase() === mb.artistName.toLowerCase()
       )
     );
-    if (newMb.length) {
-      // Append MB results after iTunes — never before
-      const combined = [...itunesTracks, ...newMb].slice(0, 30);
-      qSpn.style.display='none';
-      renderDrop(combined);
-    }
-  } catch {}
+    if (newMb.length) renderDrop(itunesTracks, newMb);
+  }).catch(() => {});
 
-  qSpn.style.display='none';
-  if (!itunesTracks.length && !qDrp.querySelector('.di')) {
-    qDrp.innerHTML='<div class="drop-msg">No results</div>';
+  if (!itunesTracks.length) {
+    qDrp.innerHTML='<div class="drop-msg">No results found</div>';
   }
 }
 
@@ -1333,8 +1329,10 @@ async function fetchCoverArt(track) {
   _artCache[ck] = null;
 }
 
-function renderDrop(tracks) {
-  qDrp.innerHTML = tracks.map(t => {
+function renderDrop(itunesTracks, mbTracks) {
+  const tracks = [...itunesTracks, ...mbTracks];
+  const mbStart = itunesTracks.length;
+  qDrp.innerHTML = tracks.map((t, idx) => {
     const artSm = t.artworkUrl100||'';
     const artLg = t._artLgOverride || artSm.replace('100x100bb','600x600bb');
     const data = { title:t.trackName, artist:t.artistName, album:t.collectionName||'', artSm:artSm||null, artLg:artLg||null, durMs:t.trackTimeMillis||null, _ref:t };
@@ -1343,18 +1341,23 @@ function renderDrop(tracks) {
     const aName = (t.artistName||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const aArt = (t.artworkUrl100||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const srcBadge = (t._source && t._source!=='itunes') ? ` <span style="font-size:9px;opacity:.5;text-transform:uppercase;letter-spacing:.5px">[${t._source}]</span>` : '';
-    return `<div class="di" onclick="pickTrack('${id}')">
+    const sepHTML = (idx === mbStart && mbTracks.length > 0) ? '<div style="padding:6px 13px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink3);text-transform:uppercase;opacity:.5;border-top:1px solid var(--s2);">More from MusicBrainz</div>' : '';
+    return sepHTML + `<div class="di" onclick="pickTrack('${id}')">
       <div class="di-art">${artSm?`<img src="${artSm}" data-src="${artSm}" onerror="proxyImgFallback(this)" alt="">`:'🎵'}</div>
       <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName?' · '+x(t.collectionName):''}${srcBadge}</div></div>
       <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
-  hydrateArt(Object.values(window._td || {}));
+  hydrateArt(mbTracks);
 }
-async function hydrateArt(tdEntries) {
+async function hydrateArt(mbTrackList) {
+  // Only MB tracks need art hydration — iTunes tracks always have art
+  if (!mbTrackList?.length) return;
+  const tdEntries = Object.values(window._td || {});
+  const tdEntries_filtered = tdEntries.filter(e => !e.artSm && e._ref && mbTrackList.some(mb => mb.trackName === (e._ref?.trackName||e.title) && mb.artistName === (e._ref?.artistName||e.artist)));
 
-  const needsArt = tdEntries.filter(e => !e.artSm && e._ref);
+  const needsArt = tdEntries_filtered.length ? tdEntries_filtered : tdEntries.filter(e => !e.artSm && e._ref);
   if (!needsArt.length) return;
   await Promise.allSettled(needsArt.map(async entry => {
     const srcTrack = entry._ref;
@@ -1517,7 +1520,6 @@ const wordSyncOn = true;
 
 async function fetchLyrics(title, artist) {
   ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
-  _lrcOffset = 0; // reset per-song drift correction
   const scroll=G('lscroll');
   G('lrc-empty-state').style.display='none';
   scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
@@ -1769,76 +1771,50 @@ async function fetchArtistData(artistName) {
   let artistId = null;
   const al = artistName.toLowerCase();
 
-  // Step 1: find artistId — search for the artist entity by name
+  // Step 1: Find iTunes artistId via entity search
   const artistData = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=10&country=US`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
   );
   if (artistData?.results) {
-    // Prefer exact name match, fall back to first artist result
-    const match = artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase() === al)
-               || artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase().includes(al))
-               || artistData.results.find(r => r.wrapperType === 'artist');
-    if (match) {
-      artistId = match.artistId;
-      console.log('Artist found:', match.artistName, 'id:', artistId);
-    }
+    const match =
+      artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase() === al) ||
+      artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase().startsWith(al.split(' ')[0])) ||
+      artistData.results.find(r => r.wrapperType === 'artist');
+    if (match) artistId = match.artistId;
   }
 
   let tracks = [];
 
-  // Step 2: lookup by artistId — this is the ONLY reliable way to get an artist's songs
+  // Step 2: Lookup by artistId — gets full discography reliably
   if (artistId) {
     const ld = await itunesFetch(
       `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`
     );
     tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
-    console.log('Lookup tracks for', artistName, ':', tracks.length);
   }
 
-  // Step 3: fallback — search by name and filter to exact artist match
-  if (!tracks.length) {
+  // Step 3: Fallback — direct search filtered to artist name
+  if (tracks.length < 3) {
     const ld = await itunesFetch(
       `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`
     );
-    tracks = (ld?.results || []).filter(t =>
+    const extra = (ld?.results || []).filter(t =>
       t.wrapperType === 'track' && t.kind === 'song' &&
-      t.artistName?.toLowerCase() === al
+      t.artistName?.toLowerCase().includes(al.split(' ')[0])
     );
-    console.log('Fallback tracks for', artistName, ':', tracks.length);
+    // Merge, dedupe by trackId
+    const seen = new Set(tracks.map(t => t.trackId));
+    for (const t of extra) if (!seen.has(t.trackId)) { tracks.push(t); seen.add(t.trackId); }
   }
 
-  // Artist photo: fanart.tv via MusicBrainz ID (run async, don't block track rendering)
-  const mbPhotoPromise = (async () => {
-    try {
-      const mbRes = await fetch(
-        `https://musicbrainz.org/ws/2/artist/?query=artist:%22${encodeURIComponent(artistName)}%22&limit=3&fmt=json`,
-        { headers: { 'User-Agent': 'GhostMusic/1.0 (ghost@music.app)' } }
-      );
-      if (!mbRes.ok) return null;
-      const mbData = await mbRes.json();
-      const mbArtist = mbData.artists?.find(a => a.name?.toLowerCase() === al) || mbData.artists?.[0];
-      if (!mbArtist?.id) return null;
-      const ftRes = await fetch(`https://webservice.fanart.tv/v3/music/${mbArtist.id}?api_key=93ede23094c445c6b09ba012e1a04f09`);
-      if (!ftRes.ok) return null;
-      const ftData = await ftRes.json();
-      return ftData.artistthumb?.[0]?.url || ftData.artistbackground?.[0]?.url || null;
-    } catch { return null; }
-  })();
+  // Sort by popularity (playCount not available, use trackNumber + collectionName as proxy)
+  // iTunes returns them roughly in popularity order already, keep that order.
 
-  // Use best available art for hero — high-res track art while photo loads
-  if (tracks.length) {
-    const firstArt = tracks.find(t => t.artworkUrl100)?.artworkUrl100;
-    if (firstArt) artistImg = firstArt.replace('100x100bb', '600x600bb');
-  }
+  // Artist hero image: use highest-res album art available — skip fanart.tv (unreliable)
+  const artTrack = tracks.find(t => t.artworkUrl100);
+  if (artTrack) artistImg = artTrack.artworkUrl100.replace('100x100bb', '600x600bb');
 
-  // Wait for photo (with 3s timeout so it doesn't hang)
-  const photo = await Promise.race([
-    mbPhotoPromise,
-    new Promise(res => setTimeout(() => res(null), 3000)),
-  ]);
-  if (photo) artistImg = photo;
-
-  return { tracks: tracks.slice(0, 50), artistImg };
+  return { tracks: tracks.slice(0, 60), artistImg };
 }
 
 function renderArtistProfile(artistName, tracks, heroImg, container) {
