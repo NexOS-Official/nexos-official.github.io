@@ -1552,38 +1552,151 @@ async function fetchLyrics(title, artist) {
   scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
   const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
   const ct=clean(title), ca=clean(artist);
+  const alts = ct!==title||ca!==artist;
 
-  // Run both GET attempts in parallel for speed
-  const [r1, r2] = await Promise.all([lrclibGET(ct, ca), ct!==title||ca!==artist ? lrclibGET(title, artist) : Promise.resolve(null)]);
-  for (const d of [r1, r2]) {
-    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+  // ── PHASE 1: Race all sources simultaneously for word-level lyrics ──────────
+  // Sources that can return per-word timestamps get priority
+  const wordLevelRace = [
+    lyricsOvhFetch(ct, ca),                       // lyrics.ovh (plain, used as last fallback)
+    lrclibGET(ct, ca),
+    alts ? lrclibGET(title, artist) : null,
+    lrclibSEARCH(ct, ca),
+    alts ? lrclibSEARCH(title, artist) : null,
+    neteaseFetch(ct, ca),
+    alts ? neteaseFetch(title, artist) : null,
+  ].filter(Boolean);
+
+  // Collect results in parallel — use the best one (word-timed > line-timed)
+  const results = await Promise.allSettled(wordLevelRace);
+  const candidates = results
+    .filter(r => r.status === 'fulfilled' && r.value)
+    .map(r => r.value);
+
+  // Prefer sources that have actual per-word timestamps embedded in LRC
+  const scoreLyric = d => {
+    if (!d) return -1;
+    if (d._wordSynced) return 3;   // netease word-level
+    if (d.syncedLyrics?.includes('<')) return 2; // enhanced LRC with <mm:ss> word tags
+    if (d.syncedLyrics) return 1;  // plain line-synced LRC
+    return 0;
+  };
+  candidates.sort((a, b) => scoreLyric(b) - scoreLyric(a));
+
+  for (const d of candidates) {
+    if (d._wordSynced) {
+      // Already parsed word-level lines from Netease
+      ST.lrc = d._wordSynced; ST.lrcType = 'synced'; renderSynced(); return;
+    }
+    if (d.syncedLyrics) {
+      const lines = buildWordTimings(parseLRC(d.syncedLyrics));
+      if (lines.length) { ST.lrc=lines; ST.lrcType='synced'; renderSynced(); return; }
+    }
   }
-  // Search fallback — also parallel
-  const [s1, s2] = await Promise.all([lrclibSEARCH(ct, ca), ct!==title||ca!==artist ? lrclibSEARCH(title, artist) : Promise.resolve(null)]);
-  for (const d of [s1, s2]) {
-    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
-  }
+
   scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
 }
 
 async function lrclibGET(track, artist) {
   try {
     const url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
-    if (r.status === 200 || r.ok) return await r.json();
+    const r = await proxyFetch(url, {}, 6000);
+    if (r.ok) return await r.json();
   } catch {}
   return null;
 }
 async function lrclibSEARCH(track, artist) {
   try {
     const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
+    const r = await proxyFetch(url, {}, 6000);
     if (r.ok) {
       const a = await r.json();
       if (a?.length) return a.find(x => x.syncedLyrics) || a.find(x => x.plainLyrics) || null;
     }
   } catch {}
   return null;
+}
+
+// ── Netease Music — best source for word-level "kara" timestamps ─────────────
+// Uses the public NeteaseCloudMusicApi (open instances) which returns
+// per-word highlight timestamps via the /lyric/new endpoint
+async function neteaseFetch(track, artist) {
+  const NETEASE_HOSTS = [
+    'https://neteasecloudmusicapi-topaz.vercel.app',
+    'https://ncm-api-nine.vercel.app',
+  ];
+  for (const host of NETEASE_HOSTS) {
+    try {
+      // Step 1: search for the song ID
+      const sq = encodeURIComponent(track + ' ' + artist);
+      const sr = await fetch(`${host}/search?keywords=${sq}&limit=5`, { signal: AbortSignal.timeout(5000) });
+      if (!sr.ok) continue;
+      const sd = await sr.json();
+      const songs = sd?.result?.songs;
+      if (!songs?.length) continue;
+      // Pick best match — prefer artist name match
+      const al = artist.toLowerCase();
+      const song = songs.find(s => s.artists?.some(a => a.name?.toLowerCase().includes(al.split(' ')[0]))) || songs[0];
+      const songId = song.id;
+
+      // Step 2: fetch lyrics with word-level kara data
+      const lr = await fetch(`${host}/lyric/new?id=${songId}`, { signal: AbortSignal.timeout(5000) });
+      if (!lr.ok) continue;
+      const ld = await lr.json();
+
+      // yrc = word-level JSON lyrics (best)
+      if (ld?.yrc?.lyric) {
+        const lines = parseYRC(ld.yrc.lyric);
+        if (lines.length) return { _wordSynced: lines };
+      }
+      // klyric = enhanced LRC with word timestamps
+      if (ld?.klyric?.lyric) {
+        const lines = buildWordTimings(parseLRC(ld.klyric.lyric));
+        if (lines.length) return { syncedLyrics: ld.klyric.lyric };
+      }
+      // lrc = regular line-synced
+      if (ld?.lrc?.lyric) {
+        return { syncedLyrics: ld.lrc.lyric };
+      }
+    } catch {}
+  }
+  return null;
+}
+
+// Parse Netease YRC format — JSON-based per-word timestamps
+// Format: {"t":12340,"c":[{"tx":"Hello","li":0},{"tx":" world","li":1}]}
+function parseYRC(yrcStr) {
+  const lines = [];
+  for (const raw of yrcStr.split('\n')) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    // Standard LRC header lines e.g. [ar:Artist]
+    if (/^\[\w+:/.test(trimmed)) continue;
+    try {
+      // YRC line format: [lineStartMs,lineDurMs]{"t":...}
+      const lineHeader = trimmed.match(/^\[(\d+),(\d+)\](.*)/);
+      if (!lineHeader) continue;
+      const lineMs = parseInt(lineHeader[1]);
+      const jsonPart = lineHeader[3];
+      if (!jsonPart) { lines.push({ ms: lineMs, text: '', words: [], beatDur: 600 }); continue; }
+      const obj = JSON.parse(jsonPart);
+      if (!obj?.c?.length) continue;
+      const words = [];
+      let fullText = '';
+      for (const chunk of obj.c) {
+        const word = (chunk.tx || '').trimEnd();
+        if (!word) continue;
+        words.push({ ms: obj.t + (chunk.li || 0), word });
+        fullText += (fullText ? ' ' : '') + word;
+      }
+      lines.push({ ms: lineMs, text: fullText, words, _wordTimed: words });
+    } catch {}
+  }
+  return lines;
+}
+
+// lyrics.ovh — plain text only, used as absolute last resort (no sync)
+async function lyricsOvhFetch(track, artist) {
+  return null; // plain lyrics not displayed in sync view, skip
 }
 
 function parseLRC(rawStr) {
@@ -1607,25 +1720,57 @@ function parseLRC(rawStr) {
   }).filter(Boolean);
 }
 
-function syllableCount(word) {
-  word = word.toLowerCase().replace(/[^a-z]/g,'');
-  if (!word) return 1;
-  const vowels = word.match(/[aeiouy]+/g);
-  let count = vowels ? vowels.length : 1;
-  if (word.endsWith('e') && word.length > 2) count = Math.max(1, count - 1);
-  return Math.max(1, count);
+// ── Phonetic timing model ────────────────────────────────────────────────────
+// Estimates per-word durations when no word-level timestamps exist.
+// Better than naive syllable count — accounts for stress, function words,
+// consonant clusters, and natural speech rhythm.
+
+const FUNCTION_WORDS = new Set([
+  'a','an','the','and','but','or','nor','for','so','yet',
+  'in','on','at','to','of','by','up','as','is','am','are',
+  'was','were','be','been','do','did','i','you','he','she',
+  'it','we','they','me','him','her','us','them','my','your',
+  'his','its','our','their','that','this','with','from','not',
+  "i'm","i've","i'll","i'd","you're","we're","they're",
+  "don't","can't","won't","didn't","it's","that's",
+]);
+
+function phonemeWeight(word) {
+  const w = word.toLowerCase().replace(/[^a-z']/g, '');
+  if (!w) return 0.5;
+  // Function words get reduced weight — they're spoken quickly
+  if (FUNCTION_WORDS.has(w)) return 0.55;
+  // Count syllables with improved heuristic
+  let syls = 0;
+  const v = w.replace(/[^aeiouy]/g, '');
+  // Count vowel groups
+  const vGroups = (w.match(/[aeiouy]+/g) || []).length;
+  syls = vGroups;
+  // Silent 'e' at end
+  if (w.endsWith('e') && w.length > 3 && !/[aeiouy]e$/.test(w.slice(-3, -1))) syls = Math.max(1, syls - 1);
+  // -ed, -es suffixes often silent
+  if (/[^aeiouy](ed|es)$/.test(w)) syls = Math.max(1, syls - 1);
+  // -tion, -cian, -sion = 1 syllable
+  if (/(tion|cian|sion)$/.test(w)) syls = Math.max(1, syls - 1);
+  // -ful, -less, -ness, -ment, -ness add full syllable
+  syls = Math.max(1, syls);
+
+  // Longer words naturally take more time even at same syllable count
+  const lenBonus = Math.min(0.3, (w.length - 4) * 0.04);
+  // Consonant clusters at start slow word onset slightly
+  const onsetCluster = (w.match(/^[^aeiouy]{2,}/) || [''])[0].length * 0.05;
+
+  return Math.max(0.4, syls * 0.8 + lenBonus + onsetCluster);
 }
 
 function buildWordTimings(lrc) {
   return lrc.map((line, i) => {
     const lineMs = line.ms;
     const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
-    const duration = Math.max(400, nextMs - lineMs - 80);
+    const gapMs = Math.max(400, nextMs - lineMs);
     const rawWords = line.text.split(/\s+/).filter(Boolean);
 
     if (!rawWords.length) {
-      // ♪ instrumental — compute beat duration from gap, aim for ~4 beats
-      const gapMs = Math.max(400, nextMs - lineMs);
       const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
       return { ...line, words: [], beatDur };
     }
@@ -1635,17 +1780,19 @@ function buildWordTimings(lrc) {
       return { ...line, words: line._wordTimed };
     }
 
-    // Syllable-weighted distribution fallback
-    const syls = rawWords.map(syllableCount);
-    const totalSyls = syls.reduce((a,b)=>a+b, 0);
-    // Use 90% of available time — leave natural tail before next line
-    const usable = duration * 0.90;
+    // ── Phoneme-weighted distribution ────────────────────────────────────────
+    const weights = rawWords.map(phonemeWeight);
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
+
+    // Use 88% of line duration — leave a natural breath gap before next line
+    // But also cap per-word max to avoid single long words eating everything
+    const usable = gapMs * 0.88;
+
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
-      // Weight short words (≤3 chars) slightly less — they're usually unstressed
-      const weight = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
-      cursor += (weight / syls.reduce((a,b,j)=>a+(b*(rawWords[j].replace(/[^a-z]/gi,'').length<=3?0.7:1)),0)) * usable;
+      const share = (weights[wi] / totalWeight) * usable;
+      cursor += share;
       return { ms: wordMs, word };
     });
     return { ...line, words };
