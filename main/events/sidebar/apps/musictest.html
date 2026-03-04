@@ -230,11 +230,28 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   letter-spacing:.01em;
 }
 .ll.now .ll-paren{color:rgba(255,255,255,0.75)}
-/* word-by-word highlight */
-.lw{transition:color .12s,text-shadow .12s}
-.lw.hit{color:#ffffff !important;text-shadow:0 0 22px rgba(252,60,108,.8),0 0 8px rgba(252,60,108,.5)}
-.ll.now .lw{color:rgba(255,255,255,0.35)}
-.ll.now .lw.hit{color:#ffffff !important}
+/* ── Word-by-word karaoke ── */
+/* Base: upcoming words on active line — dim, slightly blurred */
+.ll.now .lw{
+  color:rgba(255,255,255,0.28);
+  filter:blur(1.2px);
+  transition:color .18s ease, filter .18s ease, text-shadow .18s ease;
+  display:inline-block;
+}
+/* Already-sung words on the active line — stay fully lit, no blur */
+.ll.now .lw.done{
+  color:rgba(255,255,255,0.82);
+  filter:blur(0px);
+  text-shadow:none;
+}
+/* The single current word — full white, bright pink glow, no blur */
+.ll.now .lw.now-word{
+  color:#ffffff;
+  filter:blur(0px);
+  text-shadow:0 0 28px rgba(255,255,255,0.9), 0 0 12px rgba(252,60,108,0.7);
+  transform:scale(1.04);
+  transition:color .08s ease, filter .08s ease, text-shadow .08s ease, transform .08s ease;
+}
 /* plain lyrics */
 .ll.plain{cursor:default;font-size:15px;font-weight:500;color:rgba(255,255,255,0.5);filter:none}
 .ll.plain:hover{color:rgba(255,255,255,0.7)}
@@ -1246,7 +1263,11 @@ let wordSyncOn = false;
 G('wsync-btn').addEventListener('click', () => {
   wordSyncOn = !wordSyncOn;
   G('wsync-btn').classList.toggle('on', wordSyncOn);
-  if (ST.lrcType === 'synced') renderSynced();
+  if (ST.lrcType === 'synced') {
+    renderSynced();
+    // Re-run tick immediately so current line gets word states right away
+    if (wordSyncOn && ST.pos > 0) tickLrc(ST.pos);
+  }
 });
 
 async function fetchLyrics(title, artist) {
@@ -1375,6 +1396,7 @@ function tickLrc(posMs) {
   }
   // Update line classes only when active line changes
   if (active !== ST.lrcActive) {
+    const prevActive = ST.lrcActive;
     ST.lrcActive = active;
     const els = document.querySelectorAll('#lscroll .ll');
     els.forEach((el, i) => {
@@ -1384,23 +1406,50 @@ function tickLrc(posMs) {
       if (i === active) el.classList.add('now');
     });
     document.getElementById('ll'+active)?.scrollIntoView({ block:'center', behavior:'smooth' });
+
+    // In word mode: mark all words on the line we just left as .done,
+    // and clear word states on the new active line
+    if (wordSyncOn) {
+      if (prevActive >= 0 && ST.lrc[prevActive]?.words) {
+        ST.lrc[prevActive].words.forEach((w, wi) => {
+          const el = document.getElementById('lw'+prevActive+'_'+wi);
+          if (el) { el.classList.remove('now-word'); el.classList.add('done'); }
+        });
+      }
+      if (ST.lrc[active]?.words) {
+        ST.lrc[active].words.forEach((w, wi) => {
+          const el = document.getElementById('lw'+active+'_'+wi);
+          if (el) el.classList.remove('done','now-word');
+        });
+      }
+    }
   }
-  // Word-by-word karaoke highlighting
+  // Word-by-word karaoke: three states — upcoming (dim), done (lit), now-word (glowing)
   if (wordSyncOn && ST.lrc[active]?.words?.length) {
     const words = ST.lrc[active].words;
+    const nextLineMs = ST.lrc[active+1]?.ms ?? (posMs + 9999);
+
+    // Find which word is currently being sung
+    let currentWord = -1;
+    for (let wi = 0; wi < words.length; wi++) {
+      const endMs = words[wi+1]?.ms ?? nextLineMs;
+      if (posMs >= words[wi].ms && posMs < endMs) { currentWord = wi; break; }
+    }
+
     words.forEach((w, wi) => {
       const el = document.getElementById('lw'+active+'_'+wi);
       if (!el) return;
-      const nextWms = words[wi+1]?.ms ?? (ST.lrc[active+1]?.ms ?? posMs + 9999);
-      el.classList.toggle('hit', posMs >= w.ms && posMs < nextWms);
+      // Remove all states first
+      el.classList.remove('done','now-word');
+      if (wi < currentWord) {
+        // Already sung — stay lit
+        el.classList.add('done');
+      } else if (wi === currentWord) {
+        // Currently singing — glow
+        el.classList.add('now-word');
+      }
+      // else: upcoming — no class, dim by default via .ll.now .lw
     });
-    // Un-hit words on lines we just passed
-    if (active !== ST.lrcActive - 1) {
-      const prev = ST.lrc[active - 1];
-      if (prev?.words) prev.words.forEach((w, wi) => {
-        document.getElementById('lw'+(active-1)+'_'+wi)?.classList.remove('hit');
-      });
-    }
   }
 }
 
