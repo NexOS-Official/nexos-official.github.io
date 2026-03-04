@@ -1219,6 +1219,7 @@ function scoreTrack(t, ql, words) {
   if (t.artworkUrl100) s += 5;
   if (t.trackTimeMillis > 60000) s += 5;
   if ((t.trackCount || 0) > 5) s += 3; // album with multiple tracks = real release
+  if (t.trackExplicitness === 'explicit') s += 8; // prefer explicit over clean versions
   return s;
 }
 
@@ -1226,7 +1227,7 @@ async function searchItunes(q) {
   const ql = q.toLowerCase().trim();
   const words = ql.split(/\s+/).filter(Boolean);
   const data = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US&explicit=Yes`
   );
   if (!data?.results?.length) return [];
   const results = data.results;
@@ -1296,7 +1297,7 @@ async function fetchCoverArt(track) {
   // Always try iTunes first — works everywhere including school Chromebooks
   try {
     const term = encodeURIComponent((track.artistName||'').trim() + ' ' + (track.trackName||'').trim());
-    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
+    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US&explicit=Yes`);
     if (r.ok) {
       const d = await r.json();
       const tl = (track.trackName||'').toLowerCase();
@@ -1809,7 +1810,7 @@ async function fetchArtistData(artistName) {
 
   // Step 1: Find iTunes artistId via entity search
   const artistData = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US&explicit=Yes`
   );
   if (artistData?.results) {
     const match =
@@ -1824,7 +1825,7 @@ async function fetchArtistData(artistName) {
   // Step 2: Lookup by artistId — gets full discography reliably
   if (artistId) {
     const ld = await itunesFetch(
-      `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`
+      `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US&explicit=Yes`
     );
     tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
   }
@@ -1832,7 +1833,7 @@ async function fetchArtistData(artistName) {
   // Step 3: Fallback — direct search filtered to artist name
   if (tracks.length < 3) {
     const ld = await itunesFetch(
-      `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`
+      `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US&explicit=Yes`
     );
     const extra = (ld?.results || []).filter(t =>
       t.wrapperType === 'track' && t.kind === 'song' &&
