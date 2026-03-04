@@ -1172,27 +1172,45 @@ function _startRepeatCrossfade(videoId) {
       _xfading   = false;
       _xfAnimId  = null;
       _lrcLocked = false;
+
       const oldMain = _main();
       _activePlayer = _activePlayer === 'A' ? 'B' : 'A';
+
       try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
       try { oldMain.setVolume(0); oldMain.pauseVideo(); } catch {}
-      _lastYtPosMs  = (_main().getCurrentTime?.() ?? LOOP_BACK_S) * 1000;
+
+      // Sync position to new main (bench, now playing at LOOP_BACK_S)
+      const newPos = (_main().getCurrentTime?.() ?? LOOP_BACK_S) * 1000;
+      _lastYtPosMs  = newPos;
       _lastYtPollMs = performance.now();
+      ST.pos = newPos;
+      ST.dur = (_main().getDuration?.() ?? 0) * 1000;
 
-      // Clear lscroll container blur
-      if (sc) { sc.style.transition = 'filter 0.5s ease'; sc.style.filter = ''; }
-      _setMixingUI(false);
-
-      // Clear ALL inline filters on individual lyric lines — they were set
-      // during the snap and tickLrc only re-clears them when active line changes,
-      // so if the active line is already correct they'd stay blurred forever.
+      // Bug 1 fix: use a slow transition so the blur visually clears
+      if (sc) {
+        sc.style.transition = 'filter 1.2s ease';
+        sc.style.filter = '';
+      }
+      // Clear all per-line inline filters set during snap
       document.querySelectorAll('#lscroll .ll').forEach(el => { el.style.filter = ''; });
-      // Force tickLrc to re-render by invalidating lrcActive
+      // Force tickLrc full re-render next time it runs
       ST.lrcActive = -1;
 
-      setTimeout(() => { _swapping = false; }, 400);
+      _setMixingUI(false);
+
+      // Bug 2 fix: don't start ticker until AFTER _swapping clears.
+      // If ticker ran immediately, _tickerFn would see ST.pos near song end
+      // (stale value) and ST.dur still set, making rem <= XFADE_MS and
+      // firing another crossfade right away.
       clearInterval(ticker);
-      ticker = setInterval(_tickerFn, 250);
+      setTimeout(() => {
+        _swapping = false;
+        ST.pos = (_main().getCurrentTime?.() ?? LOOP_BACK_S) * 1000;
+        ST.dur = (_main().getDuration?.() ?? 0) * 1000;
+        _lastYtPosMs  = ST.pos;
+        _lastYtPollMs = performance.now();
+        ticker = setInterval(_tickerFn, 250);
+      }, 500);
       return;
     }
 
