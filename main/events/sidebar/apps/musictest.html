@@ -162,18 +162,15 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .results-panel{padding:16px;opacity:1;overflow-y:auto;}
 .results-panel.hidden{opacity:0;pointer-events:none}
-/* lyrics panel: fixed position, no scroll on self — child scrolls */
 .lyrics-panel{
   opacity:0;pointer-events:none;overflow:hidden;
 }
 .lyrics-panel.active{opacity:1;pointer-events:auto}
-/* inner scroll container — this scrolls, not the panel */
 .lrc-scroll-outer{
   position:absolute;inset:0;overflow-y:auto;
   padding:30px 24px 80px;
   z-index:1;
 }
-/* blurred album art background inside lyrics panel */
 .lrc-bg{
   position:absolute;inset:0;
   background-size:cover;background-position:center;
@@ -220,7 +217,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi:hover .qi-rm{display:grid}
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
-/* ── Lyrics lines — Apple Music style ── */
 .ll{
   font-size:28px;line-height:1.35;font-weight:800;
   padding:4px 0;border-radius:8px;cursor:pointer;
@@ -228,7 +224,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   filter:blur(3px);
   opacity:.7;
   transform-origin:left center;
-  /* smooth all transitions */
   transition:
     color .55s cubic-bezier(.4,0,.2,1),
     filter .55s cubic-bezier(.4,0,.2,1),
@@ -236,98 +231,59 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     font-size .4s cubic-bezier(.34,1.56,.64,1);
   will-change:color,filter,opacity;
 }
-/* far-past lines — barely visible */
 .ll.past{
   color:rgba(255,255,255,0.12);
   filter:blur(4px);
   opacity:.45;
 }
-/* one line above/below active — readable but soft */
 .ll.near{
   color:rgba(255,255,255,0.5);
   filter:blur(1.5px);
   opacity:.85;
   font-size:26px;
 }
-/* active line */
 .ll.now{
   color:#ffffff;
   font-size:32px;
   filter:blur(0px);
   opacity:1;
 }
-/* paren sub-line */
 .ll-paren{
   display:block;font-size:.58em;font-weight:600;
   color:rgba(255,255,255,0.45);margin-top:3px;
 }
 .ll.now .ll-paren{color:rgba(255,255,255,0.7)}
 
-/* ── Word-by-word karaoke — Apple Music style ── */
-/* upcoming words on active line: dim grey, no blur on text (line handles blur via .ll) */
 .ll.now .lw{
   display:inline-block;
-  color:rgba(255,255,255,0.3);
-  -webkit-text-fill-color:rgba(255,255,255,0.3);
-  background:none;
-  transition:color .2s ease, -webkit-text-fill-color .2s ease;
-}
-/* current word: crisp white with subtle inner-feeling glow using background-clip trick */
-.ll.now .lw.now-word{
-  /* background-clip:text gives the glow INSIDE the letter shapes */
-  background:linear-gradient(135deg,
-    rgba(255,255,255,1) 0%,
-    rgba(230,240,255,1) 50%,
-    rgba(255,255,255,1) 100%
+  background:linear-gradient(to right,
+    #ffffff var(--pct, 0%),
+    rgba(255,255,255,0.28) var(--pct, 0%)
   );
   -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
   background-clip:text;
-  /* Minimal outer halo — very tight, barely there */
-  filter:drop-shadow(0 0 2px rgba(255,255,255,0.55))
-         drop-shadow(0 0 6px rgba(255,255,255,0.12));
-  /* Entry animation — sweeps in from slightly dim */
-  animation:wordlit .13s ease-out forwards;
-  transition:filter .05s ease;
+  -webkit-text-fill-color:transparent;
 }
-@keyframes wordlit{
-  from{opacity:.5;filter:drop-shadow(0 0 0px rgba(255,255,255,0))}
-  to{opacity:1;filter:drop-shadow(0 0 2px rgba(255,255,255,0.55)) drop-shadow(0 0 6px rgba(255,255,255,0.12))}
-}
-/* done: plain white, no tricks needed */
 .ll.now .lw.done{
-  color:#ffffff;
-  -webkit-text-fill-color:#ffffff;
-  background:none;
-  -webkit-background-clip:unset;
-  background-clip:unset;
-  filter:none;
-  text-shadow:none;
-  transition:color .1s ease, filter .1s ease;
+  --pct:100%;
+  filter:drop-shadow(0 0 3px rgba(255,255,255,0.18));
 }
-/* plain (unsynced) lyrics */
-.ll.plain{cursor:default;font-size:18px;font-weight:600;color:rgba(255,255,255,0.55);filter:none;opacity:1}
-.ll.plain:hover{color:rgba(255,255,255,0.8)}
+.ll.now .lw.upcoming{
+  --pct:0%;
+  filter:none;
+}
+.ll.now .lw.now-word{
+  filter:drop-shadow(0 0 4px rgba(255,255,255,0.25));
+}
+
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
 .lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
 .lrc-empty svg{width:38px;height:38px;opacity:.22}
 .lrc-empty p{font-size:13px}
-/* word-sync toggle pill */
-.wsync-btn{
-  position:absolute;top:12px;right:60px;z-index:10;
-  height:28px;padding:0 12px;border-radius:14px;
-  background:var(--s2);border:1px solid var(--border);
-  display:none;align-items:center;gap:5px;cursor:pointer;
-  font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;
-  color:var(--ink3);transition:background .15s,color .15s,border-color .15s;
-}
-.wsync-btn.visible{display:flex}
-.wsync-btn.on{background:var(--pink);border-color:var(--pink);color:#fff}
-.wsync-btn svg{width:12px;height:12px}
+
 
 .q-empty-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--ink3);font-size:13px;text-align:center;line-height:1.6}
 
-/* ── Panel nav buttons (bottom-right of content-area) ── */
 .panel-nav{
   position:absolute;bottom:14px;right:14px;z-index:10;
   display:flex;flex-direction:column;gap:6px;align-items:center;
@@ -343,7 +299,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .pnb:hover{background:var(--s3);color:var(--ink);transform:scale(1.05)}
 .pnb.active{background:var(--pink);color:#fff;border-color:var(--pink)}
 
-/* ── Generic panel (likes, playlists) ── */
 .side-panel{
   position:absolute;inset:0;padding:16px 16px 60px;
   overflow-y:auto;
@@ -362,7 +317,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   cursor:pointer;letter-spacing:.3px;
 }
 
-/* ── Liked songs list ── */
 .lk-empty{height:80%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--ink3);font-size:13px}
 .lk-empty svg{width:34px;height:34px;opacity:.2}
 .lk-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:10px;cursor:pointer;transition:background .12s}
@@ -376,7 +330,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .lk-rm{opacity:0;background:none;border:none;color:var(--ink3);font-size:16px;cursor:pointer;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;transition:background .12s,color .12s,opacity .12s;flex-shrink:0}
 .lk-rm:hover{background:var(--s3);color:var(--red)}
 
-/* ── Heart button on now-playing cover ── */
 .heart-btn{
   position:absolute;top:14px;right:14px;z-index:3;
   width:34px;height:34px;border-radius:50%;
@@ -390,7 +343,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .heart-btn.liked svg{fill:var(--pink)}
 .heart-btn:hover{transform:scale(1.1)}
 
-/* ── Playlists ── */
 .pl-grid{display:flex;flex-direction:column;gap:8px}
 .pl-card{
   display:flex;align-items:center;gap:10px;
@@ -414,7 +366,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .pl-del{opacity:0;background:none;border:none;color:var(--ink3);cursor:pointer;font-size:16px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;transition:opacity .12s,background .12s,color .12s}
 .pl-del:hover{background:var(--s3);color:var(--red)}
 
-/* ── Playlist detail view ── */
 .pl-detail-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0}
 .pl-back{background:none;border:none;color:var(--ink3);cursor:pointer;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;transition:background .12s,color .12s}
 .pl-back:hover{background:var(--s2);color:var(--ink)}
@@ -422,7 +373,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .pl-detail-name{font-size:15px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pl-play-all{background:var(--pink);border:none;color:#fff;font-size:11px;font-weight:600;padding:5px 12px;border-radius:10px;cursor:pointer;white-space:nowrap}
 
-/* ── Add-to-playlist modal ── */
 .modal-bg{
   position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);
   z-index:800;display:none;align-items:center;justify-content:center;
@@ -452,7 +402,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .modal-pl-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .modal-pl-name{font-size:13px;font-weight:500;color:var(--ink)}
 
-/* ── Context (right-click) menu on queue items ── */
 .ctx-menu{
   position:fixed;z-index:900;
   background:var(--surf);border:1px solid var(--border);
@@ -522,7 +471,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 <div class="toast" id="toast"></div>
 
 <div class="app">
-  <!-- LEFT: Cover + Controls -->
   <div class="left">
     <div class="cover-wrap" id="cover-wrap">
       <img class="cover-bg" id="cv-bg" src="" alt="">
@@ -581,7 +529,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     </div>
   </div>
 
-  <!-- RIGHT: Search + Results/Lyrics -->
   <div class="right">
     <div class="search-row">
       <div class="search-box">
@@ -593,7 +540,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     </div>
 
     <div class="content-area">
-      <!-- Results / Queue -->
       <div class="results-panel" id="results-panel">
         <div id="q-list">
           <div class="q-empty-msg">
@@ -603,7 +549,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         </div>
       </div>
 
-      <!-- Lyrics -->
       <div class="lyrics-panel" id="lyrics-panel">
         <div class="lrc-bg" id="lrc-bg"></div>
         <div class="lrc-scroll-outer" id="lrc-scroll-outer">
@@ -619,19 +564,16 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         </div>
       </div>
 
-      <!-- Liked Songs Panel -->
       <div class="side-panel" id="likes-panel">
         <div class="panel-hdr"><span>Liked Songs</span></div>
         <div id="likes-list"><div class="lk-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><p>No liked songs yet</p></div></div>
       </div>
 
-      <!-- Playlists Panel -->
       <div class="side-panel" id="playlists-panel">
         <div class="panel-hdr"><span>Playlists</span><button onclick="openNewPlaylistModal()">+ New</button></div>
         <div class="pl-grid" id="pl-grid"><div class="lk-empty" style="height:60%;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:34px;height:34px;opacity:.2"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No playlists yet</p></div></div>
       </div>
 
-      <!-- Playlist Detail Panel -->
       <div class="side-panel" id="pl-detail-panel">
         <div class="pl-detail-hdr">
           <button class="pl-back" onclick="showPanel('playlists')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
@@ -641,13 +583,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         <div id="pl-detail-list"></div>
       </div>
 
-      <!-- wsync pill (shown inside lyrics panel only) -->
-      <button class="wsync-btn" id="wsync-btn" title="Word sync">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h10M4 17h13"/></svg>
-        Word
-      </button>
 
-      <!-- Panel nav (bottom-right icon stack) -->
+
       <div class="panel-nav">
         <button class="pnb" id="pnb-lyrics" title="Lyrics (L)">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
@@ -663,7 +600,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   </div>
 </div>
 
-<!-- Add-to-playlist modal -->
 <div class="modal-bg" id="modal-atp">
   <div class="modal">
     <div class="modal-title" id="modal-atp-title">Add to Playlist</div>
@@ -671,7 +607,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('modal-atp')">Cancel</button><button class="modal-ok" onclick="createPlaylistFromModal()">New Playlist</button></div>
   </div>
 </div>
-<!-- New playlist modal -->
 <div class="modal-bg" id="modal-newpl">
   <div class="modal">
     <div class="modal-title">New Playlist</div>
@@ -679,7 +614,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('modal-newpl')">Cancel</button><button class="modal-ok" onclick="confirmNewPlaylist()">Create</button></div>
   </div>
 </div>
-<!-- Context menu -->
 <div class="ctx-menu" id="ctx-menu">
   <div class="ctx-item" id="ctx-like" onclick="ctxLike()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span id="ctx-like-lbl">Like</span></div>
   <div class="ctx-item" onclick="ctxAddToPlaylist()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add to Playlist</div>
@@ -689,26 +623,21 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 <script>
 'use strict';
-
-// ── Panel system ────────────────────────────────────────────────────────────
-// panels: 'queue' | 'lyrics' | 'likes' | 'playlists' | 'pl-detail'
 let activePanel = 'queue';
 
 function showPanel(name) {
   activePanel = name;
-  // Hide all
+
   G('results-panel').classList.toggle('hidden', name !== 'queue');
   G('lyrics-panel').classList.toggle('active', name === 'lyrics');
-  if (name === 'lyrics') {
-    G('wsync-btn').classList.toggle('visible', ST.lrcType === 'synced' && ST.lrc.length > 0);
-  }
   G('likes-panel').classList.toggle('active', name === 'likes');
   G('playlists-panel').classList.toggle('active', name === 'playlists');
   G('pl-detail-panel').classList.toggle('active', name === 'pl-detail');
-  // wsync only visible in lyrics
-  if (name !== 'lyrics') G('wsync-btn').classList.remove('visible');
-  else if (ST.lrcType === 'synced') renderSynced();
-  // Nav button highlights
+
+  if (name === 'lyrics' && ST.lrcType === 'synced') {
+    renderSynced();
+  }
+
   G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
   G('pnb-likes').classList.toggle('active', name === 'likes');
   G('pnb-playlists').classList.toggle('active', name === 'playlists' || name === 'pl-detail');
@@ -718,7 +647,6 @@ G('pnb-lyrics').addEventListener('click', () => showPanel(activePanel === 'lyric
 G('pnb-likes').addEventListener('click', () => showPanel(activePanel === 'likes' ? 'queue' : 'likes'));
 G('pnb-playlists').addEventListener('click', () => showPanel(activePanel === 'playlists' || activePanel === 'pl-detail' ? 'queue' : 'playlists'));
 
-// ── Likes ────────────────────────────────────────────────────────────────────
 let likes = JSON.parse(localStorage.getItem('ghost_likes') || '[]');
 function saveLikes() { try { localStorage.setItem('ghost_likes', JSON.stringify(likes)); } catch {} }
 
@@ -770,7 +698,6 @@ G('btn-heart').addEventListener('click', () => {
   toggleLike(cur);
 });
 
-// ── Playlists ────────────────────────────────────────────────────────────────
 let playlists = JSON.parse(localStorage.getItem('ghost_playlists') || '[]');
 let activePlId = null;
 function savePlaylists() { try { localStorage.setItem('ghost_playlists', JSON.stringify(playlists)); } catch {} }
@@ -841,7 +768,6 @@ G('modal-atp').addEventListener('click', e => { if (e.target === G('modal-atp'))
 G('modal-newpl').addEventListener('click', e => { if (e.target === G('modal-newpl')) closeModal('modal-newpl'); });
 renderPlaylists();
 
-// ── Context menu ─────────────────────────────────────────────────────────────
 let ctxTrackIdx = -1;
 function openCtxMenu(e, idx) {
   e.preventDefault(); e.stopPropagation();
@@ -853,7 +779,6 @@ function openCtxMenu(e, idx) {
   G('ctx-like-lbl').textContent = liked ? 'Unlike' : 'Like';
   G('ctx-like').querySelector('svg').style.fill = liked ? 'var(--pink)' : 'none';
   G('ctx-like').querySelector('svg').style.color = liked ? 'var(--pink)' : '';
-  // Position
   let x2 = e.clientX, y2 = e.clientY;
   if (x2 + 180 > window.innerWidth) x2 = window.innerWidth - 185;
   if (y2 + 160 > window.innerHeight) y2 = window.innerHeight - 165;
@@ -909,7 +834,6 @@ function addToPlaylist(plIdx) {
   const pl = playlists[plIdx];
   const title = t.title||t.trackName||'';
   const artist = t.artist||t.artistName||'';
-  // Duplicate check
   const alreadyIn = pl.tracks.some(tr =>
     tr.title.toLowerCase() === title.toLowerCase() &&
     tr.artist.toLowerCase() === artist.toLowerCase()
@@ -1115,12 +1039,10 @@ async function searchLastFm(q) {
   } catch { return []; }
 }
 
-// ── Cover art fetcher: CAA → iTunes fallback ──────────────────────────────────
 const _artCache = {};
 async function fetchCoverArt(track) {
   if (track.artworkUrl100) return;
 
-  // 1. Cover Art Archive (only works if we have a MusicBrainz release MBID)
   if (track._releaseMbid) {
     const mbid = track._releaseMbid;
     if (_artCache[mbid] !== undefined) {
@@ -1128,13 +1050,11 @@ async function fetchCoverArt(track) {
       return;
     }
     try {
-      // CAA redirects, follow with no-cors is unreliable — use the JSON index endpoint directly
       const r = await fetch(`https://coverartarchive.org/release/${mbid}`);
       if (r.ok) {
         const d = await r.json();
         const img = d.images?.find(i => i.front) || d.images?.[0];
         if (img) {
-          // Prefer 250/500 thumbnails; fall back to full image
           const sm = img.thumbnails?.['250'] || img.thumbnails?.small || img.image;
           const lg = img.thumbnails?.['500'] || img.thumbnails?.large || img.image;
           if (sm) {
@@ -1148,7 +1068,6 @@ async function fetchCoverArt(track) {
     _artCache[mbid] = null;
   }
 
-  // 2. iTunes art lookup — works for anything with an artist + title
   const ck = (track.artistName + '||' + track.trackName).toLowerCase();
   if (_artCache[ck] !== undefined) {
     if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
@@ -1159,7 +1078,6 @@ async function fetchCoverArt(track) {
     const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
     if (r.ok) {
       const d = await r.json();
-      // Pick the result whose title/artist best matches
       const tl = track.trackName.toLowerCase(), al = track.artistName.toLowerCase();
       const hit = d.results?.find(h =>
         h.trackName?.toLowerCase().includes(tl) || h.artistName?.toLowerCase().includes(al)
@@ -1190,23 +1108,18 @@ function renderDrop(tracks) {
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
-  // Kick off background art hydration for tracks missing artwork
   hydrateArt(Object.values(window._td || {}));
 }
-// After rendering, hydrate artwork for non-iTunes results in the background
 async function hydrateArt(tdEntries) {
-  // tdEntries are _td objects: { title, artist, artSm, artLg, _ref }
-  // _ref points to the original source track with trackName/artistName
+
   const needsArt = tdEntries.filter(e => !e.artSm && e._ref);
   if (!needsArt.length) return;
   await Promise.allSettled(needsArt.map(async entry => {
-    const srcTrack = entry._ref; // has trackName, artistName, _releaseMbid
+    const srcTrack = entry._ref;
     await fetchCoverArt(srcTrack);
     if (!srcTrack.artworkUrl100) return;
-    // Update the _td entry so the player gets art when the track is played
     entry.artSm = srcTrack.artworkUrl100;
     entry.artLg = srcTrack._artLgOverride || srcTrack.artworkUrl100;
-    // Update the thumbnail in the dropdown live if still visible
     const id = Object.keys(window._td||{}).find(k => window._td[k] === entry);
     if (!id) return;
     const row = document.querySelector(`[onclick="pickTrack('${id}')"] .di-art`);
@@ -1275,7 +1188,6 @@ function updateNP(track) {
     G('cv-img').src=art;
     G('cv-bg').src=art;
     G('cv-bg').classList.add('on');
-    // Lyrics panel blurred bg — use CSS background-image so transition works
     const lrcBg = G('lrc-bg');
     lrcBg.style.backgroundImage = `url('${art}')`;
     lrcBg.classList.add('on');
@@ -1322,21 +1234,10 @@ G('btn-pv').addEventListener('click',prevTrack);
 G('btn-nx').addEventListener('click',nextTrack);
 G('btn-pp').addEventListener('click',togglePlay);
 
-// ── Lyrics state ──────────────────────────────────────────────────────────────
-let wordSyncOn = false;
-G('wsync-btn').addEventListener('click', () => {
-  wordSyncOn = !wordSyncOn;
-  G('wsync-btn').classList.toggle('on', wordSyncOn);
-  if (ST.lrcType === 'synced') {
-    renderSynced();
-    // Re-run tick immediately so current line gets word states right away
-    if (wordSyncOn && ST.pos > 0) tickLrc(ST.pos);
-  }
-});
+const wordSyncOn = true;
 
 async function fetchLyrics(title, artist) {
   ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
-  G('wsync-btn').classList.remove('visible','on'); wordSyncOn=false;
   const scroll=G('lscroll');
   G('lrc-empty-state').style.display='none';
   scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
@@ -1345,17 +1246,12 @@ async function fetchLyrics(title, artist) {
   for (const [t,a] of [[ct,ca],[title,artist]]) {
     const d=await lrclibGET(t,a);
     if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
-    if(d?.plainLyrics){ST.lrcType='plain';renderPlain(d.plainLyrics);return;}
   }
   for (const [t,a] of [[ct,ca],[title,artist]]) {
     const d=await lrclibSEARCH(t,a);
     if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
-    if(d?.plainLyrics){ST.lrcType='plain';renderPlain(d.plainLyrics);return;}
   }
-  for (const [a,t] of [[ca,ct],[artist,title]]) {
-    try { const r=await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(a)}/${encodeURIComponent(t)}`); if(r.ok){const d=await r.json();if(d.lyrics?.length>20){ST.lrcType='plain';renderPlain(d.lyrics);return;}} } catch {}
-  }
-  scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No lyrics found</p></div>';
+  scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
 }
 
 async function lrclibGET(track, artist) {
@@ -1373,13 +1269,11 @@ function parseLRC(rawStr) {
     const m = line.match(/^\[(\d{1,3}):(\d{2}(?:\.\d+)?)\](.*)/);
     if (!m) return null;
     const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
-    // Strip any <word> tags that might exist (lrclib rarely has them)
     const text = m[3].replace(/<[^>]+>/g,'').trim();
     return { ms, text };
   }).filter(Boolean);
 }
 
-// Count syllables in a word (rough heuristic — good enough for timing)
 function syllableCount(word) {
   word = word.toLowerCase().replace(/[^a-z]/g,'');
   if (!word) return 1;
@@ -1389,15 +1283,13 @@ function syllableCount(word) {
   return Math.max(1, count);
 }
 
-// Build per-word timing from line timestamps using syllable-weighted distribution
 function buildWordTimings(lrc) {
   return lrc.map((line, i) => {
     const lineMs = line.ms;
-    const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500); // 3.5s default for last line
-    const duration = Math.max(400, nextMs - lineMs - 80); // leave 80ms gap before next line
+    const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
+    const duration = Math.max(400, nextMs - lineMs - 80);
     const rawWords = line.text.split(/\s+/).filter(Boolean);
     if (!rawWords.length) return { ...line, words: [] };
-    // Assign syllable-weighted time to each word
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a,b)=>a+b, 0);
     let cursor = lineMs;
@@ -1411,7 +1303,6 @@ function buildWordTimings(lrc) {
 }
 
 function splitParen(text) {
-  // Returns { main, paren } — splits "(content)" into sub-annotation
   const pm = text.match(/^(.*?)\s*\(([^)]+)\)\s*(.*)$/);
   if (pm) {
     const main = (pm[1] + (pm[3] ? ' ' + pm[3] : '')).trim();
@@ -1423,101 +1314,87 @@ function splitParen(text) {
 function renderLineHTML(line, i) {
   const { main, paren } = splitParen(line.text || '♪');
   const parenHTML = paren ? `<span class="ll-paren">(${x(paren)})</span>` : '';
-  let mainHTML;
-  if (wordSyncOn && line.words?.length) {
-    // Karaoke mode: each word is a span that lights up on time
-    mainHTML = line.words.map((w, wi) =>
-      `<span class="lw" id="lw${i}_${wi}">${x(w.word)}</span>`
-    ).join(' ');
-  } else {
-    mainHTML = x(main);
-  }
+  const mainHTML = line.words?.length
+    ? line.words.map((w, wi) =>
+        `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`
+      ).join(' ')
+    : x(main);
   return `<div class="ll" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}${parenHTML}</div>`;
 }
 
 function renderSynced() {
-  // Word button always available for synced lyrics (we always build word timings)
-  G('wsync-btn').classList.toggle('visible', activePanel === 'lyrics' && ST.lrc.length > 0);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
 
-function renderPlain(text) {
-  G('lscroll').innerHTML = text.replace(/\r\n/g,'\n').split('\n').map((l, i) => {
-    const { main, paren } = splitParen(l || ' ');
-    const parenHTML = paren ? `<span class="ll-paren">(${x(paren)})</span>` : '';
-    return `<div class="ll plain" id="ll${i}">${x(main)}${parenHTML}</div>`;
-  }).join('');
-}
+
 
 function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
 
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
-  // Scan all lines — no early break so seeks always find correct position
+
   let active = 0;
   for (let i = 0; i < ST.lrc.length; i++) {
     if (posMs >= ST.lrc[i].ms) active = i;
   }
-  // Update line classes only when active line changes
+
   if (active !== ST.lrcActive) {
-    const prevActive = ST.lrcActive;
+    const prev = ST.lrcActive;
     ST.lrcActive = active;
-    const els = document.querySelectorAll('#lscroll .ll');
-    els.forEach((el, i) => {
+
+    document.querySelectorAll('#lscroll .ll').forEach((el, i) => {
       el.classList.remove('now','past','near');
       const dist = Math.abs(i - active);
       if (i < active) el.classList.add('past');
       else if (dist === 1) el.classList.add('near');
       if (i === active) el.classList.add('now');
-      // Progressive blur via inline style for lines far away
-      if (dist >= 3) el.style.filter = `blur(${Math.min(6, dist)}px)`;
-      else if (i !== active) el.style.filter = '';
+      el.style.filter = dist >= 3 ? `blur(${Math.min(6, dist)}px)` : '';
     });
-    document.getElementById('ll'+active)?.scrollIntoView({ block:'center', behavior:'smooth' });
 
-    // In word mode: mark all words on the line we just left as .done,
-    // and clear word states on the new active line
-    if (wordSyncOn) {
-      if (prevActive >= 0 && ST.lrc[prevActive]?.words) {
-        ST.lrc[prevActive].words.forEach((w, wi) => {
-          const el = document.getElementById('lw'+prevActive+'_'+wi);
-          if (el) { el.classList.remove('now-word'); el.classList.add('done'); }
-        });
-      }
-      if (ST.lrc[active]?.words) {
-        ST.lrc[active].words.forEach((w, wi) => {
-          const el = document.getElementById('lw'+active+'_'+wi);
-          if (el) el.classList.remove('done','now-word');
-        });
-      }
+    document.getElementById('ll'+active)
+      ?.scrollIntoView({ block:'center', behavior:'smooth' });
+
+    if (prev >= 0) {
+      (ST.lrc[prev]?.words || []).forEach((w, wi) => {
+        const el = document.getElementById('lw'+prev+'_'+wi);
+        if (!el) return;
+        el.className = 'lw done';
+        el.style.setProperty('--pct','100%');
+      });
     }
-  }
-  // Word-by-word karaoke: three states — upcoming (dim), done (lit), now-word (glowing)
-  if (wordSyncOn && ST.lrc[active]?.words?.length) {
-    const words = ST.lrc[active].words;
-    const nextLineMs = ST.lrc[active+1]?.ms ?? (posMs + 9999);
-
-    // Find which word is currently being sung
-    let currentWord = -1;
-    for (let wi = 0; wi < words.length; wi++) {
-      const endMs = words[wi+1]?.ms ?? nextLineMs;
-      if (posMs >= words[wi].ms && posMs < endMs) { currentWord = wi; break; }
-    }
-
-    words.forEach((w, wi) => {
+    (ST.lrc[active]?.words || []).forEach((w, wi) => {
       const el = document.getElementById('lw'+active+'_'+wi);
       if (!el) return;
-      // Remove all states first
-      el.classList.remove('done','now-word');
-      if (wi < currentWord) {
-        // Already sung — stay lit
-        el.classList.add('done');
-      } else if (wi === currentWord) {
-        // Currently singing — glow
-        el.classList.add('now-word');
-      }
-      // else: upcoming — no class, dim by default via .ll.now .lw
+      el.className = 'lw upcoming';
+      el.style.setProperty('--pct','0%');
     });
+  }
+
+  const words = ST.lrc[active]?.words;
+  if (!words?.length) return;
+  const nextLineMs = ST.lrc[active+1]?.ms ?? (posMs + 4000);
+
+  for (let wi = 0; wi < words.length; wi++) {
+    const wStart = words[wi].ms;
+    const wEnd   = words[wi+1]?.ms ?? nextLineMs;
+    const el = document.getElementById('lw'+active+'_'+wi);
+    if (!el) continue;
+
+    if (posMs < wStart) {
+      if (!el.classList.contains('upcoming')) {
+        el.className = 'lw upcoming';
+        el.style.setProperty('--pct','0%');
+      }
+    } else if (posMs >= wEnd) {
+      if (!el.classList.contains('done')) {
+        el.className = 'lw done';
+        el.style.setProperty('--pct','100%');
+      }
+    } else {
+      const pct = ((posMs - wStart) / (wEnd - wStart)) * 100;
+      el.className = 'lw now-word';
+      el.style.setProperty('--pct', pct.toFixed(1)+'%');
+    }
   }
 }
 
