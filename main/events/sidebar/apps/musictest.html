@@ -624,8 +624,7 @@ function showPanel(name) {
   G('results-panel').classList.toggle('hidden', name !== 'queue');
   G('lyrics-panel').classList.toggle('active', name === 'lyrics');
   if (name === 'lyrics') {
-    const hasAnyWords = ST.lrc.some(l => l.words?.length > 0);
-    G('wsync-btn').classList.toggle('visible', hasAnyWords);
+    G('wsync-btn').classList.toggle('visible', ST.lrcType === 'synced' && ST.lrc.length > 0);
   }
   G('likes-panel').classList.toggle('active', name === 'likes');
   G('playlists-panel').classList.toggle('active', name === 'playlists');
@@ -1260,12 +1259,12 @@ async function fetchLyrics(title, artist) {
   const ct=clean(title), ca=clean(artist);
   for (const [t,a] of [[ct,ca],[title,artist]]) {
     const d=await lrclibGET(t,a);
-    if(d?.syncedLyrics){const lines=parseLRC(d.syncedLyrics);if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
     if(d?.plainLyrics){ST.lrcType='plain';renderPlain(d.plainLyrics);return;}
   }
   for (const [t,a] of [[ct,ca],[title,artist]]) {
     const d=await lrclibSEARCH(t,a);
-    if(d?.syncedLyrics){const lines=parseLRC(d.syncedLyrics);if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
     if(d?.plainLyrics){ST.lrcType='plain';renderPlain(d.plainLyrics);return;}
   }
   for (const [a,t] of [[ca,ct],[artist,title]]) {
@@ -1286,23 +1285,44 @@ async function lrclibSEARCH(track,artist){try{const r=await fetch(`https://lrcli
 
 function parseLRC(rawStr) {
   return rawStr.split('\n').map(line => {
-    // Match line timestamp
     const m = line.match(/^\[(\d{1,3}):(\d{2}(?:\.\d+)?)\](.*)/);
     if (!m) return null;
     const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
-    const body = m[3];
-    // Detect word-level timestamps: <mm:ss.xx> or <mm:ss.xxx>
-    const words = [];
-    const wRe = /<(\d{1,3}):(\d{2}\.\d+)>([^<]*)/g;
-    let wm;
-    while ((wm = wRe.exec(body)) !== null) {
-      const wMs = parseInt(wm[1])*60000 + parseFloat(wm[2])*1000;
-      const word = wm[3].replace(/\s+/g,' ').trim();
-      if (word) words.push({ ms: wMs, word });
-    }
-    const text = body.replace(/<[^>]+>/g,'').trim();
-    return { ms, text, words: words.length > 1 ? words : [] };
+    // Strip any <word> tags that might exist (lrclib rarely has them)
+    const text = m[3].replace(/<[^>]+>/g,'').trim();
+    return { ms, text };
   }).filter(Boolean);
+}
+
+// Count syllables in a word (rough heuristic — good enough for timing)
+function syllableCount(word) {
+  word = word.toLowerCase().replace(/[^a-z]/g,'');
+  if (!word) return 1;
+  const vowels = word.match(/[aeiouy]+/g);
+  let count = vowels ? vowels.length : 1;
+  if (word.endsWith('e') && word.length > 2) count = Math.max(1, count - 1);
+  return Math.max(1, count);
+}
+
+// Build per-word timing from line timestamps using syllable-weighted distribution
+function buildWordTimings(lrc) {
+  return lrc.map((line, i) => {
+    const lineMs = line.ms;
+    const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500); // 3.5s default for last line
+    const duration = Math.max(400, nextMs - lineMs - 80); // leave 80ms gap before next line
+    const rawWords = line.text.split(/\s+/).filter(Boolean);
+    if (!rawWords.length) return { ...line, words: [] };
+    // Assign syllable-weighted time to each word
+    const syls = rawWords.map(syllableCount);
+    const totalSyls = syls.reduce((a,b)=>a+b, 0);
+    let cursor = lineMs;
+    const words = rawWords.map((word, wi) => {
+      const wordMs = cursor;
+      cursor += (syls[wi] / totalSyls) * duration;
+      return { ms: wordMs, word };
+    });
+    return { ...line, words };
+  });
 }
 
 function splitParen(text) {
@@ -1317,24 +1337,22 @@ function splitParen(text) {
 
 function renderLineHTML(line, i) {
   const { main, paren } = splitParen(line.text || '♪');
-  const hasWords = line.words?.length > 0;
+  const parenHTML = paren ? `<span class="ll-paren">(${x(paren)})</span>` : '';
   let mainHTML;
-  if (wordSyncOn && hasWords) {
-    // Render each word as a span for word-by-word highlighting
+  if (wordSyncOn && line.words?.length) {
+    // Karaoke mode: each word is a span that lights up on time
     mainHTML = line.words.map((w, wi) =>
       `<span class="lw" id="lw${i}_${wi}">${x(w.word)}</span>`
     ).join(' ');
   } else {
     mainHTML = x(main);
   }
-  const parenHTML = paren ? `<span class="ll-paren">(${x(paren)})</span>` : '';
   return `<div class="ll" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}${parenHTML}</div>`;
 }
 
 function renderSynced() {
-  const hasAnyWords = ST.lrc.some(l => l.words?.length > 0);
-  // wsync pill only visible when in lyrics panel AND word data exists
-  G('wsync-btn').classList.toggle('visible', hasAnyWords && activePanel === 'lyrics');
+  // Word button always available for synced lyrics (we always build word timings)
+  G('wsync-btn').classList.toggle('visible', activePanel === 'lyrics' && ST.lrc.length > 0);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
 
@@ -1367,16 +1385,22 @@ function tickLrc(posMs) {
     });
     document.getElementById('ll'+active)?.scrollIntoView({ block:'center', behavior:'smooth' });
   }
-  // Word-by-word highlighting (runs every tick regardless of line change)
+  // Word-by-word karaoke highlighting
   if (wordSyncOn && ST.lrc[active]?.words?.length) {
     const words = ST.lrc[active].words;
-    const nextLineMs = ST.lrc[active+1]?.ms ?? (posMs + 99999);
     words.forEach((w, wi) => {
       const el = document.getElementById('lw'+active+'_'+wi);
       if (!el) return;
-      const nextWms = words[wi+1]?.ms ?? nextLineMs;
+      const nextWms = words[wi+1]?.ms ?? (ST.lrc[active+1]?.ms ?? posMs + 9999);
       el.classList.toggle('hit', posMs >= w.ms && posMs < nextWms);
     });
+    // Un-hit words on lines we just passed
+    if (active !== ST.lrcActive - 1) {
+      const prev = ST.lrc[active - 1];
+      if (prev?.words) prev.words.forEach((w, wi) => {
+        document.getElementById('lw'+(active-1)+'_'+wi)?.classList.remove('hit');
+      });
+    }
   }
 }
 
