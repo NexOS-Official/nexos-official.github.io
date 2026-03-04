@@ -549,7 +549,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 </head>
 <body>
 
-<div id="yt-host"><div id="yt-player"></div></div>
+<div id="yt-host"><iframe id="yt-iframe" allow="autoplay" allowfullscreen style="width:1px;height:1px;position:fixed;left:-9999px;top:-9999px;pointer-events:none;border:none;" src="about:blank"></iframe></div>
 <div class="toast" id="toast"></div>
 
 <div class="app">
@@ -998,133 +998,150 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
   return Promise.any(PROXIES.map(tryOne));
 }
 
-let YT_player = null, ytReady = false, ticker = null;
-// High-precision lyric sync: interpolate position between YT polls
+// ── YouTube postMessage player ─────────────────────────────────────────────
+// Uses youtube-nocookie.com iframe directly — no API script to load,
+// no CORS, works even on heavy school content filters.
+let ytReady = false, ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
+let _ytCurrentVideoId = null;
+
 function getPrecisePos() {
-  // Interpolate between last known YT position + wall-clock elapsed = sub-poll accuracy
   const elapsed = performance.now() - _lastYtPollMs;
-  return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
+  return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 350) : 0);
 }
 
-window.onYouTubeIframeAPIReady = function() {
-  YT_player = new YT.Player('yt-player', {
-    videoId: 'M7lc1UVf-VE',
-    playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1, origin: window.location.origin },
-    host: 'https://www.youtube-nocookie.com',
-    events: {
-      onReady(e) {
-        ytReady = true;
-        e.target.setVolume(ST.vol * 100);
-        setStatus('ok', 'Ready');
-      },
-      onStateChange(e) {
-        if (e.data === YT.PlayerState.PLAYING) {
-          ST.playing = true; syncPP();
-          G('cover-art').classList.add('playing');
-          clearInterval(ticker);
-          // Poll YT API every 250ms (cheap), interpolate position every rAF for smooth sync
-          const pollYT = () => {
-            ST.pos = YT_player.getCurrentTime() * 1000;
-            ST.dur = YT_player.getDuration() * 1000;
-            _lastYtPosMs = ST.pos;
-            _lastYtPollMs = performance.now();
-            syncBar();
-          };
-          pollYT();
-          ticker = setInterval(pollYT, 250);
-          ST._rafRunning = true;
-          const rafLoop = () => {
-            if (!ST._rafRunning) return;
-            if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
-            requestAnimationFrame(rafLoop);
-          };
-          requestAnimationFrame(rafLoop);
-        } else if (e.data === YT.PlayerState.PAUSED) {
-          ST.playing = false; syncPP();
-          G('cover-art').classList.remove('playing');
-          clearInterval(ticker);
-          ST._rafRunning = false;
-        } else if (e.data === YT.PlayerState.ENDED) {
-          ST.playing = false;
-          G('cover-art').classList.remove('playing');
-          clearInterval(ticker);
-          ST._rafRunning = false;
-          if (ST.repeat) { YT_player.seekTo(0); YT_player.playVideo(); }
-          else nextTrack();
-        }
-      },
-      onError(e) {
-        const track = ST.queue[ST.idx];
-        if (track?.ytIds?.length > track.ytTry + 1) {
-          track.ytTry++;
-          YT_player.loadVideoById(track.ytIds[track.ytTry]);
-        } else {
-          toast('⚠ Blocked — try another');
-        }
+// postMessage API: send commands to the iframe
+function ytCmd(func, args) {
+  const iframe = G('yt-iframe');
+  if (!iframe?.contentWindow) return;
+  iframe.contentWindow.postMessage(JSON.stringify({ event:'command', func, args: args||[] }), '*');
+}
+
+function ytLoad(videoId) {
+  const iframe = G('yt-iframe');
+  if (!iframe) return;
+  _ytCurrentVideoId = videoId;
+  ST.dur = 0; // reset duration — will be updated from infoDelivery
+  _lastYtPosMs = 0; _lastYtPollMs = performance.now();
+  iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&enablejsapi=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`;
+  setStatus('loading', 'Loading…');
+}
+
+function ytPlay()  { ytCmd('playVideo'); }
+function ytPause() { ytCmd('pauseVideo'); }
+function ytSeek(s) { ytCmd('seekTo', [s, true]); }
+function ytVol(v)  { ytCmd('setVolume', [Math.round(v*100)]); }
+
+// Listen for state/time messages from the iframe
+window.addEventListener('message', e => {
+  if (!e.data) return;
+  let d;
+  try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
+  if (!d || d.event === undefined) return;
+
+  if (d.event === 'onStateChange' || d.event === 'infoDelivery') {
+    // State: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
+    const info = d.info;
+    if (typeof info === 'number') {
+      // onStateChange with numeric state
+      if (info === 1) onYtPlaying();
+      else if (info === 2) onYtPaused();
+      else if (info === 0) onYtEnded();
+      else if (info === 5) { ytPlay(); }
+    } else if (info && typeof info === 'object') {
+      // infoDelivery with time data
+      if (info.currentTime !== undefined) {
+        ST.pos = info.currentTime * 1000;
+        ST.dur = (info.duration || 0) * 1000;
+        _lastYtPosMs = ST.pos;
+        _lastYtPollMs = performance.now();
+        syncBar();
       }
+      if (info.playerState === 1) onYtPlaying();
+      else if (info.playerState === 2) onYtPaused();
+      else if (info.playerState === 0) onYtEnded();
     }
-  });
-};
-
-// Load YouTube IFrame API — try multiple sources for school networks
-let _ytScriptLoaded = false;
-
-function loadYTScript(src) {
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src;
-    s.onload = () => { _ytScriptLoaded = true; res(); };
-    s.onerror = () => rej();
-    document.head.appendChild(s);
-  });
-}
-
-async function initYouTube() {
-  setStatus('loading', 'Connecting…');
-  // If already ready (e.g. script loaded synchronously), bail early
-  if (ytReady) return;
-
-  const sources = [
-    'https://www.youtube.com/iframe_api',
-    'https://www.youtube-nocookie.com/iframe_api',
-    'https://corsproxy.io/?url=' + encodeURIComponent('https://www.youtube.com/iframe_api'),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.youtube.com/iframe_api'),
-  ];
-
-  for (const src of sources) {
-    if (ytReady) return; // another source already worked
-    const ok = await new Promise(resolve => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.onerror = () => resolve(false);
-      s.onload = () => {
-        // Script loaded — now wait up to 5s for onYouTubeIframeAPIReady to fire
-        window._ytReadyResolve = () => resolve(true);
-        setTimeout(() => resolve(false), 5000);
-      };
-      document.head.appendChild(s);
-    });
-    if (ok || ytReady) return;
   }
 
-  setStatus('err', 'YouTube blocked');
-  toast('⚠ YouTube is blocked on this network');
+  if (d.event === 'onError') {
+    const track = ST.queue[ST.idx];
+    if (track?.ytIds?.length > (track.ytTry||0) + 1) {
+      track.ytTry = (track.ytTry||0) + 1;
+      ytLoad(track.ytIds[track.ytTry]);
+    } else {
+      setStatus('err', 'Video unavailable'); toast('⚠ Video unavailable — try another');
+    }
+  }
+});
+
+function onYtPlaying() {
+  if (ST.playing) return; // already handled
+  ST.playing = true; syncPP();
+  G('cover-art').classList.add('playing');
+  setStatus('ok', 'Playing');
+  clearInterval(ticker);
+  // Track time purely by wall clock interpolation — no YT API polling needed
+  const startWall = performance.now();
+  const startPos = _lastYtPosMs;
+  ticker = setInterval(() => {
+    if (ST.playing) {
+      _lastYtPosMs = startPos + (performance.now() - startWall);
+      _lastYtPollMs = performance.now();
+      ST.pos = _lastYtPosMs;
+      ST.dur = ST.dur || 240000; // default 4min if unknown
+      syncBar();
+    }
+  }, 250);
+  ST._rafRunning = true;
+  const rafLoop = () => {
+    if (!ST._rafRunning) return;
+    if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
+    requestAnimationFrame(rafLoop);
+  };
+  requestAnimationFrame(rafLoop);
+}
+function onYtPaused() {
+  ST.playing = false; syncPP();
+  G('cover-art').classList.remove('playing');
+  clearInterval(ticker); ST._rafRunning = false;
+}
+function onYtEnded() {
+  ST.playing = false; syncPP();
+  G('cover-art').classList.remove('playing');
+  clearInterval(ticker); ST._rafRunning = false;
+  if (ST.repeat) { ytLoad(_ytCurrentVideoId); }
+  else nextTrack();
 }
 
-// Patch onYouTubeIframeAPIReady to also resolve our loader promise
-const _origYTReady = window.onYouTubeIframeAPIReady;
-window.onYouTubeIframeAPIReady = function() {
-  if (window._ytReadyResolve) window._ytReadyResolve();
-  if (_origYTReady) _origYTReady();
+// Stub YT_player object so existing code (seekTo, setVolume, etc.) still works
+const YT_player = {
+  loadVideoById: id => ytLoad(id),
+  playVideo:     () => ytPlay(),
+  pauseVideo:    () => ytPause(),
+  seekTo:        (s) => { ytSeek(s); _lastYtPosMs = s*1000; _lastYtPollMs = performance.now(); },
+  setVolume:     v  => ytVol(v/100),
+  getCurrentTime:() => getPrecisePos() / 1000,
+  getDuration:   () => ST.dur / 1000,
 };
 
-initYouTube();
-
-// Fallback timeout
-setTimeout(() => {
-  if (!ytReady) { setStatus('err', 'Playback blocked'); }
-}, 15000);
+// YouTube-nocookie.com is whitelisted on most school networks
+// Test by loading a silent 1s video on startup
+(function initYouTube() {
+  setStatus('loading', 'Connecting…');
+  const iframe = G('yt-iframe');
+  // Load a real video silently to verify iframe works
+  iframe.addEventListener('load', () => {
+    if (iframe.src && iframe.src !== 'about:blank' && !ytReady) {
+      ytReady = true;
+      ytVol(ST.vol);
+      setStatus('ok', 'Ready');
+    }
+  });
+  // Pre-warm with a short silent test — if this loads, YT embeds work
+  iframe.src = 'https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?enablejsapi=1&mute=1&autoplay=0';
+  // After 6s if still not ok, mark as blocked
+  setTimeout(() => { if (!ytReady) setStatus('err', 'YouTube blocked'); }, 8000);
+})();
 
 const ytCache = {};
 
@@ -1185,12 +1202,27 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
-// iTunes fetch — uses proxyFetch to work through school blockers
-async function itunesFetch(url) {
-  try {
-    const r = await proxyFetch(url, {}, 7000);
-    return await r.json();
-  } catch { return null; }
+// iTunes JSONP fetch — bypasses CORS entirely, no proxy needed.
+// Works on every network including school content filters.
+function itunesFetch(url) {
+  return new Promise(resolve => {
+    const cbName = '_itcb' + Math.random().toString(36).slice(2);
+    const sep = url.includes('?') ? '&' : '?';
+    const scriptUrl = url + sep + 'callback=' + cbName;
+    let done = false;
+    const cleanup = () => {
+      done = true;
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
+    window[cbName] = data => { cleanup(); resolve(data); };
+    const script = document.createElement('script');
+    script.src = scriptUrl;
+    script.onerror = () => { cleanup(); resolve(null); };
+    // Timeout after 8s
+    setTimeout(() => { if (!done) { cleanup(); resolve(null); } }, 8000);
+    document.head.appendChild(script);
+  });
 }
 
 async function doSearch(q) {
