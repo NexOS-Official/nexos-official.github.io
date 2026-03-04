@@ -585,7 +585,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 </head>
 <body>
 
-<div id="yt-host"><div id="yt-player"></div><div id="yt-player-b"></div></div>
+<div id="yt-host"><div id="yt-player"></div></div>
 <div class="toast" id="toast"></div>
 
 <div class="app">
@@ -1035,28 +1035,32 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
   return Promise.any(PROXIES.map(tryOne));
 }
 
-// ── Dual-player crossfade system ──────────────────────────────────────────────
+// ── Single-player crossfade-repeat ───────────────────────────────────────────
+// Two YT iframes is too fragile — YouTube fires state events unpredictably
+// across iframes sharing the same origin session. Instead: one player, one
+// rAF loop that fades volume down, seeks to LOOP_BACK_S, fades back up.
+// The "blend" illusion comes from the equal-power curve and the speed of the
+// seek — under blur the user can't perceive the discontinuity.
 
-let YT_player = null, YT_playerB = null;
-let ytReady = false, ytReadyB = false;
+let YT_player = null;
+let ytReady = false;
 let ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
 let _xfading = false, _xfAnimId = null;
-let _activePlayer = 'A';
 let _lrcLocked = false;
-let _swapping = false; // blocks all state-change handling during player swap
 
-function _main()  { return _activePlayer === 'A' ? YT_player  : YT_playerB; }
-function _bench() { return _activePlayer === 'A' ? YT_playerB : YT_player;  }
+function _main() { return YT_player; }
 
 function getPrecisePos() {
   const elapsed = performance.now() - _lastYtPollMs;
   return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
 }
 
-const XFADE_MS    = 9000;  // total crossfade duration once bench is confirmed playing
-const LOOP_BACK_S = 12;    // seconds to loop back to
-const LRC_BLUR_PX = 18;    // max blur on lyrics panel during transition
+const XFADE_MS       = 7000;  // total window (triggers this many ms before end)
+const FADE_OUT_MS    = 3200;  // fade out over this long
+const FADE_IN_MS     = 3000;  // fade back in over this long after seek
+const LOOP_BACK_S    = 12;    // seek target
+const LRC_BLUR_PX    = 18;
 
 function _setMixingUI(on) {
   G('prog').classList.toggle('mixing', on);
@@ -1064,209 +1068,147 @@ function _setMixingUI(on) {
 }
 
 function _cancelXfade() {
-  if (_swapping) return;
   if (_xfAnimId) { cancelAnimationFrame(_xfAnimId); _xfAnimId = null; }
   _xfading = false;
   _lrcLocked = false;
-  try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
-  try { _bench().setVolume(0); } catch {}
+  try { if (!ST.muted) YT_player.setVolume(ST.vol * 100); } catch {}
   const sc = G('lscroll');
   if (sc) {
-    sc.style.transition = 'filter 0.5s ease';
+    sc.style.transition = 'filter 1s ease';
     sc.style.filter = '';
-    // Clear any inline filters stuck on individual lyric lines
     sc.querySelectorAll('.ll').forEach(el => { el.style.filter = ''; });
   }
-  // Force tickLrc to fully re-render line states
   ST.lrcActive = -1;
   _setMixingUI(false);
 }
 
-function _startRepeatCrossfade(videoId) {
+function _startRepeatCrossfade() {
   if (_xfading) return;
   _xfading = true;
   _setMixingUI(true);
-  window._benchMuted = true;
-
-  const bench = _bench();
-  try { bench.setVolume(0); } catch {}
-  try { bench.loadVideoById({ videoId, startSeconds: LOOP_BACK_S }); }
-  catch { _cancelXfade(); return; }
-  try { bench.setVolume(0); } catch {}
 
   const sc = G('lscroll');
-  let t0 = null;
+  const t0 = performance.now();
+  let _seekDone = false;
   let _lrcSnapped = false;
 
-  const waitForBench = setInterval(() => {
-    if (!_xfading) { clearInterval(waitForBench); return; }
-    let state = -1;
-    try { state = bench.getPlayerState(); } catch { return; }
-    try { bench.setVolume(0); } catch {}
-    if (state === YT.PlayerState.PLAYING) {
-      clearInterval(waitForBench);
-      window._benchMuted = false;
-      bench.setVolume(0);
-      t0 = performance.now();
-      _xfAnimId = requestAnimationFrame(tick);
-    }
-  }, 80);
-
-  setTimeout(() => {
-    if (_xfading && t0 === null) { clearInterval(waitForBench); _cancelXfade(); }
-  }, 5000);
-
   function tick() {
-    if (!_xfading || t0 === null) { _cancelXfade(); return; }
-    let mainState = -1;
-    try { mainState = _main().getPlayerState(); } catch {}
-    if (mainState === YT.PlayerState.ENDED) {
-      _cancelXfade();
-      if (ST.repeat) { _main().seekTo(LOOP_BACK_S); _main().playVideo(); }
-      return;
-    }
+    if (!_xfading) return;
+    const elapsed = performance.now() - t0;
 
-    const p = Math.min(1, (performance.now() - t0) / XFADE_MS);
+    // ── Phase 1: fade out (0 → FADE_OUT_MS) ────────────────────────────────
+    if (!_seekDone) {
+      const p = Math.min(1, elapsed / FADE_OUT_MS);
+      // Equal-power fade out: cos curve, floor at 7% so music bed stays
+      const gain = Math.cos((p * Math.PI) / 2);
+      const FLOOR = 0.07;
+      const vol = Math.max(0, (gain * (1 - FLOOR) + FLOOR) * ST.vol * 100);
+      try { if (!ST.muted) YT_player.setVolume(vol); } catch {}
 
-    const mainAngle = (p * Math.PI) / 2;
-    const mainGain  = Math.cos(mainAngle);
-    const benchP    = Math.max(0, (p - 0.20) / 0.80);
-    const benchGain = Math.sin((benchP * Math.PI) / 2);
-    const FLOOR     = 0.07;
-    const mainVol   = Math.max(0, (mainGain * (1 - FLOOR) + FLOOR) * ST.vol * 100);
-    const benchVol  = Math.max(0, benchGain * ST.vol * 100);
-
-    try { if (!ST.muted) _main().setVolume(Math.min(100, mainVol)); } catch {}
-    try { if (!ST.muted) bench.setVolume(Math.min(100, benchVol)); } catch {}
-
-    const blurArc = Math.sin(p * Math.PI);
-    if (sc) {
-      sc.style.transition = 'filter 0.04s linear';
-      sc.style.filter = `blur(${(blurArc * LRC_BLUR_PX).toFixed(1)}px)`;
-    }
-
-    if (!_lrcSnapped && p >= 0.48) {
-      _lrcSnapped = true;
-      _lrcLocked  = true;
-      if (ST.lrcType === 'synced') {
-        const targetMs = LOOP_BACK_S * 1000;
-        let lo = 0, hi = ST.lrc.length - 1, target = 0;
-        while (lo <= hi) { const mid = (lo+hi)>>1; if (ST.lrc[mid].ms <= targetMs){target=mid;lo=mid+1;}else hi=mid-1; }
-        ST.lrcActive = target;
-        document.querySelectorAll('#lscroll .ll').forEach((el, i) => {
-          el.classList.remove('now','past','near','near2');
-          const d = i - target;
-          if (d < 0) el.classList.add('past');
-          else if (d === 0) el.classList.add('now');
-          else if (d === 1) el.classList.add('near');
-          else if (d === 2) el.classList.add('near2');
-          el.style.filter = Math.abs(d) >= 3 ? `blur(${Math.min(5,(Math.abs(d)-2)*1.5).toFixed(1)}px)` : '';
-        });
-        document.getElementById('ll'+target)?.scrollIntoView({block:'center',behavior:'smooth'});
-      }
-    }
-    if (_lrcLocked && p > 0.75) _lrcLocked = false;
-
-    if (p >= 1) {
-      _swapping  = true;
-      _xfading   = false;
-      _xfAnimId  = null;
-      _lrcLocked = false;
-
-      const oldMain = _main();
-      _activePlayer = _activePlayer === 'A' ? 'B' : 'A';
-
-      try { if (!ST.muted) _main().setVolume(ST.vol * 100); } catch {}
-      try { oldMain.setVolume(0); oldMain.pauseVideo(); } catch {}
-
-      // Sync position to new main (bench, now playing at LOOP_BACK_S)
-      const newPos = (_main().getCurrentTime?.() ?? LOOP_BACK_S) * 1000;
-      _lastYtPosMs  = newPos;
-      _lastYtPollMs = performance.now();
-      ST.pos = newPos;
-      ST.dur = (_main().getDuration?.() ?? 0) * 1000;
-
-      // Bug 1 fix: use a slow transition so the blur visually clears
+      // Blur ramps up with the fade
       if (sc) {
-        sc.style.transition = 'filter 1.2s ease';
-        sc.style.filter = '';
+        sc.style.transition = 'filter 0.05s linear';
+        sc.style.filter = `blur(${(p * LRC_BLUR_PX).toFixed(1)}px)`;
       }
-      // Clear all per-line inline filters set during snap
-      document.querySelectorAll('#lscroll .ll').forEach(el => { el.style.filter = ''; });
-      // Force tickLrc full re-render next time it runs
-      ST.lrcActive = -1;
 
-      _setMixingUI(false);
+      if (p >= 1) {
+        // Seek to loop point while fully blurred
+        _seekDone = true;
+        try { YT_player.seekTo(LOOP_BACK_S); } catch {}
+        try { if (!ST.muted) YT_player.setVolume(FLOOR * ST.vol * 100); } catch {}
 
-      // Bug 2 fix: don't start ticker until AFTER _swapping clears.
-      // If ticker ran immediately, _tickerFn would see ST.pos near song end
-      // (stale value) and ST.dur still set, making rem <= XFADE_MS and
-      // firing another crossfade right away.
-      clearInterval(ticker);
-      setTimeout(() => {
-        _swapping = false;
-        ST.pos = (_main().getCurrentTime?.() ?? LOOP_BACK_S) * 1000;
-        ST.dur = (_main().getDuration?.() ?? 0) * 1000;
-        _lastYtPosMs  = ST.pos;
-        _lastYtPollMs = performance.now();
-        ticker = setInterval(_tickerFn, 250);
-      }, 500);
-      return;
+        // Snap lyrics to loop-back position under blur
+        if (ST.lrcType === 'synced') {
+          _lrcSnapped = true;
+          _lrcLocked  = true;
+          const targetMs = LOOP_BACK_S * 1000;
+          let lo = 0, hi = ST.lrc.length - 1, target = 0;
+          while (lo <= hi) { const mid=(lo+hi)>>1; if(ST.lrc[mid].ms<=targetMs){target=mid;lo=mid+1;}else hi=mid-1; }
+          ST.lrcActive = target;
+          document.querySelectorAll('#lscroll .ll').forEach((el, i) => {
+            el.classList.remove('now','past','near','near2');
+            el.style.filter = '';
+            const d = i - target;
+            if (d < 0) el.classList.add('past');
+            else if (d === 0) el.classList.add('now');
+            else if (d === 1) el.classList.add('near');
+            else if (d === 2) el.classList.add('near2');
+          });
+          document.getElementById('ll'+target)?.scrollIntoView({block:'center',behavior:'smooth'});
+        }
+      }
+    }
+
+    // ── Phase 2: fade in (FADE_OUT_MS → FADE_OUT_MS + FADE_IN_MS) ───────────
+    if (_seekDone) {
+      const fadeInElapsed = elapsed - FADE_OUT_MS;
+      const p = Math.min(1, fadeInElapsed / FADE_IN_MS);
+      // Equal-power fade in: sin curve
+      const gain = Math.sin((p * Math.PI) / 2);
+      const FLOOR = 0.07;
+      const vol = Math.max(0, (gain * (1 - FLOOR) + FLOOR) * ST.vol * 100);
+      try { if (!ST.muted) YT_player.setVolume(Math.min(ST.vol * 100, vol)); } catch {}
+
+      // Blur clears as volume returns
+      if (sc) {
+        sc.style.transition = 'filter 0.08s linear';
+        sc.style.filter = `blur(${((1 - p) * LRC_BLUR_PX).toFixed(1)}px)`;
+      }
+
+      // Unlock lyrics once blur is mostly gone
+      if (_lrcLocked && p > 0.6) _lrcLocked = false;
+
+      if (p >= 1) {
+        // Done — restore full volume and clean up
+        try { if (!ST.muted) YT_player.setVolume(ST.vol * 100); } catch {}
+        if (sc) {
+          sc.style.transition = 'filter 1s ease';
+          sc.style.filter = '';
+          sc.querySelectorAll('.ll').forEach(el => { el.style.filter = ''; });
+        }
+        ST.lrcActive = -1; // force tickLrc full re-render
+        _lrcLocked = false;
+        _xfading = false;
+        _xfAnimId = null;
+        _setMixingUI(false);
+        return;
+      }
     }
 
     _xfAnimId = requestAnimationFrame(tick);
   }
+
+  _xfAnimId = requestAnimationFrame(tick);
 }
 
-// Ticker body — extracted so it's identical whether started from onStateChange or post-swap
-function _tickerFn() {
-  try {
-    ST.pos = _main().getCurrentTime() * 1000;
-    ST.dur = _main().getDuration() * 1000;
-  } catch { return; }
-  _lastYtPosMs  = ST.pos;
-  _lastYtPollMs = performance.now();
-  syncBar();
-  if (ST.repeat && !_xfading && ST.dur > 0) {
-    const rem = ST.dur - ST.pos;
-    if (rem > 0 && rem <= XFADE_MS) {
-      const track = ST.queue[ST.idx];
-      const vid = track?.ytIds?.[track.ytTry ?? 0];
-      if (vid) _startRepeatCrossfade(vid);
-    }
-  }
-}
-
-// ── Player factory ─────────────────────────────────────────────────────────────
-function _makePlayer(divId, isA) {
-  return new YT.Player(divId, {
+window.onYouTubeIframeAPIReady = function() {
+  YT_player = new YT.Player('yt-player', {
     videoId: '',
-    playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1, origin: window.location.origin },
+    playerVars: { autoplay:0, controls:0, rel:0, modestbranding:1, origin:window.location.origin },
     events: {
       onReady(e) {
-        e.target.setVolume(isA ? ST.vol * 100 : 0);
-        if (isA) { ytReady = true; setStatus('ok', 'Ready'); }
-        else ytReadyB = true;
+        ytReady = true;
+        e.target.setVolume(ST.vol * 100);
+        setStatus('ok', 'Ready');
       },
       onStateChange(e) {
-        // Block all handling during player swap
-        if (_swapping) return;
-
-        const iAmMain = () => (isA && _activePlayer === 'A') || (!isA && _activePlayer === 'B');
-
-        // For bench player: always keep it muted while _benchMuted is set
-        if (!iAmMain()) {
-          if (e.data === YT.PlayerState.PLAYING && window._benchMuted) {
-            try { (isA ? YT_player : YT_playerB).setVolume(0); } catch {}
-          }
-          return;
-        }
-
         if (e.data === YT.PlayerState.PLAYING) {
           ST.playing = true; syncPP();
           G('cover-art').classList.add('playing');
           clearInterval(ticker);
-          ticker = setInterval(_tickerFn, 250);
+          ticker = setInterval(() => {
+            try {
+              ST.pos = YT_player.getCurrentTime() * 1000;
+              ST.dur = YT_player.getDuration() * 1000;
+            } catch { return; }
+            _lastYtPosMs  = ST.pos;
+            _lastYtPollMs = performance.now();
+            syncBar();
+            if (ST.repeat && !_xfading && ST.dur > 0) {
+              const rem = ST.dur - ST.pos;
+              if (rem > 0 && rem <= XFADE_MS) _startRepeatCrossfade();
+            }
+          }, 250);
           if (!ST._rafRunning) {
             ST._rafRunning = true;
             const rafLoop = () => {
@@ -1277,9 +1219,7 @@ function _makePlayer(divId, isA) {
             requestAnimationFrame(rafLoop);
           }
         } else if (e.data === YT.PlayerState.PAUSED) {
-          // Ignore PAUSED events entirely during a crossfade — the old main gets
-          // paused programmatically at swap time, which would otherwise kill playback
-          if (_xfading) return;
+          if (_xfading) return; // seek during xfade fires PAUSED — ignore
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
@@ -1289,29 +1229,22 @@ function _makePlayer(divId, isA) {
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
           _cancelXfade();
-          if (ST.repeat) { _main().seekTo(LOOP_BACK_S); _main().playVideo(); }
+          if (ST.repeat) { YT_player.seekTo(LOOP_BACK_S); YT_player.playVideo(); }
           else nextTrack();
         }
       },
       onError() {
-        const iAmMain = (isA && _activePlayer === 'A') || (!isA && _activePlayer === 'B');
-        if (!iAmMain) return;
         const track = ST.queue[ST.idx];
-        if (track?.ytIds?.length > (track.ytTry || 0) + 1) {
-          track.ytTry = (track.ytTry || 0) + 1;
-          _main().loadVideoById(track.ytIds[track.ytTry]);
+        if (track?.ytIds?.length > (track.ytTry||0)+1) {
+          track.ytTry = (track.ytTry||0)+1;
+          YT_player.loadVideoById(track.ytIds[track.ytTry]);
         } else {
-          setStatus('err', 'Video unavailable');
+          setStatus('err','Video unavailable');
           toast('⚠ Video unavailable — try another');
         }
       }
     }
   });
-}
-
-window.onYouTubeIframeAPIReady = function() {
-  YT_player  = _makePlayer('yt-player',   true);
-  YT_playerB = _makePlayer('yt-player-b', false);
 };
 
 // Load IFrame API — try youtube.com then youtube-nocookie.com
