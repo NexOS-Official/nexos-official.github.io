@@ -999,18 +999,16 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
 }
 
 // ── YouTube postMessage player ─────────────────────────────────────────────
-// Uses youtube-nocookie.com iframe directly — no API script to load,
-// no CORS, works even on heavy school content filters.
 let ytReady = false, ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
 let _ytCurrentVideoId = null;
+let _ytState = -1; // -1=unstarted, 1=playing, 2=paused, 0=ended
 
 function getPrecisePos() {
   const elapsed = performance.now() - _lastYtPollMs;
   return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 350) : 0);
 }
 
-// postMessage API: send commands to the iframe
 function ytCmd(func, args) {
   const iframe = G('yt-iframe');
   if (!iframe?.contentWindow) return;
@@ -1021,111 +1019,109 @@ function ytLoad(videoId) {
   const iframe = G('yt-iframe');
   if (!iframe) return;
   _ytCurrentVideoId = videoId;
-  ST.dur = 0; // reset duration — will be updated from infoDelivery
-  _lastYtPosMs = 0; _lastYtPollMs = performance.now();
-  iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&enablejsapi=1&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`;
+  _ytState = -1;
+  ST.dur = 0;
+  _lastYtPosMs = 0;
+  _lastYtPollMs = performance.now();
+  // Stop any existing playback cleanly
+  clearInterval(ticker);
+  ST._rafRunning = false;
+  ST.playing = false;
+  iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&enablejsapi=1&playsinline=1`;
   setStatus('loading', 'Loading…');
 }
 
 function ytPlay()  { ytCmd('playVideo'); }
 function ytPause() { ytCmd('pauseVideo'); }
-function ytSeek(s) { ytCmd('seekTo', [s, true]); }
-function ytVol(v)  { ytCmd('setVolume', [Math.round(v*100)]); }
+function ytSeek(s) { ytCmd('seekTo', [s, true]); _lastYtPosMs = s * 1000; _lastYtPollMs = performance.now(); }
+function ytVol(v)  { ytCmd('setVolume', [Math.round(v * 100)]); }
 
-// Listen for state/time messages from the iframe
 window.addEventListener('message', e => {
   if (!e.data) return;
   let d;
   try { d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data; } catch { return; }
-  if (!d || d.event === undefined) return;
+  if (!d) return;
 
-  if (d.event === 'onStateChange' || d.event === 'infoDelivery') {
-    // State: -1=unstarted, 0=ended, 1=playing, 2=paused, 3=buffering, 5=cued
-    const info = d.info;
-    if (typeof info === 'number') {
-      // onStateChange with numeric state
-      if (info === 1) onYtPlaying();
-      else if (info === 2) onYtPaused();
-      else if (info === 0) onYtEnded();
-      else if (info === 5) { ytPlay(); }
-    } else if (info && typeof info === 'object') {
-      // infoDelivery with time data
-      if (info.currentTime !== undefined) {
-        ST.pos = info.currentTime * 1000;
-        ST.dur = (info.duration || 0) * 1000;
-        _lastYtPosMs = ST.pos;
-        _lastYtPollMs = performance.now();
-        syncBar();
-      }
-      if (info.playerState === 1) onYtPlaying();
-      else if (info.playerState === 2) onYtPaused();
-      else if (info.playerState === 0) onYtEnded();
+  // onStateChange — numeric state in d.info
+  if (d.event === 'onStateChange' && typeof d.info === 'number') {
+    const newState = d.info;
+    if (newState === _ytState) return; // ignore duplicate state events
+    _ytState = newState;
+    if (newState === 1) _onYtPlaying();
+    else if (newState === 2) _onYtPaused();
+    else if (newState === 0) _onYtEnded();
+    else if (newState === 5) ytPlay(); // cued → play
+  }
+
+  // infoDelivery — time/duration updates, NO state changes handled here
+  if (d.event === 'infoDelivery' && d.info && typeof d.info === 'object') {
+    if (d.info.currentTime !== undefined && ST.playing) {
+      _lastYtPosMs = d.info.currentTime * 1000;
+      _lastYtPollMs = performance.now();
     }
+    if (d.info.duration > 0) ST.dur = d.info.duration * 1000;
   }
 
   if (d.event === 'onError') {
     const track = ST.queue[ST.idx];
-    if (track?.ytIds?.length > (track.ytTry||0) + 1) {
-      track.ytTry = (track.ytTry||0) + 1;
+    if (track?.ytIds?.length > (track.ytTry || 0) + 1) {
+      track.ytTry = (track.ytTry || 0) + 1;
       ytLoad(track.ytIds[track.ytTry]);
     } else {
-      setStatus('err', 'Video unavailable'); toast('⚠ Video unavailable — try another');
+      setStatus('err', 'Video unavailable');
+      toast('⚠ Video unavailable — try another');
     }
   }
 });
 
-function onYtPlaying() {
-  if (ST.playing) return; // already handled
+function _onYtPlaying() {
   ST.playing = true; syncPP();
   G('cover-art').classList.add('playing');
-  setStatus('ok', 'Playing');
+  setStatus('ok', 'Ready');
   clearInterval(ticker);
-  // Track time purely by wall clock interpolation — no YT API polling needed
-  const startWall = performance.now();
-  const startPos = _lastYtPosMs;
   ticker = setInterval(() => {
-    if (ST.playing) {
-      _lastYtPosMs = startPos + (performance.now() - startWall);
-      _lastYtPollMs = performance.now();
-      ST.pos = _lastYtPosMs;
-      ST.dur = ST.dur || 240000; // default 4min if unknown
-      syncBar();
-    }
+    if (!ST.playing) return;
+    // Advance position by wall clock between infoDelivery updates
+    const elapsed = performance.now() - _lastYtPollMs;
+    ST.pos = _lastYtPosMs + elapsed;
+    ST.dur = ST.dur || 240000;
+    syncBar();
   }, 250);
-  ST._rafRunning = true;
-  const rafLoop = () => {
-    if (!ST._rafRunning) return;
-    if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
+  if (!ST._rafRunning) {
+    ST._rafRunning = true;
+    const rafLoop = () => {
+      if (!ST._rafRunning) return;
+      if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
+      requestAnimationFrame(rafLoop);
+    };
     requestAnimationFrame(rafLoop);
-  };
-  requestAnimationFrame(rafLoop);
+  }
 }
-function onYtPaused() {
+function _onYtPaused() {
   ST.playing = false; syncPP();
   G('cover-art').classList.remove('playing');
-  clearInterval(ticker); ST._rafRunning = false;
+  clearInterval(ticker);
+  ST._rafRunning = false;
 }
-function onYtEnded() {
+function _onYtEnded() {
   ST.playing = false; syncPP();
   G('cover-art').classList.remove('playing');
-  clearInterval(ticker); ST._rafRunning = false;
-  if (ST.repeat) { ytLoad(_ytCurrentVideoId); }
+  clearInterval(ticker);
+  ST._rafRunning = false;
+  if (ST.repeat) ytLoad(_ytCurrentVideoId);
   else nextTrack();
 }
 
-// Stub YT_player object so existing code (seekTo, setVolume, etc.) still works
 const YT_player = {
   loadVideoById: id => ytLoad(id),
   playVideo:     () => ytPlay(),
   pauseVideo:    () => ytPause(),
-  seekTo:        (s) => { ytSeek(s); _lastYtPosMs = s*1000; _lastYtPollMs = performance.now(); },
-  setVolume:     v  => ytVol(v/100),
+  seekTo:        s  => ytSeek(s),
+  setVolume:     v  => ytVol(v / 100),
   getCurrentTime:() => getPrecisePos() / 1000,
   getDuration:   () => ST.dur / 1000,
 };
 
-// YouTube-nocookie.com is whitelisted on most school networks
-// Test by loading a silent 1s video on startup
 (function initYouTube() {
   setStatus('loading', 'Connecting…');
   const iframe = G('yt-iframe');
