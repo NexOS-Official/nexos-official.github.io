@@ -950,7 +950,7 @@ function createPlaylistFromModal() {
   openNewPlaylistModal();
 }
 
-// ── IMAGE PROXY ───────────────────────────────────────────────────────────────
+// ── IMAGE PROXY ──────────────────────────��────────────────────────────────────
 function proxyImg(url) {
   if (!url) return '';
   if (url.startsWith('data:') || url.includes('weserv.nl') || url.includes('fanart.tv')) return url;
@@ -1040,12 +1040,16 @@ AUD.addEventListener('ended', () => {
 
 AUD.addEventListener('error', () => {
   const track = ST.queue[ST.idx];
-  // Try the next Invidious URL for this track if available
+  // Try the next URL in the list for this track
   if (track && track._streamUrls && track._streamTry < track._streamUrls.length - 1) {
     track._streamTry++;
     AUD.src = track._streamUrls[track._streamTry];
     AUD.load();
     AUD.play().catch(()=>{});
+  } else if (track && track.ytIds && track.ytTry < track.ytIds.length - 1) {
+    // All URLs for this video ID failed — try the next video ID
+    track.ytTry = (track.ytTry || 0) + 1;
+    tryStreamLoad(track);
   } else {
     setStatus('err', 'Stream failed');
     toast('⚠ Could not stream this track — try another');
@@ -1053,7 +1057,9 @@ AUD.addEventListener('error', () => {
 });
 
 // ── INVIDIOUS — get audio stream URL directly (no YouTube API needed) ─────────
-// These are public Invidious instances. We race them all and use the first to respond.
+// We use Invidious's /latest_version endpoint which proxies the audio THROUGH
+// the Invidious server itself — this avoids IP-locked signed URLs and CORS issues
+// with direct googlevideo.com URLs.
 const INVIDIOUS_HOSTS = [
   'https://inv.nadeko.net',
   'https://invidious.privacyredirect.com',
@@ -1061,86 +1067,105 @@ const INVIDIOUS_HOSTS = [
   'https://iv.melmac.space',
   'https://invidious.incogniweb.net',
   'https://invidious.fdn.fr',
+  'https://invidious.nerdvpn.de',
+  'https://invidious.perennialte.ch',
+  'https://vid.puffyan.us',
+  'https://yewtu.be',
 ];
 
 const ytCache = {};
 
-// Step 1: Search for video IDs
+// Step 1: Search Invidious instances to get video IDs
 async function findVideoIds(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
-  if (ytCache[ck]?.length) return ytCache[ck];
+  if (ytCache[ck]?.ids?.length) return ytCache[ck];
 
   const searchQ = artist + ' ' + title + ' audio';
   const q = encodeURIComponent(searchQ);
 
-  // Race all Invidious instances for search results
   const tryInv = host => new Promise(async (res, rej) => {
     try {
       const r = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId,title,lengthSeconds`, {
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(6000)
       });
       if (!r.ok) return rej();
       const d = await r.json();
-      const ids = (Array.isArray(d) ? d : []).map(v => v.videoId).filter(Boolean).slice(0, 6);
+      const ids = (Array.isArray(d) ? d : []).map(v => v.videoId).filter(Boolean).slice(0, 8);
       if (ids.length) res({ host, ids }); else rej();
     } catch { rej(); }
   });
 
   try {
     const { host, ids } = await Promise.any(INVIDIOUS_HOSTS.map(tryInv));
-    ytCache[ck] = ids;
-    ytCache[ck + '_host'] = host; // cache the working host for stream fetching
-    return ids;
+    ytCache[ck] = { ids, host };
+    return ytCache[ck];
   } catch {}
 
-  // Last resort: scrape YouTube search page via CORS proxy
+  // Last resort: scrape YouTube search page via CORS proxy to get video IDs
   try {
     const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(searchQ);
-    const r = await proxyFetch(ytUrl, {}, 8000);
+    const r = await proxyFetch(ytUrl, {}, 10000);
     const html = await r.text();
     const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-    const ids = [...new Set(matches.map(m => m[1]))].slice(0, 6);
-    if (ids.length) { ytCache[ck] = ids; return ids; }
+    const ids = [...new Set(matches.map(m => m[1]))].slice(0, 8);
+    if (ids.length) {
+      ytCache[ck] = { ids, host: null };
+      return ytCache[ck];
+    }
   } catch {}
 
   throw new Error('search failed');
 }
 
-// Step 2: Get a direct audio stream URL for a video ID from Invidious
+// Step 2: Build proxied stream URLs using Invidious /latest_version endpoint.
+// This endpoint proxies audio THROUGH the Invidious server, so the browser sees
+// a normal HTTP response from the Invidious host — no CORS or IP-lock problems.
+function buildProxiedStreamUrls(videoId, hosts) {
+  const activeHosts = (hosts || INVIDIOUS_HOSTS).filter(Boolean);
+  const urls = [];
+  for (const host of activeHosts) {
+    // itag 251 = opus/webm ~160kbps (audio only), itag 140 = m4a/aac ~128kbps (audio only)
+    // itag 18 = mp4 360p mixed (most compatible fallback)
+    urls.push(`${host}/latest_version?id=${videoId}&itag=251`);
+    urls.push(`${host}/latest_version?id=${videoId}&itag=140`);
+    urls.push(`${host}/latest_version?id=${videoId}&itag=18`);
+  }
+  return urls;
+}
+
+// Step 3: Verify a proxied URL actually responds (HEAD check) before handing to audio element
 async function getAudioStream(videoId, preferredHost) {
-  const hosts = preferredHost
+  const orderedHosts = preferredHost
     ? [preferredHost, ...INVIDIOUS_HOSTS.filter(h => h !== preferredHost)]
     : INVIDIOUS_HOSTS;
 
-  const tryStream = host => new Promise(async (res, rej) => {
-    try {
-      const r = await fetch(`${host}/api/v1/videos/${videoId}?fields=adaptiveFormats,formatStreams`, {
-        signal: AbortSignal.timeout(7000)
-      });
-      if (!r.ok) return rej();
-      const d = await r.json();
-
-      // Prefer audio-only adaptive formats (lowest data usage, best for audio)
-      const audioFormats = (d.adaptiveFormats || [])
-        .filter(f => f.type && f.type.startsWith('audio/'))
-        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0)); // highest quality first
-
-      // Fallback: mixed format streams
-      const mixedFormats = d.formatStreams || [];
-
-      const urls = [
-        ...audioFormats.map(f => f.url),
-        ...mixedFormats.map(f => f.url),
-      ].filter(Boolean);
-
-      if (urls.length) res({ host, urls });
-      else rej();
-    } catch { rej(); }
+  // Try each Invidious host's proxied URL — HEAD check first to confirm it works
+  const tryHost = host => new Promise(async (res, rej) => {
+    const candidates = [
+      `${host}/latest_version?id=${videoId}&itag=251`,
+      `${host}/latest_version?id=${videoId}&itag=140`,
+      `${host}/latest_version?id=${videoId}&itag=18`,
+    ];
+    for (const url of candidates) {
+      try {
+        const r = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+        if (r.ok || r.status === 206) {
+          // Return all candidates from this host so audio element can fallback within the same host
+          res({ host, urls: candidates });
+          return;
+        }
+      } catch {}
+    }
+    rej();
   });
 
-  // Try all hosts in parallel
-  const { host, urls } = await Promise.any(hosts.map(tryStream));
-  return { host, urls };
+  try {
+    const result = await Promise.any(orderedHosts.map(tryHost));
+    return result;
+  } catch {}
+
+  // If all HEAD checks fail, return all URLs across all hosts and let the audio element try them
+  return { host: orderedHosts[0], urls: buildProxiedStreamUrls(videoId, orderedHosts) };
 }
 
 setStatus('ok', 'Ready');
@@ -1406,9 +1431,9 @@ async function loadTrack(idx) {
   if (!track.ytIds) {
     setStatus('loading', 'Finding…');
     try {
-      const ck = (track.artist + '||' + track.title).toLowerCase();
-      track.ytIds = await findVideoIds(track.artist, track.title);
-      track._preferredHost = ytCache[ck + '_host'] || null;
+      const result = await findVideoIds(track.artist, track.title);
+      track.ytIds = result.ids;
+      track._preferredHost = result.host || null;
       track.ytTry = 0;
     } catch {
       setStatus('err', 'Not found');
