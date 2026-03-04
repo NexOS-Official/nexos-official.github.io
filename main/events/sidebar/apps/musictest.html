@@ -977,6 +977,27 @@ let toastTmr=null;
 function toast(msg){ const el=G('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('show'),2800); }
 function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-status-txt').textContent=msg; }
 
+// Universal proxy-aware fetch — tries direct first, then multiple CORS proxies
+// Works even when school blocks the target domain directly
+const PROXIES = [
+  u => u, // direct
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+  u => 'https://thingproxy.freeboard.io/fetch/' + u,
+];
+
+async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
+  const tryOne = proxy => new Promise(async (res, rej) => {
+    try {
+      const r = await fetch(proxy(url), { ...opts, signal: AbortSignal.timeout(timeoutMs) });
+      if (r.ok) res(r); else rej(r.status);
+    } catch(e) { rej(e); }
+  });
+  // Fire all in parallel, return first success
+  return Promise.any(PROXIES.map(tryOne));
+}
+
 let YT_player = null, ytReady = false, ticker = null;
 // High-precision lyric sync: interpolate position between YT polls
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
@@ -989,7 +1010,8 @@ function getPrecisePos() {
 window.onYouTubeIframeAPIReady = function() {
   YT_player = new YT.Player('yt-player', {
     videoId: 'M7lc1UVf-VE',
-    playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1, origin: window.location.origin, host: 'https://www.youtube-nocookie.com' },
+    playerVars: { autoplay: 0, controls: 0, rel: 0, modestbranding: 1, origin: window.location.origin },
+    host: 'https://www.youtube-nocookie.com',
     events: {
       onReady(e) {
         ytReady = true;
@@ -1045,26 +1067,64 @@ window.onYouTubeIframeAPIReady = function() {
   });
 };
 
-// Try YouTube IFrame API — detect if blocked (school networks)
-const tag = document.createElement('script');
-tag.src = 'https://www.youtube.com/iframe_api';
-tag.onerror = () => {
-  setStatus('err', 'YouTube blocked');
-  toast('⚠ YouTube is blocked on this network — playback unavailable');
-  G('sc-status-txt').textContent = 'YouTube blocked';
-};
-document.head.appendChild(tag);
-
-// If YouTube script loads but player never fires, it's blocked at embed level
+// Load YouTube IFrame API — try multiple sources for school networks
 let _ytScriptLoaded = false;
-tag.onload = () => { _ytScriptLoaded = true; };
-setTimeout(() => {
-  if (!ytReady && _ytScriptLoaded) {
-    // Script loaded but player didn't init — embed blocked
-    setStatus('err', 'Playback blocked');
-    G('sc-status-txt').textContent = 'Embed blocked';
+
+function loadYTScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => { _ytScriptLoaded = true; res(); };
+    s.onerror = () => rej();
+    document.head.appendChild(s);
+  });
+}
+
+async function initYouTube() {
+  setStatus('loading', 'Connecting…');
+  // If already ready (e.g. script loaded synchronously), bail early
+  if (ytReady) return;
+
+  const sources = [
+    'https://www.youtube.com/iframe_api',
+    'https://www.youtube-nocookie.com/iframe_api',
+    'https://corsproxy.io/?url=' + encodeURIComponent('https://www.youtube.com/iframe_api'),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.youtube.com/iframe_api'),
+  ];
+
+  for (const src of sources) {
+    if (ytReady) return; // another source already worked
+    const ok = await new Promise(resolve => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onerror = () => resolve(false);
+      s.onload = () => {
+        // Script loaded — now wait up to 5s for onYouTubeIframeAPIReady to fire
+        window._ytReadyResolve = () => resolve(true);
+        setTimeout(() => resolve(false), 5000);
+      };
+      document.head.appendChild(s);
+    });
+    if (ok || ytReady) return;
   }
-}, 10000);
+
+  setStatus('err', 'YouTube blocked');
+  toast('⚠ YouTube is blocked on this network');
+}
+
+// Patch onYouTubeIframeAPIReady to also resolve our loader promise
+const _origYTReady = window.onYouTubeIframeAPIReady;
+window.onYouTubeIframeAPIReady = function() {
+  if (window._ytReadyResolve) window._ytReadyResolve();
+  if (_origYTReady) _origYTReady();
+};
+
+initYouTube();
+
+// Fallback timeout
+setTimeout(() => {
+  if (!ytReady) { setStatus('err', 'Playback blocked'); }
+}, 15000);
 
 const ytCache = {};
 
@@ -1073,41 +1133,27 @@ async function findVideoIds(artist, title) {
   if (ytCache[ck]?.length) return ytCache[ck];
 
   const searchQ = artist + ' ' + title + ' audio';
-  const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(searchQ);
 
-  // Extract video IDs from raw YouTube HTML
   function extractIds(html) {
     const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
     return [...new Set(matches.map(m => m[1]))].slice(0, 6);
   }
 
-  // Try CORS proxies in parallel — these work on school Chromebooks
-  const corsProxies = [
-    'https://corsproxy.io/?url=' + encodeURIComponent(ytUrl),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(ytUrl),
-    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(ytUrl),
-  ];
-
-  const tryProxy = url => new Promise(async (res, rej) => {
-    try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
-      if (!r.ok) return rej();
-      const html = await r.text();
-      const ids = extractIds(html);
-      if (ids.length) res(ids); else rej();
-    } catch { rej(); }
-  });
-
+  // Method 1: scrape YouTube search via proxyFetch (races all proxies)
   try {
-    const ids = await Promise.any(corsProxies.map(tryProxy));
-    ytCache[ck] = ids; return ids;
+    const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(searchQ);
+    const r = await proxyFetch(ytUrl, {}, 6000);
+    const html = await r.text();
+    const ids = extractIds(html);
+    if (ids.length) { ytCache[ck] = ids; return ids; }
   } catch {}
 
-  // Last resort: Invidious (may work on some networks)
+  // Method 2: Invidious JSON API (different servers, different block lists)
   const invidious = [
     'https://inv.nadeko.net',
     'https://invidious.privacyredirect.com',
     'https://yt.cdaut.de',
+    'https://iv.melmac.space',
   ];
   const q = encodeURIComponent(searchQ);
   const tryInv = host => new Promise(async (res, rej) => {
@@ -1139,26 +1185,12 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
-// iTunes fetch — tries direct + 3 CORS proxies all in parallel, first winner wins
+// iTunes fetch — uses proxyFetch to work through school blockers
 async function itunesFetch(url) {
-  const tryUrl = u => new Promise(async (res, rej) => {
-    try {
-      const r = await fetch(u, { signal: AbortSignal.timeout(6000) });
-      if (!r.ok) return rej('status ' + r.status);
-      const j = await r.json();
-      if (j && (j.results !== undefined || j.artistId !== undefined)) res(j); else rej('bad json');
-    } catch(e) { rej(e.message); }
-  });
-
-  const enc = encodeURIComponent(url);
-  const attempts = [
-    tryUrl(url),
-    tryUrl('https://corsproxy.io/?url=' + enc),
-    tryUrl('https://api.allorigins.win/raw?url=' + enc),
-    tryUrl('https://api.codetabs.com/v1/proxy?quest=' + enc),
-  ];
-
-  try { return await Promise.any(attempts); } catch { return null; }
+  try {
+    const r = await proxyFetch(url, {}, 7000);
+    return await r.json();
+  } catch { return null; }
 }
 
 async function doSearch(q) {
@@ -1226,9 +1258,9 @@ async function searchItunes(q) {
 
 async function searchMusicBrainz(q) {
   try {
-    const res = await fetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(q)}&limit=25&fmt=json`, {
+    const res = await proxyFetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(q)}&limit=25&fmt=json`, {
       headers: { 'User-Agent': 'GhostMusic/1.0 (ghost@music.app)' }
-    });
+    }, 8000);
     const data = await res.json();
     if (!data.recordings?.length) return [];
     return data.recordings.map(r => {
@@ -1560,12 +1592,22 @@ async function fetchLyrics(title, artist) {
 async function lrclibGET(track, artist) {
   try {
     const url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await fetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } });
-    if (r.status === 200) return await r.json();
+    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
+    if (r.status === 200 || r.ok) return await r.json();
   } catch {}
   return null;
 }
-async function lrclibSEARCH(track,artist){try{const r=await fetch(`https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`,{headers:{'Lrclib-Client':'Wavelength/4.0'}});if(r.ok){const a=await r.json();if(a?.length)return a.find(x=>x.syncedLyrics)||a.find(x=>x.plainLyrics)||null;}}catch{}return null;}
+async function lrclibSEARCH(track, artist) {
+  try {
+    const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
+    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
+    if (r.ok) {
+      const a = await r.json();
+      if (a?.length) return a.find(x => x.syncedLyrics) || a.find(x => x.plainLyrics) || null;
+    }
+  } catch {}
+  return null;
+}
 
 function parseLRC(rawStr) {
   return rawStr.split('\n').map(line => {
