@@ -1116,7 +1116,9 @@ async function findVideoIds(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
   if (ytCache[ck]?.length) return ytCache[ck];
 
-  const searchQ = artist + ' ' + title + ' audio';
+  // Strip "(clean)" etc from title so we search for the real version
+  const cleanTitle = title.replace(/\s*\(clean\)|\s*\[clean\]|\s*- clean|\s*\(radio edit\)/gi, '').trim();
+  const searchQ = artist + ' ' + cleanTitle;
 
   function extractIds(html) {
     const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
@@ -1229,6 +1231,10 @@ function scoreTrack(t, ql, words) {
   const tl = (t.trackName || '').toLowerCase();
   const al = (t.artistName || '').toLowerCase();
   let s = 0;
+  // Heavily penalize clean/radio edits — user wants the real version
+  if (tl.includes('(clean)') || tl.includes('- clean') || tl.includes('[clean]') ||
+      tl.includes('(radio edit)') || tl.includes('- radio edit') ||
+      tl.includes('(censored)') || tl.includes('(edited)')) s -= 60;
   // Title scoring
   if (tl === ql) s += 100;
   else if (tl.startsWith(ql)) s += 70;
@@ -1249,7 +1255,7 @@ async function searchItunes(q) {
   const ql = q.toLowerCase().trim();
   const words = ql.split(/\s+/).filter(Boolean);
   const data = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US&explicit=Yes`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US`
   );
   if (!data?.results?.length) return [];
   const results = data.results;
@@ -1321,7 +1327,7 @@ async function fetchCoverArt(track) {
   // Always try iTunes first — works everywhere including school Chromebooks
   try {
     const term = encodeURIComponent((track.artistName||'').trim() + ' ' + (track.trackName||'').trim());
-    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US&explicit=Yes`)
+    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`)
     if (r.ok) {
       const d = await r.json();
       const tl = (track.trackName||'').toLowerCase();
@@ -1641,26 +1647,6 @@ function syllableCount(word) {
 }
 
 function buildWordTimings(lrc) {
-  // Calibrate ms-per-syllable from short gaps (where gap ≈ actual singing time)
-  const calibSamples = [];
-  for (let i = 0; i < lrc.length; i++) {
-    const nextMs = lrc[i+1]?.ms;
-    if (!nextMs) continue;
-    const gap = nextMs - lrc[i].ms;
-    if (gap < 300 || gap > 5000) continue;
-    const words = lrc[i].text.split(/\s+/).filter(Boolean);
-    if (!words.length) continue;
-    const syls = words.reduce((s, w) => s + syllableCount(w), 0);
-    if (syls < 2) continue;
-    calibSamples.push(gap / syls);
-  }
-  let msPerSyl = 170;
-  if (calibSamples.length >= 2) {
-    calibSamples.sort((a, b) => a - b);
-    msPerSyl = calibSamples[Math.floor(calibSamples.length / 2)];
-    msPerSyl = Math.max(70, Math.min(450, msPerSyl));
-  }
-
   return lrc.map((line, i) => {
     const lineMs = line.ms;
     const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
@@ -1673,26 +1659,33 @@ function buildWordTimings(lrc) {
     }
 
     if (line._wordTimed?.length) {
-      // Per-word timestamps are exact — compute singDuration from last word to next line
+      // Enhanced LRC — exact per-word timestamps, use them directly
       const lastWordMs = line._wordTimed[line._wordTimed.length - 1].ms;
       const singDuration = Math.min(lastWordMs + 500, nextMs - 50) - lineMs;
       return { ...line, words: line._wordTimed, _singDuration: Math.max(300, singDuration), _useWordTs: true };
     }
 
-    // Calculate estimated singing duration for this line
+    // No per-word timestamps — use syllable-weighted offsets within the line's gap.
+    // The gap IS the singing duration for normal lines; we cap at 92% to avoid bleeding.
+    // For lines followed by long instrumental gaps, cap at a reasonable max.
     const totalSyls = rawWords.reduce((s, w) => s + syllableCount(w), 0);
-    const estimatedSingMs = totalSyls * msPerSyl;
-    // For long gaps (instrumental after line), cap at estimated sing time
-    // For normal gaps, use the gap (it IS the singing time)
-    const singMs = gap > estimatedSingMs * 2.2
-      ? Math.min(estimatedSingMs * 1.1, gap - 200)
-      : gap * 0.88;
-    const singDuration = Math.max(400, singMs);
+    // Max plausible singing time: 380ms per syllable (very slow ballad pace)
+    const maxSingMs = Math.min(gap * 0.92, totalSyls * 380);
+    const singDuration = Math.max(400, maxSingMs);
 
-    // Store word char offsets for position-based fill in tickLrc
-    // We don't assign per-word timestamps — instead we use char position
+    // Build syllable-weighted word boundaries (0.0–1.0 within singDuration)
+    const syls = rawWords.map(syllableCount);
+    const totalWeight = syls.reduce((a, b) => a + b, 0);
+    let cursor = 0;
+    const wordOffsets = rawWords.map((word, wi) => {
+      const start = cursor / totalWeight;
+      cursor += syls[wi];
+      const end = cursor / totalWeight;
+      return { start, end, word };
+    });
+
     const words = rawWords.map(word => ({ word, ms: lineMs }));
-    return { ...line, words, _singDuration: singDuration };
+    return { ...line, words, _singDuration: singDuration, _wordOffsets: wordOffsets };
   });
 }
 
@@ -1866,21 +1859,12 @@ function tickLrc(posMs) {
   // How far through the line's singing window are we? (0.0 → 1.0)
   const lineProgress = Math.max(0, Math.min(1, (tWord - lineStart) / singDuration));
 
-  // Build char offsets once (cheap, cached on line object)
-  if (!activeLine._charOffsets) {
-    const fullText = words.map(w => w.word).join(' ');
-    const totalChars = fullText.length;
-    let pos = 0;
-    activeLine._charOffsets = words.map((w, wi) => {
-      const start = pos / totalChars;
-      pos += w.word.length + (wi < words.length - 1 ? 1 : 0); // +1 for space
-      const end = pos / totalChars;
-      return { start, end };
-    });
-  }
+  // Use syllable-weighted word offsets built in buildWordTimings
+  const wordOffsets = activeLine._wordOffsets;
+  if (!wordOffsets) return;
 
   for (let wi = 0; wi < words.length; wi++) {
-    const { start, end } = activeLine._charOffsets[wi];
+    const { start, end } = wordOffsets[wi];
     const id = 'lw'+active+'_'+wi;
 
     if (lineProgress <= start) {
@@ -1888,7 +1872,6 @@ function tickLrc(posMs) {
     } else if (lineProgress >= end) {
       _setLwState(id, 'done', '100%');
     } else {
-      // Fill within this word's character window
       const raw = (lineProgress - start) / (end - start);
       const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
       _setLwState(id, 'now-word', (eased * 100).toFixed(1)+'%');
@@ -1929,7 +1912,7 @@ async function fetchArtistData(artistName) {
 
   // Step 1: Find iTunes artistId via entity search
   const artistData = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US&explicit=Yes`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
   );
   if (artistData?.results) {
     const match =
@@ -1944,7 +1927,7 @@ async function fetchArtistData(artistName) {
   // Step 2: Lookup by artistId — gets full discography reliably
   if (artistId) {
     const ld = await itunesFetch(
-      `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US&explicit=Yes`
+      `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`
     );
     tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
   }
@@ -1952,7 +1935,7 @@ async function fetchArtistData(artistName) {
   // Step 3: Fallback — direct search filtered to artist name
   if (tracks.length < 3) {
     const ld = await itunesFetch(
-      `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US&explicit=Yes`
+      `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`
     );
     const extra = (ld?.results || []).filter(t =>
       t.wrapperType === 'track' && t.kind === 'song' &&
