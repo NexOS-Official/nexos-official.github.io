@@ -1656,11 +1656,11 @@ function buildWordTimings(lrc) {
       return { ...line, words: line._wordTimed };
     }
 
-    // Spread words across the gap to the next line — this keeps sync correct
-    // regardless of tempo. We use 90% of the gap so words finish before next line.
+    // Spread words across 90% of the gap — preserves sync at any tempo
     const syls = rawWords.map(syllableCount);
     const totalWeight = syls.reduce((a,b,j)=> a + b*(rawWords[j].replace(/[^a-z]/gi,'').length<=3?0.7:1), 0);
-    const usable = Math.max(400, nextMs - lineMs) * 0.90;
+    const duration = Math.max(400, nextMs - lineMs - 80);
+    const usable = duration * 0.90;
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
@@ -1811,15 +1811,14 @@ function tickLrc(posMs) {
   if (!words?.length) return;
 
   const nextLineMsW = ST.lrc[active+1]?.ms ?? (t + 4000);
-  // Last word: finish 600ms after it starts, don't stretch to next line
-  const lastWordEnd = Math.min(words[words.length-1].ms + 600, nextLineMsW - 50);
+  // Last word: finish 700ms after it starts — never stretch to the next line
+  const lastWordEnd = Math.min(words[words.length-1].ms + 700, nextLineMsW - 50);
 
   for (let wi = 0; wi < words.length; wi++) {
     const wStart = words[wi].ms;
-    // For mid-line words: fill completes when the next word starts OR after 800ms max,
-    // whichever is sooner. This stops the fill crawling during long instrumental gaps.
-    const nextWordStart = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
-    const wEnd = Math.min(nextWordStart, wStart + 800);
+    // Mid-line words: fill until the next word starts (original behaviour, keeps sync)
+    // Last word: fill ends 700ms after it starts (not stretched to next line)
+    const wEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
     const id = 'lw'+active+'_'+wi;
 
     if (t < wStart) {
