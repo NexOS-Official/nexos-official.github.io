@@ -1647,7 +1647,6 @@ function buildWordTimings(lrc) {
     const rawWords = line.text.split(/\s+/).filter(Boolean);
 
     if (!rawWords.length) {
-      // ♪ instrumental — compute beat duration from gap, aim for ~4 beats
       const gapMs = Math.max(400, nextMs - lineMs);
       const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
       return { ...line, words: [], beatDur };
@@ -1658,23 +1657,28 @@ function buildWordTimings(lrc) {
       return { ...line, words: line._wordTimed };
     }
 
-    // Syllable-weighted distribution fallback.
-    // Use the gap to the next line for word spacing (so fast/slow songs stay in sync),
-    // BUT cap to 85% of the gap so we never bleed into the next line's timestamp.
+    // Estimate how long this line actually takes to sing.
+    // Base: ~150ms per syllable. Cap at 3.5s. Never exceed the gap to the next line.
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a,b)=>a+b, 0);
-    const gap = Math.max(400, nextMs - lineMs);
-    // 85% keeps words finishing well before the next line starts
-    const usable = gap * 0.85;
+    const gap = nextMs - lineMs;
+    const naturalSingMs = Math.min(totalSyls * 150, 3500, gap - 100);
+    const singDuration = Math.max(300, naturalSingMs);
+
+    // Distribute word start times evenly within singDuration, syllable-weighted
+    const totalWeight = syls.reduce((a,b,j)=>{
+      const w = b * (rawWords[j].replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
+      return a + w;
+    }, 0);
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
-      // Weight short words (≤3 chars) slightly less — they're usually unstressed
       const weight = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
-      cursor += (weight / syls.reduce((a,b,j)=>a+(b*(rawWords[j].replace(/[^a-z]/gi,'').length<=3?0.7:1)),0)) * usable;
+      cursor += (weight / totalWeight) * singDuration;
       return { ms: wordMs, word };
     });
-    return { ...line, words };
+    // Store the estimated line end so tickLrc can use it for per-word fill windows
+    return { ...line, words, _singEnd: lineMs + singDuration };
   });
 }
 
@@ -1816,28 +1820,17 @@ function tickLrc(posMs) {
   const words = ST.lrc[active]?.words;
   if (!words?.length) return;
 
-  const nextLineMsW = ST.lrc[active+1]?.ms ?? (t + 4000);
-  const lineGap = nextLineMsW - (ST.lrc[active]?.ms ?? 0);
-  // For long gaps, cap each word's fill window so they don't drag for seconds each.
-  // Estimate natural singing time: ~180ms per syllable across all words.
-  const activeWords = ST.lrc[active]?.words || [];
-  const estSingMs = activeWords.length > 0
-    ? activeWords.reduce((sum, w) => sum + syllableCount(w.word) * 180, 0)
-    : lineGap;
-  const naturalLineEnd = (ST.lrc[active]?.ms ?? 0) + Math.min(estSingMs, lineGap * 0.85);
-  // Per-word max fill: natural singing time divided by word count, capped at 900ms
-  const perWordMax = activeWords.length > 1
-    ? Math.min(900, (naturalLineEnd - (ST.lrc[active]?.ms ?? 0)) / activeWords.length * 1.5)
-    : 900;
-
-  const lastWordNatural = words[words.length-1].ms + Math.min(600, perWordMax);
-  const lastWordEnd = Math.min(lastWordNatural, nextLineMsW - 50);
+  // Use the pre-computed singing end time. Each word fills from its start
+  // to the next word's start, capped so no single word takes more than 500ms to fill.
+  const singEnd = ST.lrc[active]._singEnd ?? (words[words.length-1].ms + 500);
+  const nextLineMsW = ST.lrc[active+1]?.ms ?? (singEnd + 4000);
+  const lastWordEnd = Math.min(singEnd, nextLineMsW - 50);
 
   for (let wi = 0; wi < words.length; wi++) {
     const wStart = words[wi].ms;
-    const rawWEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
-    // Cap each word's fill window to perWordMax so long gaps don't make words crawl
-    const wEnd = wi < words.length - 1 ? Math.min(rawWEnd, wStart + perWordMax) : lastWordEnd;
+    // Next word start or singEnd — whichever comes first, also cap at 500ms per word
+    const naturalEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
+    const wEnd = Math.min(naturalEnd, wStart + 500);
     const id = 'lw'+active+'_'+wi;
 
     if (t < wStart) {
