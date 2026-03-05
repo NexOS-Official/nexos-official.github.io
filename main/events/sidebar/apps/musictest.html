@@ -1673,7 +1673,10 @@ function buildWordTimings(lrc) {
     }
 
     if (line._wordTimed?.length) {
-      return { ...line, words: line._wordTimed };
+      // Per-word timestamps are exact — compute singDuration from last word to next line
+      const lastWordMs = line._wordTimed[line._wordTimed.length - 1].ms;
+      const singDuration = Math.min(lastWordMs + 500, nextMs - 50) - lineMs;
+      return { ...line, words: line._wordTimed, _singDuration: Math.max(300, singDuration), _useWordTs: true };
     }
 
     // Calculate estimated singing duration for this line
@@ -1832,9 +1835,32 @@ function tickLrc(posMs) {
   const words = ST.lrc[active]?.words;
   if (!words?.length) return;
 
-  const activeLine = ST.lrc[active];
   const lineStart = activeLine.ms;
   const singDuration = activeLine._singDuration ?? 1500;
+
+  if (activeLine._useWordTs) {
+    // Exact per-word timestamps — fill each word from its start to next word's start
+    const nextLineMsW = ST.lrc[active+1]?.ms ?? (t + 4000);
+    const avgWordDur = words.length > 1
+      ? (words[words.length-1].ms - words[0].ms) / (words.length - 1)
+      : 300;
+    const lastWordEnd = Math.min(words[words.length-1].ms + avgWordDur, nextLineMsW - 50);
+    for (let wi = 0; wi < words.length; wi++) {
+      const wStart = words[wi].ms;
+      const wEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
+      const id = 'lw'+active+'_'+wi;
+      if (tWord < wStart) _setLwState(id, 'upcoming', '0%');
+      else if (tWord >= wEnd) _setLwState(id, 'done', '100%');
+      else {
+        const raw = (tWord - wStart) / (wEnd - wStart);
+        const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
+        _setLwState(id, 'now-word', (eased*100).toFixed(1)+'%');
+      }
+    }
+    return;
+  }
+
+  // Char-position-based fill for estimated lines
   const lineEnd = lineStart + singDuration;
 
   // How far through the line's singing window are we? (0.0 → 1.0)
