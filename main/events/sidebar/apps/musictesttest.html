@@ -1652,33 +1652,23 @@ function buildWordTimings(lrc) {
       return { ...line, words: [], beatDur };
     }
 
-    // If the LRC had per-word timestamps embedded, use those — they are exact
     if (line._wordTimed?.length) {
       return { ...line, words: line._wordTimed };
     }
 
-    // Estimate how long this line actually takes to sing.
-    // Base: ~150ms per syllable. Cap at 3.5s. Never exceed the gap to the next line.
+    // Spread words across the gap to the next line — this keeps sync correct
+    // regardless of tempo. We use 90% of the gap so words finish before next line.
     const syls = rawWords.map(syllableCount);
-    const totalSyls = syls.reduce((a,b)=>a+b, 0);
-    const gap = nextMs - lineMs;
-    const naturalSingMs = Math.min(totalSyls * 150, 3500, gap - 100);
-    const singDuration = Math.max(300, naturalSingMs);
-
-    // Distribute word start times evenly within singDuration, syllable-weighted
-    const totalWeight = syls.reduce((a,b,j)=>{
-      const w = b * (rawWords[j].replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
-      return a + w;
-    }, 0);
+    const totalWeight = syls.reduce((a,b,j)=> a + b*(rawWords[j].replace(/[^a-z]/gi,'').length<=3?0.7:1), 0);
+    const usable = Math.max(400, nextMs - lineMs) * 0.90;
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
       const weight = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
-      cursor += (weight / totalWeight) * singDuration;
+      cursor += (weight / totalWeight) * usable;
       return { ms: wordMs, word };
     });
-    // Store the estimated line end so tickLrc can use it for per-word fill windows
-    return { ...line, words, _singEnd: lineMs + singDuration };
+    return { ...line, words };
   });
 }
 
@@ -1820,17 +1810,16 @@ function tickLrc(posMs) {
   const words = ST.lrc[active]?.words;
   if (!words?.length) return;
 
-  // Use the pre-computed singing end time. Each word fills from its start
-  // to the next word's start, capped so no single word takes more than 500ms to fill.
-  const singEnd = ST.lrc[active]._singEnd ?? (words[words.length-1].ms + 500);
-  const nextLineMsW = ST.lrc[active+1]?.ms ?? (singEnd + 4000);
-  const lastWordEnd = Math.min(singEnd, nextLineMsW - 50);
+  const nextLineMsW = ST.lrc[active+1]?.ms ?? (t + 4000);
+  // Last word: finish 600ms after it starts, don't stretch to next line
+  const lastWordEnd = Math.min(words[words.length-1].ms + 600, nextLineMsW - 50);
 
   for (let wi = 0; wi < words.length; wi++) {
     const wStart = words[wi].ms;
-    // Next word start or singEnd — whichever comes first, also cap at 500ms per word
-    const naturalEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
-    const wEnd = Math.min(naturalEnd, wStart + 500);
+    // For mid-line words: fill completes when the next word starts OR after 800ms max,
+    // whichever is sooner. This stops the fill crawling during long instrumental gaps.
+    const nextWordStart = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
+    const wEnd = Math.min(nextWordStart, wStart + 800);
     const id = 'lw'+active+'_'+wi;
 
     if (t < wStart) {
