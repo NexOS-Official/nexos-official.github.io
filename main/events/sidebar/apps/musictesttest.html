@@ -1407,11 +1407,11 @@ async function tryNextPlaybackMethod(track) {
   if (isFirstLoad) {
     const artistQ = track.artist || '';
     const titleQ = track.title || '';
-    setStatus('loading', 'Searching Audius…');
+    setStatus('loading', 'Searching JioSaavn…');
     _audiusActive = false;
     _stopAudiusAudio();
-    const ok = await playAudius(artistQ, titleQ, (reason) => {
-      setStatus('loading', `Audius failed (${reason}), trying YouTube…`);
+    const ok = await playSaavn(artistQ, titleQ, (reason) => {
+      setStatus('loading', `JioSaavn failed (${reason}), trying YouTube…`);
     });
     if (ok) return;
   }
@@ -2511,198 +2511,227 @@ function playAllArtist(key) {
 }
 
 
-const AUDIUS_APP = 'GhostMusic';
-let _audiusHosts = [];
-let _audiusHostIdx = 0;
-let _audiusReady = false;
+
+const SAAVN_INSTANCES = [
+  'https://saavn.dev',
+  'https://jiosaavn-api-rs.vercel.app',
+  'https://saavn-api-xi.vercel.app',
+  'https://jiosaavn-api-blond.vercel.app',
+  'https://jiosaavn-api-private.vercel.app',
+  'https://saavn.me',
+  'https://jiosaavn-api-ts.vercel.app',
+  'https://jiosaavn.vercel.app',
+  'https://jiosaavn-api-lemon.vercel.app',
+  'https://saavn-api-beta.vercel.app',
+  'https://jiosaavn-api-coral.vercel.app',
+  'https://jiosaavn-api-gray.vercel.app',
+];
+
+let _saavnActive = false;
 let _audiusActive = false;
 let _audiusTicker = null;
-
-async function initAudius() {
-  try {
-    const r = await fetch('https://api.audius.co', { signal: AbortSignal.timeout(5000) });
-    const j = await r.json();
-    _audiusHosts = (j.data || []).filter(Boolean);
-    if (_audiusHosts.length) { _audiusReady = true; }
-  } catch {}
-  if (!_audiusHosts.length) {
-    _audiusHosts = [
-      'https://audius-dp.nanite.systems',
-      'https://discoveryprovider.audius.co',
-      'https://discoveryprovider2.audius.co',
-      'https://discoveryprovider3.audius.co',
-      'https://audius-discovery-1.cultur3stake.com',
-      'https://audius-discovery-2.cultur3stake.com',
-      'https://dn1.monophonic.digital',
-      'https://dn2.monophonic.digital',
-      'https://dn1.nixa.no',
-      'https://audius.prod.capturealpha.io',
-      'https://discovery.audius.openplayer.org',
-      'https://audius-dp.nuc.li',
-    ];
-  }
-}
-initAudius();
-
-function _audiusHost() {
-  return _audiusHosts[_audiusHostIdx % _audiusHosts.length] || 'https://discoveryprovider.audius.co';
-}
-
-const _audiusSearchCache = {};
-async function searchAudius(artist, title) {
-  const ck = (artist + '||' + title).toLowerCase();
-  if (_audiusSearchCache[ck]) return _audiusSearchCache[ck];
-
-  const q = encodeURIComponent(artist + ' ' + title);
-  const queries = [
-    `${_audiusHost()}/v1/tracks/search?query=${q}&app_name=${AUDIUS_APP}&limit=10`,
-    `https://api.audius.co/v1/tracks/search?query=${q}&app_name=${AUDIUS_APP}&limit=10`,
-  ];
-
-  for (const url of queries) {
-    try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
-      if (!r.ok) continue;
-      const d = await r.json();
-      const tracks = (d.data || []).filter(t => t.access?.stream !== false);
-      if (!tracks.length) continue;
-
-      const tl = title.toLowerCase(), al = artist.toLowerCase();
-      const scored = tracks.map(t => {
-        let s = 0;
-        const tt = (t.title || '').toLowerCase();
-        const ta = (t.user?.name || '').toLowerCase();
-        if (tt === tl) s += 100;
-        else if (tt.includes(tl)) s += 60;
-        if (ta.includes(al)) s += 50;
-        if (!t.is_premium) s += 20;
-        s += Math.min(20, (t.play_count || 0) / 5000);
-        return { t, s };
-      }).sort((a, b) => b.s - a.s);
-
-      const result = scored.map(x => x.t);
-      _audiusSearchCache[ck] = result;
-      return result;
-    } catch { _audiusHostIdx++; }
-  }
-  return [];
-}
-
-function _audiusStreamUrl(trackId, hostOverride) {
-  const host = hostOverride || _audiusHost();
-  return `${host}/v1/tracks/${trackId}/stream?app_name=${AUDIUS_APP}`;
-}
+const _saavnCache = {};
 
 const _audiusAudio = document.getElementById('audius-player');
 
 function _stopAudiusAudio() {
   if (_audiusTicker) { clearInterval(_audiusTicker); _audiusTicker = null; }
   try { _audiusAudio.pause(); _audiusAudio.src = ''; } catch {}
+  _saavnActive = false;
+  _audiusActive = false;
 }
 
-async function playAudius(artist, title, onFail) {
-  _audiusActive = true;
-  setStatus('loading', 'Searching Audius…');
+async function searchSaavn(artist, title) {
+  const ck = (artist + '||' + title).toLowerCase();
+  if (_saavnCache[ck]?.length) return _saavnCache[ck];
 
-  const tracks = await searchAudius(artist, title);
+  const q = encodeURIComponent(artist + ' ' + title);
+  const errors = [];
+
+  for (const base of SAAVN_INSTANCES) {
+    try {
+      const url = `${base}/api/search/songs?query=${q}&page=1&limit=10`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+
+      let results = d?.data?.results || d?.results || d?.songs?.results || [];
+      if (!Array.isArray(results)) results = [];
+      if (!results.length) continue;
+
+      const tl = title.toLowerCase(), al = artist.toLowerCase();
+      results = results.map(s => {
+        const downloadUrls = s.downloadUrl || s.download_url || [];
+        const best = Array.isArray(downloadUrls)
+          ? (downloadUrls.find(u => u.quality === '320kbps') ||
+             downloadUrls.find(u => u.quality === '160kbps') ||
+             downloadUrls[downloadUrls.length - 1])
+          : null;
+        const mediaUrl = best?.url || s.media_url || s.url || null;
+        if (!mediaUrl) return null;
+
+        const songTitle = (s.name || s.title || s.song || '').toLowerCase();
+        const songArtist = (s.primaryArtists || s.primary_artists || s.artist || s.singers || '').toLowerCase();
+        let score = 0;
+        if (songTitle === tl) score += 100;
+        else if (songTitle.includes(tl)) score += 60;
+        if (songArtist.includes(al.split(' ')[0])) score += 50;
+        score += Math.min(10, (s.playCount || s.play_count || 0) / 1000000);
+
+        return {
+          mediaUrl,
+          title: s.name || s.title || s.song || title,
+          artist: s.primaryArtists || s.primary_artists || s.artists?.primary?.[0]?.name || artist,
+          image: s.image?.[2]?.url || s.image?.[1]?.url || s.image || s.image_url || null,
+          duration: (s.duration || 0) * 1000,
+          score,
+        };
+      }).filter(Boolean).sort((a, b) => b.score - a.score);
+
+      if (results.length) {
+        _saavnCache[ck] = results;
+        return results;
+      }
+    } catch (e) { errors.push(e); }
+  }
+
+  for (const base of SAAVN_INSTANCES) {
+    try {
+      const url = `${base}/api/songs/search?query=${q}&limit=10`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+      let results = d?.data?.results || d?.results || [];
+      if (!Array.isArray(results)) results = [];
+
+      const mapped = results.map(s => {
+        const downloadUrls = s.downloadUrl || [];
+        const best = Array.isArray(downloadUrls)
+          ? (downloadUrls.find(u => u.quality === '320kbps') || downloadUrls[downloadUrls.length - 1])
+          : null;
+        const mediaUrl = best?.url || null;
+        if (!mediaUrl) return null;
+        return {
+          mediaUrl,
+          title: s.name || title,
+          artist: s.primaryArtists || artist,
+          image: s.image?.[2]?.url || null,
+          duration: (s.duration || 0) * 1000,
+          score: 1,
+        };
+      }).filter(Boolean);
+
+      if (mapped.length) {
+        _saavnCache[ck] = mapped;
+        return mapped;
+      }
+    } catch {}
+  }
+
+  return [];
+}
+
+async function playSaavn(artist, title, onFail) {
+  _saavnActive = true;
+  _audiusActive = true;
+  setStatus('loading', 'Searching JioSaavn…');
+
+  const tracks = await searchSaavn(artist, title);
   if (!tracks.length) {
-    _audiusActive = false;
-    onFail('not found on Audius');
+    _saavnActive = false; _audiusActive = false;
+    onFail('not on JioSaavn');
     return false;
   }
 
-  const tryAudiusTrack = async (trackIdx, hostIdx) => {
-    if (trackIdx >= Math.min(tracks.length, 5)) {
-      _audiusActive = false;
-      onFail('all Audius tracks failed');
-      return false;
+  const tryTrack = (idx) => new Promise(resolve => {
+    if (idx >= Math.min(tracks.length, 8)) {
+      _saavnActive = false; _audiusActive = false;
+      onFail('all JioSaavn tracks failed');
+      resolve(false); return;
     }
-    const track = tracks[trackIdx];
-    const host = _audiusHosts[hostIdx % _audiusHosts.length] || _audiusHost();
-    const streamUrl = _audiusStreamUrl(track.id, host);
 
-    return new Promise(resolve => {
-      _stopAudiusAudio();
-      _audiusAudio.volume = ST.muted ? 0 : ST.vol;
-      _audiusAudio.src = streamUrl;
+    const track = tracks[idx];
+    _stopAudiusAudio();
+    _saavnActive = true; _audiusActive = true;
 
-      let settled = false;
-      const fail = () => {
-        if (settled) return; settled = true;
-        if (hostIdx + 1 < _audiusHosts.length) {
-          resolve(tryAudiusTrack(trackIdx, hostIdx + 1));
-        } else {
-          resolve(tryAudiusTrack(trackIdx + 1, 0));
+    _audiusAudio.volume = ST.muted ? 0 : ST.vol;
+    _audiusAudio.src = track.mediaUrl;
+
+    let settled = false;
+    const fail = () => { if (settled) return; settled = true; resolve(tryTrack(idx + 1)); };
+    const succeed = () => { if (settled) return; settled = true; resolve(true); };
+
+    const errTimeout = setTimeout(fail, 9000);
+
+    _audiusAudio.onerror = () => { clearTimeout(errTimeout); fail(); };
+    _audiusAudio.oncanplay = () => {
+      clearTimeout(errTimeout);
+      _audiusAudio.play().then(() => {
+        setStatus('ok', 'JioSaavn ✓');
+        ST.playing = true; syncPP();
+        G('cover-art').classList.add('playing');
+        if (_audiusTicker) clearInterval(_audiusTicker);
+        _audiusTicker = setInterval(() => {
+          ST.pos = (_audiusAudio.currentTime || 0) * 1000;
+          ST.dur = (_audiusAudio.duration && isFinite(_audiusAudio.duration))
+            ? _audiusAudio.duration * 1000 : (track.duration || 0);
+          syncBar();
+          if (ST.repeat && ST.dur > 0) {
+            const rem = ST.dur - ST.pos;
+            if (rem > 0 && rem <= XFADE_MS) _startRepeatCrossfade();
+          }
+        }, 250);
+
+        if (track.image && (!ST.queue[ST.idx]?.artSm)) {
+          const t = ST.queue[ST.idx];
+          if (t) {
+            t.artSm = t.artSm || track.image;
+            t.artLg = t.artLg || track.image;
+            G('cv-img').src = track.image;
+            G('cv-img').setAttribute('data-src', track.image);
+            G('cv-bg').src = track.image;
+            G('cv-bg').classList.add('on');
+            G('lrc-bg').style.backgroundImage = `url('${track.image}')`;
+            G('lrc-bg').classList.add('on');
+          }
         }
-      };
-      const succeed = () => {
-        if (settled) return; settled = true;
-        resolve(true);
-      };
 
-      const errTimeout = setTimeout(fail, 8000);
-      _audiusAudio.onerror = () => { clearTimeout(errTimeout); fail(); };
-      _audiusAudio.oncanplay = () => {
-        clearTimeout(errTimeout);
-        _audiusAudio.play().then(() => {
-          setStatus('ok', 'Audius');
-          ST.playing = true; syncPP();
-          G('cover-art').classList.add('playing');
-          if (_audiusTicker) clearInterval(_audiusTicker);
-          _audiusTicker = setInterval(() => {
-            ST.pos = (_audiusAudio.currentTime || 0) * 1000;
-            ST.dur = (_audiusAudio.duration && isFinite(_audiusAudio.duration))
-              ? _audiusAudio.duration * 1000 : 0;
-            syncBar();
-            if (ST.repeat && ST.dur > 0) {
-              const rem = ST.dur - ST.pos;
-              if (rem > 0 && rem <= XFADE_MS) _startRepeatCrossfade();
-            }
-          }, 250);
-          succeed();
-        }).catch(fail);
-      };
+        succeed();
+      }).catch(fail);
+    };
 
-      _audiusAudio.onended = () => {
-        clearInterval(_audiusTicker); _audiusTicker = null;
+    _audiusAudio.onended = () => {
+      clearInterval(_audiusTicker); _audiusTicker = null;
+      ST.playing = false; syncPP();
+      G('cover-art').classList.remove('playing');
+      if (ST.repeat) { _audiusAudio.currentTime = 0; _audiusAudio.play().catch(() => {}); }
+      else nextTrack();
+    };
+
+    _audiusAudio.onpause = () => {
+      if (_saavnActive && !_audiusAudio.ended) {
         ST.playing = false; syncPP();
         G('cover-art').classList.remove('playing');
-        if (ST.repeat) {
-          _audiusAudio.currentTime = 0;
-          _audiusAudio.play().catch(() => {});
-        } else {
-          nextTrack();
-        }
-      };
+      }
+    };
 
-      _audiusAudio.onpause = () => {
-        if (_audiusActive && !_audiusAudio.ended) {
-          ST.playing = false; syncPP();
-          G('cover-art').classList.remove('playing');
-        }
-      };
+    _audiusAudio.load();
+  });
 
-      _audiusAudio.load();
-    });
-  };
-
-  return tryAudiusTrack(0, 0);
+  return tryTrack(0);
 }
 
-function pauseAudius() {
-  if (_audiusActive) _audiusAudio.pause();
-}
-function resumeAudius() {
-  if (_audiusActive) _audiusAudio.play().catch(() => {});
-}
+function pauseAudius() { if (_audiusActive) _audiusAudio.pause(); }
+function resumeAudius() { if (_audiusActive) _audiusAudio.play().catch(() => {}); }
 function seekAudius(secs) {
-  if (_audiusActive && isFinite(_audiusAudio.duration)) {
+  if (_audiusActive && isFinite(_audiusAudio.duration))
     _audiusAudio.currentTime = Math.max(0, Math.min(_audiusAudio.duration, secs));
-  }
 }
 function setAudiusVolume(v) {
   if (_audiusActive) _audiusAudio.volume = Math.max(0, Math.min(1, v));
 }
+
+
 
 document.addEventListener('keydown', e => {
   if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
