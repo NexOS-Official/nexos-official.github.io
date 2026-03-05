@@ -111,40 +111,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .prog:hover .prog-f{background:var(--pink)}
 .prog-dot{position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:10px;height:10px;background:var(--ink);border-radius:50%;opacity:0;transition:opacity .14s;pointer-events:none}
 .prog:hover .prog-dot{opacity:1}
-
-/* Mixing state */
-.prog.mixing{height:5px !important}
-.prog.mixing .prog-f{
-  background:linear-gradient(90deg, rgba(255,255,255,0.6), #ffffff, rgba(255,255,255,0.6)) !important;
-  background-size:200% 100% !important;
-  animation:mixShimmer 1.4s ease-in-out infinite !important;
-  box-shadow:0 0 8px 2px rgba(255,255,255,0.35), 0 0 18px 4px rgba(255,255,255,0.15) !important;
-  transition:none !important;
-}
-@keyframes mixShimmer{
-  0%{background-position:200% 0}
-  100%{background-position:-200% 0}
-}
-.mixing-label{
-  text-align:center;
-  font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;
-  color:rgba(255,255,255,0);
-  text-shadow:none;
-  transition:color .4s ease, text-shadow .4s ease;
-  margin-top:2px;
-  height:12px;
-  pointer-events:none;
-  user-select:none;
-}
-.mixing-label.on{
-  color:rgba(255,255,255,0.9);
-  text-shadow:0 0 8px rgba(255,255,255,0.8), 0 0 20px rgba(255,255,255,0.4);
-  animation:mixLabelPulse 1.6s ease-in-out infinite;
-}
-@keyframes mixLabelPulse{
-  0%,100%{opacity:0.7}
-  50%{opacity:1}
-}
 .vol-row{display:flex;align-items:center;gap:8px;justify-content:center}
 .vol{width:100px;height:4px;background:var(--s3);border-radius:4px;cursor:pointer;position:relative;transition:height .14s}
 .vol:hover{height:6px}
@@ -218,6 +184,26 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .lrc-bg.on{opacity:1}
 #lscroll{position:relative;z-index:1;}
 .lrc-empty-state-wrap{position:relative;z-index:1;}
+
+/* Instrumental gap indicator */
+.instrumental-row{
+  display:flex;align-items:center;justify-content:center;
+  padding:10px 0;
+  opacity:0;
+  transform:translateY(6px);
+  transition:opacity .4s ease, transform .4s ease;
+  pointer-events:none;
+}
+.instrumental-row.visible{
+  opacity:1;
+  transform:translateY(0);
+}
+.instrumental-row .beat-dots span{
+  background:rgba(255,255,255,0.5);
+  animation:beatbounce var(--beat-dur,600ms) ease-in-out infinite;
+}
+.instrumental-row .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) / 3)}
+.instrumental-row .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) / 3 * 2)}
 
 .lyric-toggle{
   position:absolute;bottom:14px;right:14px;z-index:10;
@@ -635,7 +621,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         <div class="prog" id="prog"><div class="prog-f" id="prog-f" style="width:0%"><div class="prog-dot"></div></div></div>
         <span class="tt r" id="t-d">0:00</span>
       </div>
-      <div class="mixing-label" id="mixing-label">mixing</div>
       <div class="vol-row">
         <button class="icb" id="btn-vol" style="width:28px;height:28px">
           <svg id="vol-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -680,6 +665,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
             </div>
           </div>
           <div id="lscroll"></div>
+          <div class="instrumental-row" id="instrumental-gap">
+            <span class="beat-dots" id="instrumental-dots" style="--beat-dur:600ms"><span></span><span></span><span></span></span>
+          </div>
         </div>
       </div>
 
@@ -1035,150 +1023,12 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
   return Promise.any(PROXIES.map(tryOne));
 }
 
-// ── Single-player crossfade-repeat ───────────────────────────────────────────
-// Two YT iframes is too fragile — YouTube fires state events unpredictably
-// across iframes sharing the same origin session. Instead: one player, one
-// rAF loop that fades volume down, seeks to LOOP_BACK_S, fades back up.
-// The "blend" illusion comes from the equal-power curve and the speed of the
-// seek — under blur the user can't perceive the discontinuity.
-
-let YT_player = null;
-let ytReady = false;
-let ticker = null;
+let YT_player = null, ytReady = false, ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
-let _xfading = false, _xfAnimId = null;
-let _lrcLocked = false;
-
-function _main() { return YT_player; }
 
 function getPrecisePos() {
   const elapsed = performance.now() - _lastYtPollMs;
   return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
-}
-
-const XFADE_MS       = 7000;  // total window (triggers this many ms before end)
-const FADE_OUT_MS    = 3200;  // fade out over this long
-const FADE_IN_MS     = 3000;  // fade back in over this long after seek
-const LOOP_BACK_S    = 12;    // seek target
-const LRC_BLUR_PX    = 18;
-
-function _setMixingUI(on) {
-  G('prog').classList.toggle('mixing', on);
-  G('mixing-label').classList.toggle('on', on);
-}
-
-function _cancelXfade() {
-  if (_xfAnimId) { cancelAnimationFrame(_xfAnimId); _xfAnimId = null; }
-  _xfading = false;
-  _lrcLocked = false;
-  try { if (!ST.muted) YT_player.setVolume(ST.vol * 100); } catch {}
-  const sc = G('lscroll');
-  if (sc) {
-    sc.style.transition = 'filter 1s ease';
-    sc.style.filter = '';
-    sc.querySelectorAll('.ll').forEach(el => { el.style.filter = ''; });
-  }
-  ST.lrcActive = -1;
-  _setMixingUI(false);
-}
-
-function _startRepeatCrossfade() {
-  if (_xfading) return;
-  _xfading = true;
-  _setMixingUI(true);
-
-  const sc = G('lscroll');
-  const t0 = performance.now();
-  let _seekDone = false;
-  let _lrcSnapped = false;
-
-  function tick() {
-    if (!_xfading) return;
-    const elapsed = performance.now() - t0;
-
-    // ── Phase 1: fade out (0 → FADE_OUT_MS) ────────────────────────────────
-    if (!_seekDone) {
-      const p = Math.min(1, elapsed / FADE_OUT_MS);
-      // Equal-power fade out: cos curve, floor at 7% so music bed stays
-      const gain = Math.cos((p * Math.PI) / 2);
-      const FLOOR = 0.07;
-      const vol = Math.max(0, (gain * (1 - FLOOR) + FLOOR) * ST.vol * 100);
-      try { if (!ST.muted) YT_player.setVolume(vol); } catch {}
-
-      // Blur ramps up with the fade
-      if (sc) {
-        sc.style.transition = 'filter 0.05s linear';
-        sc.style.filter = `blur(${(p * LRC_BLUR_PX).toFixed(1)}px)`;
-      }
-
-      if (p >= 1) {
-        // Seek to loop point while fully blurred
-        _seekDone = true;
-        try { YT_player.seekTo(LOOP_BACK_S); } catch {}
-        try { if (!ST.muted) YT_player.setVolume(FLOOR * ST.vol * 100); } catch {}
-
-        // Snap lyrics to loop-back position under blur
-        if (ST.lrcType === 'synced') {
-          _lrcSnapped = true;
-          _lrcLocked  = true;
-          const targetMs = LOOP_BACK_S * 1000;
-          let lo = 0, hi = ST.lrc.length - 1, target = 0;
-          while (lo <= hi) { const mid=(lo+hi)>>1; if(ST.lrc[mid].ms<=targetMs){target=mid;lo=mid+1;}else hi=mid-1; }
-          ST.lrcActive = target;
-          document.querySelectorAll('#lscroll .ll').forEach((el, i) => {
-            el.classList.remove('now','past','near','near2');
-            el.style.filter = '';
-            const d = i - target;
-            if (d < 0) el.classList.add('past');
-            else if (d === 0) el.classList.add('now');
-            else if (d === 1) el.classList.add('near');
-            else if (d === 2) el.classList.add('near2');
-          });
-          document.getElementById('ll'+target)?.scrollIntoView({block:'center',behavior:'smooth'});
-        }
-      }
-    }
-
-    // ── Phase 2: fade in (FADE_OUT_MS → FADE_OUT_MS + FADE_IN_MS) ───────────
-    if (_seekDone) {
-      const fadeInElapsed = elapsed - FADE_OUT_MS;
-      const p = Math.min(1, fadeInElapsed / FADE_IN_MS);
-      // Equal-power fade in: sin curve
-      const gain = Math.sin((p * Math.PI) / 2);
-      const FLOOR = 0.07;
-      const vol = Math.max(0, (gain * (1 - FLOOR) + FLOOR) * ST.vol * 100);
-      try { if (!ST.muted) YT_player.setVolume(Math.min(ST.vol * 100, vol)); } catch {}
-
-      // Blur clears as volume returns
-      if (sc) {
-        sc.style.transition = 'filter 0.08s linear';
-        sc.style.filter = `blur(${((1 - p) * LRC_BLUR_PX).toFixed(1)}px)`;
-      }
-
-      // Unlock lyrics once blur is mostly gone
-      if (_lrcLocked && p > 0.6) _lrcLocked = false;
-
-      if (p >= 1) {
-        // Done — restore full volume and clean up
-        try { if (!ST.muted) YT_player.setVolume(ST.vol * 100); } catch {}
-        if (sc) {
-          sc.style.transition = 'filter 1s ease';
-          sc.style.filter = '';
-          sc.querySelectorAll('.ll').forEach(el => { el.style.filter = ''; });
-        }
-        ST.lrcActive = -1; // force tickLrc full re-render
-        _lrcLocked = false;
-        _xfading = false;
-        _xfAnimId = null;
-        _setMixingUI(false);
-        return;
-      }
-    }
-
-    _xfAnimId = requestAnimationFrame(tick);
-  }
-
-  _xfAnimId = requestAnimationFrame(tick);
 }
 
 window.onYouTubeIframeAPIReady = function() {
@@ -1197,49 +1047,40 @@ window.onYouTubeIframeAPIReady = function() {
           G('cover-art').classList.add('playing');
           clearInterval(ticker);
           ticker = setInterval(() => {
-            try {
-              ST.pos = YT_player.getCurrentTime() * 1000;
-              ST.dur = YT_player.getDuration() * 1000;
-            } catch { return; }
-            _lastYtPosMs  = ST.pos;
+            ST.pos = YT_player.getCurrentTime() * 1000;
+            ST.dur = YT_player.getDuration() * 1000;
+            _lastYtPosMs = ST.pos;
             _lastYtPollMs = performance.now();
             syncBar();
-            if (ST.repeat && !_xfading && ST.dur > 0) {
-              const rem = ST.dur - ST.pos;
-              if (rem > 0 && rem <= XFADE_MS) _startRepeatCrossfade();
-            }
           }, 250);
           if (!ST._rafRunning) {
             ST._rafRunning = true;
             const rafLoop = () => {
               if (!ST._rafRunning) return;
-              if (ST.lrcType === 'synced' && !_lrcLocked) tickLrc(getPrecisePos());
+              if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
               requestAnimationFrame(rafLoop);
             };
             requestAnimationFrame(rafLoop);
           }
         } else if (e.data === YT.PlayerState.PAUSED) {
-          if (_xfading) return; // seek during xfade fires PAUSED — ignore
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
-          _cancelXfade();
         } else if (e.data === YT.PlayerState.ENDED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
-          _cancelXfade();
-          if (ST.repeat) { YT_player.seekTo(LOOP_BACK_S); YT_player.playVideo(); }
+          if (ST.repeat) { YT_player.seekTo(0); YT_player.playVideo(); }
           else nextTrack();
         }
       },
-      onError() {
+      onError(e) {
         const track = ST.queue[ST.idx];
-        if (track?.ytIds?.length > (track.ytTry||0)+1) {
-          track.ytTry = (track.ytTry||0)+1;
+        if (track?.ytIds?.length > (track.ytTry||0) + 1) {
+          track.ytTry = (track.ytTry||0) + 1;
           YT_player.loadVideoById(track.ytIds[track.ytTry]);
         } else {
-          setStatus('err','Video unavailable');
+          setStatus('err', 'Video unavailable');
           toast('⚠ Video unavailable — try another');
         }
       }
@@ -1401,7 +1242,6 @@ function scoreTrack(t, ql, words) {
   if (t.artworkUrl100) s += 5;
   if (t.trackTimeMillis > 60000) s += 5;
   if ((t.trackCount || 0) > 5) s += 3; // album with multiple tracks = real release
-  if (t.trackExplicitness === 'explicit') s += 8; // prefer explicit over clean versions
   return s;
 }
 
@@ -1409,7 +1249,7 @@ async function searchItunes(q) {
   const ql = q.toLowerCase().trim();
   const words = ql.split(/\s+/).filter(Boolean);
   const data = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US&explicit=Yes`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US`
   );
   if (!data?.results?.length) return [];
   const results = data.results;
@@ -1419,7 +1259,9 @@ async function searchItunes(q) {
 
 async function searchMusicBrainz(q) {
   try {
-    const res = await proxyFetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(q)}&limit=25&fmt=json`, {}, 8000);
+    const res = await proxyFetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(q)}&limit=25&fmt=json`, {
+      headers: { 'User-Agent': 'GhostMusic/1.0 (ghost@music.app)' }
+    }, 8000);
     const data = await res.json();
     if (!data.recordings?.length) return [];
     return data.recordings.map(r => {
@@ -1479,7 +1321,7 @@ async function fetchCoverArt(track) {
   // Always try iTunes first — works everywhere including school Chromebooks
   try {
     const term = encodeURIComponent((track.artistName||'').trim() + ' ' + (track.trackName||'').trim());
-    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US&explicit=Yes`);
+    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
     if (r.ok) {
       const d = await r.json();
       const tl = (track.trackName||'').toLowerCase();
@@ -1632,7 +1474,7 @@ async function loadTrack(idx) {
     }
   }
 
-  _main().loadVideoById(track.ytIds[track.ytTry]);
+  YT_player.loadVideoById(track.ytIds[track.ytTry]);
   fetchLyrics(track.title, track.artist);
 
   // If no art yet (e.g. MusicBrainz source), fetch it now and update cover immediately when resolved
@@ -1694,29 +1536,27 @@ function resetNP() {
   ST.playing=false; syncPP();
 }
 
-function togglePlay() { if(!ytReady||ST.idx<0)return; ST.playing?_main().pauseVideo():_main().playVideo(); }
-function prevTrack() { _cancelXfade(); if(!ST.muted)_main().setVolume(ST.vol*100); if(!ST.queue.length)return; if(ST.pos>3000){_main().seekTo(0);return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
-function nextTrack() { _cancelXfade(); if(!ST.muted)_main().setVolume(ST.vol*100); if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
+function togglePlay() { if(!ytReady||ST.idx<0)return; ST.playing?YT_player.pauseVideo():YT_player.playVideo(); }
+function prevTrack() { if(!ST.queue.length)return; if(ST.pos>3000){YT_player.seekTo(0);return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
+function nextTrack() { if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
 function rnd() { return Math.floor(Math.random()*ST.queue.length); }
 function syncPP() { G('pp-ico').innerHTML=ST.playing?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>'; }
 function syncBar() { if(!ST.dur)return; G('prog-f').style.width=Math.min(100,ST.pos/ST.dur*100).toFixed(2)+'%'; G('t-c').textContent=ms2t(ST.pos); G('t-d').textContent=ms2t(ST.dur); }
 
 G('prog').addEventListener('click', e => {
   if(!ST.dur||ST.idx<0)return;
-  _cancelXfade();
-  if (!ST.muted) _main().setVolume(ST.vol * 100);
   const r=e.currentTarget.getBoundingClientRect();
-  _main().seekTo(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(ST.dur/1000));
+  YT_player.seekTo(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(ST.dur/1000));
 });
 G('vol-tr').addEventListener('click', e => {
   const r=e.currentTarget.getBoundingClientRect();
   ST.vol=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
   G('vol-f').style.width=(ST.vol*100)+'%';
-  if(ytReady&&!ST.muted) _main().setVolume(ST.vol*100);
+  if(ytReady&&!ST.muted) YT_player.setVolume(ST.vol*100);
 });
 G('btn-vol').addEventListener('click', () => {
   ST.muted=!ST.muted; G('btn-vol').classList.toggle('on',ST.muted);
-  if(ytReady) _main().setVolume(ST.muted?0:ST.vol*100);
+  if(ytReady) YT_player.setVolume(ST.muted?0:ST.vol*100);
   G('vol-ico').innerHTML=ST.muted
     ?'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2"/>'
     :'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>';
@@ -1731,107 +1571,40 @@ const wordSyncOn = true;
 
 async function fetchLyrics(title, artist) {
   ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
-  const scroll = G('lscroll');
-  G('lrc-empty-state').style.display = 'none';
-  scroll.innerHTML = '<div class="lrc-empty"><p>Finding lyrics…</p></div>';
+  const scroll=G('lscroll');
+  G('lrc-empty-state').style.display='none';
+  scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
+  const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
+  const ct=clean(title), ca=clean(artist);
 
-  const clean = s => s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
-  const ct = clean(title), ca = clean(artist);
-  const alts = ct !== title || ca !== artist;
-
-  // Fire all sources simultaneously — fastest reliable one wins
-  const fetches = [
-    lrclibGET(ct, ca),
-    lrclibSEARCH(ct, ca),
-    megalobizSearch(ct, ca),
-    alts ? lrclibGET(title, artist) : null,
-    alts ? lrclibSEARCH(title, artist) : null,
-    alts ? megalobizSearch(title, artist) : null,
-  ].filter(Boolean);
-
-  const results = await Promise.allSettled(fetches);
-  const candidates = results
-    .filter(r => r.status === 'fulfilled' && r.value?.syncedLyrics)
-    .map(r => r.value);
-
-  // Prefer enhanced LRC (has embedded <mm:ss.xx> word tags) over plain line-synced
-  candidates.sort((a, b) => {
-    const score = d => (d.syncedLyrics?.includes('<') ? 1 : 0);
-    return score(b) - score(a);
-  });
-
-  for (const d of candidates) {
-    const lines = buildWordTimings(parseLRC(d.syncedLyrics));
-    if (lines.length) { ST.lrc = lines; ST.lrcType = 'synced'; renderSynced(); return; }
+  // Run both GET attempts in parallel for speed
+  const [r1, r2] = await Promise.all([lrclibGET(ct, ca), ct!==title||ca!==artist ? lrclibGET(title, artist) : Promise.resolve(null)]);
+  for (const d of [r1, r2]) {
+    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
   }
-
-  scroll.innerHTML = '<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
+  // Search fallback — also parallel
+  const [s1, s2] = await Promise.all([lrclibSEARCH(ct, ca), ct!==title||ca!==artist ? lrclibSEARCH(title, artist) : Promise.resolve(null)]);
+  for (const d of [s1, s2]) {
+    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+  }
+  scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
 }
 
-// ── lrclib.net ─────────────────────────────────────────────────────────────────
-// Best free synced-lyrics DB (~3M songs). CORS-friendly, no auth needed.
 async function lrclibGET(track, artist) {
   try {
     const url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await proxyFetch(url, {}, 6000);
-    if (r.ok) { const d = await r.json(); if (d?.syncedLyrics) return d; }
+    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
+    if (r.status === 200 || r.ok) return await r.json();
   } catch {}
   return null;
 }
-
 async function lrclibSEARCH(track, artist) {
   try {
     const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await proxyFetch(url, {}, 6000);
+    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
     if (r.ok) {
-      const arr = await r.json();
-      if (arr?.length) return arr.find(x => x.syncedLyrics) || null;
-    }
-  } catch {}
-  return null;
-}
-
-// ── Megalobiz ──────────────────────────────────────────────────────────────────
-// Human-curated LRC database — huge for Western pop/rap/rock.
-// No official API, so we: 1) search via their public search endpoint,
-// 2) scrape the LRC page content. Routed through CORS proxy since it's
-// a regular website. Returns standard syncedLyrics string on success.
-async function megalobizSearch(track, artist) {
-  try {
-    const q = encodeURIComponent(track + ' ' + artist);
-    const searchUrl = `https://www.megalobiz.com/search/all?qry=${q}&entity_type=lrc_maker`;
-    const r = await proxyFetch(searchUrl, {}, 7000);
-    if (!r.ok) return null;
-    const html = await r.text();
-
-    // Parse search results — each result is an anchor like /lrc/maker/Title.XXXXXXX
-    const linkRe = /href="(\/lrc\/maker\/[^"]+\.\d+)"/g;
-    const links = [];
-    let m;
-    while ((m = linkRe.exec(html)) !== null && links.length < 3) {
-      links.push('https://www.megalobiz.com' + m[1]);
-    }
-    if (!links.length) return null;
-
-    // Fetch the first matching LRC page and extract the raw LRC text
-    for (const link of links) {
-      try {
-        const pr = await proxyFetch(link, {}, 6000);
-        if (!pr.ok) continue;
-        const phtml = await pr.text();
-        // The LRC content lives inside a <span id="lrc_content"> or similar pre block
-        const lrcMatch = phtml.match(/id="lrc_content"[^>]*>([\s\S]*?)<\/span>/i)
-                      || phtml.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
-        if (!lrcMatch) continue;
-        // Decode HTML entities and clean up
-        const raw = lrcMatch[1]
-          .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
-          .replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/<[^>]+>/g,'').trim();
-        // Validate it looks like an LRC file
-        if (raw.includes('[') && raw.match(/\[\d{1,3}:\d{2}/)) {
-          return { syncedLyrics: raw };
-        }
-      } catch {}
+      const a = await r.json();
+      if (a?.length) return a.find(x => x.syncedLyrics) || a.find(x => x.plainLyrics) || null;
     }
   } catch {}
   return null;
@@ -1858,79 +1631,73 @@ function parseLRC(rawStr) {
   }).filter(Boolean);
 }
 
-// ── Phonetic timing model ────────────────────────────────────────────────────
-// Estimates per-word durations when no word-level timestamps exist.
-// Better than naive syllable count — accounts for stress, function words,
-// consonant clusters, and natural speech rhythm.
-
-const FUNCTION_WORDS = new Set([
-  'a','an','the','and','but','or','nor','for','so','yet',
-  'in','on','at','to','of','by','up','as','is','am','are',
-  'was','were','be','been','do','did','i','you','he','she',
-  'it','we','they','me','him','her','us','them','my','your',
-  'his','its','our','their','that','this','with','from','not',
-  "i'm","i've","i'll","i'd","you're","we're","they're",
-  "don't","can't","won't","didn't","it's","that's",
-]);
-
-function phonemeWeight(word) {
-  const w = word.toLowerCase().replace(/[^a-z']/g, '');
-  if (!w) return 0.5;
-  // Function words get reduced weight — they're spoken quickly
-  if (FUNCTION_WORDS.has(w)) return 0.55;
-  // Count syllables with improved heuristic
-  let syls = 0;
-  const v = w.replace(/[^aeiouy]/g, '');
-  // Count vowel groups
-  const vGroups = (w.match(/[aeiouy]+/g) || []).length;
-  syls = vGroups;
-  // Silent 'e' at end
-  if (w.endsWith('e') && w.length > 3 && !/[aeiouy]e$/.test(w.slice(-3, -1))) syls = Math.max(1, syls - 1);
-  // -ed, -es suffixes often silent
-  if (/[^aeiouy](ed|es)$/.test(w)) syls = Math.max(1, syls - 1);
-  // -tion, -cian, -sion = 1 syllable
-  if (/(tion|cian|sion)$/.test(w)) syls = Math.max(1, syls - 1);
-  // -ful, -less, -ness, -ment, -ness add full syllable
-  syls = Math.max(1, syls);
-
-  // Longer words naturally take more time even at same syllable count
-  const lenBonus = Math.min(0.3, (w.length - 4) * 0.04);
-  // Consonant clusters at start slow word onset slightly
-  const onsetCluster = (w.match(/^[^aeiouy]{2,}/) || [''])[0].length * 0.05;
-
-  return Math.max(0.4, syls * 0.8 + lenBonus + onsetCluster);
+function syllableCount(word) {
+  word = word.toLowerCase().replace(/[^a-z]/g,'');
+  if (!word) return 1;
+  const vowels = word.match(/[aeiouy]+/g);
+  let count = vowels ? vowels.length : 1;
+  if (word.endsWith('e') && word.length > 2) count = Math.max(1, count - 1);
+  return Math.max(1, count);
 }
 
 function buildWordTimings(lrc) {
+  // Step 1: Calibrate tempo from lines where the gap is short (≤4s).
+  // These are lines where gap ≈ actual singing time, giving us ms-per-syllable.
+  const calibSamples = [];
+  for (let i = 0; i < lrc.length; i++) {
+    const lineMs = lrc[i].ms;
+    const nextMs = lrc[i+1]?.ms ?? null;
+    if (!nextMs) continue;
+    const gap = nextMs - lineMs;
+    if (gap < 200 || gap > 4000) continue; // only short gaps = reliable singing duration
+    const words = lrc[i].text.split(/\s+/).filter(Boolean);
+    if (!words.length) continue;
+    const syls = words.reduce((s, w) => s + syllableCount(w), 0);
+    if (syls < 2) continue;
+    calibSamples.push(gap / syls); // ms per syllable for this line
+  }
+  // Median ms-per-syllable (robust against outliers)
+  let msPerSyl = 160; // safe default
+  if (calibSamples.length >= 2) {
+    calibSamples.sort((a, b) => a - b);
+    msPerSyl = calibSamples[Math.floor(calibSamples.length / 2)];
+    msPerSyl = Math.max(60, Math.min(400, msPerSyl)); // sanity clamp
+  }
+
   return lrc.map((line, i) => {
     const lineMs = line.ms;
     const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
-    const gapMs = Math.max(400, nextMs - lineMs);
+    const gap = nextMs - lineMs;
     const rawWords = line.text.split(/\s+/).filter(Boolean);
 
     if (!rawWords.length) {
-      const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
+      const beatDur = Math.round(Math.min(900, Math.max(300, gap / 4)));
       return { ...line, words: [], beatDur };
     }
 
-    // If the LRC had per-word timestamps embedded, use those — they are exact
     if (line._wordTimed?.length) {
       return { ...line, words: line._wordTimed };
     }
 
-    // ── Phoneme-weighted distribution ────────────────────────────────────────
-    const weights = rawWords.map(phonemeWeight);
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
+    const syls = rawWords.map(syllableCount);
+    const totalSyls = syls.reduce((a, b) => a + b, 0);
 
-    // Use 88% of line duration — leave a natural breath gap before next line
-    // But also cap per-word max to avoid single long words eating everything
-    const usable = gapMs * 0.88;
+    // Estimate how long this line actually takes to sing using calibrated tempo.
+    // Cap at the actual gap minus a small buffer so we never bleed into next line.
+    const estimatedSingMs = totalSyls * msPerSyl;
+    const usable = Math.min(estimatedSingMs, gap * 0.92, gap - 150);
+    const spread = Math.max(300, usable);
+
+    // Syllable + length weighted distribution
+    const weights = rawWords.map((w, wi) =>
+      syls[wi] * (w.replace(/[^a-z]/gi, '').length <= 3 ? 0.75 : 1.0)
+    );
+    const totalWeight = weights.reduce((a, b) => a + b, 0);
 
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
-      const share = (weights[wi] / totalWeight) * usable;
-      cursor += share;
+      cursor += (weights[wi] / totalWeight) * spread;
       return { ms: wordMs, word };
     });
     return { ...line, words };
@@ -1972,7 +1739,7 @@ function renderSynced() {
 
 
 
-function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) _main().seekTo(ST.lrc[i].ms/1000); }
+function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
 
 // Per-word state cache to skip redundant DOM writes
 const _lwState = {};
@@ -1990,9 +1757,10 @@ function _setLwState(id, cls, pct) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  // Lookahead: compensate for rendering lag — words light up exactly as sung
-  const AHEAD = 80;
-  const t = posMs + AHEAD;
+  // Use raw position for line switching — no lookahead, so we never jump a line early.
+  // A small lookahead (30ms) is only applied to word fill animation to compensate for render lag.
+  const t = posMs;
+  const tWord = posMs + 30;
 
   // Binary search for active line
   let lo = 0, hi = ST.lrc.length - 1, active = 0;
@@ -2037,25 +1805,66 @@ function tickLrc(posMs) {
     });
   }
 
+  // ── Instrumental gap indicator ──────────────────────────────────────────
+  // Show beat-dots when we're in a long silent/instrumental gap between lines.
+  // A "gap" = current line's last word has finished + next line is still >1.8s away.
+  const gapEl = document.getElementById('instrumental-gap');
+  const dotEl = document.getElementById('instrumental-dots');
+  const activeLine = ST.lrc[active];
+  const nextLineMs = ST.lrc[active+1]?.ms ?? null;
+
+  if (gapEl && activeLine) {
+    // Determine when the current line's singing is "done"
+    const lineWords = activeLine.words || [];
+    const isInstrumentalLine = !lineWords.length && (!activeLine.text || activeLine.text.trim() === '♪' || activeLine.text.trim() === '');
+    let lineSingEnd;
+    if (lineWords.length) {
+      // Estimate sing end: last word start + average inter-word spacing
+      const avgDur = lineWords.length > 1
+        ? (lineWords[lineWords.length-1].ms - lineWords[0].ms) / (lineWords.length - 1)
+        : 300;
+      lineSingEnd = lineWords[lineWords.length - 1].ms + avgDur;
+    } else {
+      lineSingEnd = activeLine.ms + 500;
+    }
+
+    // Only show the instrumental gap row between non-instrumental lyric lines
+    const gapGap = nextLineMs ? (nextLineMs - lineSingEnd) : 0;
+    const showGap = !isInstrumentalLine && nextLineMs && t >= lineSingEnd && (nextLineMs - t) > 200 && gapGap > 1800;
+
+    if (showGap) {
+      // Compute beat speed from gap length — shorter gap = faster dots
+      const beatDur = Math.round(Math.min(900, Math.max(280, gapGap / 5)));
+      if (dotEl) dotEl.style.setProperty('--beat-dur', beatDur + 'ms');
+      gapEl.classList.add('visible');
+    } else {
+      gapEl.classList.remove('visible');
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
   const words = ST.lrc[active]?.words;
   if (!words?.length) return;
 
-  const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
-  // Last word ends when next line starts, capped to avoid runaway stretch
-  const lastWordEnd = Math.min(nextLineMs - 50, words[words.length-1].ms + 2200);
+  const nextLineMsW = ST.lrc[active+1]?.ms ?? (t + 4000);
+  // Infer word duration from the spacing between words in this line
+  const avgWordDur = words.length > 1
+    ? (words[words.length-1].ms - words[0].ms) / (words.length - 1)
+    : 300;
+  const lastWordEnd = Math.min(words[words.length-1].ms + avgWordDur, nextLineMsW - 50);
 
   for (let wi = 0; wi < words.length; wi++) {
     const wStart = words[wi].ms;
     const wEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
     const id = 'lw'+active+'_'+wi;
 
-    if (t < wStart) {
+    if (tWord < wStart) {
       _setLwState(id, 'upcoming', '0%');
-    } else if (t >= wEnd) {
+    } else if (tWord >= wEnd) {
       _setLwState(id, 'done', '100%');
     } else {
       // Ease-in-out the fill so it feels natural, not robotic
-      const raw = (t - wStart) / (wEnd - wStart);
+      const raw = (tWord - wStart) / (wEnd - wStart);
       const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
       _setLwState(id, 'now-word', (eased * 100).toFixed(1)+'%');
     }
@@ -2095,7 +1904,7 @@ async function fetchArtistData(artistName) {
 
   // Step 1: Find iTunes artistId via entity search
   const artistData = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US&explicit=Yes`
+    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
   );
   if (artistData?.results) {
     const match =
@@ -2110,7 +1919,7 @@ async function fetchArtistData(artistName) {
   // Step 2: Lookup by artistId — gets full discography reliably
   if (artistId) {
     const ld = await itunesFetch(
-      `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US&explicit=Yes`
+      `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`
     );
     tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
   }
@@ -2118,7 +1927,7 @@ async function fetchArtistData(artistName) {
   // Step 3: Fallback — direct search filtered to artist name
   if (tracks.length < 3) {
     const ld = await itunesFetch(
-      `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US&explicit=Yes`
+      `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`
     );
     const extra = (ld?.results || []).filter(t =>
       t.wrapperType === 'track' && t.kind === 'song' &&
@@ -2201,10 +2010,10 @@ document.addEventListener('keydown', e => {
   const ok=ytReady&&ST.idx>=0;
   switch(e.code){
     case 'Space': e.preventDefault(); togglePlay(); break;
-    case 'ArrowRight': e.preventDefault(); if(ok)_main().seekTo(_main().getCurrentTime()+10); break;
-    case 'ArrowLeft':  e.preventDefault(); if(ok)_main().seekTo(Math.max(0,_main().getCurrentTime()-10)); break;
-    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)_main().setVolume(ST.vol*100);break;
-    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)_main().setVolume(ST.vol*100);break;
+    case 'ArrowRight': e.preventDefault(); if(ok)YT_player.seekTo(YT_player.getCurrentTime()+10); break;
+    case 'ArrowLeft':  e.preventDefault(); if(ok)YT_player.seekTo(Math.max(0,YT_player.getCurrentTime()-10)); break;
+    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)YT_player.setVolume(ST.vol*100);break;
+    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)YT_player.setVolume(ST.vol*100);break;
     case 'KeyN': nextTrack(); break;
     case 'KeyP': prevTrack(); break;
     case 'KeyS': G('btn-sf').click(); break;
