@@ -577,6 +577,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 <body>
 
 <div id="yt-host"><div id="yt-player"></div></div>
+<audio id="audius-player" preload="none" crossorigin="anonymous" style="display:none"></audio>
 <div class="toast" id="toast"></div>
 
 <div class="app">
@@ -1085,7 +1086,7 @@ function _cancelXfade() {
   if (_xfAnimId) { cancelAnimationFrame(_xfAnimId); _xfAnimId = null; }
   _xfading = false;
   _lrcLocked = false;
-  try { if (!ST.muted) YT_player.setVolume(ST.vol * 100); } catch {}
+  try { if (_audiusActive) setAudiusVolume(ST.muted?0:ST.vol); else if (!ST.muted && YT_player) YT_player.setVolume(ST.vol * 100); } catch {}
   const sc = G('lscroll');
   if (sc) {
     sc.style.transition = 'filter 1s ease';
@@ -1117,7 +1118,7 @@ function _startRepeatCrossfade() {
       const gain = Math.cos((p * Math.PI) / 2);
       const FLOOR = 0.07;
       const vol = Math.max(0, (gain * (1 - FLOOR) + FLOOR) * ST.vol * 100);
-      try { if (!ST.muted) YT_player.setVolume(vol); } catch {}
+      try { if (_audiusActive) setAudiusVolume(ST.muted?0:vol/100); else if (!ST.muted && YT_player) YT_player.setVolume(vol); } catch {}
 
       
       if (sc) {
@@ -1128,8 +1129,8 @@ function _startRepeatCrossfade() {
       if (p >= 1) {
         
         _seekDone = true;
-        try { YT_player.seekTo(LOOP_BACK_S); } catch {}
-        try { if (!ST.muted) YT_player.setVolume(FLOOR * ST.vol * 100); } catch {}
+        try { if (_audiusActive) seekAudius(LOOP_BACK_S); else if (YT_player) YT_player.seekTo(LOOP_BACK_S); } catch {}
+        try { if (_audiusActive) setAudiusVolume(ST.muted?0:FLOOR*ST.vol); else if (!ST.muted && YT_player) YT_player.setVolume(FLOOR * ST.vol * 100); } catch {}
 
         
         if (ST.lrcType === 'synced') {
@@ -1161,7 +1162,7 @@ function _startRepeatCrossfade() {
       const gain = Math.sin((p * Math.PI) / 2);
       const FLOOR = 0.07;
       const vol = Math.max(0, (gain * (1 - FLOOR) + FLOOR) * ST.vol * 100);
-      try { if (!ST.muted) YT_player.setVolume(Math.min(ST.vol * 100, vol)); } catch {}
+      try { if (_audiusActive) setAudiusVolume(ST.muted?0:Math.min(ST.vol,vol/100)); else if (!ST.muted && YT_player) YT_player.setVolume(Math.min(ST.vol * 100, vol)); } catch {}
 
       
       if (sc) {
@@ -1174,7 +1175,7 @@ function _startRepeatCrossfade() {
 
       if (p >= 1) {
         
-        try { if (!ST.muted) YT_player.setVolume(ST.vol * 100); } catch {}
+        try { if (_audiusActive) setAudiusVolume(ST.muted?0:ST.vol); else if (!ST.muted && YT_player) YT_player.setVolume(ST.vol * 100); } catch {}
         if (sc) {
           sc.style.transition = 'filter 1s ease';
           sc.style.filter = '';
@@ -1243,7 +1244,7 @@ window.onYouTubeIframeAPIReady = function() {
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
           _cancelXfade();
-          if (ST.repeat) { YT_player.seekTo(LOOP_BACK_S); YT_player.playVideo(); }
+          if (ST.repeat) { if (_audiusActive) { seekAudius(LOOP_BACK_S); resumeAudius(); } else if (YT_player) { YT_player.seekTo(LOOP_BACK_S); YT_player.playVideo(); } }
           else nextTrack();
         }
       },
@@ -1403,12 +1404,34 @@ async function tryNextPlaybackMethod(track) {
   const tried = track.ytTry ?? -1;
   const isFirstLoad = tried === -1;
 
+  if (isFirstLoad) {
+    const artistQ = track.artist || '';
+    const titleQ = track.title || '';
+    setStatus('loading', 'Searching Audius…');
+    _audiusActive = false;
+    _stopAudiusAudio();
+    const ok = await playAudius(artistQ, titleQ, (reason) => {
+      setStatus('loading', `Audius failed (${reason}), trying YouTube…`);
+    });
+    if (ok) return;
+  }
+
   if (YT_player && (isFirstLoad || tried + 1 < ytIds.length)) {
-    track.ytTry = isFirstLoad ? 0 : tried + 1;
-    const label = isFirstLoad ? 'Playing…' : `Trying video ${track.ytTry + 1}/${ytIds.length}…`;
-    setStatus('loading', label);
-    YT_player.loadVideoById(ytIds[track.ytTry]);
-    return;
+    if (!ytIds.length) {
+      setStatus('loading', 'Finding on YouTube…');
+      try {
+        track.ytIds = await findVideoIds(track.artist, track.title);
+      } catch {
+        track.ytIds = [];
+      }
+    }
+    if (track.ytIds?.length) {
+      track.ytTry = isFirstLoad ? 0 : tried + 1;
+      const label = isFirstLoad ? 'Playing via YouTube…' : `Trying YT video ${track.ytTry + 1}/${track.ytIds.length}…`;
+      setStatus('loading', label);
+      YT_player.loadVideoById(track.ytIds[track.ytTry]);
+      return;
+    }
   }
 
   if (ytIds.length > 0 && !_invFallbackActive) {
@@ -1900,32 +1923,15 @@ function markQI(idx) {
 
 async function loadTrack(idx) {
   if (idx < 0 || idx >= ST.queue.length) return;
-  if (!ytReady && !_invFallbackActive) {
-    setStatus('err', 'Finding audio source…');
-    toast('⚠ Trying alternate audio sources…');
-    activateInvidiousFallback();
-    setTimeout(() => {
-      if (ytReady) loadTrack(idx);
-    }, 5000);
-    return;
-  }
+
+  _stopAudiusAudio();
+  _audiusActive = false;
+
   ST.idx = idx;
   const track = ST.queue[idx];
   markQI(idx); updateNP(track); syncHeartBtn();
   ST.playing=false; ST.pos=0; ST.dur=0; syncPP();
-
-  if (!track.ytIds) {
-    setStatus('loading', 'Finding…');
-    try {
-      track.ytIds = await findVideoIds(track.artist, track.title);
-      track.ytTry = 0;
-      setStatus('ok', 'Ready');
-    } catch {
-      setStatus('err', 'Failed');
-      toast('Could not find track');
-      return;
-    }
-  }
+  clearInterval(ticker);
 
   track.ytTry = -1;
   tryNextPlaybackMethod(track);
@@ -1981,6 +1987,7 @@ function updateNP(track) {
   }
 }
 function resetNP() {
+  _stopAudiusAudio(); _audiusActive = false;
   G('empty-cover').style.display='';
   G('cover-art').style.display='none';
   G('cover-info').style.display='none';
@@ -1990,9 +1997,33 @@ function resetNP() {
   ST.playing=false; syncPP();
 }
 
-function togglePlay() { if(!ytReady||ST.idx<0)return; ST.playing?_main().pauseVideo():_main().playVideo(); }
-function prevTrack() { _cancelXfade(); if(!ST.muted)_main().setVolume(ST.vol*100); if(!ST.queue.length)return; if(ST.pos>3000){_main().seekTo(0);return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
-function nextTrack() { _cancelXfade(); if(!ST.muted)_main().setVolume(ST.vol*100); if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
+function togglePlay() {
+  if (ST.idx < 0) return;
+  if (_audiusActive) {
+    if (ST.playing) pauseAudius(); else resumeAudius();
+    return;
+  }
+  if (!ytReady) return;
+  ST.playing ? _main().pauseVideo() : _main().playVideo();
+}
+function prevTrack() {
+  _cancelXfade();
+  if (_audiusActive) {
+    if (ST.pos > 3000) { seekAudius(0); return; }
+  } else {
+    if (!ST.muted && YT_player) _main().setVolume(ST.vol * 100);
+    if (ST.pos > 3000 && ytReady) { _main().seekTo(0); return; }
+  }
+  if (!ST.queue.length) return;
+  const next = ST.shuffle ? rnd() : (ST.idx - 1 + ST.queue.length) % ST.queue.length;
+  loadTrack(next);
+}
+function nextTrack() {
+  _cancelXfade();
+  if (!_audiusActive && !ST.muted && YT_player) _main().setVolume(ST.vol * 100);
+  if (!ST.queue.length) return;
+  loadTrack(ST.shuffle ? rnd() : (ST.idx + 1) % ST.queue.length);
+}
 function rnd() { return Math.floor(Math.random()*ST.queue.length); }
 function syncPP() { G('pp-ico').innerHTML=ST.playing?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>'; }
 function syncBar() { if(!ST.dur)return; G('prog-f').style.width=Math.min(100,ST.pos/ST.dur*100).toFixed(2)+'%'; G('t-c').textContent=ms2t(ST.pos); G('t-d').textContent=ms2t(ST.dur); }
@@ -2000,19 +2031,23 @@ function syncBar() { if(!ST.dur)return; G('prog-f').style.width=Math.min(100,ST.
 G('prog').addEventListener('click', e => {
   if(!ST.dur||ST.idx<0)return;
   _cancelXfade();
-  if (!ST.muted) _main().setVolume(ST.vol * 100);
   const r=e.currentTarget.getBoundingClientRect();
-  _main().seekTo(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(ST.dur/1000));
+  const frac=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
+  const secs=frac*(ST.dur/1000);
+  if (_audiusActive) { seekAudius(secs); }
+  else { if (!ST.muted && YT_player) _main().setVolume(ST.vol * 100); YT_player && _main().seekTo(secs); }
 });
 G('vol-tr').addEventListener('click', e => {
   const r=e.currentTarget.getBoundingClientRect();
   ST.vol=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
   G('vol-f').style.width=(ST.vol*100)+'%';
-  if(ytReady&&!ST.muted) _main().setVolume(ST.vol*100);
+  if (_audiusActive) setAudiusVolume(ST.vol);
+  else if(ytReady&&!ST.muted) _main().setVolume(ST.vol*100);
 });
 G('btn-vol').addEventListener('click', () => {
   ST.muted=!ST.muted; G('btn-vol').classList.toggle('on',ST.muted);
-  if(ytReady) _main().setVolume(ST.muted?0:ST.vol*100);
+  if (_audiusActive) setAudiusVolume(ST.muted ? 0 : ST.vol);
+  else if(ytReady) _main().setVolume(ST.muted?0:ST.vol*100);
   G('vol-ico').innerHTML=ST.muted
     ?'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2"/>'
     :'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>';
@@ -2475,15 +2510,209 @@ function playAllArtist(key) {
   toast('Playing artist');
 }
 
+
+const AUDIUS_APP = 'GhostMusic';
+let _audiusHosts = [];
+let _audiusHostIdx = 0;
+let _audiusReady = false;
+let _audiusActive = false;
+let _audiusTicker = null;
+
+async function initAudius() {
+  try {
+    const r = await fetch('https://api.audius.co', { signal: AbortSignal.timeout(5000) });
+    const j = await r.json();
+    _audiusHosts = (j.data || []).filter(Boolean);
+    if (_audiusHosts.length) { _audiusReady = true; }
+  } catch {}
+  if (!_audiusHosts.length) {
+    _audiusHosts = [
+      'https://audius-dp.nanite.systems',
+      'https://discoveryprovider.audius.co',
+      'https://discoveryprovider2.audius.co',
+      'https://discoveryprovider3.audius.co',
+      'https://audius-discovery-1.cultur3stake.com',
+      'https://audius-discovery-2.cultur3stake.com',
+      'https://dn1.monophonic.digital',
+      'https://dn2.monophonic.digital',
+      'https://dn1.nixa.no',
+      'https://audius.prod.capturealpha.io',
+      'https://discovery.audius.openplayer.org',
+      'https://audius-dp.nuc.li',
+    ];
+  }
+}
+initAudius();
+
+function _audiusHost() {
+  return _audiusHosts[_audiusHostIdx % _audiusHosts.length] || 'https://discoveryprovider.audius.co';
+}
+
+const _audiusSearchCache = {};
+async function searchAudius(artist, title) {
+  const ck = (artist + '||' + title).toLowerCase();
+  if (_audiusSearchCache[ck]) return _audiusSearchCache[ck];
+
+  const q = encodeURIComponent(artist + ' ' + title);
+  const queries = [
+    `${_audiusHost()}/v1/tracks/search?query=${q}&app_name=${AUDIUS_APP}&limit=10`,
+    `https://api.audius.co/v1/tracks/search?query=${q}&app_name=${AUDIUS_APP}&limit=10`,
+  ];
+
+  for (const url of queries) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const tracks = (d.data || []).filter(t => t.access?.stream !== false);
+      if (!tracks.length) continue;
+
+      const tl = title.toLowerCase(), al = artist.toLowerCase();
+      const scored = tracks.map(t => {
+        let s = 0;
+        const tt = (t.title || '').toLowerCase();
+        const ta = (t.user?.name || '').toLowerCase();
+        if (tt === tl) s += 100;
+        else if (tt.includes(tl)) s += 60;
+        if (ta.includes(al)) s += 50;
+        if (!t.is_premium) s += 20;
+        s += Math.min(20, (t.play_count || 0) / 5000);
+        return { t, s };
+      }).sort((a, b) => b.s - a.s);
+
+      const result = scored.map(x => x.t);
+      _audiusSearchCache[ck] = result;
+      return result;
+    } catch { _audiusHostIdx++; }
+  }
+  return [];
+}
+
+function _audiusStreamUrl(trackId, hostOverride) {
+  const host = hostOverride || _audiusHost();
+  return `${host}/v1/tracks/${trackId}/stream?app_name=${AUDIUS_APP}`;
+}
+
+const _audiusAudio = document.getElementById('audius-player');
+
+function _stopAudiusAudio() {
+  if (_audiusTicker) { clearInterval(_audiusTicker); _audiusTicker = null; }
+  try { _audiusAudio.pause(); _audiusAudio.src = ''; } catch {}
+}
+
+async function playAudius(artist, title, onFail) {
+  _audiusActive = true;
+  setStatus('loading', 'Searching Audius…');
+
+  const tracks = await searchAudius(artist, title);
+  if (!tracks.length) {
+    _audiusActive = false;
+    onFail('not found on Audius');
+    return false;
+  }
+
+  const tryAudiusTrack = async (trackIdx, hostIdx) => {
+    if (trackIdx >= Math.min(tracks.length, 5)) {
+      _audiusActive = false;
+      onFail('all Audius tracks failed');
+      return false;
+    }
+    const track = tracks[trackIdx];
+    const host = _audiusHosts[hostIdx % _audiusHosts.length] || _audiusHost();
+    const streamUrl = _audiusStreamUrl(track.id, host);
+
+    return new Promise(resolve => {
+      _stopAudiusAudio();
+      _audiusAudio.volume = ST.muted ? 0 : ST.vol;
+      _audiusAudio.src = streamUrl;
+
+      let settled = false;
+      const fail = () => {
+        if (settled) return; settled = true;
+        if (hostIdx + 1 < _audiusHosts.length) {
+          resolve(tryAudiusTrack(trackIdx, hostIdx + 1));
+        } else {
+          resolve(tryAudiusTrack(trackIdx + 1, 0));
+        }
+      };
+      const succeed = () => {
+        if (settled) return; settled = true;
+        resolve(true);
+      };
+
+      const errTimeout = setTimeout(fail, 8000);
+      _audiusAudio.onerror = () => { clearTimeout(errTimeout); fail(); };
+      _audiusAudio.oncanplay = () => {
+        clearTimeout(errTimeout);
+        _audiusAudio.play().then(() => {
+          setStatus('ok', 'Audius');
+          ST.playing = true; syncPP();
+          G('cover-art').classList.add('playing');
+          if (_audiusTicker) clearInterval(_audiusTicker);
+          _audiusTicker = setInterval(() => {
+            ST.pos = (_audiusAudio.currentTime || 0) * 1000;
+            ST.dur = (_audiusAudio.duration && isFinite(_audiusAudio.duration))
+              ? _audiusAudio.duration * 1000 : 0;
+            syncBar();
+            if (ST.repeat && ST.dur > 0) {
+              const rem = ST.dur - ST.pos;
+              if (rem > 0 && rem <= XFADE_MS) _startRepeatCrossfade();
+            }
+          }, 250);
+          succeed();
+        }).catch(fail);
+      };
+
+      _audiusAudio.onended = () => {
+        clearInterval(_audiusTicker); _audiusTicker = null;
+        ST.playing = false; syncPP();
+        G('cover-art').classList.remove('playing');
+        if (ST.repeat) {
+          _audiusAudio.currentTime = 0;
+          _audiusAudio.play().catch(() => {});
+        } else {
+          nextTrack();
+        }
+      };
+
+      _audiusAudio.onpause = () => {
+        if (_audiusActive && !_audiusAudio.ended) {
+          ST.playing = false; syncPP();
+          G('cover-art').classList.remove('playing');
+        }
+      };
+
+      _audiusAudio.load();
+    });
+  };
+
+  return tryAudiusTrack(0, 0);
+}
+
+function pauseAudius() {
+  if (_audiusActive) _audiusAudio.pause();
+}
+function resumeAudius() {
+  if (_audiusActive) _audiusAudio.play().catch(() => {});
+}
+function seekAudius(secs) {
+  if (_audiusActive && isFinite(_audiusAudio.duration)) {
+    _audiusAudio.currentTime = Math.max(0, Math.min(_audiusAudio.duration, secs));
+  }
+}
+function setAudiusVolume(v) {
+  if (_audiusActive) _audiusAudio.volume = Math.max(0, Math.min(1, v));
+}
+
 document.addEventListener('keydown', e => {
   if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
-  const ok=ytReady&&ST.idx>=0;
+  const ok=(_audiusActive||ytReady)&&ST.idx>=0;
   switch(e.code){
     case 'Space': e.preventDefault(); togglePlay(); break;
-    case 'ArrowRight': e.preventDefault(); if(ok)_main().seekTo(_main().getCurrentTime()+10); break;
-    case 'ArrowLeft':  e.preventDefault(); if(ok)_main().seekTo(Math.max(0,_main().getCurrentTime()-10)); break;
-    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)_main().setVolume(ST.vol*100);break;
-    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)_main().setVolume(ST.vol*100);break;
+    case 'ArrowRight': e.preventDefault(); if(_audiusActive){seekAudius((_audiusAudio.currentTime||0)+10);}else if(ok)_main().seekTo(_main().getCurrentTime()+10); break;
+    case 'ArrowLeft':  e.preventDefault(); if(_audiusActive){seekAudius(Math.max(0,(_audiusAudio.currentTime||0)-10));}else if(ok)_main().seekTo(Math.max(0,_main().getCurrentTime()-10)); break;
+    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(_audiusActive)setAudiusVolume(ST.vol);else if(ytReady)_main().setVolume(ST.vol*100);break;
+    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(_audiusActive)setAudiusVolume(ST.vol);else if(ytReady)_main().setVolume(ST.vol*100);break;
     case 'KeyN': nextTrack(); break;
     case 'KeyP': prevTrack(); break;
     case 'KeyS': G('btn-sf').click(); break;
