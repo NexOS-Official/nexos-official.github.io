@@ -1406,16 +1406,11 @@ async function tryNextPlaybackMethod(track) {
 
   if (isFirstLoad) {
     const artistQ = track.artist || '';
-    const titleQ = track.title || '';
-    setStatus('loading', 'Finding audio…');
+    const titleQ  = track.title  || '';
     _audiusActive = false;
     _stopAudiusAudio();
-
-    // Primary: Piped (full songs via YouTube proxy CDN, no youtube.com domains)
-    const pipedOk = await playViaPiped(artistQ, titleQ, track.ytIds || [], (reason) => {
-      setStatus('loading', `Stream failed (${reason}), trying player…`);
-    });
-    if (pipedOk) return;
+    const ok = await playBestSource(artistQ, titleQ, track.ytIds || []);
+    if (ok) return;
   }
 
   if (YT_player && (isFirstLoad || tried + 1 < ytIds.length)) {
@@ -2514,10 +2509,14 @@ function playAllArtist(key) {
 
 
 
-// ── Audio engine: Spotify previews (primary) + Piped full stream (secondary) ──
+
+// ── Audio engine ──
+// Primary:  Deezer public API  → cdns-preview-X.dzcdn.net MP3s (no auth, real artists, CDN not school-blocked)
+// Secondary: iTunes preview    → audio-ssl.itunes.apple.com MP3s (30s, different CDN, also usually unblocked)
+// Tertiary:  Piped/YT iframe   → full songs when network allows it
 
 let _audiusActive = false;
-let _audiusTicker = null;
+let _audiusTicker  = null;
 const _audiusAudio = document.getElementById('audius-player');
 
 function _stopAudiusAudio() {
@@ -2526,259 +2525,243 @@ function _stopAudiusAudio() {
   _audiusActive = false;
 }
 
-// ── Spotify 30-second previews ──
-// No auth needed. Audio comes from p.scdn.co (Spotify CDN) — not blocked by school filters.
-// Search via iTunes to get track name/artist match, then fetch Spotify embed to get preview_url.
-
-const _spotifyCache = {};
-
-async function getSpotifyPreview(artist, title) {
+// ── Deezer public search – no key needed ──
+// GET https://api.deezer.com/search?q=... returns tracks with .preview = direct CDN mp3
+const _dzCache = {};
+async function searchDeezer(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
-  if (_spotifyCache[ck] !== undefined) return _spotifyCache[ck];
+  if (_dzCache[ck]) return _dzCache[ck];
 
-  // Step 1: search iTunes to confirm track exists and get clean metadata
-  const q = encodeURIComponent(artist + ' ' + title);
-  let spotifyId = null;
-
-  // Step 2: search Spotify's open search (no auth needed for track lookup)
-  const searchUrls = [
-    `https://api.spotify.com/v1/search?q=${q}&type=track&limit=5`,
-    `https://open.spotify.com/search/${q}`,
+  const queries = [
+    `artist:"${artist}" track:"${title}"`,
+    `${artist} ${title}`,
+    `${title} ${artist}`,
   ];
 
-  // Use Spotify's public embed search — no API key required
-  try {
-    const r = await fetch(
-      `https://open.spotify.com/search/${encodeURIComponent(artist + ' ' + title)}/tracks`,
-      { signal: AbortSignal.timeout(6000), headers: { 'Accept': 'application/json' } }
-    );
-    // Spotify returns HTML, we need to find track IDs in it
-    const html = await r.text();
-    const match = html.match(/spotify:track:([A-Za-z0-9]{22})/);
-    if (match) spotifyId = match[1];
-    if (!spotifyId) {
-      const match2 = html.match(/\/track\/([A-Za-z0-9]{22})/);
-      if (match2) spotifyId = match2[1];
-    }
-  } catch {}
+  for (const q of queries) {
+    const url = `https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=15&output=json`;
+    // Deezer blocks CORS from browsers, so we try via CORS proxies
+    const endpoints = [
+      url,
+      `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+      `https://thingproxy.freeboard.io/fetch/${url}`,
+      `https://proxy.cors.sh/${url}`,
+      `https://corsproxy.org/?${encodeURIComponent(url)}`,
+    ];
 
-  if (!spotifyId) {
-    // Fallback: use Spotify's oEmbed/embed endpoint via scraping
-    try {
-      const r = await fetch(
-        `https://cors-proxy.fringe.zone/https://api.spotify.com/v1/search?q=${q}&type=track&limit=3`,
-        { signal: AbortSignal.timeout(6000) }
-      );
-      if (r.ok) {
+    for (const ep of endpoints) {
+      try {
+        const r = await fetch(ep, { signal: AbortSignal.timeout(7000) });
+        if (!r.ok) continue;
         const d = await r.json();
-        spotifyId = d?.tracks?.items?.[0]?.id;
-      }
-    } catch {}
+        const tracks = (d.data || []).filter(t => t.preview && t.readable !== false);
+        if (!tracks.length) continue;
+
+        // Score by match quality
+        const tl = title.toLowerCase(), al = artist.toLowerCase();
+        const scored = tracks.map(t => {
+          let s = 0;
+          const tt = (t.title || '').toLowerCase();
+          const ta = (t.artist?.name || '').toLowerCase();
+          if (tt === tl) s += 100; else if (tt.includes(tl)) s += 55;
+          if (ta === al) s += 80; else if (ta.includes(al.split(' ')[0])) s += 40;
+          s += Math.min(15, (t.rank || 0) / 100000);
+          return { ...t, _score: s };
+        }).sort((a, b) => b._score - a._score);
+
+        _dzCache[ck] = scored;
+        return scored;
+      } catch {}
+    }
   }
-
-  if (!spotifyId) { _spotifyCache[ck] = null; return null; }
-
-  // Step 3: fetch embed page to get preview_url (no auth needed)
-  try {
-    const embedRes = await fetch(
-      `https://open.spotify.com/embed/track/${spotifyId}`,
-      { signal: AbortSignal.timeout(6000) }
-    );
-    const html = await embedRes.text();
-    // The embed page has a JSON blob with preview_url
-    const jsonMatch = html.match(/<script id="session" type="application\/json">([^<]+)<\/script>/);
-    if (jsonMatch) {
-      const sessionData = JSON.parse(jsonMatch[1]);
-    }
-    // Look for preview URL directly in HTML
-    const previewMatch = html.match(/"preview_url":"(https:\/\/p\.scdn\.co\/[^"]+)"/);
-    if (previewMatch) {
-      const url = previewMatch[1].replace(/\\/g, '');
-      _spotifyCache[ck] = { url, spotifyId };
-      return _spotifyCache[ck];
-    }
-    // Try alternate JSON format
-    const altMatch = html.match(/previews.*?"url":"(https:\/\/p\.scdn\.co\/[^"]+)"/);
-    if (altMatch) {
-      const url = altMatch[1].replace(/\\/g, '');
-      _spotifyCache[ck] = { url, spotifyId };
-      return _spotifyCache[ck];
-    }
-  } catch {}
-
-  _spotifyCache[ck] = null;
-  return null;
+  return [];
 }
 
-// ── Piped full-song streams ──
-// pipedapi.* domains serve audio from pipedproxy-*.kavin.rocks which proxies googlevideo.com
-// School blockers may catch these, but worth trying as secondary
+// ── iTunes previews – backup CDN (audio-ssl.itunes.apple.com) ──
+const _itunesPreviewCache = {};
+async function searchItunesPreview(artist, title) {
+  const ck = (artist + '||' + title).toLowerCase();
+  if (_itunesPreviewCache[ck]) return _itunesPreviewCache[ck];
 
+  const q = encodeURIComponent(artist + ' ' + title);
+  const urls = [
+    `https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=10`,
+    `https://corsproxy.io/?${encodeURIComponent(`https://itunes.apple.com/search?term=${q}&media=music&entity=song&limit=10`)}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
+      if (!r.ok) continue;
+      const d = await r.json();
+      const results = (d.results || []).filter(t => t.previewUrl);
+      if (!results.length) continue;
+
+      const tl = title.toLowerCase(), al = artist.toLowerCase();
+      const scored = results.map(t => {
+        let s = 0;
+        const tt = (t.trackName || '').toLowerCase();
+        const ta = (t.artistName || '').toLowerCase();
+        if (tt === tl) s += 100; else if (tt.includes(tl)) s += 55;
+        if (ta === al) s += 80; else if (ta.includes(al.split(' ')[0])) s += 40;
+        return { url: t.previewUrl, title: t.trackName, artist: t.artistName,
+                 art: t.artworkUrl100?.replace('100x100', '600x600'), _score: s };
+      }).sort((a, b) => b._score - a._score);
+
+      _itunesPreviewCache[ck] = scored;
+      return scored;
+    } catch {}
+  }
+  return [];
+}
+
+// ── Piped full-song audio (works when school hasn't blocked proxy categories) ──
 const PIPED_APIS = [
-  'https://pipedapi.kavin.rocks',
-  'https://pipedapi.tokhmi.xyz',
-  'https://pipedapi.moomoo.me',
-  'https://pipedapi.syncpundit.io',
-  'https://api-piped.mha.fi',
-  'https://piped-api.garudalinux.org',
-  'https://pipedapi.rivo.lol',
-  'https://pipedapi.leptons.xyz',
-  'https://piped-api.lunar.icu',
-  'https://pipedapi.colinslegacy.com',
-  'https://yapi.vyper.me',
-  'https://pipedapi.r4fo.com',
-  'https://pipedapi-libre.kavin.rocks',
-  'https://pa.il.ax',
-  'https://piped-api.privacy.com.de',
-  'https://api.piped.projectsegfau.lt',
-  'https://pipedapi.adminforge.de',
-  'https://api.piped.yt',
-  'https://pipedapi.drgns.space',
-  'https://pipedapi.nosebs.ru',
+  'https://pipedapi.kavin.rocks',      'https://pipedapi.tokhmi.xyz',
+  'https://pipedapi.moomoo.me',        'https://pipedapi.syncpundit.io',
+  'https://api-piped.mha.fi',          'https://piped-api.garudalinux.org',
+  'https://pipedapi.rivo.lol',         'https://pipedapi.leptons.xyz',
+  'https://piped-api.lunar.icu',       'https://pipedapi.colinslegacy.com',
+  'https://yapi.vyper.me',             'https://pipedapi.r4fo.com',
+  'https://pipedapi-libre.kavin.rocks','https://pa.il.ax',
+  'https://piped-api.privacy.com.de',  'https://api.piped.projectsegfau.lt',
+  'https://pipedapi.adminforge.de',    'https://api.piped.yt',
 ];
-
-const _pipedCache = {};
-const _pipedDead = new Set();
+const _pipedCache = {}, _pipedDead = new Set();
 
 async function getPipedAudio(videoId) {
   if (_pipedCache[videoId]) return _pipedCache[videoId];
   const live = PIPED_APIS.filter(a => !_pipedDead.has(a));
-  const results = await Promise.allSettled(
-    live.map(async base => {
-      const r = await fetch(`${base}/streams/${videoId}`, { signal: AbortSignal.timeout(7000) });
-      if (!r.ok) { _pipedDead.add(base); throw 0; }
-      const d = await r.json();
-      if (d.error) { _pipedDead.add(base); throw 0; }
-      const audio = (d.audioStreams || []).filter(s => !s.videoOnly)
-        .sort((a, b) => (b.bitrate||0) - (a.bitrate||0));
-      if (!audio.length) throw 0;
-      return { streams: audio, thumbnail: d.thumbnailUrl, title: d.title };
-    })
-  );
-  for (const r of results) {
-    if (r.status === 'fulfilled') {
-      _pipedCache[videoId] = r.value;
-      return r.value;
-    }
+  const res = await Promise.allSettled(live.map(async base => {
+    const r = await fetch(`${base}/streams/${videoId}`, { signal: AbortSignal.timeout(7000) });
+    if (!r.ok) { _pipedDead.add(base); throw 0; }
+    const d = await r.json();
+    if (d.error) { _pipedDead.add(base); throw 0; }
+    const audio = (d.audioStreams || []).filter(s => !s.videoOnly)
+      .sort((a, b) => (b.bitrate||0) - (a.bitrate||0));
+    if (!audio.length) throw 0;
+    return { streams: audio, thumbnail: d.thumbnailUrl };
+  }));
+  for (const r of res) if (r.status === 'fulfilled') {
+    _pipedCache[videoId] = r.value; return r.value;
   }
   return null;
 }
 
-// ── Unified audio playback via <audio> element ──
-
-function _attachAudioHandlers(onSuccess, onFail, thumbnail, duration) {
-  let settled = false;
-  const fail = () => { if (settled) return; settled = true; onFail(); };
-  const succeed = () => { if (settled) return; settled = true; onSuccess(); };
-  const errTimeout = setTimeout(fail, 10000);
-
-  _audiusAudio.onerror = () => { clearTimeout(errTimeout); fail(); };
-  _audiusAudio.oncanplay = () => {
-    clearTimeout(errTimeout);
-    _audiusAudio.play().then(() => {
-      ST.playing = true; syncPP();
-      G('cover-art').classList.add('playing');
-      if (_audiusTicker) clearInterval(_audiusTicker);
-      _audiusTicker = setInterval(() => {
-        ST.pos = (_audiusAudio.currentTime || 0) * 1000;
-        ST.dur = (_audiusAudio.duration && isFinite(_audiusAudio.duration))
-          ? _audiusAudio.duration * 1000 : (duration || 0);
-        syncBar();
-        if (ST.repeat && ST.dur > 0) {
-          const rem = ST.dur - ST.pos;
-          if (rem > 0 && rem <= XFADE_MS) _startRepeatCrossfade();
-        }
-      }, 250);
-      if (thumbnail) {
-        const t = ST.queue[ST.idx];
-        if (t && !t.artSm) {
-          t.artSm = t.artLg = thumbnail;
-          G('cv-img').src = thumbnail;
-          G('cv-img').setAttribute('data-src', thumbnail);
-          G('cv-bg').src = thumbnail;
-          G('cv-bg').classList.add('on');
-          G('lrc-bg').style.backgroundImage = `url('${thumbnail}')`;
-          G('lrc-bg').classList.add('on');
-        }
-      }
-      succeed();
-    }).catch(fail);
-  };
-  _audiusAudio.onended = () => {
-    clearInterval(_audiusTicker); _audiusTicker = null;
-    ST.playing = false; syncPP();
-    G('cover-art').classList.remove('playing');
-    if (ST.repeat) { _audiusAudio.currentTime = 0; _audiusAudio.play().catch(() => {}); }
-    else nextTrack();
-  };
-  _audiusAudio.onpause = () => {
-    if (_audiusActive && !_audiusAudio.ended) {
-      ST.playing = false; syncPP();
-      G('cover-art').classList.remove('playing');
-    }
-  };
-}
-
-async function playDirectAudio(url, { thumbnail, duration, label } = {}, onFail) {
-  _audiusActive = true;
-  _stopAudiusAudio();
-  _audiusActive = true;
-  _audiusAudio.volume = ST.muted ? 0 : ST.vol;
-  _audiusAudio.src = url;
-
+// ── Generic <audio> playback helper ──
+function _playAudioUrl(url, { label, thumbnail, duration } = {}) {
   return new Promise(resolve => {
-    _attachAudioHandlers(
-      () => { setStatus('ok', label || 'Playing ✓'); resolve(true); },
-      () => { _audiusActive = false; resolve(false); },
-      thumbnail,
-      duration
-    );
+    _stopAudiusAudio();
+    _audiusActive = true;
+    _audiusAudio.volume = ST.muted ? 0 : ST.vol;
+    _audiusAudio.src = url;
+
+    let done = false;
+    const fail    = () => { if (done) return; done = true; _audiusActive = false; resolve(false); };
+    const succeed = () => { if (done) return; done = true; resolve(true); };
+    const timer   = setTimeout(fail, 10000);
+
+    _audiusAudio.onerror = () => { clearTimeout(timer); fail(); };
+    _audiusAudio.oncanplay = () => {
+      clearTimeout(timer);
+      _audiusAudio.play().then(() => {
+        setStatus('ok', label || 'Playing ✓');
+        ST.playing = true; syncPP();
+        G('cover-art').classList.add('playing');
+        if (_audiusTicker) clearInterval(_audiusTicker);
+        _audiusTicker = setInterval(() => {
+          ST.pos = (_audiusAudio.currentTime || 0) * 1000;
+          ST.dur = (_audiusAudio.duration && isFinite(_audiusAudio.duration))
+            ? _audiusAudio.duration * 1000 : (duration || 0);
+          syncBar();
+          if (ST.repeat && ST.dur > 0) {
+            const rem = ST.dur - ST.pos;
+            if (rem > 0 && rem <= XFADE_MS) _startRepeatCrossfade();
+          }
+        }, 250);
+        if (thumbnail) {
+          const t = ST.queue[ST.idx];
+          if (t && !t.artSm) {
+            t.artSm = t.artLg = thumbnail;
+            G('cv-img').src = thumbnail; G('cv-img').setAttribute('data-src', thumbnail);
+            G('cv-bg').src = thumbnail; G('cv-bg').classList.add('on');
+            G('lrc-bg').style.backgroundImage = `url('${thumbnail}')`;
+            G('lrc-bg').classList.add('on');
+          }
+        }
+        succeed();
+      }).catch(fail);
+    };
+    _audiusAudio.onended = () => {
+      clearInterval(_audiusTicker); _audiusTicker = null;
+      ST.playing = false; syncPP(); G('cover-art').classList.remove('playing');
+      if (ST.repeat) { _audiusAudio.currentTime = 0; _audiusAudio.play().catch(()=>{}); }
+      else nextTrack();
+    };
+    _audiusAudio.onpause = () => {
+      if (_audiusActive && !_audiusAudio.ended) {
+        ST.playing = false; syncPP(); G('cover-art').classList.remove('playing');
+      }
+    };
     _audiusAudio.load();
   });
 }
 
-async function playViaPiped(artist, title, ytIds, onFail) {
-  _audiusActive = true;
-  setStatus('loading', 'Getting audio stream…');
-
-  if (!ytIds?.length) {
-    try { ytIds = await findVideoIds(artist, title); }
-    catch { ytIds = []; }
+// ── Master playback function: tries every source in order ──
+async function playBestSource(artist, title, existingYtIds) {
+  // 1. Deezer previews — real songs, cdns-preview-X.dzcdn.net, no auth
+  setStatus('loading', 'Searching…');
+  const dzTracks = await searchDeezer(artist, title);
+  for (const t of dzTracks.slice(0, 8)) {
+    const art = t.album?.cover_medium || t.album?.cover_big || null;
+    const ok = await _playAudioUrl(t.preview, {
+      label: 'Deezer ✓',
+      thumbnail: art,
+      duration: (t.duration || 0) * 1000,
+    });
+    if (ok) return true;
   }
-  if (!ytIds?.length) {
-    _audiusActive = false;
-    onFail('no video IDs'); return false;
+
+  // 2. iTunes previews — audio-ssl.itunes.apple.com, different CDN
+  setStatus('loading', 'Trying iTunes…');
+  const itTracks = await searchItunesPreview(artist, title);
+  for (const t of itTracks.slice(0, 5)) {
+    const ok = await _playAudioUrl(t.url, {
+      label: 'iTunes Preview ✓',
+      thumbnail: t.art,
+    });
+    if (ok) return true;
   }
 
-  for (let vi = 0; vi < Math.min(ytIds.length, 5); vi++) {
-    const data = await getPipedAudio(ytIds[vi]);
-    if (!data?.streams?.length) continue;
-    for (let si = 0; si < Math.min(data.streams.length, 3); si++) {
-      const ok = await playDirectAudio(
-        data.streams[si].url,
-        { thumbnail: data.thumbnail, label: 'Playing ✓' },
-        () => {}
-      );
+  // 3. Piped full streams — works on networks that don't block proxy category
+  setStatus('loading', 'Trying full stream…');
+  const ytIds = existingYtIds?.length ? existingYtIds : await findVideoIds(artist, title).catch(() => []);
+  for (const vid of ytIds.slice(0, 5)) {
+    const data = await getPipedAudio(vid).catch(() => null);
+    if (!data) continue;
+    for (const s of data.streams.slice(0, 3)) {
+      const ok = await _playAudioUrl(s.url, {
+        label: 'Playing ✓',
+        thumbnail: data.thumbnail,
+      });
       if (ok) return true;
     }
   }
 
-  _audiusActive = false;
-  onFail('all Piped streams failed');
   return false;
 }
 
-function pauseAudius() { if (_audiusActive) _audiusAudio.pause(); }
-function resumeAudius() { if (_audiusActive) _audiusAudio.play().catch(() => {}); }
-function seekAudius(secs) {
+function pauseAudius()  { if (_audiusActive) _audiusAudio.pause(); }
+function resumeAudius() { if (_audiusActive) _audiusAudio.play().catch(()=>{}); }
+function seekAudius(s)  {
   if (_audiusActive && isFinite(_audiusAudio.duration))
-    _audiusAudio.currentTime = Math.max(0, Math.min(_audiusAudio.duration, secs));
+    _audiusAudio.currentTime = Math.max(0, Math.min(_audiusAudio.duration, s));
 }
 function setAudiusVolume(v) {
   if (_audiusActive) _audiusAudio.volume = Math.max(0, Math.min(1, v));
 }
-
-
 
 document.addEventListener('keydown', e => {
   if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
