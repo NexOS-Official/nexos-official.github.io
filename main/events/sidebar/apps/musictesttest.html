@@ -1644,7 +1644,6 @@ function buildWordTimings(lrc) {
   return lrc.map((line, i) => {
     const lineMs = line.ms;
     const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
-    const duration = Math.max(400, nextMs - lineMs - 80);
     const rawWords = line.text.split(/\s+/).filter(Boolean);
 
     if (!rawWords.length) {
@@ -1659,9 +1658,16 @@ function buildWordTimings(lrc) {
       return { ...line, words: line._wordTimed };
     }
 
-    // Syllable-weighted distribution fallback
+    // Cap singing duration: estimate ~200ms per syllable, max 4s regardless of gap.
+    // This prevents words from being stretched across long instrumental gaps.
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a,b)=>a+b, 0);
+    const naturalDuration = Math.min(
+      Math.max(400, totalSyls * 190),  // ~190ms per syllable
+      4000                              // never more than 4s for any line
+    );
+    // Also clamp to gap so we don't overshoot into the next line
+    const duration = Math.min(naturalDuration, Math.max(400, nextMs - lineMs - 150));
     // Use 90% of available time — leave natural tail before next line
     const usable = duration * 0.90;
     let cursor = lineMs;
