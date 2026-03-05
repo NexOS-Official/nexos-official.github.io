@@ -1247,15 +1247,11 @@ window.onYouTubeIframeAPIReady = function() {
           else nextTrack();
         }
       },
-      onError() {
+      onError(e) {
         const track = ST.queue[ST.idx];
-        if (track?.ytIds?.length > (track.ytTry||0)+1) {
-          track.ytTry = (track.ytTry||0)+1;
-          YT_player.loadVideoById(track.ytIds[track.ytTry]);
-        } else {
-          setStatus('err','Video unavailable');
-          toast('⚠ Video unavailable — try another');
-        }
+        if (!track) return;
+        setStatus('loading', 'Switching source…');
+        tryNextPlaybackMethod(track);
       }
     }
   });
@@ -1327,6 +1323,32 @@ let _invPlayerHost = null;
 let _invPlayerFrame = null;
 let _invVideoId = null;
 let _invPollTimer = null;
+let _invHostIdx = 0;
+
+const _deadInvHosts = new Set();
+const _deadVideoIds = new Set();
+
+async function _pingInvidiousHosts() {
+  for (let i = _invHostIdx; i < INVIDIOUS_HOSTS.length; i++) {
+    const host = INVIDIOUS_HOSTS[i];
+    if (_deadInvHosts.has(host)) continue;
+    try {
+      const r = await fetch(`${host}/api/v1/stats`, { signal: AbortSignal.timeout(3000) });
+      if (r.ok) { _invHostIdx = i; return host; }
+    } catch {}
+    _deadInvHosts.add(host);
+  }
+  _invHostIdx = 0;
+  _deadInvHosts.clear();
+  for (let i = 0; i < INVIDIOUS_HOSTS.length; i++) {
+    const host = INVIDIOUS_HOSTS[i];
+    try {
+      const r = await fetch(`${host}/api/v1/stats`, { signal: AbortSignal.timeout(4000) });
+      if (r.ok) { _invHostIdx = i; return host; }
+    } catch {}
+  }
+  return null;
+}
 
 function activateInvidiousFallback() {
   if (_invFallbackActive) return;
@@ -1344,32 +1366,104 @@ function activateInvidiousFallback() {
   });
 }
 
-async function _pingInvidiousHosts() {
-  const results = await Promise.allSettled(
-    INVIDIOUS_HOSTS.map(host =>
-      fetch(`${host}/api/v1/stats`, { signal: AbortSignal.timeout(3000) })
-        .then(r => r.ok ? host : Promise.reject())
-    )
-  );
-  for (const r of results) if (r.status === 'fulfilled') return r.value;
-  return null;
-}
-
 function _invLoadVideo(videoId) {
   if (!_invPlayerHost || !videoId) return;
   _invVideoId = videoId;
-  const host = document.getElementById('yt-host');
   if (_invPlayerFrame) _invPlayerFrame.remove();
   const iframe = document.createElement('iframe');
   iframe.id = 'inv-player-frame';
   iframe.src = `${_invPlayerHost}/embed/${videoId}?autoplay=1&quality=medium`;
   iframe.allow = 'autoplay';
   iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;';
+
+  let _invStartTimeout = setTimeout(() => {
+    _invPlayerFrame = null;
+    iframe.remove();
+    const track = ST.queue[ST.idx];
+    if (track) {
+      _deadInvHosts.add(_invPlayerHost);
+      _invPlayerHost = null;
+      _invFallbackActive = false;
+      tryNextPlaybackMethod(track);
+    }
+  }, 8000);
+
+  iframe.onload = () => clearTimeout(_invStartTimeout);
   document.body.appendChild(iframe);
   _invPlayerFrame = iframe;
   ST.playing = true; syncPP();
   clearInterval(_invPollTimer);
   _invPollTimer = setInterval(() => { ST.pos += 250; syncBar(); }, 250);
+}
+
+async function tryNextPlaybackMethod(track) {
+  if (!track) return;
+
+  const ytIds = track.ytIds || [];
+  const tried = track.ytTry ?? -1;
+  const isFirstLoad = tried === -1;
+
+  if (YT_player && (isFirstLoad || tried + 1 < ytIds.length)) {
+    track.ytTry = isFirstLoad ? 0 : tried + 1;
+    const label = isFirstLoad ? 'Playing…' : `Trying video ${track.ytTry + 1}/${ytIds.length}…`;
+    setStatus('loading', label);
+    YT_player.loadVideoById(ytIds[track.ytTry]);
+    return;
+  }
+
+  if (ytIds.length > 0 && !_invFallbackActive) {
+    setStatus('loading', 'Trying Invidious embed…');
+    const host = await _pingInvidiousHosts();
+    if (host) {
+      _invPlayerHost = host;
+      _invFallbackActive = true;
+      ytReady = true;
+      _invLoadVideo(ytIds[0]);
+      return;
+    }
+  }
+
+  if (_invFallbackActive && _invPlayerHost) {
+    const nextVideoId = ytIds[(track.ytTry || 0) % ytIds.length];
+    _deadInvHosts.add(_invPlayerHost);
+    _invPlayerHost = null;
+    const newHost = await _pingInvidiousHosts();
+    if (newHost) {
+      _invPlayerHost = newHost;
+      toast(`Switched to ${newHost.replace('https://', '')}`);
+      _invLoadVideo(nextVideoId);
+      return;
+    }
+  }
+
+  setStatus('loading', 'Re-searching for track…');
+  delete track.ytIds;
+  track.ytTry = 0;
+  _deadVideoIds.clear();
+
+  try {
+    const freshIds = await findVideoIds(track.artist, track.title);
+    track.ytIds = freshIds;
+    if (YT_player && !_invFallbackActive) {
+      YT_player.loadVideoById(freshIds[0]);
+    } else if (_invPlayerHost) {
+      _invLoadVideo(freshIds[0]);
+    } else {
+      const host = await _pingInvidiousHosts();
+      if (host) {
+        _invPlayerHost = host;
+        _invFallbackActive = true;
+        ytReady = true;
+        _invLoadVideo(freshIds[0]);
+      } else {
+        setStatus('err', 'All playback sources exhausted');
+        toast('⚠ Could not play — all sources blocked');
+      }
+    }
+  } catch {
+    setStatus('err', 'Track not found anywhere');
+    toast('⚠ Track unavailable on all sources');
+  }
 }
 
 const _origMain = _main;
@@ -1833,11 +1927,8 @@ async function loadTrack(idx) {
     }
   }
 
-  if (_invFallbackActive && _invPlayerHost) {
-    _invLoadVideo(track.ytIds[track.ytTry]);
-  } else if (YT_player) {
-    _main().loadVideoById(track.ytIds[track.ytTry]);
-  }
+  track.ytTry = -1;
+  tryNextPlaybackMethod(track);
   fetchLyrics(track.title, track.artist);
 
   
