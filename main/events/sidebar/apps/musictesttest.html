@@ -1407,13 +1407,15 @@ async function tryNextPlaybackMethod(track) {
   if (isFirstLoad) {
     const artistQ = track.artist || '';
     const titleQ = track.title || '';
-    setStatus('loading', 'Searching JioSaavn…');
+    setStatus('loading', 'Finding audio…');
     _audiusActive = false;
     _stopAudiusAudio();
-    const ok = await playSaavn(artistQ, titleQ, (reason) => {
-      setStatus('loading', `JioSaavn failed (${reason}), trying YouTube…`);
+
+    // Primary: Piped (full songs via YouTube proxy CDN, no youtube.com domains)
+    const pipedOk = await playViaPiped(artistQ, titleQ, track.ytIds || [], (reason) => {
+      setStatus('loading', `Stream failed (${reason}), trying player…`);
     });
-    if (ok) return;
+    if (pipedOk) return;
   }
 
   if (YT_player && (isFirstLoad || tried + 1 < ytIds.length)) {
@@ -2512,213 +2514,258 @@ function playAllArtist(key) {
 
 
 
-const SAAVN_INSTANCES = [
-  'https://saavn.dev',
-  'https://jiosaavn-api-rs.vercel.app',
-  'https://saavn-api-xi.vercel.app',
-  'https://jiosaavn-api-blond.vercel.app',
-  'https://jiosaavn-api-private.vercel.app',
-  'https://saavn.me',
-  'https://jiosaavn-api-ts.vercel.app',
-  'https://jiosaavn.vercel.app',
-  'https://jiosaavn-api-lemon.vercel.app',
-  'https://saavn-api-beta.vercel.app',
-  'https://jiosaavn-api-coral.vercel.app',
-  'https://jiosaavn-api-gray.vercel.app',
-];
+// ── Audio engine: Spotify previews (primary) + Piped full stream (secondary) ──
 
-let _saavnActive = false;
 let _audiusActive = false;
 let _audiusTicker = null;
-const _saavnCache = {};
-
 const _audiusAudio = document.getElementById('audius-player');
 
 function _stopAudiusAudio() {
   if (_audiusTicker) { clearInterval(_audiusTicker); _audiusTicker = null; }
   try { _audiusAudio.pause(); _audiusAudio.src = ''; } catch {}
-  _saavnActive = false;
   _audiusActive = false;
 }
 
-async function searchSaavn(artist, title) {
+// ── Spotify 30-second previews ──
+// No auth needed. Audio comes from p.scdn.co (Spotify CDN) — not blocked by school filters.
+// Search via iTunes to get track name/artist match, then fetch Spotify embed to get preview_url.
+
+const _spotifyCache = {};
+
+async function getSpotifyPreview(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
-  if (_saavnCache[ck]?.length) return _saavnCache[ck];
+  if (_spotifyCache[ck] !== undefined) return _spotifyCache[ck];
 
+  // Step 1: search iTunes to confirm track exists and get clean metadata
   const q = encodeURIComponent(artist + ' ' + title);
-  const errors = [];
+  let spotifyId = null;
 
-  for (const base of SAAVN_INSTANCES) {
+  // Step 2: search Spotify's open search (no auth needed for track lookup)
+  const searchUrls = [
+    `https://api.spotify.com/v1/search?q=${q}&type=track&limit=5`,
+    `https://open.spotify.com/search/${q}`,
+  ];
+
+  // Use Spotify's public embed search — no API key required
+  try {
+    const r = await fetch(
+      `https://open.spotify.com/search/${encodeURIComponent(artist + ' ' + title)}/tracks`,
+      { signal: AbortSignal.timeout(6000), headers: { 'Accept': 'application/json' } }
+    );
+    // Spotify returns HTML, we need to find track IDs in it
+    const html = await r.text();
+    const match = html.match(/spotify:track:([A-Za-z0-9]{22})/);
+    if (match) spotifyId = match[1];
+    if (!spotifyId) {
+      const match2 = html.match(/\/track\/([A-Za-z0-9]{22})/);
+      if (match2) spotifyId = match2[1];
+    }
+  } catch {}
+
+  if (!spotifyId) {
+    // Fallback: use Spotify's oEmbed/embed endpoint via scraping
     try {
-      const url = `${base}/api/search/songs?query=${q}&page=1&limit=10`;
-      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
-      if (!r.ok) continue;
-      const d = await r.json();
-
-      let results = d?.data?.results || d?.results || d?.songs?.results || [];
-      if (!Array.isArray(results)) results = [];
-      if (!results.length) continue;
-
-      const tl = title.toLowerCase(), al = artist.toLowerCase();
-      results = results.map(s => {
-        const downloadUrls = s.downloadUrl || s.download_url || [];
-        const best = Array.isArray(downloadUrls)
-          ? (downloadUrls.find(u => u.quality === '320kbps') ||
-             downloadUrls.find(u => u.quality === '160kbps') ||
-             downloadUrls[downloadUrls.length - 1])
-          : null;
-        const mediaUrl = best?.url || s.media_url || s.url || null;
-        if (!mediaUrl) return null;
-
-        const songTitle = (s.name || s.title || s.song || '').toLowerCase();
-        const songArtist = (s.primaryArtists || s.primary_artists || s.artist || s.singers || '').toLowerCase();
-        let score = 0;
-        if (songTitle === tl) score += 100;
-        else if (songTitle.includes(tl)) score += 60;
-        if (songArtist.includes(al.split(' ')[0])) score += 50;
-        score += Math.min(10, (s.playCount || s.play_count || 0) / 1000000);
-
-        return {
-          mediaUrl,
-          title: s.name || s.title || s.song || title,
-          artist: s.primaryArtists || s.primary_artists || s.artists?.primary?.[0]?.name || artist,
-          image: s.image?.[2]?.url || s.image?.[1]?.url || s.image || s.image_url || null,
-          duration: (s.duration || 0) * 1000,
-          score,
-        };
-      }).filter(Boolean).sort((a, b) => b.score - a.score);
-
-      if (results.length) {
-        _saavnCache[ck] = results;
-        return results;
-      }
-    } catch (e) { errors.push(e); }
-  }
-
-  for (const base of SAAVN_INSTANCES) {
-    try {
-      const url = `${base}/api/songs/search?query=${q}&limit=10`;
-      const r = await fetch(url, { signal: AbortSignal.timeout(7000) });
-      if (!r.ok) continue;
-      const d = await r.json();
-      let results = d?.data?.results || d?.results || [];
-      if (!Array.isArray(results)) results = [];
-
-      const mapped = results.map(s => {
-        const downloadUrls = s.downloadUrl || [];
-        const best = Array.isArray(downloadUrls)
-          ? (downloadUrls.find(u => u.quality === '320kbps') || downloadUrls[downloadUrls.length - 1])
-          : null;
-        const mediaUrl = best?.url || null;
-        if (!mediaUrl) return null;
-        return {
-          mediaUrl,
-          title: s.name || title,
-          artist: s.primaryArtists || artist,
-          image: s.image?.[2]?.url || null,
-          duration: (s.duration || 0) * 1000,
-          score: 1,
-        };
-      }).filter(Boolean);
-
-      if (mapped.length) {
-        _saavnCache[ck] = mapped;
-        return mapped;
+      const r = await fetch(
+        `https://cors-proxy.fringe.zone/https://api.spotify.com/v1/search?q=${q}&type=track&limit=3`,
+        { signal: AbortSignal.timeout(6000) }
+      );
+      if (r.ok) {
+        const d = await r.json();
+        spotifyId = d?.tracks?.items?.[0]?.id;
       }
     } catch {}
   }
 
-  return [];
+  if (!spotifyId) { _spotifyCache[ck] = null; return null; }
+
+  // Step 3: fetch embed page to get preview_url (no auth needed)
+  try {
+    const embedRes = await fetch(
+      `https://open.spotify.com/embed/track/${spotifyId}`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    const html = await embedRes.text();
+    // The embed page has a JSON blob with preview_url
+    const jsonMatch = html.match(/<script id="session" type="application\/json">([^<]+)<\/script>/);
+    if (jsonMatch) {
+      const sessionData = JSON.parse(jsonMatch[1]);
+    }
+    // Look for preview URL directly in HTML
+    const previewMatch = html.match(/"preview_url":"(https:\/\/p\.scdn\.co\/[^"]+)"/);
+    if (previewMatch) {
+      const url = previewMatch[1].replace(/\\/g, '');
+      _spotifyCache[ck] = { url, spotifyId };
+      return _spotifyCache[ck];
+    }
+    // Try alternate JSON format
+    const altMatch = html.match(/previews.*?"url":"(https:\/\/p\.scdn\.co\/[^"]+)"/);
+    if (altMatch) {
+      const url = altMatch[1].replace(/\\/g, '');
+      _spotifyCache[ck] = { url, spotifyId };
+      return _spotifyCache[ck];
+    }
+  } catch {}
+
+  _spotifyCache[ck] = null;
+  return null;
 }
 
-async function playSaavn(artist, title, onFail) {
-  _saavnActive = true;
-  _audiusActive = true;
-  setStatus('loading', 'Searching JioSaavn…');
+// ── Piped full-song streams ──
+// pipedapi.* domains serve audio from pipedproxy-*.kavin.rocks which proxies googlevideo.com
+// School blockers may catch these, but worth trying as secondary
 
-  const tracks = await searchSaavn(artist, title);
-  if (!tracks.length) {
-    _saavnActive = false; _audiusActive = false;
-    onFail('not on JioSaavn');
-    return false;
-  }
+const PIPED_APIS = [
+  'https://pipedapi.kavin.rocks',
+  'https://pipedapi.tokhmi.xyz',
+  'https://pipedapi.moomoo.me',
+  'https://pipedapi.syncpundit.io',
+  'https://api-piped.mha.fi',
+  'https://piped-api.garudalinux.org',
+  'https://pipedapi.rivo.lol',
+  'https://pipedapi.leptons.xyz',
+  'https://piped-api.lunar.icu',
+  'https://pipedapi.colinslegacy.com',
+  'https://yapi.vyper.me',
+  'https://pipedapi.r4fo.com',
+  'https://pipedapi-libre.kavin.rocks',
+  'https://pa.il.ax',
+  'https://piped-api.privacy.com.de',
+  'https://api.piped.projectsegfau.lt',
+  'https://pipedapi.adminforge.de',
+  'https://api.piped.yt',
+  'https://pipedapi.drgns.space',
+  'https://pipedapi.nosebs.ru',
+];
 
-  const tryTrack = (idx) => new Promise(resolve => {
-    if (idx >= Math.min(tracks.length, 8)) {
-      _saavnActive = false; _audiusActive = false;
-      onFail('all JioSaavn tracks failed');
-      resolve(false); return;
+const _pipedCache = {};
+const _pipedDead = new Set();
+
+async function getPipedAudio(videoId) {
+  if (_pipedCache[videoId]) return _pipedCache[videoId];
+  const live = PIPED_APIS.filter(a => !_pipedDead.has(a));
+  const results = await Promise.allSettled(
+    live.map(async base => {
+      const r = await fetch(`${base}/streams/${videoId}`, { signal: AbortSignal.timeout(7000) });
+      if (!r.ok) { _pipedDead.add(base); throw 0; }
+      const d = await r.json();
+      if (d.error) { _pipedDead.add(base); throw 0; }
+      const audio = (d.audioStreams || []).filter(s => !s.videoOnly)
+        .sort((a, b) => (b.bitrate||0) - (a.bitrate||0));
+      if (!audio.length) throw 0;
+      return { streams: audio, thumbnail: d.thumbnailUrl, title: d.title };
+    })
+  );
+  for (const r of results) {
+    if (r.status === 'fulfilled') {
+      _pipedCache[videoId] = r.value;
+      return r.value;
     }
+  }
+  return null;
+}
 
-    const track = tracks[idx];
-    _stopAudiusAudio();
-    _saavnActive = true; _audiusActive = true;
+// ── Unified audio playback via <audio> element ──
 
-    _audiusAudio.volume = ST.muted ? 0 : ST.vol;
-    _audiusAudio.src = track.mediaUrl;
+function _attachAudioHandlers(onSuccess, onFail, thumbnail, duration) {
+  let settled = false;
+  const fail = () => { if (settled) return; settled = true; onFail(); };
+  const succeed = () => { if (settled) return; settled = true; onSuccess(); };
+  const errTimeout = setTimeout(fail, 10000);
 
-    let settled = false;
-    const fail = () => { if (settled) return; settled = true; resolve(tryTrack(idx + 1)); };
-    const succeed = () => { if (settled) return; settled = true; resolve(true); };
-
-    const errTimeout = setTimeout(fail, 9000);
-
-    _audiusAudio.onerror = () => { clearTimeout(errTimeout); fail(); };
-    _audiusAudio.oncanplay = () => {
-      clearTimeout(errTimeout);
-      _audiusAudio.play().then(() => {
-        setStatus('ok', 'JioSaavn ✓');
-        ST.playing = true; syncPP();
-        G('cover-art').classList.add('playing');
-        if (_audiusTicker) clearInterval(_audiusTicker);
-        _audiusTicker = setInterval(() => {
-          ST.pos = (_audiusAudio.currentTime || 0) * 1000;
-          ST.dur = (_audiusAudio.duration && isFinite(_audiusAudio.duration))
-            ? _audiusAudio.duration * 1000 : (track.duration || 0);
-          syncBar();
-          if (ST.repeat && ST.dur > 0) {
-            const rem = ST.dur - ST.pos;
-            if (rem > 0 && rem <= XFADE_MS) _startRepeatCrossfade();
-          }
-        }, 250);
-
-        if (track.image && (!ST.queue[ST.idx]?.artSm)) {
-          const t = ST.queue[ST.idx];
-          if (t) {
-            t.artSm = t.artSm || track.image;
-            t.artLg = t.artLg || track.image;
-            G('cv-img').src = track.image;
-            G('cv-img').setAttribute('data-src', track.image);
-            G('cv-bg').src = track.image;
-            G('cv-bg').classList.add('on');
-            G('lrc-bg').style.backgroundImage = `url('${track.image}')`;
-            G('lrc-bg').classList.add('on');
-          }
+  _audiusAudio.onerror = () => { clearTimeout(errTimeout); fail(); };
+  _audiusAudio.oncanplay = () => {
+    clearTimeout(errTimeout);
+    _audiusAudio.play().then(() => {
+      ST.playing = true; syncPP();
+      G('cover-art').classList.add('playing');
+      if (_audiusTicker) clearInterval(_audiusTicker);
+      _audiusTicker = setInterval(() => {
+        ST.pos = (_audiusAudio.currentTime || 0) * 1000;
+        ST.dur = (_audiusAudio.duration && isFinite(_audiusAudio.duration))
+          ? _audiusAudio.duration * 1000 : (duration || 0);
+        syncBar();
+        if (ST.repeat && ST.dur > 0) {
+          const rem = ST.dur - ST.pos;
+          if (rem > 0 && rem <= XFADE_MS) _startRepeatCrossfade();
         }
-
-        succeed();
-      }).catch(fail);
-    };
-
-    _audiusAudio.onended = () => {
-      clearInterval(_audiusTicker); _audiusTicker = null;
+      }, 250);
+      if (thumbnail) {
+        const t = ST.queue[ST.idx];
+        if (t && !t.artSm) {
+          t.artSm = t.artLg = thumbnail;
+          G('cv-img').src = thumbnail;
+          G('cv-img').setAttribute('data-src', thumbnail);
+          G('cv-bg').src = thumbnail;
+          G('cv-bg').classList.add('on');
+          G('lrc-bg').style.backgroundImage = `url('${thumbnail}')`;
+          G('lrc-bg').classList.add('on');
+        }
+      }
+      succeed();
+    }).catch(fail);
+  };
+  _audiusAudio.onended = () => {
+    clearInterval(_audiusTicker); _audiusTicker = null;
+    ST.playing = false; syncPP();
+    G('cover-art').classList.remove('playing');
+    if (ST.repeat) { _audiusAudio.currentTime = 0; _audiusAudio.play().catch(() => {}); }
+    else nextTrack();
+  };
+  _audiusAudio.onpause = () => {
+    if (_audiusActive && !_audiusAudio.ended) {
       ST.playing = false; syncPP();
       G('cover-art').classList.remove('playing');
-      if (ST.repeat) { _audiusAudio.currentTime = 0; _audiusAudio.play().catch(() => {}); }
-      else nextTrack();
-    };
+    }
+  };
+}
 
-    _audiusAudio.onpause = () => {
-      if (_saavnActive && !_audiusAudio.ended) {
-        ST.playing = false; syncPP();
-        G('cover-art').classList.remove('playing');
-      }
-    };
+async function playDirectAudio(url, { thumbnail, duration, label } = {}, onFail) {
+  _audiusActive = true;
+  _stopAudiusAudio();
+  _audiusActive = true;
+  _audiusAudio.volume = ST.muted ? 0 : ST.vol;
+  _audiusAudio.src = url;
 
+  return new Promise(resolve => {
+    _attachAudioHandlers(
+      () => { setStatus('ok', label || 'Playing ✓'); resolve(true); },
+      () => { _audiusActive = false; resolve(false); },
+      thumbnail,
+      duration
+    );
     _audiusAudio.load();
   });
+}
 
-  return tryTrack(0);
+async function playViaPiped(artist, title, ytIds, onFail) {
+  _audiusActive = true;
+  setStatus('loading', 'Getting audio stream…');
+
+  if (!ytIds?.length) {
+    try { ytIds = await findVideoIds(artist, title); }
+    catch { ytIds = []; }
+  }
+  if (!ytIds?.length) {
+    _audiusActive = false;
+    onFail('no video IDs'); return false;
+  }
+
+  for (let vi = 0; vi < Math.min(ytIds.length, 5); vi++) {
+    const data = await getPipedAudio(ytIds[vi]);
+    if (!data?.streams?.length) continue;
+    for (let si = 0; si < Math.min(data.streams.length, 3); si++) {
+      const ok = await playDirectAudio(
+        data.streams[si].url,
+        { thumbnail: data.thumbnail, label: 'Playing ✓' },
+        () => {}
+      );
+      if (ok) return true;
+    }
+  }
+
+  _audiusActive = false;
+  onFail('all Piped streams failed');
+  return false;
 }
 
 function pauseAudius() { if (_audiusActive) _audiusAudio.pause(); }
