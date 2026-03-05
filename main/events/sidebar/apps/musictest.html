@@ -1641,27 +1641,24 @@ function syllableCount(word) {
 }
 
 function buildWordTimings(lrc) {
-  // Step 1: Calibrate tempo from lines where the gap is short (≤4s).
-  // These are lines where gap ≈ actual singing time, giving us ms-per-syllable.
+  // Calibrate ms-per-syllable from short gaps (where gap ≈ actual singing time)
   const calibSamples = [];
   for (let i = 0; i < lrc.length; i++) {
-    const lineMs = lrc[i].ms;
-    const nextMs = lrc[i+1]?.ms ?? null;
+    const nextMs = lrc[i+1]?.ms;
     if (!nextMs) continue;
-    const gap = nextMs - lineMs;
-    if (gap < 200 || gap > 4000) continue; // only short gaps = reliable singing duration
+    const gap = nextMs - lrc[i].ms;
+    if (gap < 300 || gap > 5000) continue;
     const words = lrc[i].text.split(/\s+/).filter(Boolean);
     if (!words.length) continue;
     const syls = words.reduce((s, w) => s + syllableCount(w), 0);
     if (syls < 2) continue;
-    calibSamples.push(gap / syls); // ms per syllable for this line
+    calibSamples.push(gap / syls);
   }
-  // Median ms-per-syllable (robust against outliers)
-  let msPerSyl = 160; // safe default
+  let msPerSyl = 170;
   if (calibSamples.length >= 2) {
     calibSamples.sort((a, b) => a - b);
     msPerSyl = calibSamples[Math.floor(calibSamples.length / 2)];
-    msPerSyl = Math.max(60, Math.min(400, msPerSyl)); // sanity clamp
+    msPerSyl = Math.max(70, Math.min(450, msPerSyl));
   }
 
   return lrc.map((line, i) => {
@@ -1679,31 +1676,20 @@ function buildWordTimings(lrc) {
       return { ...line, words: line._wordTimed };
     }
 
-    const syls = rawWords.map(syllableCount);
-    const totalSyls = syls.reduce((a, b) => a + b, 0);
-
-    // For normal gaps: use the gap itself (it reflects actual singing time).
-    // For long gaps (instrumental breaks): cap at calibrated singing estimate
-    // so words don't spread across 30 seconds of silence.
+    // Calculate estimated singing duration for this line
+    const totalSyls = rawWords.reduce((s, w) => s + syllableCount(w), 0);
     const estimatedSingMs = totalSyls * msPerSyl;
-    const isLongGap = gap > estimatedSingMs * 2.0;
-    const spread = isLongGap
-      ? Math.max(300, Math.min(estimatedSingMs, gap - 150))
-      : Math.max(300, gap * 0.92);
+    // For long gaps (instrumental after line), cap at estimated sing time
+    // For normal gaps, use the gap (it IS the singing time)
+    const singMs = gap > estimatedSingMs * 2.2
+      ? Math.min(estimatedSingMs * 1.1, gap - 200)
+      : gap * 0.88;
+    const singDuration = Math.max(400, singMs);
 
-    // Syllable + length weighted distribution
-    const weights = rawWords.map((w, wi) =>
-      syls[wi] * (w.replace(/[^a-z]/gi, '').length <= 3 ? 0.75 : 1.0)
-    );
-    const totalWeight = weights.reduce((a, b) => a + b, 0);
-
-    let cursor = lineMs;
-    const words = rawWords.map((word, wi) => {
-      const wordMs = cursor;
-      cursor += (weights[wi] / totalWeight) * spread;
-      return { ms: wordMs, word };
-    });
-    return { ...line, words };
+    // Store word char offsets for position-based fill in tickLrc
+    // We don't assign per-word timestamps — instead we use char position
+    const words = rawWords.map(word => ({ word, ms: lineMs }));
+    return { ...line, words, _singDuration: singDuration };
   });
 }
 
@@ -1822,11 +1808,8 @@ function tickLrc(posMs) {
     const isInstrumentalLine = !lineWords.length && (!activeLine.text || activeLine.text.trim() === '♪' || activeLine.text.trim() === '');
     let lineSingEnd;
     if (lineWords.length) {
-      // Estimate sing end: last word start + average inter-word spacing
-      const avgDur = lineWords.length > 1
-        ? (lineWords[lineWords.length-1].ms - lineWords[0].ms) / (lineWords.length - 1)
-        : 300;
-      lineSingEnd = lineWords[lineWords.length - 1].ms + avgDur;
+      const singDur = activeLine._singDuration ?? 1500;
+      lineSingEnd = activeLine.ms + singDur;
     } else {
       lineSingEnd = activeLine.ms + 500;
     }
@@ -1849,25 +1832,38 @@ function tickLrc(posMs) {
   const words = ST.lrc[active]?.words;
   if (!words?.length) return;
 
-  const nextLineMsW = ST.lrc[active+1]?.ms ?? (t + 4000);
-  // Infer word duration from the spacing between words in this line
-  const avgWordDur = words.length > 1
-    ? (words[words.length-1].ms - words[0].ms) / (words.length - 1)
-    : 300;
-  const lastWordEnd = Math.min(words[words.length-1].ms + avgWordDur, nextLineMsW - 50);
+  const activeLine = ST.lrc[active];
+  const lineStart = activeLine.ms;
+  const singDuration = activeLine._singDuration ?? 1500;
+  const lineEnd = lineStart + singDuration;
+
+  // How far through the line's singing window are we? (0.0 → 1.0)
+  const lineProgress = Math.max(0, Math.min(1, (tWord - lineStart) / singDuration));
+
+  // Build char offsets once (cheap, cached on line object)
+  if (!activeLine._charOffsets) {
+    const fullText = words.map(w => w.word).join(' ');
+    const totalChars = fullText.length;
+    let pos = 0;
+    activeLine._charOffsets = words.map((w, wi) => {
+      const start = pos / totalChars;
+      pos += w.word.length + (wi < words.length - 1 ? 1 : 0); // +1 for space
+      const end = pos / totalChars;
+      return { start, end };
+    });
+  }
 
   for (let wi = 0; wi < words.length; wi++) {
-    const wStart = words[wi].ms;
-    const wEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
+    const { start, end } = activeLine._charOffsets[wi];
     const id = 'lw'+active+'_'+wi;
 
-    if (tWord < wStart) {
+    if (lineProgress <= start) {
       _setLwState(id, 'upcoming', '0%');
-    } else if (tWord >= wEnd) {
+    } else if (lineProgress >= end) {
       _setLwState(id, 'done', '100%');
     } else {
-      // Ease-in-out the fill so it feels natural, not robotic
-      const raw = (tWord - wStart) / (wEnd - wStart);
+      // Fill within this word's character window
+      const raw = (lineProgress - start) / (end - start);
       const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
       _setLwState(id, 'now-word', (eased * 100).toFixed(1)+'%');
     }
