@@ -1682,11 +1682,14 @@ function buildWordTimings(lrc) {
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a, b) => a + b, 0);
 
-    // Estimate how long this line actually takes to sing using calibrated tempo.
-    // Cap at the actual gap minus a small buffer so we never bleed into next line.
+    // For normal gaps: use the gap itself (it reflects actual singing time).
+    // For long gaps (instrumental breaks): cap at calibrated singing estimate
+    // so words don't spread across 30 seconds of silence.
     const estimatedSingMs = totalSyls * msPerSyl;
-    const usable = Math.min(estimatedSingMs, gap * 0.92, gap - 150);
-    const spread = Math.max(300, usable);
+    const isLongGap = gap > estimatedSingMs * 2.0;
+    const spread = isLongGap
+      ? Math.max(300, Math.min(estimatedSingMs, gap - 150))
+      : Math.max(300, gap * 0.92);
 
     // Syllable + length weighted distribution
     const weights = rawWords.map((w, wi) =>
