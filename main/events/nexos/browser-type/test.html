@@ -12,25 +12,32 @@
     <script src="/sail/baremux/index.js"></script>
     <script src="/sail/scram/scramjet.all.js"></script>
     <script>
-      window.__scramjetReady = false;
       window.__scramjet = null;
+      window.__scramjetReady = false;
 
       (async () => {
         try {
-          // Step 1: register the SW
+          // Register SW at root
           const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+          console.log('[scramjet] SW registered', reg);
 
-          // Step 2: wait for SW to be controlling this page
-          await new Promise(resolve => {
-            if (navigator.serviceWorker.controller) { resolve(); return; }
-            navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
-          });
+          // Wait for SW to control this page (reload if needed)
+          if (!navigator.serviceWorker.controller) {
+            await new Promise(resolve =>
+              navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true })
+            );
+          }
+          console.log('[scramjet] SW controlling page');
 
-          // Step 3: init baremux with libcurl transport
+          // Init baremux transport
           const conn = new BareMux.BareMuxConnection('/sail/baremux/worker.js');
-          await conn.setTransport('/sail/libcurl/index.js', ['wss://' + location.host]);
+          const current = await conn.getTransport();
+          if (!current || !current.includes('libcurl')) {
+            await conn.setTransport('/sail/libcurl/index.js', ['wss://' + location.host]);
+          }
+          console.log('[scramjet] baremux transport set');
 
-          // Step 4: init scramjet controller with correct file paths
+          // Init ScramjetController
           const controller = new ScramjetController({
             prefix: '/scramjet/',
             files: {
@@ -41,11 +48,11 @@
           });
           await controller.init();
           window.__scramjet = controller;
+          console.log('[scramjet] controller ready');
         } catch(e) {
-          console.error('Scramjet init failed:', e);
+          console.error('[scramjet] init failed:', e);
         }
         window.__scramjetReady = true;
-        console.log('Scramjet ready:', !!window.__scramjet);
       })();
     </script>
     <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
@@ -4479,7 +4486,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 let url = input.trim();
                 if (!url) return;
 
-                if (!window.__scramjetReady) {
+                // For external URLs, wait for scramjet to be ready
+                const isExternal = /^https?:\/\//i.test(url) || (url.includes('.') && !url.startsWith('/'));
+                if (isExternal && !window.__scramjetReady) {
                     setTimeout(() => this.navigate(input), 100);
                     return;
                 }
