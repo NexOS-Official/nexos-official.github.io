@@ -10,32 +10,35 @@
     <title>Nexos by GhostEDU</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="/sail/scram/scramjet.all.js"></script>
+    <script src="/sail/baremux/index.js"></script>
     <script>
       window.__scramjetReady = false;
       (async () => {
         try {
-          // Register the SW at root scope so it controls the whole page
+          // Init baremux transport FIRST - this is what was missing
+          const { BareMux } = window;
+          const conn = new BareMux.BareMuxConnection('/sail/baremux/worker.js');
+          await conn.setTransport('/sail/libcurl/index.js', ['ws://' + location.host]);
+
+          // Register SW
           const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-          // Wait until SW is active
           await new Promise(resolve => {
             if (navigator.serviceWorker.controller) { resolve(); return; }
             navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
           });
-          // Configure scramjet prefix to match where the files actually live
+
+          // Configure scramjet
           await $scramjet.config({
             prefix: '/sail/scram/',
             codec: $scramjet.codecs.plain,
             wasm: '/sail/scram/scramjet.wasm.wasm',
             sync: '/sail/scram/scramjet.sync.js',
-            files: {
-              worker: '/sail/baremux/worker.js',
-            }
           });
         } catch(e) {
-          console.warn('Scramjet SW init failed:', e);
+          console.warn('Scramjet init failed:', e);
         }
         window.__scramjetReady = true;
-        console.log('Scramjet SW ready');
+        console.log('Scramjet + BareMux ready');
       })();
     </script>
     <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
@@ -4600,7 +4603,6 @@ if (this.isBlockedUrl(url)) {
             }
 
             extractOriginalUrl(proxyUrl) {
-                // Handle /sail/scram/https://... format
                 const scramMatch = proxyUrl.match(/^\/sail\/scram\/(https?:\/\/.+)/);
                 if (scramMatch) {
                     return scramMatch[1];
