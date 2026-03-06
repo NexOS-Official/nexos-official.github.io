@@ -7,6 +7,68 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
     <link rel="manifest" href="../manifest.json">
+    <script src="/scramjet/scramjet.all.js"></script>
+    <script>
+        (function () {
+            const SCRAMJET_PREFIX = '/scramjet/service/';
+            window.__nexosScramjetReady = Promise.resolve();
+
+            if (!('serviceWorker' in navigator) || typeof $scramjetLoadController !== 'function') {
+                return;
+            }
+
+            const { ScramjetController } = $scramjetLoadController();
+            const controller = new ScramjetController({
+                prefix: SCRAMJET_PREFIX,
+                files: {
+                    wasm: '/scramjet/scramjet.wasm.wasm',
+                    all: '/scramjet/scramjet.all.js',
+                    sync: '/scramjet/scramjet.sync.js'
+                },
+                flags: {
+                    serviceworkers: true,
+                    syncxhr: true
+                }
+            });
+
+            const waitForActivation = async (registration) => {
+                if (registration.active) {
+                    return;
+                }
+
+                const worker = registration.installing || registration.waiting;
+                if (!worker) {
+                    return;
+                }
+
+                await new Promise((resolve, reject) => {
+                    const onStateChange = () => {
+                        if (worker.state === 'activated') {
+                            worker.removeEventListener('statechange', onStateChange);
+                            resolve();
+                        } else if (worker.state === 'redundant') {
+                            worker.removeEventListener('statechange', onStateChange);
+                            reject(new Error('Scramjet service worker became redundant.'));
+                        }
+                    };
+
+                    worker.addEventListener('statechange', onStateChange);
+                    onStateChange();
+                });
+            };
+
+            window.__nexosScramjetController = controller;
+            window.__nexosScramjetReady = (async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/scramjet/sw.js', { scope: SCRAMJET_PREFIX });
+                    await waitForActivation(registration);
+                    await controller.init();
+                } catch (error) {
+                    console.error('Failed to initialize Scramjet:', error);
+                }
+            })();
+        })();
+    </script>
     <style>
         @font-face {
             font-family: google sans;
@@ -4542,9 +4604,13 @@ if (this.isBlockedUrl(url)) {
                 return urlPattern.test(input) || localhostPattern.test(input) || input.includes('.');
             }
 
-            loadUrl(url) {
+            async loadUrl(url) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
+
+                if (typeof url === 'string' && url.startsWith('/scramjet/service/') && window.__nexosScramjetReady) {
+                    await window.__nexosScramjetReady;
+                }
 
                 this.showLoading();
                 tab.url = url;
@@ -4562,6 +4628,21 @@ if (this.isBlockedUrl(url)) {
             }
 
             extractOriginalUrl(proxyUrl) {
+                const scramjetPath = '/scramjet/service/';
+                const scramjetOriginPath = location.origin + scramjetPath;
+
+                if (typeof proxyUrl === 'string' && (proxyUrl.startsWith(scramjetPath) || proxyUrl.startsWith(scramjetOriginPath))) {
+                    const encoded = proxyUrl.startsWith(scramjetOriginPath)
+                        ? proxyUrl.slice(scramjetOriginPath.length)
+                        : proxyUrl.slice(scramjetPath.length);
+                    const encodedUrl = encoded.split('#')[0];
+
+                    try {
+                        return decodeURIComponent(encodedUrl);
+                    } catch (e) {
+                    }
+                }
+
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
