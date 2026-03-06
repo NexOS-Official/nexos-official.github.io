@@ -9,36 +9,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nexos by GhostEDU</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <script src="/sail/scram/scramjet.all.js"></script>
     <script src="/sail/baremux/index.js"></script>
+    <script src="/sail/scram/scramjet.all.js"></script>
     <script>
       window.__scramjetReady = false;
+      window.__scramjet = null;
+
       (async () => {
         try {
-          // Init baremux transport FIRST - this is what was missing
-          const { BareMux } = window;
-          const conn = new BareMux.BareMuxConnection('/sail/baremux/worker.js');
-          await conn.setTransport('/sail/libcurl/index.js', ['ws://' + location.host]);
-
-          // Register SW
+          // Step 1: register the SW
           const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+
+          // Step 2: wait for SW to be controlling this page
           await new Promise(resolve => {
             if (navigator.serviceWorker.controller) { resolve(); return; }
             navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
           });
 
-          // Configure scramjet
-          await $scramjet.config({
-            prefix: '/sail/scram/',
-            codec: $scramjet.codecs.plain,
-            wasm: '/sail/scram/scramjet.wasm.wasm',
-            sync: '/sail/scram/scramjet.sync.js',
+          // Step 3: init baremux with libcurl transport
+          const conn = new BareMux.BareMuxConnection('/sail/baremux/worker.js');
+          await conn.setTransport('/sail/libcurl/index.js', ['wss://' + location.host]);
+
+          // Step 4: init scramjet controller with correct file paths
+          const controller = new ScramjetController({
+            prefix: '/scramjet/',
+            files: {
+              wasm: '/sail/scram/scramjet.wasm.wasm',
+              all:  '/sail/scram/scramjet.all.js',
+              sync: '/sail/scram/scramjet.sync.js',
+            }
           });
+          await controller.init();
+          window.__scramjet = controller;
         } catch(e) {
-          console.warn('Scramjet init failed:', e);
+          console.error('Scramjet init failed:', e);
         }
         window.__scramjetReady = true;
-        console.log('Scramjet + BareMux ready');
+        console.log('Scramjet ready:', !!window.__scramjet);
       })();
     </script>
     <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
@@ -3093,7 +3100,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab && tab.currentUrl) {
-                        const embedUrl = '/sail/scram/' + tab.currentUrl;
+                        const embedUrl = window.__scramjet ? window.__scramjet.encodeUrl(tab.currentUrl) : '/scramjet/' + encodeURIComponent(tab.currentUrl);
                         this._allowRealOpen = true;
                         window.open(embedUrl, '_blank');
                     }
@@ -4518,7 +4525,7 @@ if (this.isBlockedUrl(url)) {
                 }
 
                 if (url.toLowerCase() === 'ngg') {
-                    this.loadUrl('/sail/scram/https://now.gg');
+                    this.loadUrl(window.__scramjet ? window.__scramjet.encodeUrl('https://now.gg') : '/scramjet/' + encodeURIComponent('https://now.gg'));
                     return;
                 }
 
@@ -4551,10 +4558,10 @@ if (this.isBlockedUrl(url)) {
                     if (!url.startsWith('http://') && !url.startsWith('https://')) {
                         url = 'https://' + url;
                     }
-                    url = `/sail/scram/${url}`;
+                    url = window.__scramjet ? window.__scramjet.encodeUrl(url) : '/scramjet/' + encodeURIComponent(url);
                 } else {
                     const searchUrl = `https://duckduckgo.com/?ia=web&origin=funnel_home_google&t=h_&q=${encodeURIComponent(url)}`;
-                    url = `/sail/scram/${searchUrl}`;
+                    url = window.__scramjet ? window.__scramjet.encodeUrl(searchUrl) : '/scramjet/' + encodeURIComponent(searchUrl);
                 }
 
                 this.loadUrl(url);
@@ -4603,9 +4610,12 @@ if (this.isBlockedUrl(url)) {
             }
 
             extractOriginalUrl(proxyUrl) {
-                const scramMatch = proxyUrl.match(/^\/sail\/scram\/(https?:\/\/.+)/);
-                if (scramMatch) {
-                    return scramMatch[1];
+                // Handle /scramjet/<encoded-url> format (ScramjetController.decodeUrl)
+                if (proxyUrl && proxyUrl.startsWith('/scramjet/')) {
+                    if (window.__scramjet) {
+                        try { return window.__scramjet.decodeUrl(proxyUrl); } catch(e) {}
+                    }
+                    try { return decodeURIComponent(proxyUrl.slice('/scramjet/'.length)); } catch(e) {}
                 }
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
@@ -4825,7 +4835,7 @@ if (this.isBlockedUrl(url)) {
                                             const currentEntry = history[currentIndex];
                                             const currentExtracted = this.extractOriginalUrl(currentEntry || '');
                                             if (currentExtracted !== realUrl) {
-                                                const proxyUrl = `/sail/scram/${realUrl}`;
+                                                const proxyUrl = window.__scramjet ? window.__scramjet.encodeUrl(realUrl) : '/scramjet/' + encodeURIComponent(realUrl);
                                                 history.splice(currentIndex + 1);
                                                 history.push(proxyUrl);
                                                 this.historyIndex[this.activeTabId] = history.length - 1;
@@ -4912,7 +4922,7 @@ if (this.isBlockedUrl(url)) {
                     this.showLoading();
                     let urlToLoad = tab.iframe.src;
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
-                        urlToLoad = `/sail/scram/${tab.currentUrl}`;
+                        urlToLoad = window.__scramjet ? window.__scramjet.encodeUrl(tab.currentUrl) : '/scramjet/' + encodeURIComponent(tab.currentUrl);
                     }
                     tab.iframe.src = 'about:blank';
                     setTimeout(() => {
@@ -5110,7 +5120,7 @@ if (this.isBlockedUrl(url)) {
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
                             const url = e.data.url;
-                            const proxyUrl = '/sail/scram/' + url;
+                            const proxyUrl = window.__scramjet ? window.__scramjet.encodeUrl(url) : '/scramjet/' + encodeURIComponent(url);
                             tab.iframe.src = proxyUrl;
                             tab.url = proxyUrl;
                             tab.currentUrl = url;
@@ -6767,7 +6777,7 @@ menu.addEventListener('mouseleave', hideMenu);
     var quickServices = [
         { id: 'qsCalculator', title: 'Calculator', url: '/desmos/', type: 'iframe' },
         { id: 'qsTimer',      title: 'Timer',      url: null, type: 'custom', builder: buildTimerContent },
-        { id: 'qsTranslate',  title: 'Translate',   url: '/sail/scram/https://translate.google.com/?sl=auto&tl=en&op=translate', type: 'iframe' },
+        { id: 'qsTranslate',  title: 'Translate',   url: window.__scramjet ? window.__scramjet.encodeUrl('https://translate.google.com/?sl=auto&tl=en&op=translate') : '/scramjet/' + encodeURIComponent('https://translate.google.com/?sl=auto&tl=en&op=translate'), type: 'iframe' },
         { id: 'qsNotes',      title: 'Quick Notes',  url: null, type: 'custom', builder: buildNotesContent },
         { id: 'qsConvert',    title: 'Unit Converter', url: null, type: 'custom', builder: buildConverterContent }
     ];
