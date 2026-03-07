@@ -1,12 +1,4 @@
 
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -153,6 +145,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .di-add svg{width:13px;height:13px;fill:#fff}
 .drop-msg{padding:18px;text-align:center;font-size:13px;color:var(--ink3);line-height:1.6}
 
+/* API source badge in search results */
+.src-badge{font-size:9px;opacity:.45;text-transform:uppercase;letter-spacing:.5px;background:var(--s3);padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:middle}
+
 .content-area{
   flex:1;min-height:0;position:relative;
   background:var(--surf);border-radius:var(--rl);
@@ -184,26 +179,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .lrc-bg.on{opacity:1}
 #lscroll{position:relative;z-index:1;}
 .lrc-empty-state-wrap{position:relative;z-index:1;}
-
-/* Instrumental gap indicator */
-.instrumental-row{
-  display:flex;align-items:center;justify-content:center;
-  padding:10px 0;
-  opacity:0;
-  transform:translateY(6px);
-  transition:opacity .4s ease, transform .4s ease;
-  pointer-events:none;
-}
-.instrumental-row.visible{
-  opacity:1;
-  transform:translateY(0);
-}
-.instrumental-row .beat-dots span{
-  background:rgba(255,255,255,0.5);
-  animation:beatbounce var(--beat-dur,600ms) ease-in-out infinite;
-}
-.instrumental-row .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) / 3)}
-.instrumental-row .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) / 3 * 2)}
 
 .lyric-toggle{
   position:absolute;bottom:14px;right:14px;z-index:10;
@@ -491,6 +466,21 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .st-dot.loading{background:var(--orange);animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
+/* API status badge */
+.api-pill{
+  position:absolute;bottom:12px;left:12px;z-index:5;
+  display:flex;align-items:center;gap:5px;
+  background:rgba(0,0,0,.5);backdrop-filter:blur(10px);
+  border:1px solid var(--border);border-radius:20px;
+  padding:3px 9px;font-size:9px;color:var(--ink3);
+  opacity:0;transition:opacity .4s;
+}
+.api-pill.visible{opacity:1}
+.api-dot{width:5px;height:5px;border-radius:50%;background:var(--s3)}
+.api-dot.ok{background:#30d158}
+.api-dot.err{background:var(--red)}
+.api-dot.loading{background:var(--orange);animation:pulse 1s infinite}
+
 .artist-panel-bg{
   position:absolute;inset:0;
   background-size:cover;background-position:center top;
@@ -541,6 +531,23 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .artist-track-row:hover .artist-track-add{opacity:1}
 .artist-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--ink3);font-size:13px}
 .artist-loading .spin{display:block !important}
+
+/* Album panel */
+.album-panel-bg{
+  position:absolute;inset:0;background-size:cover;background-position:center;
+  filter:blur(50px) saturate(1.4) brightness(.25);transform:scale(1.2);
+  pointer-events:none;z-index:0;opacity:0;transition:opacity .7s;
+}
+.album-panel-bg.on{opacity:1}
+.album-panel-inner{position:relative;z-index:1;padding:20px 18px 70px;}
+.album-hero{display:flex;align-items:flex-end;gap:16px;margin-bottom:24px;}
+.album-cover-big{width:90px;height:90px;border-radius:12px;background:var(--s2);flex-shrink:0;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5);}
+.album-cover-big img{width:100%;height:100%;object-fit:cover;display:block}
+.album-hero-info{flex:1;min-width:0}
+.album-name-big{font-size:20px;font-weight:900;letter-spacing:-.4px;line-height:1.2}
+.album-meta{font-size:12px;color:var(--ink3);margin-top:4px}
+.album-play-all{background:var(--pink);border:none;color:#fff;font-size:12px;font-weight:700;padding:8px 18px;border-radius:20px;cursor:pointer;margin-top:10px;transition:transform .15s;}
+.album-play-all:hover{transform:scale(1.05)}
 
 @media(max-width:768px){
   .app{flex-direction:column;padding:10px;gap:10px}
@@ -595,6 +602,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
       <div class="status-pill">
         <div class="st-dot loading" id="sc-dot"></div>
         <span id="sc-status-txt">Loading…</span>
+      </div>
+      <div class="api-pill" id="api-pill">
+        <div class="api-dot loading" id="api-dot"></div>
+        <span id="api-status-txt">API…</span>
       </div>
     </div>
 
@@ -665,9 +676,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
             </div>
           </div>
           <div id="lscroll"></div>
-          <div class="instrumental-row" id="instrumental-gap">
-            <span class="beat-dots" id="instrumental-dots" style="--beat-dur:600ms"><span></span><span></span><span></span></span>
-          </div>
         </div>
       </div>
 
@@ -690,8 +698,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         <div id="pl-detail-list"></div>
       </div>
 
-
-
       <div class="side-panel" id="artist-panel" style="padding:0;overflow:hidden;">
         <div class="artist-panel-bg" id="artist-bg"></div>
         <div style="position:absolute;top:12px;left:12px;z-index:10;">
@@ -700,6 +706,19 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         <div class="lrc-scroll-outer" style="z-index:1;padding-top:16px;">
           <div class="artist-panel-inner" id="artist-panel-inner">
             <div class="artist-loading"><div class="spin"></div><span>Loading artist…</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Album panel (new — wired to music-api) -->
+      <div class="side-panel" id="album-panel" style="padding:0;overflow:hidden;">
+        <div class="album-panel-bg" id="album-bg"></div>
+        <div style="position:absolute;top:12px;left:12px;z-index:10;">
+          <button class="pl-back" onclick="showPanel('queue')" style="background:rgba(0,0,0,.4);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+        </div>
+        <div class="lrc-scroll-outer" style="z-index:1;padding-top:16px;">
+          <div class="album-panel-inner" id="album-panel-inner">
+            <div class="artist-loading"><div class="spin"></div><span>Loading album…</span></div>
           </div>
         </div>
       </div>
@@ -742,24 +761,244 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 <script>
 'use strict';
+
+// ─────────────────────────────────────────────
+// MUSIC API CONFIG
+// ─────────────────────────────────────────────
+const API_BASE = '/music-api';
+let _apiOnline = false;
+
+async function checkApiStatus() {
+  const pill = G('api-pill');
+  const dot  = G('api-dot');
+  const txt  = G('api-status-txt');
+  pill.classList.add('visible');
+  dot.className = 'api-dot loading';
+  txt.textContent = 'API…';
+  try {
+    const r = await fetch(API_BASE + '/ping', { signal: AbortSignal.timeout(4000) });
+    if (r.ok) {
+      _apiOnline = true;
+      dot.className = 'api-dot ok';
+      txt.textContent = 'API online';
+      setTimeout(() => pill.classList.remove('visible'), 3000);
+    } else throw new Error();
+  } catch {
+    _apiOnline = false;
+    dot.className = 'api-dot err';
+    txt.textContent = 'API offline';
+  }
+}
+
+// ─────────────────────────────────────────────
+// MUSIC API — search (augments iTunes results)
+// ─────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  try {
+    const r = await fetch(API_BASE + path, { signal: AbortSignal.timeout(6000), ...opts });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+async function apiSearch(q) {
+  if (!_apiOnline) return [];
+  const data = await apiFetch('/search?q=' + encodeURIComponent(q));
+  if (!data?.tracks?.length) return [];
+  return data.tracks.map(t => ({
+    trackName: t.title || '',
+    artistName: t.artist_name || '',
+    collectionName: t.album?.name || '',
+    artworkUrl100: t.artwork_url || null,
+    _artLgOverride: t.artwork_url || null,
+    trackTimeMillis: t.duration || null,
+    _source: 'api',
+    _apiId: t.id,
+    _artistId: t.artist_id || null,
+    _albumId: t.album?.id || null,
+  }));
+}
+
+// ─────────────────────────────────────────────
+// MUSIC API — audio source lookup
+// Tries your backend first, falls back to Ghost's YT search
+// ─────────────────────────────────────────────
+async function apiFindVideoId(title, artist) {
+  if (!_apiOnline) return null;
+  const data = await apiFetch(
+    '/youtube-search?q=' + encodeURIComponent(title + ' ' + artist) +
+    '&title=' + encodeURIComponent(title) +
+    '&artist=' + encodeURIComponent(artist)
+  );
+  return data?.videoId || null;
+}
+
+// ─────────────────────────────────────────────
+// MUSIC API — artist details (replaces iTunes-only artist panel)
+// ─────────────────────────────────────────────
+async function apiFetchArtist(artistId) {
+  if (!_apiOnline || !artistId) return null;
+  return await apiFetch('/artist/' + artistId);
+}
+
+// ─────────────────────────────────────────────
+// MUSIC API — album details
+// ─────────────────────────────────────────────
+async function apiFetchAlbum(albumId) {
+  if (!_apiOnline || !albumId) return null;
+  return await apiFetch('/album/' + albumId);
+}
+
+// ─────────────────────────────────────────────
+// MUSIC API — user data sync (likes, playlists, history)
+// ─────────────────────────────────────────────
+let _isLoggedIn = false;
+
+async function apiSyncUserData() {
+  if (!_apiOnline) return;
+  try {
+    const res = await fetch(API_BASE + '/user/data', { credentials: 'include', signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+    if (!data.loggedIn) return;
+    _isLoggedIn = true;
+    // Merge server likes into local likes (server wins on conflict)
+    if (data.favorites?.length) {
+      data.favorites.forEach(sf => {
+        const key = (sf.title||'') + '||' + (sf.artist_name||sf.artist||'');
+        if (!likes.some(l => l._key === key)) {
+          likes.unshift({ title: sf.title||sf.trackName, artist: sf.artist_name||sf.artist, artSm: sf.artwork_url||sf.artSm||null, artLg: null, _key: key });
+        }
+      });
+      saveLikes(); renderLikes();
+    }
+    // Merge server playlists
+    if (data.playlists?.length) {
+      data.playlists.forEach(sp => {
+        if (!playlists.find(lp => lp.id === String(sp.id))) {
+          playlists.unshift({ name: sp.name, tracks: (sp.tracks||[]).map(t=>({title:t.title||t.trackName,artist:t.artist_name||t.artistName,artSm:t.artwork_url||t.artSm||null,artLg:null})), id: String(sp.id) });
+        }
+      });
+      savePlaylists(); renderPlaylists();
+    }
+  } catch {}
+}
+
+function apiPushLike(track, liked) {
+  if (!_isLoggedIn || !_apiOnline) return;
+  fetch(API_BASE + '/user/favorite', {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ track: { title: track.title||track.trackName, artist_name: track.artist||track.artistName } })
+  }).catch(() => {});
+}
+
+function apiPushPlaylist(pl) {
+  if (!_isLoggedIn || !_apiOnline) return;
+  fetch(API_BASE + '/user/playlist', {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ playlist: pl })
+  }).catch(() => {});
+}
+
+function apiPushHistory(track) {
+  if (!_isLoggedIn || !_apiOnline) return;
+  fetch(API_BASE + '/user/history', {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ track: { title: track.title, artist_name: track.artist } })
+  }).catch(() => {});
+}
+
+// ─────────────────────────────────────────────
+// ALBUM PANEL (wired to music-api)
+// ─────────────────────────────────────────────
+const _albumCache = {};
+
+async function openAlbumPanel(albumId, hintArt) {
+  showPanel('album');
+  const inner = G('album-panel-inner');
+  const bg    = G('album-bg');
+  inner.innerHTML = '<div class="artist-loading"><div class="spin" style="display:block"></div><span>Loading album…</span></div>';
+  if (hintArt) { bg.style.backgroundImage = `url('${hintArt}')`; bg.classList.add('on'); }
+
+  let data = _albumCache[albumId];
+  if (!data) {
+    data = await apiFetchAlbum(albumId);
+    if (data) _albumCache[albumId] = data;
+  }
+  if (!data) { inner.innerHTML = '<div class="artist-loading"><span>Album not found</span></div>'; return; }
+
+  const art = data.artwork_url || hintArt || '';
+  if (art) { bg.style.backgroundImage = `url('${art}')`; bg.classList.add('on'); }
+
+  const tracks = data.tracks || [];
+  const playAllKey = '_alb_' + Math.random().toString(36).slice(2);
+  window[playAllKey] = tracks.map(t => ({
+    title: t.title, artist: t.artist_name || data.artist_name || '',
+    artSm: t.artwork_url || art || null, artLg: t.artwork_url || art || null,
+  }));
+
+  const rowsHTML = tracks.map((t, i) => {
+    const sm = t.artwork_url || art || '';
+    const id = 'apt_' + Math.random().toString(36).slice(2);
+    (window._td = window._td || {})[id] = {
+      title: t.title, artist: t.artist_name || data.artist_name || '',
+      artSm: sm || null, artLg: sm || null, durMs: t.duration || null,
+    };
+    return `<div class="artist-track-row" onclick="pickTrack('${id}')">
+      <div class="artist-track-num">${i+1}</div>
+      <div class="artist-track-art">${sm ? `<img src="${x(sm)}" alt="">` : '🎵'}</div>
+      <div class="artist-track-inf">
+        <div class="artist-track-t">${x(t.title)}</div>
+        <div class="artist-track-alb">${ms2t(t.duration||0)}</div>
+      </div>
+      <div class="artist-track-add" onclick="event.stopPropagation();pickTrack('${id}')"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
+    </div>`;
+  }).join('');
+
+  const artistLine = data.artists?.map(a=>a.name).join(', ') || data.artist_name || '';
+  inner.innerHTML = `
+    <div class="album-hero">
+      <div class="album-cover-big">${art ? `<img src="${x(art)}" alt="">` : '💿'}</div>
+      <div class="album-hero-info">
+        <div class="album-name-big">${x(data.name)}</div>
+        <div class="album-meta">${x(artistLine)}${data.release_year ? ' · ' + data.release_year : ''} · ${tracks.length} track${tracks.length!==1?'s':''}</div>
+        <button class="album-play-all" onclick="playAllAlbum('${playAllKey}')">▶ Play All</button>
+      </div>
+    </div>
+    <div class="artist-section-lbl">Tracks</div>
+    ${rowsHTML || '<div class="artist-loading"><span>No tracks found</span></div>'}
+  `;
+}
+
+function playAllAlbum(key) {
+  const tracks = window[key]; if (!tracks?.length) return;
+  ST.queue = []; ST.idx = -1; G('q-list').innerHTML = '';
+  tracks.forEach(t => { const i = ST.queue.length; ST.queue.push({...t}); appendQI(t, i); });
+  loadTrack(0); showPanel('queue');
+  toast('Playing album');
+}
+
+// ─────────────────────────────────────────────
+// PANEL STATE
+// ─────────────────────────────────────────────
 let activePanel = 'queue';
 
 function showPanel(name) {
   activePanel = name;
-
   G('results-panel').classList.toggle('hidden', name !== 'queue');
   G('lyrics-panel').classList.toggle('active', name === 'lyrics');
   G('likes-panel').classList.toggle('active', name === 'likes');
   G('playlists-panel').classList.toggle('active', name === 'playlists');
   G('pl-detail-panel').classList.toggle('active', name === 'pl-detail');
   G('artist-panel').classList.toggle('active', name === 'artist');
+  G('album-panel').classList.toggle('active', name === 'album');
 
   if (name === 'lyrics' && ST.lrcType === 'synced') {
     renderSynced();
-    // Snap immediately to current playback position so lyrics aren't "off"
     requestAnimationFrame(() => tickLrc(getPrecisePos()));
   }
-
 
   G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
   G('pnb-likes').classList.toggle('active', name === 'likes');
@@ -770,6 +1009,9 @@ G('pnb-lyrics').addEventListener('click', () => showPanel(activePanel === 'lyric
 G('pnb-likes').addEventListener('click', () => showPanel(activePanel === 'likes' ? 'queue' : 'likes'));
 G('pnb-playlists').addEventListener('click', () => showPanel(activePanel === 'playlists' || activePanel === 'pl-detail' ? 'queue' : 'playlists'));
 
+// ─────────────────────────────────────────────
+// LIKES
+// ─────────────────────────────────────────────
 let likes = JSON.parse(localStorage.getItem('ghost_likes') || '[]');
 function saveLikes() { try { localStorage.setItem('ghost_likes', JSON.stringify(likes)); } catch {} }
 
@@ -786,18 +1028,17 @@ function toggleLike(track) {
   if (idx >= 0) {
     likes.splice(idx, 1);
     toast('Removed from Liked Songs');
+    apiPushLike(track, false);
   } else {
     likes.unshift({ title: track.title||track.trackName, artist: track.artist||track.artistName, artSm: track.artSm||track.artworkUrl100||null, artLg: track.artLg||track._artLgOverride||null, _key: key });
     toast('♥ Added to Liked Songs');
+    apiPushLike(track, true);
   }
-  saveLikes();
-  renderLikes();
-  syncHeartBtn();
+  saveLikes(); renderLikes(); syncHeartBtn();
 }
 function syncHeartBtn() {
   const cur = ST.queue[ST.idx];
-  const liked = cur && isLiked(cur);
-  G('btn-heart').classList.toggle('liked', !!liked);
+  G('btn-heart').classList.toggle('liked', !!(cur && isLiked(cur)));
 }
 function renderLikes() {
   const el = G('likes-list');
@@ -821,9 +1062,14 @@ G('btn-heart').addEventListener('click', () => {
   toggleLike(cur);
 });
 
+// ─────────────────────────────────────────────
+// PLAYLISTS
+// ─────────────────────────────────────────────
 let playlists = JSON.parse(localStorage.getItem('ghost_playlists') || '[]');
 let activePlId = null;
-function savePlaylists() { try { localStorage.setItem('ghost_playlists', JSON.stringify(playlists)); } catch {} }
+function savePlaylists() {
+  try { localStorage.setItem('ghost_playlists', JSON.stringify(playlists)); } catch {}
+}
 
 function renderPlaylists() {
   const el = G('pl-grid');
@@ -844,8 +1090,7 @@ function openPlaylist(i) {
   activePlId = i;
   const pl = playlists[i]; if (!pl) return;
   G('pl-detail-name').textContent = pl.name;
-  renderPlaylistDetail();
-  showPanel('pl-detail');
+  renderPlaylistDetail(); showPanel('pl-detail');
 }
 function renderPlaylistDetail() {
   const pl = playlists[activePlId];
@@ -860,8 +1105,7 @@ function renderPlaylistDetail() {
 function playFromPlaylist(i) {
   const pl = playlists[activePlId]; if (!pl) return;
   const tracks = pl.tracks.slice(i).concat(pl.tracks.slice(0, i));
-  ST.queue = []; ST.idx = -1;
-  G('q-list').innerHTML = '';
+  ST.queue = []; ST.idx = -1; G('q-list').innerHTML = '';
   tracks.forEach(t => { const idx = ST.queue.length; ST.queue.push({...t}); appendQI(t, idx); });
   loadTrack(0); showPanel('queue');
 }
@@ -870,6 +1114,7 @@ function removePlTrack(i) {
   if (activePlId == null) return;
   playlists[activePlId].tracks.splice(i, 1);
   savePlaylists(); renderPlaylistDetail(); renderPlaylists();
+  apiPushPlaylist(playlists[activePlId]);
 }
 function deletePlaylist(i) {
   playlists.splice(i, 1); savePlaylists(); renderPlaylists();
@@ -881,9 +1126,11 @@ function openNewPlaylistModal() {
 }
 function confirmNewPlaylist() {
   const name = G('newpl-input').value.trim(); if (!name) return;
-  playlists.unshift({ name, tracks: [], id: Date.now() });
+  const pl = { name, tracks: [], id: Date.now() };
+  playlists.unshift(pl);
   savePlaylists(); renderPlaylists(); closeModal('modal-newpl');
   toast('Playlist "' + name + '" created');
+  apiPushPlaylist(pl);
 }
 G('newpl-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmNewPlaylist(); if (e.key === 'Escape') closeModal('modal-newpl'); });
 function closeModal(id) { G(id).classList.remove('open'); }
@@ -891,6 +1138,9 @@ G('modal-atp').addEventListener('click', e => { if (e.target === G('modal-atp'))
 G('modal-newpl').addEventListener('click', e => { if (e.target === G('modal-newpl')) closeModal('modal-newpl'); });
 renderPlaylists();
 
+// ─────────────────────────────────────────────
+// CONTEXT MENU
+// ─────────────────────────────────────────────
 let ctxTrackIdx = -1;
 function openCtxMenu(e, idx) {
   e.preventDefault(); e.stopPropagation();
@@ -909,10 +1159,7 @@ function openCtxMenu(e, idx) {
 }
 document.addEventListener('click', () => G('ctx-menu').classList.remove('open'));
 document.addEventListener('contextmenu', e => { if (!e.target.closest('#ctx-menu')) G('ctx-menu').classList.remove('open'); });
-function ctxLike() {
-  const t = ST.queue[ctxTrackIdx]; if (!t) return;
-  toggleLike(t); G('ctx-menu').classList.remove('open');
-}
+function ctxLike() { const t = ST.queue[ctxTrackIdx]; if (!t) return; toggleLike(t); G('ctx-menu').classList.remove('open'); }
 function ctxAddToPlaylist() {
   G('ctx-menu').classList.remove('open');
   const t = ST.queue[ctxTrackIdx]; if (!t) return;
@@ -926,19 +1173,13 @@ function ctxPlayNext() {
   ST.queue.splice(insertAt, 0, t);
   if (ctxTrackIdx < ST.idx) ST.idx--;
   else if (ctxTrackIdx === ST.idx) ST.idx = insertAt - 1;
-  rebuildQ();
-  toast('Playing next');
+  rebuildQ(); toast('Playing next');
 }
-function ctxRemove() {
-  G('ctx-menu').classList.remove('open');
-  if (ctxTrackIdx < 0) return;
-  rmQI({ stopPropagation: ()=>{} }, ctxTrackIdx);
-}
+function ctxRemove() { G('ctx-menu').classList.remove('open'); if (ctxTrackIdx < 0) return; rmQI({ stopPropagation: ()=>{} }, ctxTrackIdx); }
 function openAtpModal(track) {
   const listEl = G('modal-pl-list');
-  if (!playlists.length) {
-    listEl.innerHTML = '<p style="font-size:13px;color:var(--ink3);padding:4px 0">No playlists. Create one first.</p>';
-  } else {
+  if (!playlists.length) { listEl.innerHTML = '<p style="font-size:13px;color:var(--ink3);padding:4px 0">No playlists. Create one first.</p>'; }
+  else {
     listEl.innerHTML = playlists.map((pl, i) => {
       const arts = pl.tracks.slice(0,1).map(t=>t.artSm).filter(Boolean);
       const thumbHTML = arts.length ? `<img src="${x(arts[0])}" alt="">` : '🎵';
@@ -955,39 +1196,32 @@ function openAtpModal(track) {
 function addToPlaylist(plIdx) {
   const t = G('modal-atp')._pendingTrack; if (!t) return;
   const pl = playlists[plIdx];
-  const title = t.title||t.trackName||'';
-  const artist = t.artist||t.artistName||'';
+  const title = t.title||t.trackName||'', artist = t.artist||t.artistName||'';
   const alreadyIn = pl.tracks.some(tr =>
-    tr.title.toLowerCase() === title.toLowerCase() &&
-    tr.artist.toLowerCase() === artist.toLowerCase()
+    tr.title.toLowerCase() === title.toLowerCase() && tr.artist.toLowerCase() === artist.toLowerCase()
   );
   if (alreadyIn) { toast(`Already in "${pl.name}"`); closeModal('modal-atp'); return; }
   pl.tracks.push({ title, artist, artSm: t.artSm||t.artworkUrl100||null, artLg: t.artLg||t._artLgOverride||null });
-  savePlaylists(); renderPlaylists();
-  closeModal('modal-atp');
+  savePlaylists(); renderPlaylists(); closeModal('modal-atp');
   toast(`Added to "${pl.name}"`);
+  apiPushPlaylist(pl);
 }
-function createPlaylistFromModal() {
-  closeModal('modal-atp');
-  openNewPlaylistModal();
-}
+function createPlaylistFromModal() { closeModal('modal-atp'); openNewPlaylistModal(); }
 
-// Image proxy: images.weserv.nl is a free image CDN proxy that works on most networks
-// Try direct first; if it fails (school blocks mzstatic.com), fall back to weserv
-function proxyImg(url) {
-  if (!url) return '';
-  // Already a proxy or data URL
-  if (url.startsWith('data:') || url.includes('weserv.nl') || url.includes('fanart.tv')) return url;
-  return url; // Return direct — mzstatic is almost never blocked. weserv fallback on onerror.
-}
+// ─────────────────────────────────────────────
+// IMAGE PROXY
+// ─────────────────────────────────────────────
+function proxyImg(url) { return url || ''; }
 function proxyImgFallback(img) {
-  // Called via onerror — try weserv.nl as fallback
   if (!img.src.includes('wsrv.nl')) {
     const orig = img.getAttribute('data-src') || img.src;
     img.src = 'https://wsrv.nl/?url=' + encodeURIComponent(orig) + '&w=300';
   }
 }
 
+// ─────────────────────────────────────────────
+// CORE STATE
+// ─────────────────────────────────────────────
 const ST = {
   queue:[], idx:-1,
   playing:false, shuffle:false, repeat:false, muted:false,
@@ -1002,10 +1236,11 @@ let toastTmr=null;
 function toast(msg){ const el=G('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('show'),2800); }
 function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-status-txt').textContent=msg; }
 
-// Universal proxy-aware fetch — tries direct first, then multiple CORS proxies
-// Works even when school blocks the target domain directly
+// ─────────────────────────────────────────────
+// PROXY FETCH (CORS proxies for external APIs)
+// ─────────────────────────────────────────────
 const PROXIES = [
-  u => u, // direct
+  u => u,
   u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
   u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
   u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
@@ -1019,10 +1254,12 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
       if (r.ok) res(r); else rej(r.status);
     } catch(e) { rej(e); }
   });
-  // Fire all in parallel, return first success
   return Promise.any(PROXIES.map(tryOne));
 }
 
+// ─────────────────────────────────────────────
+// YOUTUBE PLAYER
+// ─────────────────────────────────────────────
 let YT_player = null, ytReady = false, ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
 
@@ -1088,44 +1325,42 @@ window.onYouTubeIframeAPIReady = function() {
   });
 };
 
-// Load IFrame API — try youtube.com then youtube-nocookie.com
 (function loadYTAPI() {
   setStatus('loading', 'Connecting…');
   function tryScript(src, cb) {
     const s = document.createElement('script');
-    s.src = src; s.onload = cb;
-    s.onerror = () => cb(true);
+    s.src = src; s.onload = cb; s.onerror = () => cb(true);
     document.head.appendChild(s);
   }
   tryScript('https://www.youtube.com/iframe_api', function(err) {
-    if (!err) return; // success — onYouTubeIframeAPIReady will fire
-    // youtube.com blocked, try nocookie
+    if (!err) return;
     tryScript('https://www.youtube-nocookie.com/iframe_api', function(err2) {
-      if (err2) {
-        setStatus('err', 'YouTube blocked');
-        toast('⚠ YouTube is blocked on this network');
-      }
+      if (err2) { setStatus('err', 'YouTube blocked'); toast('⚠ YouTube is blocked on this network'); }
     });
   });
   setTimeout(() => { if (!ytReady) setStatus('err', 'YouTube blocked'); }, 12000);
 })();
 
+// ─────────────────────────────────────────────
+// VIDEO ID FINDER
+// Tries music-api backend first, then falls back to YT scrape + Invidious
+// ─────────────────────────────────────────────
 const ytCache = {};
 
 async function findVideoIds(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
   if (ytCache[ck]?.length) return ytCache[ck];
 
-  // Strip "(clean)" etc from title so we search for the real version
-  const cleanTitle = title.replace(/\s*\(clean\)|\s*\[clean\]|\s*- clean|\s*\(radio edit\)/gi, '').trim();
-  const searchQ = artist + ' ' + cleanTitle;
+  // 1. Ask your own backend first — fastest and most reliable
+  const apiVid = await apiFindVideoId(title, artist);
+  if (apiVid) { ytCache[ck] = [apiVid]; return [apiVid]; }
 
+  // 2. Scrape YT search via CORS proxies
+  const searchQ = artist + ' ' + title + ' audio';
   function extractIds(html) {
     const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
     return [...new Set(matches.map(m => m[1]))].slice(0, 6);
   }
-
-  // Method 1: scrape YouTube search via proxyFetch (races all proxies)
   try {
     const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(searchQ);
     const r = await proxyFetch(ytUrl, {}, 6000);
@@ -1134,7 +1369,7 @@ async function findVideoIds(artist, title) {
     if (ids.length) { ytCache[ck] = ids; return ids; }
   } catch {}
 
-  // Method 2: Invidious JSON API (different servers, different block lists)
+  // 3. Invidious fallback
   const invidious = [
     'https://inv.nadeko.net',
     'https://invidious.privacyredirect.com',
@@ -1144,9 +1379,7 @@ async function findVideoIds(artist, title) {
   const q = encodeURIComponent(searchQ);
   const tryInv = host => new Promise(async (res, rej) => {
     try {
-      const r = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId`, {
-        signal: AbortSignal.timeout(4000)
-      });
+      const r = await fetch(`${host}/api/v1/search?q=${q}&type=video&fields=videoId`, { signal: AbortSignal.timeout(4000) });
       if (!r.ok) return rej();
       const d = await r.json();
       const ids = (Array.isArray(d) ? d : []).map(v => v.videoId).filter(Boolean).slice(0, 6);
@@ -1160,25 +1393,26 @@ async function findVideoIds(artist, title) {
 
   throw new Error('search failed');
 }
-let srchTmr=null;
-const qIn=G('q-in'), qDrp=G('q-drop'), qSpn=G('q-spin');
+
+// ─────────────────────────────────────────────
+// SEARCH — iTunes + music-api merged
+// ─────────────────────────────────────────────
+let srchTmr = null;
+const qIn = G('q-in'), qDrp = G('q-drop'), qSpn = G('q-spin');
 qIn.addEventListener('input', e => {
   clearTimeout(srchTmr);
   const q = e.target.value.trim();
   if (!q) { hideDrop(); return; }
   srchTmr = setTimeout(() => doSearch(q), 380);
 });
-qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
+qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display = 'block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
-// iTunes fetch — direct first, then CORS proxies in parallel as fallback
 async function itunesFetch(url) {
-  // Try direct fetch first (works on personal devices)
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (r.ok) return await r.json();
   } catch {}
-  // Fallback: race all proxies simultaneously
   const enc = encodeURIComponent(url);
   const proxied = [
     'https://corsproxy.io/?url=' + enc,
@@ -1196,58 +1430,20 @@ async function itunesFetch(url) {
   try { return await Promise.any(proxied.map(tryOne)); } catch { return null; }
 }
 
-async function doSearch(q) {
-  qSpn.style.display='block';
-  qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
-  qDrp.style.display='block';
-
-  // iTunes ALWAYS first and always on top — never show MB until iTunes resolves
-  const itunesTracks = await searchItunes(q);
-  qSpn.style.display='none';
-
-  if (itunesTracks.length) {
-    // iTunes found results — show them immediately
-    renderDrop(itunesTracks, []);
-
-    // Then append MB-only results below as supplemental
-    searchMusicBrainz(q).then(mbTracks => {
-      const newMb = mbTracks.filter(mb =>
-        !itunesTracks.some(it =>
-          it.trackName.toLowerCase() === mb.trackName.toLowerCase() &&
-          it.artistName.toLowerCase() === mb.artistName.toLowerCase()
-        )
-      );
-      if (newMb.length) renderDrop(itunesTracks, newMb);
-    }).catch(() => {});
-
-  } else {
-    // iTunes completely failed — show a clear error, no MB fallback
-    // (MB showing as primary results is confusing and low quality)
-    qDrp.innerHTML = '<div class="drop-msg">⚠ Search unavailable — check your connection and try again</div>';
-  }
-}
-
 function scoreTrack(t, ql, words) {
   const tl = (t.trackName || '').toLowerCase();
   const al = (t.artistName || '').toLowerCase();
   let s = 0;
-  // Heavily penalize clean/radio edits — user wants the real version
-  if (tl.includes('(clean)') || tl.includes('- clean') || tl.includes('[clean]') ||
-      tl.includes('(radio edit)') || tl.includes('- radio edit') ||
-      tl.includes('(censored)') || tl.includes('(edited)')) s -= 60;
-  // Title scoring
   if (tl === ql) s += 100;
   else if (tl.startsWith(ql)) s += 70;
   else if (words.every(w => tl.includes(w))) s += 45;
   else s += words.filter(w => tl.includes(w)).length * 10;
-  // Artist name exact match — huge boost (handles "NF" the rapper vs song titled "NF")
   if (al === ql) s += 80;
   else if (al.startsWith(ql)) s += 50;
   else if (words.every(w => al.includes(w))) s += 30;
-  // Quality signals
   if (t.artworkUrl100) s += 5;
   if (t.trackTimeMillis > 60000) s += 5;
-  if ((t.trackCount || 0) > 5) s += 3; // album with multiple tracks = real release
+  if ((t.trackCount || 0) > 5) s += 3;
   return s;
 }
 
@@ -1263,125 +1459,67 @@ async function searchItunes(q) {
   return results.slice(0, 25);
 }
 
-async function searchMusicBrainz(q) {
-  try {
-    const res = await proxyFetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(q)}&limit=25&fmt=json`, {
-      headers: { 'User-Agent': 'GhostMusic/1.0 (ghost@music.app)' }
-    }, 8000);
-    const data = await res.json();
-    if (!data.recordings?.length) return [];
-    return data.recordings.map(r => {
-      const artist = r['artist-credit']?.[0]?.artist?.name || r['artist-credit']?.[0]?.name || 'Unknown';
-      const release = r.releases?.[0];
-      const album = release?.title || '';
-      const releaseMbid = release?.id || null;
-      return {
-        trackName: r.title,
-        artistName: artist,
-        collectionName: album,
-        artworkUrl100: null,
-        trackTimeMillis: r.length || null,
-        _source: 'musicbrainz',
-        _releaseMbid: releaseMbid,
-      };
-    });
-  } catch { return []; }
-}
+async function doSearch(q) {
+  qSpn.style.display = 'block';
+  qDrp.innerHTML = '<div class="drop-msg">Searching…</div>';
+  qDrp.style.display = 'block';
 
-async function searchLastFm(q) {
-  try {
-    const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(q)}&limit=25&format=json&api_key=8548f98a6f6e4d9b9b4d4f6a7f3e1b2d`);
-    const data = await res.json();
-    const tracks = data?.results?.trackmatches?.track;
-    if (!tracks?.length) return [];
-    const list = Array.isArray(tracks) ? tracks : [tracks];
-    return list.map(t => {
-      const imgs = Array.isArray(t.image) ? t.image : [];
-      const art = imgs.find(i=>i.size==='medium')?.['#text'] || imgs[0]?.['#text'] || null;
-      const artLg = imgs.find(i=>i.size==='extralarge')?.['#text'] || art;
-      const BLANK = '2a96cbd8b46e442fc41c2b86b821562f';
-      return {
-        trackName: t.name,
-        artistName: t.artist,
-        collectionName: '',
-        artworkUrl100: (art && !art.includes(BLANK)) ? art : null,
-        _artLgOverride: (artLg && !artLg.includes(BLANK)) ? artLg : null,
-        trackTimeMillis: null,
-        _source: 'lastfm',
-        _needsArt: !(art && !art.includes(BLANK)),
-      };
-    });
-  } catch { return []; }
+  // Fire iTunes + music-api in parallel
+  const [itunesTracks, apiTracks] = await Promise.all([
+    searchItunes(q),
+    apiSearch(q),
+  ]);
+  qSpn.style.display = 'none';
+
+  if (!itunesTracks.length && !apiTracks.length) {
+    qDrp.innerHTML = '<div class="drop-msg">⚠ Search unavailable — check your connection and try again</div>';
+    return;
+  }
+
+  // Dedupe: if api track matches an iTunes track by title+artist, prefer iTunes (has better art)
+  // but keep api-exclusive tracks (they come from your backend catalog)
+  const ql = q.toLowerCase();
+  const apiOnly = apiTracks.filter(at =>
+    !itunesTracks.some(it =>
+      it.trackName.toLowerCase() === at.trackName.toLowerCase() &&
+      it.artistName.toLowerCase() === at.artistName.toLowerCase()
+    )
+  );
+
+  renderDrop(itunesTracks, apiOnly);
 }
 
 const _artCache = {};
 async function fetchCoverArt(track) {
   if (track.artworkUrl100) return;
-
   const ck = ((track.artistName||'') + '||' + (track.trackName||'')).toLowerCase();
   if (_artCache[ck] !== undefined) {
     if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
     return;
   }
-
-  // Always try iTunes first — works everywhere including school Chromebooks
   try {
     const term = encodeURIComponent((track.artistName||'').trim() + ' ' + (track.trackName||'').trim());
-    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`)
+    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
     if (r.ok) {
       const d = await r.json();
-      const tl = (track.trackName||'').toLowerCase();
-      const al = (track.artistName||'').toLowerCase();
-      const hit = d.results?.find(h =>
-        h.trackName?.toLowerCase() === tl && h.artistName?.toLowerCase() === al
-      ) || d.results?.find(h =>
-        h.trackName?.toLowerCase().includes(tl) || h.artistName?.toLowerCase().includes(al)
-      ) || d.results?.[0];
+      const tl = (track.trackName||'').toLowerCase(), al = (track.artistName||'').toLowerCase();
+      const hit = d.results?.find(h => h.trackName?.toLowerCase() === tl && h.artistName?.toLowerCase() === al) ||
+                  d.results?.find(h => h.trackName?.toLowerCase().includes(tl) || h.artistName?.toLowerCase().includes(al)) ||
+                  d.results?.[0];
       if (hit?.artworkUrl100) {
-        const sm = hit.artworkUrl100;
-        const lg = sm.replace('100x100bb','600x600bb');
+        const sm = hit.artworkUrl100, lg = sm.replace('100x100bb','600x600bb');
         _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
-        track.artworkUrl100 = sm; track._artLgOverride = lg;
-        return;
+        track.artworkUrl100 = sm; track._artLgOverride = lg; return;
       }
     }
   } catch {}
-
-  // Secondary: Cover Art Archive (may be blocked on school networks)
-  if (track._releaseMbid) {
-    const mbid = track._releaseMbid;
-    if (_artCache[mbid] !== undefined) {
-      if (_artCache[mbid]) { track.artworkUrl100 = _artCache[mbid]; track._artLgOverride = _artCache[mbid+'_lg']; }
-      _artCache[ck] = _artCache[mbid]; _artCache[ck+'_lg'] = _artCache[mbid+'_lg'];
-      return;
-    }
-    try {
-      const r = await fetch(`https://coverartarchive.org/release/${mbid}`);
-      if (r.ok) {
-        const d = await r.json();
-        const img = d.images?.find(i => i.front) || d.images?.[0];
-        if (img) {
-          const sm = img.thumbnails?.['250'] || img.thumbnails?.small || img.image;
-          const lg = img.thumbnails?.['500'] || img.thumbnails?.large || img.image;
-          if (sm) {
-            _artCache[mbid] = sm; _artCache[mbid+'_lg'] = lg;
-            _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
-            track.artworkUrl100 = sm; track._artLgOverride = lg;
-            return;
-          }
-        }
-      }
-    } catch {}
-    _artCache[mbid] = null;
-  }
-
   _artCache[ck] = null;
 }
 
-function renderDrop(itunesTracks, mbTracks) {
-  const tracks = [...itunesTracks, ...mbTracks];
-  const mbStart = itunesTracks.length;
-  const mbIds = [];
+function renderDrop(itunesTracks, extraTracks) {
+  const tracks = [...itunesTracks, ...extraTracks];
+  const extraStart = itunesTracks.length;
+  const extraIds = [];
   window._td = window._td || {};
 
   qDrp.innerHTML = tracks.map((t, idx) => {
@@ -1392,25 +1530,39 @@ function renderDrop(itunesTracks, mbTracks) {
       title: t.trackName, artist: t.artistName,
       album: t.collectionName||'', artSm: artSm||null, artLg: artLg||null,
       durMs: t.trackTimeMillis||null, _source: t._source||null,
-      _releaseMbid: t._releaseMbid||null, _ref: t
+      _releaseMbid: t._releaseMbid||null, _ref: t,
+      _apiId: t._apiId||null, _artistId: t._artistId||null, _albumId: t._albumId||null,
     };
-    if (idx >= mbStart) mbIds.push(id);
+    if (idx >= extraStart) extraIds.push(id);
 
     const aName = (t.artistName||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const aArt  = artSm.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const srcBadge = (t._source && t._source !== 'itunes')
-      ? ` <span style="font-size:9px;opacity:.45;text-transform:uppercase;letter-spacing:.5px">[${t._source}]</span>` : '';
-    const sepHTML = (idx === mbStart && mbTracks.length > 0)
-      ? '<div style="padding:6px 13px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink3);text-transform:uppercase;opacity:.5;border-top:1px solid var(--s2);">More from MusicBrainz</div>' : '';
+    const aId   = (t._artistId||'').replace(/'/g,"\\'");
+    const albId = (t._albumId||'').replace(/'/g,"\\'");
+    const srcBadge = (t._source === 'api')
+      ? `<span class="src-badge">your catalog</span>` : '';
+    const sepHTML = (idx === extraStart && extraTracks.length > 0)
+      ? '<div style="padding:6px 13px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink3);text-transform:uppercase;opacity:.5;border-top:1px solid var(--s2);">From your catalog</div>' : '';
+
+    const albumClickHTML = albId
+      ? `onclick="event.stopPropagation();openAlbumPanel('${albId}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);"` : '';
+
     return sepHTML + `<div class="di" onclick="pickTrack('${id}')">
       <div class="di-art" id="da_${id}">${artSm ? `<img src="${artSm}" data-src="${artSm}" onerror="proxyImgFallback(this)" alt="">` : '🎵'}</div>
-      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName ? ' · '+x(t.collectionName) : ''}${srcBadge}</div></div>
+      <div class="di-inf">
+        <div class="di-t">${x(t.trackName)}</div>
+        <div class="di-s">
+          <span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}','${aId}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>
+          ${t.collectionName ? ` · <span ${albumClickHTML}>${x(t.collectionName)}</span>` : ''}
+          ${srcBadge}
+        </div>
+      </div>
       <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
 
-  hydrateArt(mbIds);
+  hydrateArt(extraIds);
 }
 
 async function hydrateArt(ids) {
@@ -1429,43 +1581,45 @@ async function hydrateArt(ids) {
   }));
 }
 
-async function pickTrack(id) { hideDrop(); qIn.value=''; const t=window._td?.[id]; if(t) addAndPlay(t); }
-function hideDrop() { qDrp.style.display='none'; }
+async function pickTrack(id) { hideDrop(); qIn.value = ''; const t = window._td?.[id]; if (t) addAndPlay(t); }
+function hideDrop() { qDrp.style.display = 'none'; }
 
-function addAndPlay(track) { const i=ST.queue.length; ST.queue.push(track); appendQI(track,i); loadTrack(i); }
+function addAndPlay(track) { const i = ST.queue.length; ST.queue.push(track); appendQI(track, i); loadTrack(i); }
 
 function appendQI(track, i) {
-  const list=G('q-list'); list.querySelector('.q-empty-msg')?.remove();
-  const el=document.createElement('div');
-  el.className='qi'; el.id=`qi${i}`; el.dataset.idx=i;
-  el.innerHTML=`<div class="qi-th" id="qt${i}">${track.artSm?`<img src="${track.artSm}" data-src="${track.artSm}" onerror="proxyImgFallback(this)" alt="">`:'🎵'}</div>
+  const list = G('q-list'); list.querySelector('.q-empty-msg')?.remove();
+  const el = document.createElement('div');
+  el.className = 'qi'; el.id = `qi${i}`; el.dataset.idx = i;
+  el.innerHTML = `<div class="qi-th" id="qt${i}">${track.artSm ? `<img src="${track.artSm}" data-src="${track.artSm}" onerror="proxyImgFallback(this)" alt="">` : '🎵'}</div>
     <div class="qi-inf"><div class="qi-t">${x(track.title)}</div><div class="qi-a">${x(track.artist)}</div></div>
     <button class="qi-rm" onclick="rmQI(event,${i})">×</button>`;
-  el.addEventListener('click', e => { if(!e.target.classList.contains('qi-rm')) loadTrack(i); });
+  el.addEventListener('click', e => { if (!e.target.classList.contains('qi-rm')) loadTrack(i); });
   el.addEventListener('contextmenu', e => openCtxMenu(e, i));
   list.appendChild(el);
 }
-function rmQI(e,i) { e.stopPropagation(); ST.queue.splice(i,1); rebuildQ(); if(ST.idx===i){ST.idx=-1;resetNP();}else if(ST.idx>i)ST.idx--; }
-function rebuildQ() { const l=G('q-list'); l.innerHTML=''; if(!ST.queue.length){l.innerHTML='<div class="q-empty-msg">Queue is empty</div>';return;} ST.queue.forEach((t,i)=>appendQI(t,i)); if(ST.idx>=0)markQI(ST.idx); }
+function rmQI(e, i) { e.stopPropagation(); ST.queue.splice(i, 1); rebuildQ(); if (ST.idx === i) { ST.idx = -1; resetNP(); } else if (ST.idx > i) ST.idx--; }
+function rebuildQ() { const l = G('q-list'); l.innerHTML = ''; if (!ST.queue.length) { l.innerHTML = '<div class="q-empty-msg">Queue is empty</div>'; return; } ST.queue.forEach((t, i) => appendQI(t, i)); if (ST.idx >= 0) markQI(ST.idx); }
 function markQI(idx) {
   document.querySelectorAll('.qi').forEach(el => {
-    const i=+el.dataset.idx; el.classList.toggle('now',i===idx);
-    const th=el.querySelector('.qi-th'); th.querySelector('.now-ind')?.remove();
-    if(i===idx){const b=document.createElement('div');b.className='now-ind';b.innerHTML='<div class="bars"><b></b><b></b><b></b></div>';th.appendChild(b);el.scrollIntoView({block:'nearest',behavior:'smooth'});}
+    const i = +el.dataset.idx; el.classList.toggle('now', i === idx);
+    const th = el.querySelector('.qi-th'); th.querySelector('.now-ind')?.remove();
+    if (i === idx) { const b = document.createElement('div'); b.className = 'now-ind'; b.innerHTML = '<div class="bars"><b></b><b></b><b></b></div>'; th.appendChild(b); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
   });
 }
 
+// ─────────────────────────────────────────────
+// LOAD TRACK
+// ─────────────────────────────────────────────
 async function loadTrack(idx) {
   if (idx < 0 || idx >= ST.queue.length) return;
-  if (!ytReady) {
-    setStatus('err', 'YouTube blocked');
-    toast('⚠ YouTube is blocked on this network. Try a personal device or hotspot.');
-    return;
-  }
+  if (!ytReady) { setStatus('err', 'YouTube blocked'); toast('⚠ YouTube is blocked on this network.'); return; }
   ST.idx = idx;
   const track = ST.queue[idx];
   markQI(idx); updateNP(track); syncHeartBtn();
-  ST.playing=false; ST.pos=0; ST.dur=0; syncPP();
+  ST.playing = false; ST.pos = 0; ST.dur = 0; syncPP();
+
+  // Push play history to API
+  apiPushHistory(track);
 
   if (!track.ytIds) {
     setStatus('loading', 'Finding…');
@@ -1483,30 +1637,17 @@ async function loadTrack(idx) {
   YT_player.loadVideoById(track.ytIds[track.ytTry]);
   fetchLyrics(track.title, track.artist);
 
-  // If no art yet (e.g. MusicBrainz source), fetch it now and update cover immediately when resolved
   if (!track.artSm && !track.artLg) {
-    const _refTrack = {
-      artworkUrl100: null, _artLgOverride: null,
-      _releaseMbid: track._releaseMbid,
-      artistName: track.artist, trackName: track.title
-    };
+    const _refTrack = { artworkUrl100: null, _artLgOverride: null, artistName: track.artist, trackName: track.title };
     fetchCoverArt(_refTrack).then(() => {
-      if (!_refTrack.artworkUrl100) return;
-      // Only update if this track is still the active one
-      if (ST.queue[ST.idx] !== track) return;
+      if (!_refTrack.artworkUrl100 || ST.queue[ST.idx] !== track) return;
       track.artSm = _refTrack.artworkUrl100;
       track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
-      // Directly update every cover surface so nothing is stale
       const artUrl = track.artLg || track.artSm;
-      G('cv-img').src = artUrl;
-      G('cv-img').setAttribute('data-src', artUrl);
-      G('cv-bg').src = artUrl;
-      G('cv-bg').classList.add('on');
+      G('cv-img').src = artUrl; G('cv-img').setAttribute('data-src', artUrl);
+      G('cv-bg').src = artUrl; G('cv-bg').classList.add('on');
       G('cover-art').style.display = 'block';
-      const lrcBg = G('lrc-bg');
-      lrcBg.style.backgroundImage = `url('${artUrl}')`;
-      lrcBg.classList.add('on');
-      // Patch queue thumbnail
+      const lrcBg = G('lrc-bg'); lrcBg.style.backgroundImage = `url('${artUrl}')`; lrcBg.classList.add('on');
       const th = document.getElementById('qt' + idx);
       if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
     });
@@ -1514,104 +1655,98 @@ async function loadTrack(idx) {
 }
 
 function updateNP(track) {
-  G('empty-cover').style.display='none';
-  G('cover-art').style.display='block';
-  G('cover-info').style.display='block';
-  G('np-t').textContent=track.title;
-  G('np-a').textContent=track.artist;
-  G('np-a').style.cursor='pointer';
-  G('np-a').onclick=()=>openArtistProfile(track.artist, track.artSm||'');
+  G('empty-cover').style.display = 'none';
+  G('cover-art').style.display = 'block';
+  G('cover-info').style.display = 'block';
+  G('np-t').textContent = track.title;
+  G('np-a').textContent = track.artist;
+  G('np-a').style.cursor = 'pointer';
+  G('np-a').onclick = () => openArtistProfile(track.artist, track.artSm || '', track._artistId || null);
   const art = track.artLg || track.artSm;
-  if(art){
+  if (art) {
     const artUrl = proxyImg(art);
-    G('cv-img').src=artUrl; G('cv-img').setAttribute('data-src',artUrl); G('cv-img').onerror=function(){proxyImgFallback(this)};
-    G('cv-bg').src=artUrl;
-    G('cv-bg').classList.add('on');
-    const lrcBg = G('lrc-bg');
-    lrcBg.style.backgroundImage = `url('${artUrl}')`;
-    lrcBg.classList.add('on');
+    G('cv-img').src = artUrl; G('cv-img').setAttribute('data-src', artUrl);
+    G('cv-img').onerror = function(){ proxyImgFallback(this); };
+    G('cv-bg').src = artUrl; G('cv-bg').classList.add('on');
+    const lrcBg = G('lrc-bg'); lrcBg.style.backgroundImage = `url('${artUrl}')`; lrcBg.classList.add('on');
   }
 }
 function resetNP() {
-  G('empty-cover').style.display='';
-  G('cover-art').style.display='none';
-  G('cover-info').style.display='none';
+  G('empty-cover').style.display = '';
+  G('cover-art').style.display = 'none';
+  G('cover-info').style.display = 'none';
   G('cover-art').classList.remove('playing');
   G('cv-bg').classList.remove('on');
-  G('prog-f').style.width='0%'; G('t-c').textContent='0:00'; G('t-d').textContent='0:00';
-  ST.playing=false; syncPP();
+  G('prog-f').style.width = '0%'; G('t-c').textContent = '0:00'; G('t-d').textContent = '0:00';
+  ST.playing = false; syncPP();
 }
 
-function togglePlay() { if(!ytReady||ST.idx<0)return; ST.playing?YT_player.pauseVideo():YT_player.playVideo(); }
-function prevTrack() { if(!ST.queue.length)return; if(ST.pos>3000){YT_player.seekTo(0);return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
-function nextTrack() { if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
-function rnd() { return Math.floor(Math.random()*ST.queue.length); }
-function syncPP() { G('pp-ico').innerHTML=ST.playing?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>'; }
-function syncBar() { if(!ST.dur)return; G('prog-f').style.width=Math.min(100,ST.pos/ST.dur*100).toFixed(2)+'%'; G('t-c').textContent=ms2t(ST.pos); G('t-d').textContent=ms2t(ST.dur); }
+function togglePlay() { if (!ytReady || ST.idx < 0) return; ST.playing ? YT_player.pauseVideo() : YT_player.playVideo(); }
+function prevTrack() { if (!ST.queue.length) return; if (ST.pos > 3000) { YT_player.seekTo(0); return; } loadTrack(ST.shuffle ? rnd() : (ST.idx - 1 + ST.queue.length) % ST.queue.length); }
+function nextTrack() { if (!ST.queue.length) return; loadTrack(ST.shuffle ? rnd() : (ST.idx + 1) % ST.queue.length); }
+function rnd() { return Math.floor(Math.random() * ST.queue.length); }
+function syncPP() { G('pp-ico').innerHTML = ST.playing ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>' : '<path d="M8 5v14l11-7z"/>'; }
+function syncBar() { if (!ST.dur) return; G('prog-f').style.width = Math.min(100, ST.pos / ST.dur * 100).toFixed(2) + '%'; G('t-c').textContent = ms2t(ST.pos); G('t-d').textContent = ms2t(ST.dur); }
 
 G('prog').addEventListener('click', e => {
-  if(!ST.dur||ST.idx<0)return;
-  const r=e.currentTarget.getBoundingClientRect();
-  YT_player.seekTo(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(ST.dur/1000));
+  if (!ST.dur || ST.idx < 0) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  YT_player.seekTo(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * (ST.dur / 1000));
 });
 G('vol-tr').addEventListener('click', e => {
-  const r=e.currentTarget.getBoundingClientRect();
-  ST.vol=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
-  G('vol-f').style.width=(ST.vol*100)+'%';
-  if(ytReady&&!ST.muted) YT_player.setVolume(ST.vol*100);
+  const r = e.currentTarget.getBoundingClientRect();
+  ST.vol = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  G('vol-f').style.width = (ST.vol * 100) + '%';
+  if (ytReady && !ST.muted) YT_player.setVolume(ST.vol * 100);
 });
 G('btn-vol').addEventListener('click', () => {
-  ST.muted=!ST.muted; G('btn-vol').classList.toggle('on',ST.muted);
-  if(ytReady) YT_player.setVolume(ST.muted?0:ST.vol*100);
-  G('vol-ico').innerHTML=ST.muted
-    ?'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2"/>'
-    :'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>';
+  ST.muted = !ST.muted; G('btn-vol').classList.toggle('on', ST.muted);
+  if (ytReady) YT_player.setVolume(ST.muted ? 0 : ST.vol * 100);
+  G('vol-ico').innerHTML = ST.muted
+    ? '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2"/>'
+    : '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>';
 });
-G('btn-sf').addEventListener('click',()=>{ST.shuffle=!ST.shuffle;G('btn-sf').classList.toggle('on',ST.shuffle);});
-G('btn-rp').addEventListener('click',()=>{ST.repeat=!ST.repeat;G('btn-rp').classList.toggle('on',ST.repeat);});
-G('btn-pv').addEventListener('click',prevTrack);
-G('btn-nx').addEventListener('click',nextTrack);
-G('btn-pp').addEventListener('click',togglePlay);
+G('btn-sf').addEventListener('click', () => { ST.shuffle = !ST.shuffle; G('btn-sf').classList.toggle('on', ST.shuffle); });
+G('btn-rp').addEventListener('click', () => { ST.repeat = !ST.repeat; G('btn-rp').classList.toggle('on', ST.repeat); });
+G('btn-pv').addEventListener('click', prevTrack);
+G('btn-nx').addEventListener('click', nextTrack);
+G('btn-pp').addEventListener('click', togglePlay);
 
-const wordSyncOn = true;
-
+// ─────────────────────────────────────────────
+// LYRICS
+// ─────────────────────────────────────────────
 async function fetchLyrics(title, artist) {
-  ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
-  const scroll=G('lscroll');
-  G('lrc-empty-state').style.display='none';
-  scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
-  const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
-  const ct=clean(title), ca=clean(artist);
+  ST.lrc = []; ST.lrcType = 'none'; ST.lrcActive = -1;
+  const scroll = G('lscroll');
+  G('lrc-empty-state').style.display = 'none';
+  scroll.innerHTML = '<div class="lrc-empty"><p>Finding lyrics…</p></div>';
+  const clean = s => s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
+  const ct = clean(title), ca = clean(artist);
 
-  // Run both GET attempts in parallel for speed
-  const [r1, r2] = await Promise.all([lrclibGET(ct, ca), ct!==title||ca!==artist ? lrclibGET(title, artist) : Promise.resolve(null)]);
+  const [r1, r2] = await Promise.all([lrclibGET(ct, ca), ct !== title || ca !== artist ? lrclibGET(title, artist) : Promise.resolve(null)]);
   for (const d of [r1, r2]) {
-    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+    if (d?.syncedLyrics) { const lines = buildWordTimings(parseLRC(d.syncedLyrics)); if (lines.length) { ST.lrc = lines; ST.lrcType = 'synced'; renderSynced(); return; } }
   }
-  // Search fallback — also parallel
-  const [s1, s2] = await Promise.all([lrclibSEARCH(ct, ca), ct!==title||ca!==artist ? lrclibSEARCH(title, artist) : Promise.resolve(null)]);
+  const [s1, s2] = await Promise.all([lrclibSEARCH(ct, ca), ct !== title || ca !== artist ? lrclibSEARCH(title, artist) : Promise.resolve(null)]);
   for (const d of [s1, s2]) {
-    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+    if (d?.syncedLyrics) { const lines = buildWordTimings(parseLRC(d.syncedLyrics)); if (lines.length) { ST.lrc = lines; ST.lrcType = 'synced'; renderSynced(); return; } }
   }
-  scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
+  scroll.innerHTML = '<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
 }
 
 async function lrclibGET(track, artist) {
   try {
     const url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
-    if (r.status === 200 || r.ok) return await r.json();
+    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Ghost/1.0' } }, 6000);
+    if (r.ok) return await r.json();
   } catch {}
   return null;
 }
 async function lrclibSEARCH(track, artist) {
   try {
     const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
-    if (r.ok) {
-      const a = await r.json();
-      if (a?.length) return a.find(x => x.syncedLyrics) || a.find(x => x.plainLyrics) || null;
-    }
+    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Ghost/1.0' } }, 6000);
+    if (r.ok) { const a = await r.json(); if (a?.length) return a.find(x => x.syncedLyrics) || a.find(x => x.plainLyrics) || null; }
   } catch {}
   return null;
 }
@@ -1620,18 +1755,15 @@ function parseLRC(rawStr) {
   return rawStr.split('\n').map(line => {
     const m = line.match(/^\[(\d{1,3}):(\d{2}(?:\.\d+)?)\](.*)/);
     if (!m) return null;
-    const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
+    const ms = parseInt(m[1]) * 60000 + parseFloat(m[2]) * 1000;
     const raw = m[3];
-
-    // Try to extract enhanced word-level timestamps: <mm:ss.xx>word
     const wTagRe = /<(\d{1,3}):(\d{2}\.\d+)>([^<]*)/g;
     let wm; const wTimed = [];
     while ((wm = wTagRe.exec(raw)) !== null) {
-      const wMs = parseInt(wm[1])*60000 + parseFloat(wm[2])*1000;
+      const wMs = parseInt(wm[1]) * 60000 + parseFloat(wm[2]) * 1000;
       const word = wm[3].trim();
       if (word) wTimed.push({ ms: wMs, word });
     }
-
     const text = raw.replace(/<[^>]+>/g,'').trim();
     return { ms, text, _wordTimed: wTimed.length > 0 ? wTimed : null };
   }).filter(Boolean);
@@ -1648,53 +1780,27 @@ function syllableCount(word) {
 
 function buildWordTimings(lrc) {
   return lrc.map((line, i) => {
-    const lineMs = line.ms;
-    const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
-    const gap = nextMs - lineMs;
+    const lineMs = line.ms, nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
+    const duration = Math.max(400, nextMs - lineMs - 80);
     const rawWords = line.text.split(/\s+/).filter(Boolean);
-
-    if (!rawWords.length) {
-      const beatDur = Math.round(Math.min(900, Math.max(300, gap / 4)));
-      return { ...line, words: [], beatDur };
-    }
-
-    if (line._wordTimed?.length) {
-      // Enhanced LRC — exact per-word timestamps, use them directly
-      const lastWordMs = line._wordTimed[line._wordTimed.length - 1].ms;
-      const singDuration = Math.min(lastWordMs + 500, nextMs - 50) - lineMs;
-      return { ...line, words: line._wordTimed, _singDuration: Math.max(300, singDuration), _useWordTs: true };
-    }
-
-    // No per-word timestamps — use syllable-weighted offsets within the line's gap.
-    // The gap IS the singing duration for normal lines; we cap at 92% to avoid bleeding.
-    // For lines followed by long instrumental gaps, cap at a reasonable max.
-    const totalSyls = rawWords.reduce((s, w) => s + syllableCount(w), 0);
-    // Max plausible singing time: 380ms per syllable (very slow ballad pace)
-    const maxSingMs = Math.min(gap * 0.92, totalSyls * 380);
-    const singDuration = Math.max(400, maxSingMs);
-
-    // Build syllable-weighted word boundaries (0.0–1.0 within singDuration)
+    if (!rawWords.length) { const gapMs = Math.max(400, nextMs - lineMs); const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4))); return { ...line, words: [], beatDur }; }
+    if (line._wordTimed?.length) return { ...line, words: line._wordTimed };
     const syls = rawWords.map(syllableCount);
-    const totalWeight = syls.reduce((a, b) => a + b, 0);
-    let cursor = 0;
-    const wordOffsets = rawWords.map((word, wi) => {
-      const start = cursor / totalWeight;
-      cursor += syls[wi];
-      const end = cursor / totalWeight;
-      return { start, end, word };
+    const usable = duration * 0.90;
+    let cursor = lineMs;
+    const words = rawWords.map((word, wi) => {
+      const wordMs = cursor;
+      const weight = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
+      cursor += (weight / syls.reduce((a,b,j)=>a+(b*(rawWords[j].replace(/[^a-z]/gi,'').length<=3?0.7:1)),0)) * usable;
+      return { ms: wordMs, word };
     });
-
-    const words = rawWords.map(word => ({ word, ms: lineMs }));
-    return { ...line, words, _singDuration: singDuration, _wordOffsets: wordOffsets };
+    return { ...line, words };
   });
 }
 
 function splitParen(text) {
   const pm = text.match(/^(.*?)\s*\(([^)]+)\)\s*(.*)$/);
-  if (pm) {
-    const main = (pm[1] + (pm[3] ? ' ' + pm[3] : '')).trim();
-    return { main: main || text, paren: pm[2] };
-  }
+  if (pm) { const main = (pm[1] + (pm[3] ? ' ' + pm[3] : '')).trim(); return { main: main || text, paren: pm[2] }; }
   return { main: text, paren: null };
 }
 
@@ -1708,27 +1814,20 @@ function renderLineHTML(line, i) {
     mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
   } else {
     mainHTML = line.words?.length
-      ? line.words.map((w, wi) =>
-          `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`
-        ).join(' ')
+      ? line.words.map((w, wi) => `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`).join(' ')
       : x(main);
   }
   return `<div class="ll" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}${parenHTML}</div>`;
 }
 
 function renderSynced() {
-  // Clear word state cache so new song starts fresh
   Object.keys(_lwState).forEach(k => delete _lwState[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
 
+function seekLrc(i) { if (ST.lrcType === 'synced' && ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms / 1000); }
 
-
-function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
-
-// Per-word state cache to skip redundant DOM writes
 const _lwState = {};
-
 function _setLwState(id, cls, pct) {
   const prev = _lwState[id];
   if (prev && prev.cls === cls && (cls !== 'now-word' || prev.pct === pct)) return;
@@ -1741,176 +1840,97 @@ function _setLwState(id, cls, pct) {
 
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
-
-  // Use raw position for line switching — no lookahead, so we never jump a line early.
-  // A small lookahead (30ms) is only applied to word fill animation to compensate for render lag.
-  const t = posMs;
-  const tWord = posMs + 30;
-
-  // Binary search for active line
+  const AHEAD = 80;
+  const t = posMs + AHEAD;
   let lo = 0, hi = ST.lrc.length - 1, active = 0;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (ST.lrc[mid].ms <= t) { active = mid; lo = mid + 1; }
-    else hi = mid - 1;
-  }
+  while (lo <= hi) { const mid = (lo + hi) >> 1; if (ST.lrc[mid].ms <= t) { active = mid; lo = mid + 1; } else hi = mid - 1; }
 
   if (active !== ST.lrcActive) {
-    const prev = ST.lrcActive;
-    ST.lrcActive = active;
-
-    // Batch DOM updates — collect all lines once, update in one pass
+    const prev = ST.lrcActive; ST.lrcActive = active;
     const lines = document.querySelectorAll('#lscroll .ll');
     lines.forEach((el, i) => {
       el.classList.remove('now','past','near','near2');
-      const dist = i - active;
-      const absDist = Math.abs(dist);
+      const dist = i - active, absDist = Math.abs(dist);
       if (dist < 0) el.classList.add('past');
       else if (absDist === 1) el.classList.add('near');
       else if (absDist === 2) el.classList.add('near2');
       if (i === active) el.classList.add('now');
-      // Progressive blur: lines farther away blur more
       el.style.filter = absDist >= 3 ? `blur(${Math.min(5, (absDist - 2) * 1.5).toFixed(1)}px)` : '';
     });
-
-    document.getElementById('ll'+active)
-      ?.scrollIntoView({ block:'center', behavior:'smooth' });
-
-    // Snap previous line's words to fully done
-    if (prev >= 0) {
-      (ST.lrc[prev]?.words || []).forEach((w, wi) => {
-        _setLwState('lw'+prev+'_'+wi, 'done', '100%');
-      });
-    }
-    // Reset new active line's words to upcoming
-    (ST.lrc[active]?.words || []).forEach((w, wi) => {
-      const id = 'lw'+active+'_'+wi;
-      delete _lwState[id]; // force re-render
-      _setLwState(id, 'upcoming', '0%');
-    });
+    document.getElementById('ll' + active)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    if (prev >= 0) (ST.lrc[prev]?.words || []).forEach((w, wi) => _setLwState('lw'+prev+'_'+wi, 'done', '100%'));
+    (ST.lrc[active]?.words || []).forEach((w, wi) => { const id = 'lw'+active+'_'+wi; delete _lwState[id]; _setLwState(id, 'upcoming', '0%'); });
   }
-
-  // ── Instrumental gap indicator ──────────────────────────────────────────
-  // Show beat-dots when we're in a long silent/instrumental gap between lines.
-  // A "gap" = current line's last word has finished + next line is still >1.8s away.
-  const gapEl = document.getElementById('instrumental-gap');
-  const dotEl = document.getElementById('instrumental-dots');
-  const activeLine = ST.lrc[active];
-  const nextLineMs = ST.lrc[active+1]?.ms ?? null;
-
-  if (gapEl && activeLine) {
-    // Determine when the current line's singing is "done"
-    const lineWords = activeLine.words || [];
-    const isInstrumentalLine = !lineWords.length && (!activeLine.text || activeLine.text.trim() === '♪' || activeLine.text.trim() === '');
-    let lineSingEnd;
-    if (lineWords.length) {
-      const singDur = activeLine._singDuration ?? 1500;
-      lineSingEnd = activeLine.ms + singDur;
-    } else {
-      lineSingEnd = activeLine.ms + 500;
-    }
-
-    // Only show the instrumental gap row between non-instrumental lyric lines
-    const gapGap = nextLineMs ? (nextLineMs - lineSingEnd) : 0;
-    const showGap = !isInstrumentalLine && nextLineMs && t >= lineSingEnd && (nextLineMs - t) > 200 && gapGap > 1800;
-
-    if (showGap) {
-      // Compute beat speed from gap length — shorter gap = faster dots
-      const beatDur = Math.round(Math.min(900, Math.max(280, gapGap / 5)));
-      if (dotEl) dotEl.style.setProperty('--beat-dur', beatDur + 'ms');
-      gapEl.classList.add('visible');
-    } else {
-      gapEl.classList.remove('visible');
-    }
-  }
-  // ────────────────────────────────────────────────────────────────────────
 
   const words = ST.lrc[active]?.words;
   if (!words?.length) return;
-
-  const lineStart = activeLine.ms;
-  const singDuration = activeLine._singDuration ?? 1500;
-
-  if (activeLine._useWordTs) {
-    // Exact per-word timestamps — fill each word from its start to next word's start
-    const nextLineMsW = ST.lrc[active+1]?.ms ?? (t + 4000);
-    const avgWordDur = words.length > 1
-      ? (words[words.length-1].ms - words[0].ms) / (words.length - 1)
-      : 300;
-    const lastWordEnd = Math.min(words[words.length-1].ms + avgWordDur, nextLineMsW - 50);
-    for (let wi = 0; wi < words.length; wi++) {
-      const wStart = words[wi].ms;
-      const wEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
-      const id = 'lw'+active+'_'+wi;
-      if (tWord < wStart) _setLwState(id, 'upcoming', '0%');
-      else if (tWord >= wEnd) _setLwState(id, 'done', '100%');
-      else {
-        const raw = (tWord - wStart) / (wEnd - wStart);
-        const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
-        _setLwState(id, 'now-word', (eased*100).toFixed(1)+'%');
-      }
-    }
-    return;
-  }
-
-  // Char-position-based fill for estimated lines
-  const lineEnd = lineStart + singDuration;
-
-  // How far through the line's singing window are we? (0.0 → 1.0)
-  const lineProgress = Math.max(0, Math.min(1, (tWord - lineStart) / singDuration));
-
-  // Use syllable-weighted word offsets built in buildWordTimings
-  const wordOffsets = activeLine._wordOffsets;
-  if (!wordOffsets) return;
-
+  const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
+  const lastWordEnd = Math.min(nextLineMs - 50, words[words.length-1].ms + 2200);
   for (let wi = 0; wi < words.length; wi++) {
-    const { start, end } = wordOffsets[wi];
+    const wStart = words[wi].ms, wEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
     const id = 'lw'+active+'_'+wi;
-
-    if (lineProgress <= start) {
-      _setLwState(id, 'upcoming', '0%');
-    } else if (lineProgress >= end) {
-      _setLwState(id, 'done', '100%');
-    } else {
-      const raw = (lineProgress - start) / (end - start);
+    if (t < wStart) _setLwState(id, 'upcoming', '0%');
+    else if (t >= wEnd) _setLwState(id, 'done', '100%');
+    else {
+      const raw = (t - wStart) / (wEnd - wStart);
       const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
-      _setLwState(id, 'now-word', (eased * 100).toFixed(1)+'%');
+      _setLwState(id, 'now-word', (eased * 100).toFixed(1) + '%');
     }
   }
 }
 
-
-// ── ARTIST PROFILE ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// ARTIST PROFILE
+// Tries music-api first (rich data), falls back to iTunes-only
+// ─────────────────────────────────────────────
 const _artistCache = {};
 
-async function openArtistProfile(artistName, hintArt) {
+async function openArtistProfile(artistName, hintArt, artistId) {
   showPanel('artist');
   const inner = G('artist-panel-inner');
-  const bg = G('artist-bg');
-  const spinHTML = '<div class="artist-loading"><div style="width:18px;height:18px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0;"></div><span>Loading artist…</span></div>';
-  inner.innerHTML = spinHTML;
+  const bg    = G('artist-bg');
+  inner.innerHTML = '<div class="artist-loading"><div class="spin" style="display:block"></div><span>Loading artist…</span></div>';
   if (hintArt) { bg.style.backgroundImage = `url('${hintArt}')`; bg.classList.add('on'); }
 
   const ck = artistName.toLowerCase().trim();
   let cached = _artistCache[ck];
+
   if (!cached) {
-    cached = await fetchArtistData(artistName);
-    _artistCache[ck] = cached;
+    // Try API first if we have an artistId
+    if (artistId && _apiOnline) {
+      const apiData = await apiFetchArtist(artistId);
+      if (apiData) {
+        const tracks = (apiData.top_tracks || apiData.tracks || []).map(t => ({
+          trackName: t.title, artistName: t.artist_name || artistName,
+          artworkUrl100: t.artwork_url || null,
+          collectionName: t.album?.name || '',
+          trackTimeMillis: t.duration || null,
+          _artistId: artistId, _albumId: t.album?.id || null,
+        }));
+        const heroImg = apiData.image_url || hintArt || tracks.find(t=>t.artworkUrl100)?.artworkUrl100 || '';
+        cached = { tracks, artistImg: heroImg, followers: apiData.followers || 0 };
+        _artistCache[ck] = cached;
+      }
+    }
+
+    // Fallback to iTunes
+    if (!cached) {
+      cached = await fetchArtistDataiTunes(artistName);
+      _artistCache[ck] = cached;
+    }
   }
 
-  const { tracks, artistImg } = cached;
+  const { tracks, artistImg, followers } = cached;
   const heroImg = artistImg || hintArt || tracks.find(t=>t.artworkUrl100)?.artworkUrl100 || '';
   if (heroImg) { bg.style.backgroundImage = `url('${heroImg}')`; bg.classList.add('on'); }
 
-  renderArtistProfile(artistName, tracks, heroImg, inner);
+  renderArtistProfile(artistName, tracks, heroImg, inner, followers || 0);
 }
 
-async function fetchArtistData(artistName) {
-  let artistImg = null;
-  let artistId = null;
+async function fetchArtistDataiTunes(artistName) {
+  let artistImg = null, artistId = null;
   const al = artistName.toLowerCase();
 
-  // Step 1: Find iTunes artistId via entity search
   const artistData = await itunesFetch(
     `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
   );
@@ -1923,66 +1943,52 @@ async function fetchArtistData(artistName) {
   }
 
   let tracks = [];
-
-  // Step 2: Lookup by artistId — gets full discography reliably
   if (artistId) {
-    const ld = await itunesFetch(
-      `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`
-    );
+    const ld = await itunesFetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`);
     tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
   }
-
-  // Step 3: Fallback — direct search filtered to artist name
   if (tracks.length < 3) {
-    const ld = await itunesFetch(
-      `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`
-    );
-    const extra = (ld?.results || []).filter(t =>
-      t.wrapperType === 'track' && t.kind === 'song' &&
-      t.artistName?.toLowerCase().includes(al.split(' ')[0])
-    );
-    // Merge, dedupe by trackId
+    const ld = await itunesFetch(`https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`);
+    const extra = (ld?.results || []).filter(t => t.wrapperType === 'track' && t.kind === 'song' && t.artistName?.toLowerCase().includes(al.split(' ')[0]));
     const seen = new Set(tracks.map(t => t.trackId));
     for (const t of extra) if (!seen.has(t.trackId)) { tracks.push(t); seen.add(t.trackId); }
   }
-
-  // Sort by popularity (playCount not available, use trackNumber + collectionName as proxy)
-  // iTunes returns them roughly in popularity order already, keep that order.
-
-  // Artist hero image: use highest-res album art available — skip fanart.tv (unreliable)
   const artTrack = tracks.find(t => t.artworkUrl100);
-  if (artTrack) artistImg = artTrack.artworkUrl100.replace('100x100bb', '600x600bb');
-
+  if (artTrack) artistImg = artTrack.artworkUrl100.replace('100x100bb','600x600bb');
   return { tracks: tracks.slice(0, 60), artistImg };
 }
 
-function renderArtistProfile(artistName, tracks, heroImg, container) {
+function renderArtistProfile(artistName, tracks, heroImg, container, followers) {
   const avatarHTML = heroImg
-    ? `<img src="${heroImg}" alt="" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\"font-size:36px\">🎤</span>'">`
+    ? `<img src="${heroImg}" alt="" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\\"font-size:36px\\">🎤</span>'">`
     : `<span style="font-size:36px">🎤</span>`;
 
-  const playAllId = 'apl_'+Math.random().toString(36).slice(2);
-  window['_apl_'+playAllId] = tracks.map(t=>({
-    title: t.trackName, artist: t.artistName||artistName,
-    artSm: t.artworkUrl100||null,
-    artLg: (t.artworkUrl100||'').replace('100x100bb','600x600bb')||null,
+  const playAllKey = 'apl_' + Math.random().toString(36).slice(2);
+  window['_apl_' + playAllKey] = tracks.map(t => ({
+    title: t.trackName, artist: t.artistName || artistName,
+    artSm: t.artworkUrl100 || null,
+    artLg: (t.artworkUrl100||'').replace('100x100bb','600x600bb') || null,
   }));
+
+  const followerLine = followers ? `<div class="artist-meta">${formatNumber(followers)} followers · ${tracks.length} song${tracks.length!==1?'s':''}</div>` : `<div class="artist-meta">${tracks.length} song${tracks.length!==1?'s':''}</div>`;
 
   const rowsHTML = tracks.length ? tracks.map((t, i) => {
     const sm = t.artworkUrl100 || '';
     const lg = sm.replace('100x100bb','600x600bb');
     const artCell = sm ? `<img src="${sm}" data-src="${sm}" onerror="proxyImgFallback(this)" alt="">` : '🎵';
-    const id = 'apt_'+Math.random().toString(36).slice(2);
-    (window._td=window._td||{})[id] = {
-      title: t.trackName, artist: t.artistName||artistName,
-      artSm: sm||null, artLg: lg||null, durMs: t.trackTimeMillis||null,
+    const id = 'apt_' + Math.random().toString(36).slice(2);
+    (window._td = window._td || {})[id] = {
+      title: t.trackName, artist: t.artistName || artistName,
+      artSm: sm || null, artLg: lg || null, durMs: t.trackTimeMillis || null,
+      _albumId: t._albumId || null,
     };
+    const albClick = t._albumId ? `onclick="event.stopPropagation();openAlbumPanel('${t._albumId}','${sm.replace(/'/g,"\\'")}')";style="cursor:pointer"` : '';
     return `<div class="artist-track-row" onclick="pickTrack('${id}')">
       <div class="artist-track-num">${i+1}</div>
       <div class="artist-track-art">${artCell}</div>
       <div class="artist-track-inf">
         <div class="artist-track-t">${x(t.trackName)}</div>
-        <div class="artist-track-alb">${x(t.collectionName||'')}</div>
+        <div class="artist-track-alb" ${albClick}>${x(t.collectionName||'')}</div>
       </div>
       <div class="artist-track-dur">${ms2t(t.trackTimeMillis||0)}</div>
       <div class="artist-track-add" onclick="event.stopPropagation();pickTrack('${id}')"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
@@ -1994,8 +2000,8 @@ function renderArtistProfile(artistName, tracks, heroImg, container) {
       <div class="artist-avatar">${avatarHTML}</div>
       <div class="artist-hero-info">
         <div class="artist-name-big">${x(artistName)}</div>
-        <div class="artist-meta">${tracks.length} song${tracks.length!==1?'s':''}</div>
-        <button class="artist-play-all" onclick="playAllArtist('_apl_${playAllId}')">▶ Play All</button>
+        ${followerLine}
+        <button class="artist-play-all" onclick="playAllArtist('_apl_${playAllKey}')">▶ Play All</button>
       </div>
     </div>
     <div class="artist-section-lbl">Songs</div>
@@ -2003,25 +2009,32 @@ function renderArtistProfile(artistName, tracks, heroImg, container) {
   `;
 }
 
+function formatNumber(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return String(n);
+}
+
 function playAllArtist(key) {
   const tracks = window[key]; if (!tracks?.length) return;
-  ST.queue = []; ST.idx = -1;
-  G('q-list').innerHTML = '';
+  ST.queue = []; ST.idx = -1; G('q-list').innerHTML = '';
   tracks.forEach(t => { const i = ST.queue.length; ST.queue.push({...t}); appendQI(t, i); });
-  loadTrack(0);
-  showPanel('queue');
+  loadTrack(0); showPanel('queue');
   toast('Playing artist');
 }
 
+// ─────────────────────────────────────────────
+// KEYBOARD SHORTCUTS
+// ─────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
-  const ok=ytReady&&ST.idx>=0;
-  switch(e.code){
+  if (['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) return;
+  const ok = ytReady && ST.idx >= 0;
+  switch (e.code) {
     case 'Space': e.preventDefault(); togglePlay(); break;
-    case 'ArrowRight': e.preventDefault(); if(ok)YT_player.seekTo(YT_player.getCurrentTime()+10); break;
-    case 'ArrowLeft':  e.preventDefault(); if(ok)YT_player.seekTo(Math.max(0,YT_player.getCurrentTime()-10)); break;
-    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)YT_player.setVolume(ST.vol*100);break;
-    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)YT_player.setVolume(ST.vol*100);break;
+    case 'ArrowRight': e.preventDefault(); if (ok) YT_player.seekTo(YT_player.getCurrentTime() + 10); break;
+    case 'ArrowLeft':  e.preventDefault(); if (ok) YT_player.seekTo(Math.max(0, YT_player.getCurrentTime() - 10)); break;
+    case 'ArrowUp':   e.preventDefault(); ST.vol = Math.min(1, ST.vol + .1); G('vol-f').style.width = (ST.vol*100)+'%'; if (ytReady) YT_player.setVolume(ST.vol*100); break;
+    case 'ArrowDown': e.preventDefault(); ST.vol = Math.max(0, ST.vol - .1); G('vol-f').style.width = (ST.vol*100)+'%'; if (ytReady) YT_player.setVolume(ST.vol*100); break;
     case 'KeyN': nextTrack(); break;
     case 'KeyP': prevTrack(); break;
     case 'KeyS': G('btn-sf').click(); break;
@@ -2031,6 +2044,11 @@ document.addEventListener('keydown', e => {
     case 'KeyH': G('btn-heart').click(); break;
   }
 });
+
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+checkApiStatus().then(() => apiSyncUserData());
 </script>
 </body>
 </html>
