@@ -1,3 +1,8 @@
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,68 +12,6 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
     <link rel="manifest" href="../manifest.json">
-    <script src="/scramjet/scramjet.all.js"></script>
-    <script>
-        (function () {
-            const SCRAMJET_PREFIX = '/scramjet/service/';
-            window.__nexosScramjetReady = Promise.resolve();
-
-            if (!('serviceWorker' in navigator) || typeof $scramjetLoadController !== 'function') {
-                return;
-            }
-
-            const { ScramjetController } = $scramjetLoadController();
-            const controller = new ScramjetController({
-                prefix: SCRAMJET_PREFIX,
-                files: {
-                    wasm: '/scramjet/scramjet.wasm.wasm',
-                    all: '/scramjet/scramjet.all.js',
-                    sync: '/scramjet/scramjet.sync.js'
-                },
-                flags: {
-                    serviceworkers: true,
-                    syncxhr: true
-                }
-            });
-
-            const waitForActivation = async (registration) => {
-                if (registration.active) {
-                    return;
-                }
-
-                const worker = registration.installing || registration.waiting;
-                if (!worker) {
-                    return;
-                }
-
-                await new Promise((resolve, reject) => {
-                    const onStateChange = () => {
-                        if (worker.state === 'activated') {
-                            worker.removeEventListener('statechange', onStateChange);
-                            resolve();
-                        } else if (worker.state === 'redundant') {
-                            worker.removeEventListener('statechange', onStateChange);
-                            reject(new Error('Scramjet service worker became redundant.'));
-                        }
-                    };
-
-                    worker.addEventListener('statechange', onStateChange);
-                    onStateChange();
-                });
-            };
-
-            window.__nexosScramjetController = controller;
-            window.__nexosScramjetReady = (async () => {
-                try {
-                    const registration = await navigator.serviceWorker.register('/scramjet/sw.js', { scope: SCRAMJET_PREFIX });
-                    await waitForActivation(registration);
-                    await controller.init();
-                } catch (error) {
-                    console.error('Failed to initialize Scramjet:', error);
-                }
-            })();
-        })();
-    </script>
     <style>
         @font-face {
             font-family: google sans;
@@ -2346,17 +2289,28 @@ body {
         backdrop-filter: blur(20px) saturate(180%);
         -webkit-backdrop-filter: blur(20px) saturate(180%);
         border-radius: 18px;
-        padding: 20px;
+        padding: 14px;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
         border: 1px solid rgba(255, 255, 255, 0.5);
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 10px;
         color: #1a1a1a;
         font-family: 'google sans', sans-serif;
+        overflow: hidden;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
 
     .control-center-menu.visible {
+    }
+
+    .cc-icon-btn:hover, .cc-action-btn:hover {
+        background: rgba(0,0,0,0.06) !important;
+    }
+
+    .cc-icon-btn:active, .cc-action-btn:active {
+        background: rgba(0,0,0,0.12) !important;
+        transform: scale(0.95);
     }
 
     .cc-header {
@@ -2468,6 +2422,19 @@ body {
     
     .cc-btn.active svg {
         color: white !important;
+    }
+
+    #ccSubPanel {
+        transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease;
+    }
+
+    #ccSubPanel > div {
+        animation: ccSubPanelSlideIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    @keyframes ccSubPanelSlideIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     .time-date-container {
         position: relative;
@@ -2673,6 +2640,94 @@ body {
         max-width: 300px;
     }
 
+    #settingsMenu {
+        right: 130px;
+        width: 180px;
+        height: auto;
+        border-radius: 10px;
+        padding: 0 !important;
+        overflow: hidden;
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        background: rgba(255,255,255,0.82) !important;
+        border: 0.5px solid rgba(0,0,0,0.08) !important;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06) !important;
+    }
+    #settingsMenu .s-section-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        padding: 10px 12px 6px;
+        margin: 0;
+    }
+    #settingsMenu .s-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 12px;
+        font-size: 13px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: #1d1d1f;
+        cursor: pointer;
+        transition: background 0.12s;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+    }
+    #settingsMenu .s-option:hover {
+        background: rgba(0,0,0,0.04);
+    }
+    #settingsMenu .s-option.active {
+        color: #007aff;
+    }
+    #settingsMenu .s-option .s-check {
+        width: 14px;
+        height: 14px;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+    #settingsMenu .s-option.active .s-check {
+        opacity: 1;
+    }
+    #settingsMenu .s-divider {
+        height: 0.5px;
+        background: rgba(0,0,0,0.08);
+        margin: 2px 0;
+    }
+
+    .tab-bar.rounded-mode {
+        transition: filter 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .tab-bar.rounded-mode .tab {
+        border-radius: 10px !important;
+        transition: transform 0.35s cubic-bezier(0.4,0,0.2,1),
+                    opacity 0.15s cubic-bezier(0.4,0,0.2,1),
+                    border-radius 0.35s cubic-bezier(0.4,0,0.2,1);
+        transform: translateY(-4px);
+    }
+
+    .tab-bar.rounded-mode .tab.sliding {
+        transition: none !important;
+    }
+
+    .tab-bar.rounded-mode .tab.active::before,
+    .tab-bar.rounded-mode .tab.active::after,
+    .tab-bar.rounded-mode .tab:hover:not(.active)::before,
+    .tab-bar.rounded-mode .tab:hover:not(.active)::after {
+        display: none !important;
+    }
+
+    .tab-bar.rounded-entering {
+        filter: blur(6px);
+    }
+    .tab-bar.rounded-leaving {
+        filter: blur(6px);
+    }
+
     </style>
 </head>
 <body>
@@ -2686,6 +2741,18 @@ body {
                 <i data-lucide="plus" width="16" height="16"></i>
             </button>
         </div>
+        <script>
+        // Apply saved tab style immediately to prevent flash of wrong style
+        (function() {
+            var TAB_STYLE_KEY = 'nexos_tab_style';
+            try {
+                var saved = localStorage.getItem(TAB_STYLE_KEY);
+                if (saved === 'rounded') {
+                    document.getElementById('tabBar').classList.add('rounded-mode');
+                }
+            } catch(e) {}
+        })();
+        </script>
 
         <div class="address-bar-container" id="addressBarContainer"> 
             <div class="nav-controls">
@@ -3119,7 +3186,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab && tab.currentUrl) {
-                        const embedUrl = '/scramjet/service/' + encodeURIComponent(tab.currentUrl);
+                        const embedUrl = '/active/embed.html?URL=' + encodeURIComponent(tab.currentUrl);
                         this._allowRealOpen = true;
                         window.open(embedUrl, '_blank');
                     }
@@ -4539,7 +4606,7 @@ if (this.isBlockedUrl(url)) {
                 }
 
                 if (url.toLowerCase() === 'ngg') {
-                    this.loadUrl('/scramjet/service/' + encodeURIComponent('https://now.gg'));
+                    this.loadUrl('/active/embed.html?url=https://now.gg');
                     return;
                 }
 
@@ -4572,10 +4639,10 @@ if (this.isBlockedUrl(url)) {
                     if (!url.startsWith('http://') && !url.startsWith('https://')) {
                         url = 'https://' + url;
                     }
-                    url = `/scramjet/service/${encodeURIComponent(url)}`;
+                    url = `/active/embed.html?url=${encodeURIComponent(url)}`;
                 } else {
                     const searchUrl = `https://duckduckgo.com/?ia=web&origin=funnel_home_google&t=h_&q=${encodeURIComponent(url)}`;
-                    url = `/scramjet/service/${encodeURIComponent(searchUrl)}`;
+                    url = `/active/embed.html?url=${encodeURIComponent(searchUrl)}`;
                 }
 
                 this.loadUrl(url);
@@ -4604,13 +4671,9 @@ if (this.isBlockedUrl(url)) {
                 return urlPattern.test(input) || localhostPattern.test(input) || input.includes('.');
             }
 
-            async loadUrl(url) {
+            loadUrl(url) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
-
-                if (typeof url === 'string' && url.startsWith('/scramjet/service/') && window.__nexosScramjetReady) {
-                    await window.__nexosScramjetReady;
-                }
 
                 this.showLoading();
                 tab.url = url;
@@ -4628,21 +4691,6 @@ if (this.isBlockedUrl(url)) {
             }
 
             extractOriginalUrl(proxyUrl) {
-                const scramjetPath = '/scramjet/service/';
-                const scramjetOriginPath = location.origin + scramjetPath;
-
-                if (typeof proxyUrl === 'string' && (proxyUrl.startsWith(scramjetPath) || proxyUrl.startsWith(scramjetOriginPath))) {
-                    const encoded = proxyUrl.startsWith(scramjetOriginPath)
-                        ? proxyUrl.slice(scramjetOriginPath.length)
-                        : proxyUrl.slice(scramjetPath.length);
-                    const encodedUrl = encoded.split('#')[0];
-
-                    try {
-                        return decodeURIComponent(encodedUrl);
-                    } catch (e) {
-                    }
-                }
-
                 const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
@@ -4861,7 +4909,7 @@ if (this.isBlockedUrl(url)) {
                                             const currentEntry = history[currentIndex];
                                             const currentExtracted = this.extractOriginalUrl(currentEntry || '');
                                             if (currentExtracted !== realUrl) {
-                                                const proxyUrl = `/scramjet/service/${encodeURIComponent(realUrl)}`;
+                                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
                                                 history.splice(currentIndex + 1);
                                                 history.push(proxyUrl);
                                                 this.historyIndex[this.activeTabId] = history.length - 1;
@@ -4948,7 +4996,7 @@ if (this.isBlockedUrl(url)) {
                     this.showLoading();
                     let urlToLoad = tab.iframe.src;
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
-                        urlToLoad = `/scramjet/service/${encodeURIComponent(tab.currentUrl)}`;
+                        urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
                     }
                     tab.iframe.src = 'about:blank';
                     setTimeout(() => {
@@ -5146,7 +5194,7 @@ if (this.isBlockedUrl(url)) {
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
                             const url = e.data.url;
-                            const proxyUrl = '/scramjet/service/' + encodeURIComponent(url);
+                            const proxyUrl = '/active/embed.html?url=' + encodeURIComponent(url);
                             tab.iframe.src = proxyUrl;
                             tab.url = proxyUrl;
                             tab.currentUrl = url;
@@ -6075,11 +6123,13 @@ if (this.isBlockedUrl(url)) {
 
 const brightnessSlider = document.getElementById('brightnessSlider');
 
-brightnessSlider.addEventListener('input', (e) => {
-    const val = e.target.value;
-    const opacity = 1 - (val / 100);
-    document.getElementById('contentArea').style.opacity = opacity;
-});
+if (brightnessSlider) {
+    brightnessSlider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        const opacity = 1 - (val / 100);
+        document.getElementById('contentArea').style.opacity = opacity;
+    });
+}
 
     focusCloseBtn.addEventListener('click', () => {
         focusOverlay.classList.remove('visible');
@@ -6403,50 +6453,53 @@ menu.addEventListener('mouseleave', hideMenu);
                 <span id="current-date" class="date-box" aria-label="Current date"></span>
             </div>
 
-            <div class="taskbar-quick-divider"></div>
 
-            <div style="position:relative;">
-                <button class="taskbar-quick-btn" id="qsProfile" title="Profile">
-                    <i data-lucide="user" width="15" height="15" style="color:#000"></i>
-                </button>
-            </div>
-            <div style="position:relative;">
-                <button class="taskbar-quick-btn" id="qsSave" title="Save">
-                    <i data-lucide="download" width="15" height="15" style="color:#000"></i>
-                </button>
-            </div>
-            
-            <div id="profileMenu" class="profile-menu-popup">
-                <iframe src="/dashboard" style="width:100%;height:100%;border:none;"></iframe>
-            </div>
-            <div id="saveMenu" class="profile-menu-popup">
-                <iframe src="/save.html" style="width:100%;height:100%;border:none;"></iframe>
-            </div>
-            <button class="taskbar-quick-btn" id="qsPower" title="Power Off" style="color:#000;">
-                <i data-lucide="power" width="15" height="15" style="color:#000"></i>
-            </button>
+
         </div>
     </div>
 
     <div class="cc-annc-wrapper" id="ccAnncWrapper">
-        <div class="control-center-menu" id="controlCenterMenu">
-            <div class="cc-header">
-                <div>
-                    <div class="cc-time-large" id="ccTime">12:00</div>
-                    <div class="cc-date-large" id="ccDate">Monday, Jan 1</div>
+        <div class="control-center-menu" id="controlCenterMenu" style="overflow:hidden;transition:max-height 0.4s cubic-bezier(0.25,0.46,0.45,0.94), padding 0.3s ease;">
+            
+            <!-- Top row: slider bar with gear icons - EXACT match to image -->
+            <div class="cc-slider-bar-row" style="display:flex;align-items:center;gap:8px;">
+                <div class="cc-slider-pill" id="ccDimnessPill" style="flex:1;display:flex;align-items:center;background:rgba(180,195,230,0.45);border-radius:22px;padding:8px 12px;gap:8px;position:relative;overflow:hidden;cursor:pointer;touch-action:none;user-select:none;">
+                    <div class="cc-icon-btn" id="ccSunIcon" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;z-index:2;flex-shrink:0;">
+                        <i data-lucide="sun" width="16" height="16" style="color:#444;"></i>
+                    </div>
+                    <div style="flex:1;position:relative;height:100%;border-radius:18px;z-index:1;"></div>
+                    <div id="ccSliderFill" style="position:absolute;top:0;left:0;bottom:0;width:100%;background:rgba(160,175,220,0.55);border-radius:22px;pointer-events:none;transition:width 0.15s ease;"></div>
                 </div>
-                <div class="cc-battery-large">
-                    <i data-lucide="battery" width="16" height="16"></i>
-                    <span id="ccBatteryLevel">100%</span>
-                </div>
+                <button class="cc-icon-btn" id="ccSettingsBtn2" title="Settings" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;flex-shrink:0;transition:background 0.2s;">
+                    <i data-lucide="settings" width="16" height="16" style="color:#444;"></i>
+                </button>
+                <button class="cc-icon-btn" id="ccExpandBtn" title="Expand" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;flex-shrink:0;transition:background 0.2s;">
+                    <i data-lucide="chevron-right" width="16" height="16" style="color:#444;"></i>
+                </button>
             </div>
 
-            <div class="cc-section">
-                <div class="cc-slider-row">
-                    <i data-lucide="sun" width="18" height="18" class="cc-slider-icon"></i>
-                    <input type="range" class="cc-slider" min="0" max="100" value="100" id="brightnessSlider">
+            <!-- Bottom row: power, profile, download, battery - EXACT match to image -->
+            <div class="cc-actions-row" style="display:flex;align-items:center;background:rgba(255,255,255,0.5);border-radius:22px;padding:6px 12px;gap:4px;">
+                <div style="display:flex;align-items:center;gap:0;">
+                    <button class="cc-action-btn" id="ccPowerBtn" title="Power Off" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
+                        <i data-lucide="power" width="16" height="16" style="color:#333;"></i>
+                    </button>
+                    <button class="cc-action-btn" id="ccPowerDropdown" title="Power Options" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:18px;height:32px;border-radius:8px;transition:background 0.2s;margin-left:-4px;">
+                        <i data-lucide="chevron-down" width="12" height="12" style="color:#555;"></i>
+                    </button>
                 </div>
+                <button class="cc-action-btn" id="ccProfileBtn" title="Profile" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
+                    <i data-lucide="users" width="16" height="16" style="color:#333;"></i>
+                </button>
+                <button class="cc-action-btn" id="ccSaveBtn" title="Save" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
+                    <i data-lucide="download" width="16" height="16" style="color:#333;"></i>
+                </button>
+                <div style="flex:1;"></div>
+                <span id="ccBatteryInfo" style="font-size:13px;color:#444;white-space:nowrap;font-family:'google sans',sans-serif;font-weight:400;">80% - 2:35 left</span>
             </div>
+
+            <!-- Sub-panels that open inside the control center -->
+            <div id="ccSubPanel" style="overflow:hidden;max-height:0;transition:max-height 0.4s cubic-bezier(0.25,0.46,0.45,0.94);"></div>
         </div>
 
         <div class="annc-panel" id="anncPanel">
@@ -6803,7 +6856,7 @@ menu.addEventListener('mouseleave', hideMenu);
     var quickServices = [
         { id: 'qsCalculator', title: 'Calculator', url: '/desmos/', type: 'iframe' },
         { id: 'qsTimer',      title: 'Timer',      url: null, type: 'custom', builder: buildTimerContent },
-        { id: 'qsTranslate',  title: 'Translate',   url: '/scramjet/service/' + encodeURIComponent('https://translate.google.com/?sl=auto&tl=en&op=translate'), type: 'iframe' },
+        { id: 'qsTranslate',  title: 'Translate',   url: '/active/embed.html?url=https://translate.google.com/?sl=auto&tl=en&op=translate', type: 'iframe' },
         { id: 'qsNotes',      title: 'Quick Notes',  url: null, type: 'custom', builder: buildNotesContent },
         { id: 'qsConvert',    title: 'Unit Converter', url: null, type: 'custom', builder: buildConverterContent }
     ];
@@ -7032,7 +7085,30 @@ menu.addEventListener('mouseleave', hideMenu);
     }
 
     function initPower() {
-        var powerBtn = document.getElementById('qsPower');
+        var subPanel = document.getElementById('ccSubPanel');
+        var currentSubPanel = null;
+
+        function openSubPanel(contentHtml, height) {
+            if (subPanel.innerHTML && currentSubPanel === contentHtml) {
+                closeSubPanel();
+                return;
+            }
+            currentSubPanel = contentHtml;
+            subPanel.innerHTML = contentHtml;
+            subPanel.style.maxHeight = height + 'px';
+            subPanel.style.opacity = '1';
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function closeSubPanel() {
+            subPanel.style.maxHeight = '0px';
+            subPanel.style.opacity = '0';
+            currentSubPanel = null;
+            setTimeout(function() { if (!currentSubPanel) subPanel.innerHTML = ''; }, 400);
+        }
+
+        // Power button
+        var powerBtn = document.getElementById('ccPowerBtn');
         if (powerBtn) {
             powerBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -7040,52 +7116,258 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        var profileBtn = document.getElementById('qsProfile');
-        var profileMenu = document.getElementById('profileMenu');
-        var saveBtn = document.getElementById('qsSave');
-        var saveMenu = document.getElementById('saveMenu');
-        if (profileBtn && profileMenu) {
+        // Profile button -> opens profile sub-panel inside CC
+        var profileBtn = document.getElementById('ccProfileBtn');
+        if (profileBtn) {
             profileBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (saveMenu) saveMenu.classList.remove('visible');
-                if (profileMenu.classList.contains('visible')) {
-                    profileMenu.classList.remove('visible');
-                } else {
-                    var ccWrapper = document.getElementById('ccAnncWrapper');
-                    var tdc = document.getElementById('timeDateContainer');
-                    if (ccWrapper) ccWrapper.classList.remove('visible');
-                    if (tdc) tdc.classList.remove('expanded');
-                    
-                    profileMenu.classList.add('visible');
-                }
-            });
-            document.addEventListener('click', function(e) {
-                if (!profileMenu.contains(e.target) && e.target !== profileBtn && !profileBtn.contains(e.target)) {
-                    profileMenu.classList.remove('visible');
-                }
+                openSubPanel('<div style="border-radius:14px;overflow:hidden;height:350px;border:1px solid rgba(0,0,0,0.06);"><iframe src="/dashboard" style="width:100%;height:100%;border:none;"></iframe></div>', 360);
             });
         }
-        if (saveBtn && saveMenu) {
+
+        // Save/Download button -> opens save sub-panel inside CC
+        var saveBtn = document.getElementById('ccSaveBtn');
+        if (saveBtn) {
             saveBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                if (profileMenu) profileMenu.classList.remove('visible');
-                if (saveMenu.classList.contains('visible')) {
-                    saveMenu.classList.remove('visible');
-                } else {
-                    var ccWrapper = document.getElementById('ccAnncWrapper');
-                    var tdc = document.getElementById('timeDateContainer');
-                    if (ccWrapper) ccWrapper.classList.remove('visible');
-                    if (tdc) tdc.classList.remove('expanded');
-                    
-                    saveMenu.classList.add('visible');
-                }
+                openSubPanel('<div style="border-radius:14px;overflow:hidden;height:350px;border:1px solid rgba(0,0,0,0.06);"><iframe src="/save.html" style="width:100%;height:100%;border:none;"></iframe></div>', 360);
             });
-            document.addEventListener('click', function(e) {
-                if (!saveMenu.contains(e.target) && e.target !== saveBtn && !saveBtn.contains(e.target)) {
-                    saveMenu.classList.remove('visible');
+        }
+
+        // Settings buttons (both gear icons open settings)
+        var settingsBtn1 = document.getElementById('ccSettingsBtn1');
+        var settingsBtn2 = document.getElementById('ccSettingsBtn2');
+        
+        var settingsContent = '<div style="padding:8px 0;">' +
+            '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:10px 12px 6px;">Tab Style</div>' +
+            '<button class="cc-settings-option" id="ccTabStyleRounded" data-style="rounded" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Rounded</span>' +
+            '<svg class="s-check" viewBox="0 0 14 14" fill="none" width="14" height="14" style="opacity:0;transition:opacity 0.15s;"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccTabStyleMasked" data-style="masked" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Chrome</span>' +
+            '<svg class="s-check" viewBox="0 0 14 14" fill="none" width="14" height="14" style="opacity:0;transition:opacity 0.15s;"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+            '</div>';
+
+        function openSettingsPanel(e) {
+            e.stopPropagation();
+            openSubPanel(settingsContent, 120);
+            setTimeout(initTabStyleButtons, 50);
+        }
+
+        if (settingsBtn2) settingsBtn2.addEventListener('click', openSettingsPanel);
+
+        // Expand button - just toggles sub-panel closed
+        var expandBtn = document.getElementById('ccExpandBtn');
+        if (expandBtn) {
+            expandBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (currentSubPanel) {
+                    closeSubPanel();
                 }
             });
         }
+
+        // Power dropdown
+        var powerDropdown = document.getElementById('ccPowerDropdown');
+        if (powerDropdown) {
+            powerDropdown.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openSubPanel(
+                    '<div style="padding:4px 0;">' +
+                    '<button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background=\'rgba(0,0,0,0.04)\'" onmouseout="this.style.background=\'none\'" onclick="window.location.href=\'/login\'">' +
+                    '<i data-lucide="power" width="14" height="14" style="color:#555;"></i><span>Sign Out</span></button>' +
+                    '<button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background=\'rgba(0,0,0,0.04)\'" onmouseout="this.style.background=\'none\'" onclick="window.location.href=\'/login\'">' +
+                    '<i data-lucide="log-out" width="14" height="14" style="color:#555;"></i><span>Lock</span></button>' +
+                    '</div>', 90
+                );
+            });
+        }
+
+        // Tab style logic
+        var TAB_STYLE_KEY = 'nexos_tab_style';
+        var tabBar = document.getElementById('tabBar');
+
+        function initTabStyleButtons() {
+            var maskedBtn = document.getElementById('ccTabStyleMasked');
+            var roundedBtn = document.getElementById('ccTabStyleRounded');
+            if (!maskedBtn || !roundedBtn) return;
+
+            var currentStyle = 'masked';
+            try { currentStyle = localStorage.getItem(TAB_STYLE_KEY) || 'masked'; } catch(e) {}
+            updateCheckmarks(currentStyle);
+
+            maskedBtn.addEventListener('click', function() { applyTabStyle('masked', true); });
+            roundedBtn.addEventListener('click', function() { applyTabStyle('rounded', true); });
+        }
+
+        function updateCheckmarks(style) {
+            var maskedBtn = document.getElementById('ccTabStyleMasked');
+            var roundedBtn = document.getElementById('ccTabStyleRounded');
+            if (!maskedBtn || !roundedBtn) return;
+            var maskedCheck = maskedBtn.querySelector('.s-check');
+            var roundedCheck = roundedBtn.querySelector('.s-check');
+            if (style === 'rounded') {
+                if (roundedCheck) roundedCheck.style.opacity = '1';
+                if (maskedCheck) maskedCheck.style.opacity = '0';
+                roundedBtn.style.color = '#007aff';
+                maskedBtn.style.color = '#1d1d1f';
+            } else {
+                if (maskedCheck) maskedCheck.style.opacity = '1';
+                if (roundedCheck) roundedCheck.style.opacity = '0';
+                maskedBtn.style.color = '#007aff';
+                roundedBtn.style.color = '#1d1d1f';
+            }
+        }
+
+        function applyTabStyle(style, animate) {
+            if (style === 'rounded') {
+                if (animate) {
+                    tabBar.classList.add('rounded-entering');
+                    setTimeout(function() {
+                        tabBar.classList.add('rounded-mode');
+                        setTimeout(function() {
+                            tabBar.classList.remove('rounded-entering');
+                        }, 50);
+                    }, 180);
+                } else {
+                    tabBar.classList.add('rounded-mode');
+                }
+            } else {
+                if (animate) {
+                    tabBar.classList.add('rounded-leaving');
+                    setTimeout(function() {
+                        tabBar.classList.remove('rounded-mode');
+                        setTimeout(function() {
+                            tabBar.classList.remove('rounded-leaving');
+                        }, 50);
+                    }, 180);
+                } else {
+                    tabBar.classList.remove('rounded-mode');
+                }
+            }
+            updateCheckmarks(style);
+            try { localStorage.setItem(TAB_STYLE_KEY, style); } catch(e) {}
+        }
+
+        // Apply saved tab style on load
+        var savedStyle = 'masked';
+        try { savedStyle = localStorage.getItem(TAB_STYLE_KEY) || 'masked'; } catch(e) {}
+        applyTabStyle(savedStyle, false);
+
+        // Update battery info in control center
+        function updateCCBatteryInfo() {
+            if ("getBattery" in navigator) {
+                navigator.getBattery().then(function(battery) {
+                    var level = Math.round(battery.level * 100);
+                    var charging = battery.charging;
+                    var timeLeft = '';
+                    if (!charging && battery.dischargingTime && battery.dischargingTime !== Infinity) {
+                        var hrs = Math.floor(battery.dischargingTime / 3600);
+                        var mins = Math.floor((battery.dischargingTime % 3600) / 60);
+                        timeLeft = ' - ' + hrs + ':' + String(mins).padStart(2, '0') + ' left';
+                    } else if (charging) {
+                        timeLeft = ' - Charging';
+                    }
+                    var el = document.getElementById('ccBatteryInfo');
+                    if (el) el.textContent = level + '%' + timeLeft;
+                });
+            }
+        }
+        updateCCBatteryInfo();
+        if ("getBattery" in navigator) {
+            navigator.getBattery().then(function(battery) {
+                battery.addEventListener("levelchange", updateCCBatteryInfo);
+                battery.addEventListener("chargingchange", updateCCBatteryInfo);
+            });
+        }
+
+        // === DIMNESS DRAGGER on the blue pill bar ===
+        (function() {
+            var pill = document.getElementById('ccDimnessPill');
+            var fill = document.getElementById('ccSliderFill');
+            if (!pill || !fill) return;
+
+            var dimness = 0; // 0 = full brightness, 100 = fully dim
+            try {
+                var saved = localStorage.getItem('nexos_dimness');
+                if (saved !== null) {
+                    dimness = parseFloat(saved);
+                    applyDimness(dimness);
+                }
+            } catch(e) {}
+
+            var dragging = false;
+
+            function getDimnessFromX(clientX) {
+                var rect = pill.getBoundingClientRect();
+                var x = clientX - rect.left;
+                var pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
+                return 100 - pct; // left = bright (fill full), right = dim (fill empty)
+            }
+
+            function applyDimness(val) {
+                dimness = val;
+                var brightness = 100 - val;
+                fill.style.width = brightness + '%';
+                fill.style.transition = dragging ? 'none' : 'width 0.15s ease';
+                // Apply actual screen dimness
+                var contentArea = document.getElementById('contentArea');
+                if (contentArea) contentArea.style.filter = 'brightness(' + (brightness / 100) + ')';
+                try { localStorage.setItem('nexos_dimness', val); } catch(e) {}
+            }
+
+            pill.addEventListener('mousedown', function(e) {
+                if (e.target.closest('.cc-icon-btn')) return; // don't drag when clicking settings icon
+                e.preventDefault();
+                dragging = true;
+                applyDimness(getDimnessFromX(e.clientX));
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!dragging) return;
+                e.preventDefault();
+                applyDimness(getDimnessFromX(e.clientX));
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (dragging) {
+                    dragging = false;
+                    fill.style.transition = 'width 0.15s ease';
+                }
+            });
+
+            // Touch support
+            pill.addEventListener('touchstart', function(e) {
+                if (e.target.closest('.cc-icon-btn')) return;
+                dragging = true;
+                applyDimness(getDimnessFromX(e.touches[0].clientX));
+            }, { passive: true });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!dragging) return;
+                applyDimness(getDimnessFromX(e.touches[0].clientX));
+            }, { passive: true });
+
+            document.addEventListener('touchend', function() {
+                if (dragging) {
+                    dragging = false;
+                    fill.style.transition = 'width 0.15s ease';
+                }
+            });
+
+            // Init fill on load
+            applyDimness(dimness);
+        })();
+
+        // Close sub-panel when clicking outside
+        document.addEventListener('click', function(e) {
+            var ccMenu = document.getElementById('controlCenterMenu');
+            if (ccMenu && !ccMenu.contains(e.target)) {
+                closeSubPanel();
+            }
+        });
     }
 
     function initQuickServices() {
@@ -7230,6 +7512,8 @@ menu.addEventListener('mouseleave', hideMenu);
         if (profileMenu) profileMenu.classList.remove('visible');
         var saveMenu = document.getElementById('saveMenu');
         if (saveMenu) saveMenu.classList.remove('visible');
+        var settingsMenu = document.getElementById('settingsMenu');
+        if (settingsMenu) settingsMenu.classList.remove('visible');
         var aiMenuModal = document.getElementById('aiMenuModal');
         if (aiMenuModal) aiMenuModal.classList.remove('show');
         var globalLayout = document.getElementById('global-layout-options-menu');
