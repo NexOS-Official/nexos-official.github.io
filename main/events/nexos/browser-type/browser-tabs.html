@@ -2742,7 +2742,6 @@ body {
             </button>
         </div>
         <script>
-        // Apply saved tab style immediately to prevent flash of wrong style
         (function() {
             var TAB_STYLE_KEY = 'nexos_tab_style';
             try {
@@ -7107,7 +7106,6 @@ menu.addEventListener('mouseleave', hideMenu);
             setTimeout(function() { if (!currentSubPanel) subPanel.innerHTML = ''; }, 400);
         }
 
-        // Power button
         var powerBtn = document.getElementById('ccPowerBtn');
         if (powerBtn) {
             powerBtn.addEventListener('click', function(e) {
@@ -7116,7 +7114,6 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // Profile button -> opens profile sub-panel inside CC
         var profileBtn = document.getElementById('ccProfileBtn');
         if (profileBtn) {
             profileBtn.addEventListener('click', function(e) {
@@ -7125,7 +7122,6 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // Save/Download button -> opens save sub-panel inside CC
         var saveBtn = document.getElementById('ccSaveBtn');
         if (saveBtn) {
             saveBtn.addEventListener('click', function(e) {
@@ -7134,7 +7130,6 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // Settings buttons (both gear icons open settings)
         var settingsBtn1 = document.getElementById('ccSettingsBtn1');
         var settingsBtn2 = document.getElementById('ccSettingsBtn2');
         
@@ -7158,7 +7153,6 @@ menu.addEventListener('mouseleave', hideMenu);
 
         if (settingsBtn2) settingsBtn2.addEventListener('click', openSettingsPanel);
 
-        // Expand button - just toggles sub-panel closed
         var expandBtn = document.getElementById('ccExpandBtn');
         if (expandBtn) {
             expandBtn.addEventListener('click', function(e) {
@@ -7169,7 +7163,6 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // Power dropdown
         var powerDropdown = document.getElementById('ccPowerDropdown');
         if (powerDropdown) {
             powerDropdown.addEventListener('click', function(e) {
@@ -7185,7 +7178,6 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // Tab style logic
         var TAB_STYLE_KEY = 'nexos_tab_style';
         var tabBar = document.getElementById('tabBar');
 
@@ -7251,12 +7243,10 @@ menu.addEventListener('mouseleave', hideMenu);
             try { localStorage.setItem(TAB_STYLE_KEY, style); } catch(e) {}
         }
 
-        // Apply saved tab style on load
         var savedStyle = 'masked';
         try { savedStyle = localStorage.getItem(TAB_STYLE_KEY) || 'masked'; } catch(e) {}
         applyTabStyle(savedStyle, false);
 
-        // Update battery info in control center
         function updateCCBatteryInfo() {
             if ("getBattery" in navigator) {
                 navigator.getBattery().then(function(battery) {
@@ -7283,13 +7273,12 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // === DIMNESS DRAGGER on the blue pill bar ===
         (function() {
             var pill = document.getElementById('ccDimnessPill');
             var fill = document.getElementById('ccSliderFill');
             if (!pill || !fill) return;
 
-            var dimness = 0; // 0 = full brightness, 100 = fully dim
+            var dimness = 0;
             try {
                 var saved = localStorage.getItem('nexos_dimness');
                 if (saved !== null) {
@@ -7304,7 +7293,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 var rect = pill.getBoundingClientRect();
                 var x = clientX - rect.left;
                 var pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
-                return 100 - pct; // left = bright (fill full), right = dim (fill empty)
+                return 100 - pct;
             }
 
             function applyDimness(val) {
@@ -7312,14 +7301,13 @@ menu.addEventListener('mouseleave', hideMenu);
                 var brightness = 100 - val;
                 fill.style.width = brightness + '%';
                 fill.style.transition = dragging ? 'none' : 'width 0.15s ease';
-                // Apply actual screen dimness
                 var contentArea = document.getElementById('contentArea');
                 if (contentArea) contentArea.style.filter = 'brightness(' + (brightness / 100) + ')';
                 try { localStorage.setItem('nexos_dimness', val); } catch(e) {}
             }
 
             pill.addEventListener('mousedown', function(e) {
-                if (e.target.closest('.cc-icon-btn')) return; // don't drag when clicking settings icon
+                if (e.target.closest('.cc-icon-btn')) return;
                 e.preventDefault();
                 dragging = true;
                 applyDimness(getDimnessFromX(e.clientX));
@@ -7338,7 +7326,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 }
             });
 
-            // Touch support
             pill.addEventListener('touchstart', function(e) {
                 if (e.target.closest('.cc-icon-btn')) return;
                 dragging = true;
@@ -7357,11 +7344,9 @@ menu.addEventListener('mouseleave', hideMenu);
                 }
             });
 
-            // Init fill on load
             applyDimness(dimness);
         })();
 
-        // Close sub-panel when clicking outside
         document.addEventListener('click', function(e) {
             var ccMenu = document.getElementById('controlCenterMenu');
             if (ccMenu && !ccMenu.contains(e.target)) {
