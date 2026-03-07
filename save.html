@@ -48,9 +48,7 @@ body {
   width: 34px;
 }
 
-.top-spacer {
-  height: 42px;
-}
+.top-spacer { height: 42px; }
 
 h2 {
   margin: 22px 0 6px 0;
@@ -64,9 +62,7 @@ h2 {
   margin-bottom: 30px;
 }
 
-.section {
-  margin-bottom: 32px;
-}
+.section { margin-bottom: 32px; }
 
 .section h3 {
   font-size: 16px;
@@ -106,13 +102,9 @@ button:hover { opacity: 0.88; }
   border: 1px solid #e6e6e6;
 }
 
-.secondary:hover {
-  background: #ededed;
-}
+.secondary:hover { background: #ededed; }
 
-.danger {
-  background: #000;
-}
+.danger { background: #000; }
 
 .note {
   font-size: 13px;
@@ -146,182 +138,295 @@ button:hover { opacity: 0.88; }
 
 <div class="card">
 
-  <div class="logo">
-    <img src="/assets/ghostincimgs/ghost_dark_logo.svg" alt="Ghost">
-  </div>
+<div class="logo">
+<img src="/assets/ghostincimgs/ghost_dark_logo.svg">
+</div>
 
-  <div class="top-spacer"></div>
+<div class="top-spacer"></div>
 
-  <h2>Backup</h2>
-  <div class="subtitle">Manage your Ghost data</div>
+<h2>Backup</h2>
+<div class="subtitle">Manage your Ghost data</div>
 
-  <div class="section">
-    <h3>Export</h3>
-    <button id="exportFull">Download Full Backup (.ghost)</button>
-  </div>
+<div class="section">
+<h3>Export</h3>
+<button id="exportFull">Download Full Backup (.ghost)</button>
+</div>
 
-  <div class="section">
-    <h3>Import</h3>
-    <input type="file" id="importFile" accept=".json,.ghost">
-    <button id="restoreAll">Restore Everything</button>
-    <button id="restoreStorage" class="secondary">Restore LocalStorage Only</button>
-    <button id="restoreCookies" class="secondary">Restore Cookies Only</button>
-  </div>
+<div class="section">
+<h3>Import</h3>
+<input type="file" id="importFile" accept=".json,.ghost">
+<button id="restoreAll">Restore Everything</button>
+<button id="restoreStorage" class="secondary">Restore LocalStorage Only</button>
+<button id="restoreCookies" class="secondary">Restore Cookies Only</button>
+</div>
 
-  <div class="section">
-    <h3>RESET</h3>
-    <button id="wipeAll" class="danger">Factory Reset</button>
-    <div class="note">This permanently deletes all local data.</div>
-  </div>
+<div class="section">
+<h3>RESET</h3>
+<button id="wipeAll" class="danger">Factory Reset</button>
+<div class="note">This permanently deletes all local data.</div>
+</div>
 
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const toast = (msg) => {
-  const el = document.getElementById("toast");
-  el.textContent = msg;
-  el.classList.add("show");
-  setTimeout(() => el.classList.remove("show"), 2500);
+const toast=(msg)=>{
+const el=document.getElementById("toast");
+el.textContent=msg;
+el.classList.add("show");
+setTimeout(()=>el.classList.remove("show"),2500);
 };
 
-const BackupSystem = {
+async function exportIndexedDB(){
+if(!indexedDB.databases) return {};
+const dbs=await indexedDB.databases();
+const result={};
 
-  version: "2.1",
+for(const dbInfo of dbs){
+try{
+const name=dbInfo.name;
 
-  generate() {
-    return {
-      meta: {
-        version: this.version,
-        site: location.origin,
-        exportedAt: new Date().toISOString()
-      },
-      localStorage: { ...localStorage },
-      cookies: document.cookie
-        .split("; ")
-        .filter(Boolean)
-        .map(cookie => {
-          const [name, ...rest] = cookie.split("=");
-          return {
-            name,
-            value: rest.join("="),
-            path: "/"
-          };
-        })
-    };
-  },
+const db=await new Promise(resolve=>{
+const req=indexedDB.open(name);
+req.onsuccess=()=>resolve(req.result);
+req.onerror=()=>resolve(null);
+});
 
-  download() {
-    const data = this.generate();
+if(!db) continue;
 
-    const blob = new Blob(
-      [JSON.stringify(data, null, 2)],
-      { type: "application/json" }
-    );
+result[name]={};
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ghost-backup-${Date.now()}.ghost`;
-    a.click();
-    URL.revokeObjectURL(url);
+for(const storeName of db.objectStoreNames){
 
-    toast("Backup downloaded.");
-  },
+const tx=db.transaction(storeName,"readonly");
+const store=tx.objectStore(storeName);
 
-  async readFile(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          resolve(JSON.parse(reader.result));
-        } catch {
-          reject();
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsText(file);
-    });
-  },
+const data=await new Promise(resolve=>{
+const req=store.getAll();
+req.onsuccess=()=>resolve(req.result);
+req.onerror=()=>resolve([]);
+});
 
-  validate(data) {
-    if (!data.meta || !data.localStorage || !data.cookies)
-      throw new Error("Invalid backup structure.");
-  },
+result[name][storeName]=data;
 
-  restoreStorage(data) {
-    localStorage.clear();
-    Object.entries(data.localStorage).forEach(([k, v]) => {
-      localStorage.setItem(k, v);
-    });
-  },
+}
 
-  restoreCookies(data) {
-    data.cookies.forEach(cookie => {
-      document.cookie = `${cookie.name}=${cookie.value};path=/`;
-    });
-  },
+}catch(e){}
+}
 
-  wipe() {
-    localStorage.clear();
+return result;
+}
 
-    document.cookie.split(";").forEach(cookie => {
-      const name = cookie.split("=")[0].trim();
-      document.cookie =
-        `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-    });
-  }
+const BackupSystem={
+
+version:"3.0",
+
+async generate(){
+
+const indexedDBData=await exportIndexedDB();
+
+return{
+meta:{
+version:this.version,
+site:location.origin,
+exportedAt:new Date().toISOString()
+},
+
+localStorage:{...localStorage},
+sessionStorage:{...sessionStorage},
+
+cookies:document.cookie
+.split("; ")
+.filter(Boolean)
+.map(cookie=>{
+const [name,...rest]=cookie.split("=");
+return{
+name,
+value:rest.join("="),
+path:"/"
+};
+}),
+
+indexedDB:indexedDBData
+
+};
+},
+
+async download(){
+
+toast("Preparing backup...");
+
+const data=await this.generate();
+
+const blob=new Blob(
+[JSON.stringify(data,null,2)],
+{type:"application/json"}
+);
+
+const url=URL.createObjectURL(blob);
+
+const a=document.createElement("a");
+a.href=url;
+a.download=`ghost-backup-${Date.now()}.ghost`;
+a.click();
+
+URL.revokeObjectURL(url);
+
+toast("Backup downloaded.");
+
+},
+
+async readFile(file){
+
+return new Promise((resolve,reject)=>{
+
+const reader=new FileReader();
+
+reader.onload=()=>{
+try{
+resolve(JSON.parse(reader.result));
+}catch{
+reject();
+}
 };
 
-let importedData = null;
+reader.onerror=reject;
 
-document.getElementById("exportFull").onclick = () => {
-  BackupSystem.download();
+reader.readAsText(file);
+
+});
+
+},
+
+validate(data){
+
+if(!data.meta||!data.localStorage||!data.cookies)
+throw new Error("Invalid backup structure.");
+
+},
+
+restoreStorage(data){
+
+localStorage.clear();
+
+Object.entries(data.localStorage).forEach(([k,v])=>{
+localStorage.setItem(k,v);
+});
+
+},
+
+restoreSession(data){
+
+if(!data.sessionStorage) return;
+
+sessionStorage.clear();
+
+Object.entries(data.sessionStorage).forEach(([k,v])=>{
+sessionStorage.setItem(k,v);
+});
+
+},
+
+restoreCookies(data){
+
+data.cookies.forEach(cookie=>{
+document.cookie=`${cookie.name}=${cookie.value};path=/`;
+});
+
+},
+
+wipe(){
+
+localStorage.clear();
+sessionStorage.clear();
+
+document.cookie.split(";").forEach(cookie=>{
+const name=cookie.split("=")[0].trim();
+
+document.cookie=
+`${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+});
+
+}
+
 };
 
-document.getElementById("importFile").onchange = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
+let importedData=null;
 
-  try {
-    importedData = await BackupSystem.readFile(file);
-    BackupSystem.validate(importedData);
-    toast("Backup loaded successfully.");
-  } catch {
-    toast("Invalid backup file.");
-    importedData = null;
-  }
+document.getElementById("exportFull").onclick=()=>{
+BackupSystem.download();
 };
 
-document.getElementById("restoreAll").onclick = () => {
-  if (!importedData) return toast("Import a backup first.");
-  if (!confirm("Restore EVERYTHING?")) return;
+document.getElementById("importFile").onchange=async(e)=>{
 
-  BackupSystem.restoreStorage(importedData);
-  BackupSystem.restoreCookies(importedData);
+const file=e.target.files[0];
+if(!file) return;
 
-  toast("Restore complete. Reloading...");
-  setTimeout(() => location.reload(), 1200);
+try{
+
+importedData=await BackupSystem.readFile(file);
+
+BackupSystem.validate(importedData);
+
+toast("Backup loaded successfully.");
+
+}catch{
+
+toast("Invalid backup file.");
+
+importedData=null;
+
+}
+
 };
 
-document.getElementById("restoreStorage").onclick = () => {
-  if (!importedData) return toast("Import a backup first.");
-  BackupSystem.restoreStorage(importedData);
-  toast("LocalStorage restored.");
+document.getElementById("restoreAll").onclick=()=>{
+
+if(!importedData) return toast("Import a backup first.");
+
+if(!confirm("Restore EVERYTHING?")) return;
+
+BackupSystem.restoreStorage(importedData);
+BackupSystem.restoreSession(importedData);
+BackupSystem.restoreCookies(importedData);
+
+toast("Restore complete. Reloading...");
+
+setTimeout(()=>location.reload(),1200);
+
 };
 
-document.getElementById("restoreCookies").onclick = () => {
-  if (!importedData) return toast("Import a backup first.");
-  BackupSystem.restoreCookies(importedData);
-  toast("Cookies restored.");
+document.getElementById("restoreStorage").onclick=()=>{
+
+if(!importedData) return toast("Import a backup first.");
+
+BackupSystem.restoreStorage(importedData);
+
+toast("LocalStorage restored.");
+
 };
 
-document.getElementById("wipeAll").onclick = () => {
-  if (!confirm("Factory reset? This cannot be undone.")) return;
-  BackupSystem.wipe();
-  toast("All data wiped.");
-  setTimeout(() => location.reload(), 1200);
+document.getElementById("restoreCookies").onclick=()=>{
+
+if(!importedData) return toast("Import a backup first.");
+
+BackupSystem.restoreCookies(importedData);
+
+toast("Cookies restored.");
+
+};
+
+document.getElementById("wipeAll").onclick=()=>{
+
+if(!confirm("Factory reset? This cannot be undone.")) return;
+
+BackupSystem.wipe();
+
+toast("All data wiped.");
+
+setTimeout(()=>location.reload(),1200);
+
 };
 </script>
 
