@@ -2425,16 +2425,22 @@ body {
     }
 
     #ccSubPanel {
-        transition: max-height 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease;
+        transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+        margin-top: 0;
+        transition-property: max-height, opacity, margin-top;
+    }
+
+    #ccSubPanel[data-open="true"] {
+        margin-top: 8px;
     }
 
     #ccSubPanel > div {
-        animation: ccSubPanelSlideIn 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        animation: ccSubPanelSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     @keyframes ccSubPanelSlideIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .time-date-container {
         position: relative;
@@ -6472,9 +6478,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 <button class="cc-icon-btn" id="ccSettingsBtn2" title="Settings" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;flex-shrink:0;transition:background 0.2s;">
                     <i data-lucide="settings" width="16" height="16" style="color:#444;"></i>
                 </button>
-                <button class="cc-icon-btn" id="ccExpandBtn" title="Expand" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;flex-shrink:0;transition:background 0.2s;">
-                    <i data-lucide="chevron-right" width="16" height="16" style="color:#444;"></i>
-                </button>
             </div>
 
             <!-- Bottom row: power, profile, download, battery - EXACT match to image -->
@@ -7087,23 +7090,39 @@ menu.addEventListener('mouseleave', hideMenu);
         var subPanel = document.getElementById('ccSubPanel');
         var currentSubPanel = null;
 
-        function openSubPanel(contentHtml, height) {
+        function openSubPanel(contentHtml, height, onReady) {
             if (subPanel.innerHTML && currentSubPanel === contentHtml) {
                 closeSubPanel();
                 return;
             }
-            currentSubPanel = contentHtml;
-            subPanel.innerHTML = contentHtml;
-            subPanel.style.maxHeight = height + 'px';
-            subPanel.style.opacity = '1';
-            if (window.lucide) lucide.createIcons();
+            if (currentSubPanel && currentSubPanel !== contentHtml) {
+                subPanel.style.maxHeight = height + 'px';
+                subPanel.style.opacity = '0';
+                setTimeout(function() {
+                    currentSubPanel = contentHtml;
+                    subPanel.innerHTML = contentHtml;
+                    subPanel.setAttribute('data-open', 'true');
+                    requestAnimationFrame(function() { subPanel.style.opacity = '1'; });
+                    if (window.lucide) lucide.createIcons();
+                    if (onReady) setTimeout(onReady, 50);
+                }, 180);
+            } else {
+                currentSubPanel = contentHtml;
+                subPanel.innerHTML = contentHtml;
+                subPanel.setAttribute('data-open', 'true');
+                subPanel.style.maxHeight = height + 'px';
+                requestAnimationFrame(function() { subPanel.style.opacity = '1'; });
+                if (window.lucide) lucide.createIcons();
+                if (onReady) setTimeout(onReady, 50);
+            }
         }
 
         function closeSubPanel() {
             subPanel.style.maxHeight = '0px';
             subPanel.style.opacity = '0';
+            subPanel.setAttribute('data-open', 'false');
             currentSubPanel = null;
-            setTimeout(function() { if (!currentSubPanel) subPanel.innerHTML = ''; }, 400);
+            setTimeout(function() { if (!currentSubPanel) subPanel.innerHTML = ''; }, 350);
         }
 
         var powerBtn = document.getElementById('ccPowerBtn');
@@ -7147,21 +7166,11 @@ menu.addEventListener('mouseleave', hideMenu);
 
         function openSettingsPanel(e) {
             e.stopPropagation();
-            openSubPanel(settingsContent, 120);
-            setTimeout(initTabStyleButtons, 50);
+            openSubPanel(settingsContent, 120, initTabStyleButtons);
         }
 
         if (settingsBtn2) settingsBtn2.addEventListener('click', openSettingsPanel);
 
-        var expandBtn = document.getElementById('ccExpandBtn');
-        if (expandBtn) {
-            expandBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                if (currentSubPanel) {
-                    closeSubPanel();
-                }
-            });
-        }
 
         var powerDropdown = document.getElementById('ccPowerDropdown');
         if (powerDropdown) {
