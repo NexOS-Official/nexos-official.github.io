@@ -763,6 +763,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 'use strict';
 
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // MUSIC API CONFIG
 // ─────────────────────────────────────────────
 const API_BASE = '/music-api';
@@ -776,7 +777,8 @@ async function checkApiStatus() {
   dot.className = 'api-dot loading';
   txt.textContent = 'API…';
   try {
-    const r = await fetch(API_BASE + '/ping', { signal: AbortSignal.timeout(4000) });
+    // /music-api/test is the health check endpoint
+    const r = await fetch(API_BASE + '/test', { signal: AbortSignal.timeout(4000) });
     if (r.ok) {
       _apiOnline = true;
       dot.className = 'api-dot ok';
@@ -791,50 +793,80 @@ async function checkApiStatus() {
 }
 
 // ─────────────────────────────────────────────
-// MUSIC API — search (augments iTunes results)
+// MUSIC API — generic fetch helper
 // ─────────────────────────────────────────────
 async function apiFetch(path, opts = {}) {
   try {
-    const r = await fetch(API_BASE + path, { signal: AbortSignal.timeout(6000), ...opts });
+    const r = await fetch(API_BASE + path, { signal: AbortSignal.timeout(6000), credentials: 'include', ...opts });
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }
 }
 
+// ─────────────────────────────────────────────
+// MUSIC API — search
+// Returns Spotify-sourced tracks merged into Ghost's search dropdown.
+// API shape: { id, title, artist_name, artist_id, artwork_url, duration (ms),
+//              album: { id, name, artwork_url } }
+// ─────────────────────────────────────────────
 async function apiSearch(q) {
   if (!_apiOnline) return [];
   const data = await apiFetch('/search?q=' + encodeURIComponent(q));
   if (!data?.tracks?.length) return [];
   return data.tracks.map(t => ({
-    trackName: t.title || '',
-    artistName: t.artist_name || '',
-    collectionName: t.album?.name || '',
-    artworkUrl100: t.artwork_url || null,
-    _artLgOverride: t.artwork_url || null,
-    trackTimeMillis: t.duration || null,
-    _source: 'api',
-    _apiId: t.id,
-    _artistId: t.artist_id || null,
-    _albumId: t.album?.id || null,
+    trackName:       t.title || '',
+    artistName:      t.artist_name || '',
+    collectionName:  t.album?.name || '',
+    // Spotify artwork URLs are full CDN links — no replace() needed
+    artworkUrl100:   t.artwork_url || t.album?.artwork_url || null,
+    _artLgOverride:  t.artwork_url || t.album?.artwork_url || null,
+    trackTimeMillis: t.duration || null,   // Spotify returns ms already
+    _source:         'api',
+    _spotifyId:      t.id,                 // Spotify track ID — stored in DB as track_id
+    _artistId:       t.artist_id || null,
+    _albumId:        t.album?.id || null,
   }));
 }
 
 // ─────────────────────────────────────────────
-// MUSIC API — audio source lookup
-// Tries your backend first, falls back to Ghost's YT search
+// MUSIC API — YouTube video ID lookup
+// Your backend scores candidates by title match, official audio, etc.
+// Returns { videoId, title, score }
 // ─────────────────────────────────────────────
 async function apiFindVideoId(title, artist) {
   if (!_apiOnline) return null;
   const data = await apiFetch(
-    '/youtube-search?q=' + encodeURIComponent(title + ' ' + artist) +
-    '&title=' + encodeURIComponent(title) +
+    '/youtube-search' +
+    '?q='      + encodeURIComponent(title + ' ' + artist) +
+    '&title='  + encodeURIComponent(title) +
     '&artist=' + encodeURIComponent(artist)
   );
   return data?.videoId || null;
 }
 
 // ─────────────────────────────────────────────
-// MUSIC API — artist details (replaces iTunes-only artist panel)
+// MUSIC API — SoundCloud fallback
+// Returns { widgetUrl, trackUrl, title, artist, artwork, duration, source }
+// ─────────────────────────────────────────────
+async function apiFindSoundCloud(title, artist) {
+  if (!_apiOnline) return null;
+  return await apiFetch('/soundcloud-search?q=' + encodeURIComponent(title + ' ' + artist));
+}
+
+// ─────────────────────────────────────────────
+// MUSIC API — JioSaavn fallback
+// Returns { streamUrl, title, artist, artwork, duration, source }
+// ─────────────────────────────────────────────
+async function apiFindJioSaavn(title, artist) {
+  if (!_apiOnline) return null;
+  return await apiFetch('/jiosaavn-search?q=' + encodeURIComponent(title + ' ' + artist));
+}
+
+// ─────────────────────────────────────────────
+// MUSIC API — artist details
+// Returns { id, name, image_url, followers, genres,
+//           top_tracks: [{id,title,artist_name,artist_id,artwork_url,duration,album:{id,name}}],
+//           albums: [{id,name,artist_name,artwork_url,release_year,total_tracks,album_type}] }
 // ─────────────────────────────────────────────
 async function apiFetchArtist(artistId) {
   if (!_apiOnline || !artistId) return null;
@@ -843,6 +875,8 @@ async function apiFetchArtist(artistId) {
 
 // ─────────────────────────────────────────────
 // MUSIC API — album details
+// Returns { id, name, artists:[{id,name}], artwork_url, release_year, total_tracks,
+//           tracks:[{id,title,artist_name,artist_id,duration,track_number,artwork_url,album:{id,name}}] }
 // ─────────────────────────────────────────────
 async function apiFetchAlbum(albumId) {
   if (!_apiOnline || !albumId) return null;
@@ -850,48 +884,94 @@ async function apiFetchAlbum(albumId) {
 }
 
 // ─────────────────────────────────────────────
-// MUSIC API — user data sync (likes, playlists, history)
+// MUSIC API — user data sync
+// Session cookie handled automatically (credentials: include in apiFetch).
+// DB stores full track objects in a JSONB `data` column.
+// Favorites keyed by (user_id, track_id) — track_id is Spotify ID.
 // ─────────────────────────────────────────────
 let _isLoggedIn = false;
 
 async function apiSyncUserData() {
   if (!_apiOnline) return;
   try {
-    const res = await fetch(API_BASE + '/user/data', { credentials: 'include', signal: AbortSignal.timeout(5000) });
+    const res = await fetch(API_BASE + '/user/data', {
+      credentials: 'include',
+      signal: AbortSignal.timeout(5000)
+    });
     const data = await res.json();
     if (!data.loggedIn) return;
     _isLoggedIn = true;
-    // Merge server likes into local likes (server wins on conflict)
+
+    // Merge server favorites — data.favorites is array of raw track objects
+    // stored as JSONB exactly as POSTed. Field names match what we push.
     if (data.favorites?.length) {
       data.favorites.forEach(sf => {
-        const key = (sf.title||'') + '||' + (sf.artist_name||sf.artist||'');
+        // sf is the raw track object: { title, artist, artSm, artLg, _key, _spotifyId }
+        const key = sf._key || ((sf.title||'') + '||' + (sf.artist||''));
         if (!likes.some(l => l._key === key)) {
-          likes.unshift({ title: sf.title||sf.trackName, artist: sf.artist_name||sf.artist, artSm: sf.artwork_url||sf.artSm||null, artLg: null, _key: key });
+          likes.push({
+            title:  sf.title  || '',
+            artist: sf.artist || '',
+            artSm:  sf.artSm  || null,
+            artLg:  sf.artLg  || null,
+            _key:   key,
+            _spotifyId: sf._spotifyId || null,
+          });
         }
       });
       saveLikes(); renderLikes();
     }
-    // Merge server playlists
+
+    // Merge server playlists — data.playlists is array of playlist objects
+    // stored as JSONB exactly as POSTed: { name, tracks, id }
     if (data.playlists?.length) {
       data.playlists.forEach(sp => {
-        if (!playlists.find(lp => lp.id === String(sp.id))) {
-          playlists.unshift({ name: sp.name, tracks: (sp.tracks||[]).map(t=>({title:t.title||t.trackName,artist:t.artist_name||t.artistName,artSm:t.artwork_url||t.artSm||null,artLg:null})), id: String(sp.id) });
+        // sp.data would be the full playlist if stored that way, or sp directly
+        const pl = sp.data || sp;
+        const plId = String(pl.id || sp.playlist_id);
+        if (!playlists.find(lp => String(lp.id) === plId)) {
+          playlists.push({
+            name:   pl.name || 'Playlist',
+            tracks: (pl.tracks || []).map(t => ({
+              title:  t.title  || '',
+              artist: t.artist || '',
+              artSm:  t.artSm  || null,
+              artLg:  t.artLg  || null,
+            })),
+            id: plId,
+          });
         }
       });
       savePlaylists(); renderPlaylists();
     }
-  } catch {}
+  } catch(e) { console.warn('apiSyncUserData failed:', e); }
 }
 
-function apiPushLike(track, liked) {
+// Push a like/unlike to the server.
+// DB: INSERT ... ON CONFLICT (user_id, track_id) — track_id is _spotifyId.
+// The `track` object stored in the `data` JSONB column is exactly what we send.
+function apiPushLike(track) {
   if (!_isLoggedIn || !_apiOnline) return;
+  // Build the object that gets stored as JSONB — include _key and _spotifyId
+  // so apiSyncUserData can round-trip it correctly
+  const payload = {
+    title:      track.title  || track.trackName  || '',
+    artist:     track.artist || track.artistName || '',
+    artSm:      track.artSm  || track.artworkUrl100 || null,
+    artLg:      track.artLg  || track._artLgOverride || null,
+    _key:       trackKey(track),
+    _spotifyId: track._spotifyId || null,
+    // id field is what the DB uses as track_id — fall back gracefully if missing
+    id:         track._spotifyId || track.id || null,
+  };
   fetch(API_BASE + '/user/favorite', {
     method: 'POST', credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ track: { title: track.title||track.trackName, artist_name: track.artist||track.artistName } })
+    body: JSON.stringify({ track: payload })
   }).catch(() => {});
 }
 
+// Push playlist save. DB keyed by (user_id, playlist_id) — playlist.id is Date.now() string.
 function apiPushPlaylist(pl) {
   if (!_isLoggedIn || !_apiOnline) return;
   fetch(API_BASE + '/user/playlist', {
@@ -901,17 +981,34 @@ function apiPushPlaylist(pl) {
   }).catch(() => {});
 }
 
+// Delete playlist from server when user deletes locally.
+function apiDeletePlaylist(plId) {
+  if (!_isLoggedIn || !_apiOnline) return;
+  fetch(API_BASE + '/user/playlist/' + plId, {
+    method: 'DELETE', credentials: 'include'
+  }).catch(() => {});
+}
+
+// Push play history. DB: ON CONFLICT (user_id, track_id) DO UPDATE played_at.
 function apiPushHistory(track) {
   if (!_isLoggedIn || !_apiOnline) return;
+  const payload = {
+    title:  track.title  || '',
+    artist: track.artist || '',
+    artSm:  track.artSm  || null,
+    id:     track._spotifyId || track.id || null,
+  };
   fetch(API_BASE + '/user/history', {
     method: 'POST', credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ track: { title: track.title, artist_name: track.artist } })
+    body: JSON.stringify({ track: payload })
   }).catch(() => {});
 }
 
 // ─────────────────────────────────────────────
 // ALBUM PANEL (wired to music-api)
+// API shape for tracks: { id, title, artist_name, artist_id, duration (ms),
+//   track_number, artwork_url (inherited from album) }
 // ─────────────────────────────────────────────
 const _albumCache = {};
 
@@ -929,35 +1026,51 @@ async function openAlbumPanel(albumId, hintArt) {
   }
   if (!data) { inner.innerHTML = '<div class="artist-loading"><span>Album not found</span></div>'; return; }
 
+  // artwork_url is on the album object; all tracks inherit it
   const art = data.artwork_url || hintArt || '';
   if (art) { bg.style.backgroundImage = `url('${art}')`; bg.classList.add('on'); }
 
   const tracks = data.tracks || [];
+  const artistLine = (data.artists || []).map(a => a.name).join(', ');
   const playAllKey = '_alb_' + Math.random().toString(36).slice(2);
+
   window[playAllKey] = tracks.map(t => ({
-    title: t.title, artist: t.artist_name || data.artist_name || '',
-    artSm: t.artwork_url || art || null, artLg: t.artwork_url || art || null,
+    title:      t.title,
+    artist:     t.artist_name || artistLine || '',
+    artSm:      art || null,
+    artLg:      art || null,
+    _spotifyId: t.id,
+    _artistId:  t.artist_id || null,
+    _albumId:   albumId,
   }));
 
   const rowsHTML = tracks.map((t, i) => {
-    const sm = t.artwork_url || art || '';
     const id = 'apt_' + Math.random().toString(36).slice(2);
     (window._td = window._td || {})[id] = {
-      title: t.title, artist: t.artist_name || data.artist_name || '',
-      artSm: sm || null, artLg: sm || null, durMs: t.duration || null,
+      title:      t.title,
+      artist:     t.artist_name || artistLine || '',
+      artSm:      art || null,
+      artLg:      art || null,
+      durMs:      t.duration || null,
+      _spotifyId: t.id,
+      _artistId:  t.artist_id || null,
+      _albumId:   albumId,
     };
+    const aIdSafe = (t.artist_id || '').replace(/'/g, "\\'");
+    const artSafe = art.replace(/'/g, "\\'");
+    const aNameSafe = (t.artist_name || artistLine || '').replace(/'/g, "\\'");
     return `<div class="artist-track-row" onclick="pickTrack('${id}')">
-      <div class="artist-track-num">${i+1}</div>
-      <div class="artist-track-art">${sm ? `<img src="${x(sm)}" alt="">` : '🎵'}</div>
+      <div class="artist-track-num">${t.track_number || i+1}</div>
+      <div class="artist-track-art">${art ? `<img src="${x(art)}" alt="">` : '🎵'}</div>
       <div class="artist-track-inf">
         <div class="artist-track-t">${x(t.title)}</div>
-        <div class="artist-track-alb">${ms2t(t.duration||0)}</div>
+        <div class="artist-track-alb" ${t.artist_id ? `onclick="event.stopPropagation();openArtistProfile('${aNameSafe}','${artSafe}','${aIdSafe}')" style="cursor:pointer"` : ''}>${x(t.artist_name || '')}</div>
       </div>
+      <div class="artist-track-dur">${ms2t(t.duration||0)}</div>
       <div class="artist-track-add" onclick="event.stopPropagation();pickTrack('${id}')"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
 
-  const artistLine = data.artists?.map(a=>a.name).join(', ') || data.artist_name || '';
   inner.innerHTML = `
     <div class="album-hero">
       <div class="album-cover-big">${art ? `<img src="${x(art)}" alt="">` : '💿'}</div>
@@ -980,7 +1093,6 @@ function playAllAlbum(key) {
   toast('Playing album');
 }
 
-// ─────────────────────────────────────────────
 // PANEL STATE
 // ─────────────────────────────────────────────
 let activePanel = 'queue';
@@ -1028,12 +1140,19 @@ function toggleLike(track) {
   if (idx >= 0) {
     likes.splice(idx, 1);
     toast('Removed from Liked Songs');
-    apiPushLike(track, false);
   } else {
-    likes.unshift({ title: track.title||track.trackName, artist: track.artist||track.artistName, artSm: track.artSm||track.artworkUrl100||null, artLg: track.artLg||track._artLgOverride||null, _key: key });
+    likes.unshift({
+      title: track.title||track.trackName,
+      artist: track.artist||track.artistName,
+      artSm: track.artSm||track.artworkUrl100||null,
+      artLg: track.artLg||track._artLgOverride||null,
+      _key: key,
+      _spotifyId: track._spotifyId||track.id||null,
+    });
     toast('♥ Added to Liked Songs');
-    apiPushLike(track, true);
   }
+  // apiPushLike toggles on server — DB uses ON CONFLICT to upsert/delete
+  apiPushLike(track);
   saveLikes(); renderLikes(); syncHeartBtn();
 }
 function syncHeartBtn() {
@@ -1117,6 +1236,8 @@ function removePlTrack(i) {
   apiPushPlaylist(playlists[activePlId]);
 }
 function deletePlaylist(i) {
+  const pl = playlists[i];
+  if (pl) apiDeletePlaylist(pl.id);
   playlists.splice(i, 1); savePlaylists(); renderPlaylists();
   if (activePlId === i) { activePlId = null; showPanel('playlists'); }
 }
@@ -1201,7 +1322,7 @@ function addToPlaylist(plIdx) {
     tr.title.toLowerCase() === title.toLowerCase() && tr.artist.toLowerCase() === artist.toLowerCase()
   );
   if (alreadyIn) { toast(`Already in "${pl.name}"`); closeModal('modal-atp'); return; }
-  pl.tracks.push({ title, artist, artSm: t.artSm||t.artworkUrl100||null, artLg: t.artLg||t._artLgOverride||null });
+  pl.tracks.push({ title, artist, artSm: t.artSm||t.artworkUrl100||null, artLg: t.artLg||t._artLgOverride||null, _spotifyId: t._spotifyId||t.id||null });
   savePlaylists(); renderPlaylists(); closeModal('modal-atp');
   toast(`Added to "${pl.name}"`);
   apiPushPlaylist(pl);
@@ -1608,35 +1729,165 @@ function markQI(idx) {
 }
 
 // ─────────────────────────────────────────────
-// LOAD TRACK
 // ─────────────────────────────────────────────
+// LOAD TRACK
+// Priority: YouTube (via your backend scorer) → SoundCloud → JioSaavn
+// YT is primary. SC/JioSaavn are server-side fallbacks when YT is blocked.
+// ─────────────────────────────────────────────
+
+// SoundCloud widget state
+let _scIframe = null, _scWidget = null, _scInterval = null;
+
+function stopScPlayer() {
+  if (_scInterval) { clearInterval(_scInterval); _scInterval = null; }
+  if (_scWidget) { try { _scWidget.pause(); } catch {} _scWidget = null; }
+  if (_scIframe) { _scIframe.remove(); _scIframe = null; }
+}
+
+function loadScPlayer(widgetUrl) {
+  stopScPlayer();
+  _scIframe = document.createElement('iframe');
+  _scIframe.width = '0'; _scIframe.height = '0';
+  _scIframe.style.cssText = 'position:fixed;opacity:0;pointer-events:none;left:-9999px;top:-9999px;';
+  _scIframe.allow = 'autoplay';
+  _scIframe.src = widgetUrl;
+  document.body.appendChild(_scIframe);
+
+  function initSc() {
+    if (!window.SC) return;
+    _scWidget = SC.Widget(_scIframe);
+    _scWidget.bind(SC.Widget.Events.READY, () => {
+      _scWidget.play();
+      _scWidget.setVolume(ST.vol * 100);
+      ST.playing = true; syncPP();
+      G('cover-art').classList.add('playing');
+    });
+    _scWidget.bind(SC.Widget.Events.PLAY, () => { ST.playing = true; syncPP(); });
+    _scWidget.bind(SC.Widget.Events.PAUSE, () => { ST.playing = false; syncPP(); });
+    _scWidget.bind(SC.Widget.Events.FINISH, () => { ST.playing = false; syncPP(); nextTrack(); });
+    // Progress sync
+    _scInterval = setInterval(() => {
+      if (!_scWidget) return;
+      _scWidget.getPosition(pos => _scWidget.getDuration(dur => {
+        ST.pos = pos; ST.dur = dur;
+        syncBar();
+      }));
+    }, 400);
+  }
+
+  if (window.SC) {
+    initSc();
+  } else {
+    const tag = document.createElement('script');
+    tag.src = 'https://w.soundcloud.com/player/api.js';
+    tag.onload = initSc;
+    document.head.appendChild(tag);
+  }
+}
+
+// Direct audio (JioSaavn stream URL)
+let _directAudio = null;
+
+function stopDirectAudio() {
+  if (_directAudio) { _directAudio.pause(); _directAudio.remove(); _directAudio = null; }
+}
+
+function loadDirectAudio(streamUrl) {
+  stopDirectAudio();
+  const audio = document.createElement('audio');
+  audio.style.display = 'none';
+  audio.src = streamUrl;
+  audio.preload = 'auto';
+  document.body.appendChild(audio);
+  _directAudio = audio;
+
+  audio.addEventListener('canplay', () => {
+    audio.volume = ST.muted ? 0 : ST.vol;
+    audio.play().catch(() => {});
+    ST.playing = true; syncPP();
+    G('cover-art').classList.add('playing');
+  }, { once: true });
+
+  audio.addEventListener('timeupdate', () => {
+    ST.pos = audio.currentTime * 1000;
+    ST.dur = (audio.duration || 0) * 1000;
+    syncBar();
+  });
+
+  audio.addEventListener('ended', () => {
+    ST.playing = false; syncPP();
+    G('cover-art').classList.remove('playing');
+    if (ST.repeat) { audio.currentTime = 0; audio.play(); }
+    else nextTrack();
+  });
+
+  audio.addEventListener('error', () => {
+    setStatus('err', 'Stream error');
+    toast('⚠ Stream failed');
+  });
+}
+
 async function loadTrack(idx) {
   if (idx < 0 || idx >= ST.queue.length) return;
-  if (!ytReady) { setStatus('err', 'YouTube blocked'); toast('⚠ YouTube is blocked on this network.'); return; }
   ST.idx = idx;
   const track = ST.queue[idx];
   markQI(idx); updateNP(track); syncHeartBtn();
   ST.playing = false; ST.pos = 0; ST.dur = 0; syncPP();
 
+  // Stop any active SC/direct audio players
+  stopScPlayer(); stopDirectAudio();
+
   // Push play history to API
   apiPushHistory(track);
 
-  if (!track.ytIds) {
-    setStatus('loading', 'Finding…');
+  setStatus('loading', 'Finding…');
+
+  // ── Step 1: Try YouTube (primary) ────────────────────────────────
+  if (ytReady && !track.ytIds) {
     try {
       track.ytIds = await findVideoIds(track.artist, track.title);
       track.ytTry = 0;
-      setStatus('ok', 'Ready');
-    } catch {
-      setStatus('err', 'Failed');
-      toast('Could not find track');
-      return;
+    } catch { track.ytIds = []; }
+  }
+
+  if (ytReady && track.ytIds?.length) {
+    YT_player.loadVideoById(track.ytIds[track.ytTry || 0]);
+    setStatus('ok', 'Ready');
+    fetchLyrics(track.title, track.artist);
+  } else {
+    // ── Step 2: SoundCloud fallback ───────────────────────────────
+    setStatus('loading', 'Trying SoundCloud…');
+    const sc = await apiFindSoundCloud(track.title, track.artist);
+    if (sc?.widgetUrl) {
+      loadScPlayer(sc.widgetUrl);
+      setStatus('ok', 'SoundCloud');
+      // Update artwork if SC found one and track has none
+      if (sc.artwork && !track.artSm) {
+        track.artSm = sc.artwork; track.artLg = sc.artwork;
+        updateNP(track);
+      }
+      fetchLyrics(track.title, track.artist);
+    } else {
+      // ── Step 3: JioSaavn fallback ─────────────────────────────
+      setStatus('loading', 'Trying JioSaavn…');
+      const jio = await apiFindJioSaavn(track.title, track.artist);
+      if (jio?.streamUrl) {
+        loadDirectAudio(jio.streamUrl);
+        setStatus('ok', 'JioSaavn');
+        if (jio.artwork && !track.artSm) {
+          track.artSm = jio.artwork; track.artLg = jio.artwork;
+          updateNP(track);
+        }
+        fetchLyrics(track.title, track.artist);
+      } else {
+        setStatus('err', 'Not found');
+        toast('⚠ Could not find audio for this track');
+        return;
+      }
     }
   }
 
-  YT_player.loadVideoById(track.ytIds[track.ytTry]);
-  fetchLyrics(track.title, track.artist);
-
+  // Fetch cover art if missing (e.g. MusicBrainz source)
   if (!track.artSm && !track.artLg) {
     const _refTrack = { artworkUrl100: null, _artLgOverride: null, artistName: track.artist, trackName: track.title };
     fetchCoverArt(_refTrack).then(() => {
@@ -1654,16 +1905,6 @@ async function loadTrack(idx) {
   }
 }
 
-function updateNP(track) {
-  G('empty-cover').style.display = 'none';
-  G('cover-art').style.display = 'block';
-  G('cover-info').style.display = 'block';
-  G('np-t').textContent = track.title;
-  G('np-a').textContent = track.artist;
-  G('np-a').style.cursor = 'pointer';
-  G('np-a').onclick = () => openArtistProfile(track.artist, track.artSm || '', track._artistId || null);
-  const art = track.artLg || track.artSm;
-  if (art) {
     const artUrl = proxyImg(art);
     G('cv-img').src = artUrl; G('cv-img').setAttribute('data-src', artUrl);
     G('cv-img').onerror = function(){ proxyImgFallback(this); };
@@ -1880,8 +2121,13 @@ function tickLrc(posMs) {
 }
 
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
 // ARTIST PROFILE
-// Tries music-api first (rich data), falls back to iTunes-only
+// Tries music-api first (Spotify data: top_tracks, image_url, followers, genres).
+// API shape: { id, name, image_url, followers, genres,
+//   top_tracks: [{id, title, artist_name, artist_id, artwork_url, duration, album:{id,name}}],
+//   albums: [{id, name, artist_name, artwork_url, release_year, total_tracks, album_type}] }
+// Falls back to iTunes if API offline or artistId not available.
 // ─────────────────────────────────────────────
 const _artistCache = {};
 
@@ -1892,45 +2138,50 @@ async function openArtistProfile(artistName, hintArt, artistId) {
   inner.innerHTML = '<div class="artist-loading"><div class="spin" style="display:block"></div><span>Loading artist…</span></div>';
   if (hintArt) { bg.style.backgroundImage = `url('${hintArt}')`; bg.classList.add('on'); }
 
-  const ck = artistName.toLowerCase().trim();
+  const ck = (artistId || artistName).toLowerCase().trim();
   let cached = _artistCache[ck];
 
   if (!cached) {
-    // Try API first if we have an artistId
     if (artistId && _apiOnline) {
       const apiData = await apiFetchArtist(artistId);
       if (apiData) {
-        const tracks = (apiData.top_tracks || apiData.tracks || []).map(t => ({
-          trackName: t.title, artistName: t.artist_name || artistName,
-          artworkUrl100: t.artwork_url || null,
-          collectionName: t.album?.name || '',
+        // top_tracks: each has artwork_url (album art), duration (ms), album.{id,name}
+        const tracks = (apiData.top_tracks || []).map(t => ({
+          trackName:       t.title,
+          artistName:      t.artist_name || artistName,
+          artworkUrl100:   t.artwork_url || null,
+          collectionName:  t.album?.name || '',
           trackTimeMillis: t.duration || null,
-          _artistId: artistId, _albumId: t.album?.id || null,
+          _spotifyId:      t.id,
+          _artistId:       t.artist_id || artistId,
+          _albumId:        t.album?.id || null,
         }));
-        const heroImg = apiData.image_url || hintArt || tracks.find(t=>t.artworkUrl100)?.artworkUrl100 || '';
-        cached = { tracks, artistImg: heroImg, followers: apiData.followers || 0 };
+        cached = {
+          tracks,
+          artistImg:  apiData.image_url || hintArt || tracks.find(t=>t.artworkUrl100)?.artworkUrl100 || '',
+          followers:  apiData.followers || 0,
+          genres:     apiData.genres || [],
+          albums:     apiData.albums || [],
+        };
         _artistCache[ck] = cached;
       }
     }
-
-    // Fallback to iTunes
     if (!cached) {
       cached = await fetchArtistDataiTunes(artistName);
       _artistCache[ck] = cached;
     }
   }
 
-  const { tracks, artistImg, followers } = cached;
+  const { tracks, artistImg, followers, genres, albums } = cached;
   const heroImg = artistImg || hintArt || tracks.find(t=>t.artworkUrl100)?.artworkUrl100 || '';
   if (heroImg) { bg.style.backgroundImage = `url('${heroImg}')`; bg.classList.add('on'); }
 
-  renderArtistProfile(artistName, tracks, heroImg, inner, followers || 0);
+  renderArtistProfile(artistName, tracks, heroImg, inner, followers || 0, genres || [], albums || []);
 }
 
 async function fetchArtistDataiTunes(artistName) {
-  let artistImg = null, artistId = null;
+  let artistImg = null, iTunesArtistId = null;
   const al = artistName.toLowerCase();
-
   const artistData = await itunesFetch(
     `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
   );
@@ -1939,12 +2190,11 @@ async function fetchArtistDataiTunes(artistName) {
       artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase() === al) ||
       artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase().startsWith(al.split(' ')[0])) ||
       artistData.results.find(r => r.wrapperType === 'artist');
-    if (match) artistId = match.artistId;
+    if (match) iTunesArtistId = match.artistId;
   }
-
   let tracks = [];
-  if (artistId) {
-    const ld = await itunesFetch(`https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`);
+  if (iTunesArtistId) {
+    const ld = await itunesFetch(`https://itunes.apple.com/lookup?id=${iTunesArtistId}&entity=song&limit=200&country=US`);
     tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
   }
   if (tracks.length < 3) {
@@ -1955,34 +2205,50 @@ async function fetchArtistDataiTunes(artistName) {
   }
   const artTrack = tracks.find(t => t.artworkUrl100);
   if (artTrack) artistImg = artTrack.artworkUrl100.replace('100x100bb','600x600bb');
-  return { tracks: tracks.slice(0, 60), artistImg };
+  return { tracks: tracks.slice(0, 60), artistImg, followers: 0, genres: [], albums: [] };
 }
 
-function renderArtistProfile(artistName, tracks, heroImg, container, followers) {
+function renderArtistProfile(artistName, tracks, heroImg, container, followers, genres, albums) {
   const avatarHTML = heroImg
     ? `<img src="${heroImg}" alt="" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\\"font-size:36px\\">🎤</span>'">`
     : `<span style="font-size:36px">🎤</span>`;
 
   const playAllKey = 'apl_' + Math.random().toString(36).slice(2);
   window['_apl_' + playAllKey] = tracks.map(t => ({
-    title: t.trackName, artist: t.artistName || artistName,
-    artSm: t.artworkUrl100 || null,
-    artLg: (t.artworkUrl100||'').replace('100x100bb','600x600bb') || null,
+    title:      t.trackName,
+    artist:     t.artistName || artistName,
+    artSm:      t.artworkUrl100 || null,
+    artLg:      (t.artworkUrl100||'').replace('100x100bb','600x600bb') || t.artworkUrl100 || null,
+    _spotifyId: t._spotifyId || null,
+    _artistId:  t._artistId || null,
+    _albumId:   t._albumId  || null,
   }));
 
-  const followerLine = followers ? `<div class="artist-meta">${formatNumber(followers)} followers · ${tracks.length} song${tracks.length!==1?'s':''}</div>` : `<div class="artist-meta">${tracks.length} song${tracks.length!==1?'s':''}</div>`;
+  const metaParts = [];
+  if (followers) metaParts.push(formatNumber(followers) + ' followers');
+  if (genres?.length) metaParts.push(genres.slice(0,2).join(', '));
+  metaParts.push(tracks.length + ' song' + (tracks.length!==1?'s':''));
 
-  const rowsHTML = tracks.length ? tracks.map((t, i) => {
+  const tracksHTML = tracks.length ? tracks.map((t, i) => {
     const sm = t.artworkUrl100 || '';
     const lg = sm.replace('100x100bb','600x600bb');
     const artCell = sm ? `<img src="${sm}" data-src="${sm}" onerror="proxyImgFallback(this)" alt="">` : '🎵';
     const id = 'apt_' + Math.random().toString(36).slice(2);
     (window._td = window._td || {})[id] = {
-      title: t.trackName, artist: t.artistName || artistName,
-      artSm: sm || null, artLg: lg || null, durMs: t.trackTimeMillis || null,
-      _albumId: t._albumId || null,
+      title:      t.trackName,
+      artist:     t.artistName || artistName,
+      artSm:      sm || null,
+      artLg:      lg || null,
+      durMs:      t.trackTimeMillis || null,
+      _spotifyId: t._spotifyId || null,
+      _artistId:  t._artistId  || null,
+      _albumId:   t._albumId   || null,
     };
-    const albClick = t._albumId ? `onclick="event.stopPropagation();openAlbumPanel('${t._albumId}','${sm.replace(/'/g,"\\'")}')";style="cursor:pointer"` : '';
+    const albSafe  = (t._albumId||'').replace(/'/g,"\\'");
+    const artSafe  = sm.replace(/'/g,"\\'");
+    const albClick = t._albumId
+      ? `onclick="event.stopPropagation();openAlbumPanel('${albSafe}','${artSafe}')" style="cursor:pointer"`
+      : '';
     return `<div class="artist-track-row" onclick="pickTrack('${id}')">
       <div class="artist-track-num">${i+1}</div>
       <div class="artist-track-art">${artCell}</div>
@@ -1995,17 +2261,33 @@ function renderArtistProfile(artistName, tracks, heroImg, container, followers) 
     </div>`;
   }).join('') : '<div class="artist-loading" style="padding:30px 0"><span>No tracks found</span></div>';
 
+  // Albums section (only from Spotify API, not iTunes)
+  const albumsHTML = albums?.length ? `
+    <div class="artist-section-lbl" style="margin-top:24px">Albums</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:10px;margin-bottom:16px">
+      ${albums.slice(0,12).map(alb => {
+        const albArtSafe = (alb.artwork_url||'').replace(/'/g,"\\'");
+        const albIdSafe  = (alb.id||'').replace(/'/g,"\\'");
+        return `<div onclick="openAlbumPanel('${albIdSafe}','${albArtSafe}')" style="cursor:pointer;border-radius:8px;overflow:hidden;background:var(--s2)">
+          ${alb.artwork_url ? `<img src="${x(alb.artwork_url)}" style="width:100%;aspect-ratio:1;object-fit:cover;display:block" alt="">` : '<div style="aspect-ratio:1;display:grid;place-items:center;font-size:22px">💿</div>'}
+          <div style="padding:6px 6px 8px;font-size:10px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x(alb.name)}</div>
+          <div style="padding:0 6px 6px;font-size:9px;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px">${alb.release_year||''}</div>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
   container.innerHTML = `
     <div class="artist-hero">
       <div class="artist-avatar">${avatarHTML}</div>
       <div class="artist-hero-info">
         <div class="artist-name-big">${x(artistName)}</div>
-        ${followerLine}
+        <div class="artist-meta">${metaParts.join(' · ')}</div>
         <button class="artist-play-all" onclick="playAllArtist('_apl_${playAllKey}')">▶ Play All</button>
       </div>
     </div>
-    <div class="artist-section-lbl">Songs</div>
-    ${rowsHTML}
+    ${albumsHTML}
+    <div class="artist-section-lbl">Top Tracks</div>
+    ${tracksHTML}
   `;
 }
 
@@ -2023,7 +2305,6 @@ function playAllArtist(key) {
   toast('Playing artist');
 }
 
-// ─────────────────────────────────────────────
 // KEYBOARD SHORTCUTS
 // ─────────────────────────────────────────────
 document.addEventListener('keydown', e => {
