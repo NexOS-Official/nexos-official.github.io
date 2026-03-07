@@ -1905,12 +1905,23 @@ async function loadTrack(idx) {
   }
 }
 
+function updateNP(track) {
+  G('empty-cover').style.display = 'none';
+  G('cover-art').style.display = 'block';
+  G('cover-info').style.display = 'block';
+  G('np-t').textContent = track.title;
+  G('np-a').textContent = track.artist;
+  G('np-a').style.cursor = 'pointer';
+  G('np-a').onclick = () => openArtistProfile(track.artist, track.artSm || '', track._artistId || null);
+  const art = track.artLg || track.artSm;
+  if (art) {
     const artUrl = proxyImg(art);
     G('cv-img').src = artUrl; G('cv-img').setAttribute('data-src', artUrl);
     G('cv-img').onerror = function(){ proxyImgFallback(this); };
     G('cv-bg').src = artUrl; G('cv-bg').classList.add('on');
     const lrcBg = G('lrc-bg'); lrcBg.style.backgroundImage = `url('${artUrl}')`; lrcBg.classList.add('on');
-
+  }
+}
 function resetNP() {
   G('empty-cover').style.display = '';
   G('cover-art').style.display = 'none';
