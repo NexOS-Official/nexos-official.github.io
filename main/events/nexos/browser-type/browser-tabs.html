@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2612,6 +2613,94 @@ body {
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 300px;
+    }
+
+    #settingsMenu {
+        right: 130px;
+        width: 180px;
+        height: auto;
+        border-radius: 10px;
+        padding: 0 !important;
+        overflow: hidden;
+        backdrop-filter: blur(40px);
+        -webkit-backdrop-filter: blur(40px);
+        background: rgba(255,255,255,0.82) !important;
+        border: 0.5px solid rgba(0,0,0,0.08) !important;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06) !important;
+    }
+    #settingsMenu .s-section-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        padding: 10px 12px 6px;
+        margin: 0;
+    }
+    #settingsMenu .s-option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 7px 12px;
+        font-size: 13px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: #1d1d1f;
+        cursor: pointer;
+        transition: background 0.12s;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+    }
+    #settingsMenu .s-option:hover {
+        background: rgba(0,0,0,0.04);
+    }
+    #settingsMenu .s-option.active {
+        color: #007aff;
+    }
+    #settingsMenu .s-option .s-check {
+        width: 14px;
+        height: 14px;
+        opacity: 0;
+        transition: opacity 0.15s;
+    }
+    #settingsMenu .s-option.active .s-check {
+        opacity: 1;
+    }
+    #settingsMenu .s-divider {
+        height: 0.5px;
+        background: rgba(0,0,0,0.08);
+        margin: 2px 0;
+    }
+
+    .tab-bar.rounded-mode {
+        transition: filter 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .tab-bar.rounded-mode .tab {
+        border-radius: 10px !important;
+        transition: transform 0.35s cubic-bezier(0.4,0,0.2,1),
+                    opacity 0.15s cubic-bezier(0.4,0,0.2,1),
+                    border-radius 0.35s cubic-bezier(0.4,0,0.2,1);
+        transform: translateY(-4px);
+    }
+
+    .tab-bar.rounded-mode .tab.sliding {
+        transition: none !important;
+    }
+
+    .tab-bar.rounded-mode .tab.active::before,
+    .tab-bar.rounded-mode .tab.active::after,
+    .tab-bar.rounded-mode .tab:hover:not(.active)::before,
+    .tab-bar.rounded-mode .tab:hover:not(.active)::after {
+        display: none !important;
+    }
+
+    .tab-bar.rounded-entering {
+        filter: blur(6px);
+    }
+    .tab-bar.rounded-leaving {
+        filter: blur(6px);
     }
 
     </style>
@@ -6337,12 +6426,29 @@ menu.addEventListener('mouseleave', hideMenu);
                     <i data-lucide="download" width="15" height="15" style="color:#000"></i>
                 </button>
             </div>
+            <div style="position:relative;">
+                <button class="taskbar-quick-btn" id="qsSettings" title="Settings">
+                    <i data-lucide="settings" width="15" height="15" style="color:#000"></i>
+                </button>
+            </div>
             
             <div id="profileMenu" class="profile-menu-popup">
                 <iframe src="/dashboard" style="width:100%;height:100%;border:none;"></iframe>
             </div>
             <div id="saveMenu" class="profile-menu-popup">
                 <iframe src="/save.html" style="width:100%;height:100%;border:none;"></iframe>
+            </div>
+            <div id="settingsMenu" class="profile-menu-popup">
+                <div class="s-section-label">Tab Style</div>
+                <button class="s-option active" id="tabStyleRounded" data-style="rounded">
+                    <span>Rounded</span>
+                    <svg class="s-check" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button class="s-option" id="tabStyleMasked" data-style="masked">
+                    <span>Chrome</span>
+                    <svg class="s-check" viewBox="0 0 14 14" fill="none"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="s-divider"></div>
             </div>
             <button class="taskbar-quick-btn" id="qsPower" title="Power Off" style="color:#000;">
                 <i data-lucide="power" width="15" height="15" style="color:#000"></i>
@@ -6970,6 +7076,8 @@ menu.addEventListener('mouseleave', hideMenu);
             profileBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 if (saveMenu) saveMenu.classList.remove('visible');
+                var sMenu = document.getElementById('settingsMenu');
+                if (sMenu) sMenu.classList.remove('visible');
                 if (profileMenu.classList.contains('visible')) {
                     profileMenu.classList.remove('visible');
                 } else {
@@ -6991,6 +7099,8 @@ menu.addEventListener('mouseleave', hideMenu);
             saveBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
                 if (profileMenu) profileMenu.classList.remove('visible');
+                var sMenu = document.getElementById('settingsMenu');
+                if (sMenu) sMenu.classList.remove('visible');
                 if (saveMenu.classList.contains('visible')) {
                     saveMenu.classList.remove('visible');
                 } else {
@@ -7008,6 +7118,78 @@ menu.addEventListener('mouseleave', hideMenu);
                 }
             });
         }
+
+        var settingsBtn = document.getElementById('qsSettings');
+        var settingsMenu = document.getElementById('settingsMenu');
+        if (settingsBtn && settingsMenu) {
+            settingsBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (profileMenu) profileMenu.classList.remove('visible');
+                if (saveMenu) saveMenu.classList.remove('visible');
+                if (settingsMenu.classList.contains('visible')) {
+                    settingsMenu.classList.remove('visible');
+                } else {
+                    var ccWrapper = document.getElementById('ccAnncWrapper');
+                    var tdc = document.getElementById('timeDateContainer');
+                    if (ccWrapper) ccWrapper.classList.remove('visible');
+                    if (tdc) tdc.classList.remove('expanded');
+                    settingsMenu.classList.add('visible');
+                }
+            });
+            document.addEventListener('click', function(e) {
+                if (!settingsMenu.contains(e.target) && e.target !== settingsBtn && !settingsBtn.contains(e.target)) {
+                    settingsMenu.classList.remove('visible');
+                }
+            });
+        }
+
+        var TAB_STYLE_KEY = 'nexos_tab_style';
+        var tabBar = document.getElementById('tabBar');
+        var maskedBtn = document.getElementById('tabStyleMasked');
+        var roundedBtn = document.getElementById('tabStyleRounded');
+
+        function setActiveBtn(activeBtn, inactiveBtn) {
+            activeBtn.classList.add('active');
+            inactiveBtn.classList.remove('active');
+        }
+
+        function applyTabStyle(style, animate) {
+            if (style === 'rounded') {
+                if (animate) {
+                    tabBar.classList.add('rounded-entering');
+                    setTimeout(function() {
+                        tabBar.classList.add('rounded-mode');
+                        setTimeout(function() {
+                            tabBar.classList.remove('rounded-entering');
+                        }, 50);
+                    }, 180);
+                } else {
+                    tabBar.classList.add('rounded-mode');
+                }
+                setActiveBtn(roundedBtn, maskedBtn);
+            } else {
+                if (animate) {
+                    tabBar.classList.add('rounded-leaving');
+                    setTimeout(function() {
+                        tabBar.classList.remove('rounded-mode');
+                        setTimeout(function() {
+                            tabBar.classList.remove('rounded-leaving');
+                        }, 50);
+                    }, 180);
+                } else {
+                    tabBar.classList.remove('rounded-mode');
+                }
+                setActiveBtn(maskedBtn, roundedBtn);
+            }
+            try { localStorage.setItem(TAB_STYLE_KEY, style); } catch(e) {}
+        }
+
+        var savedStyle = 'masked';
+        try { savedStyle = localStorage.getItem(TAB_STYLE_KEY) || 'masked'; } catch(e) {}
+        applyTabStyle(savedStyle, false);
+
+        maskedBtn.addEventListener('click', function() { applyTabStyle('masked', true); });
+        roundedBtn.addEventListener('click', function() { applyTabStyle('rounded', true); });
     }
 
     function initQuickServices() {
@@ -7152,6 +7334,8 @@ menu.addEventListener('mouseleave', hideMenu);
         if (profileMenu) profileMenu.classList.remove('visible');
         var saveMenu = document.getElementById('saveMenu');
         if (saveMenu) saveMenu.classList.remove('visible');
+        var settingsMenu = document.getElementById('settingsMenu');
+        if (settingsMenu) settingsMenu.classList.remove('visible');
         var aiMenuModal = document.getElementById('aiMenuModal');
         if (aiMenuModal) aiMenuModal.classList.remove('show');
         var globalLayout = document.getElementById('global-layout-options-menu');
