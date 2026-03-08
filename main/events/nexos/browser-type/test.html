@@ -2845,9 +2845,7 @@ body.reduce-motion *::after {
         display: flex;
     }
     .bk-overflow-dropdown {
-        position: absolute;
-        top: 100%;
-        right: 8px;
+        position: fixed;
         background: #fff;
         border: 1px solid #dadce0;
         border-radius: 8px;
@@ -3402,8 +3400,8 @@ document.addEventListener("DOMContentLoaded", () => {
             <button class="bk-overflow-btn" id="bkOverflowBtn" title="More bookmarks">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 8 12 13 17 8"/><polyline points="7 13 12 18 17 13"/></svg>
             </button>
-            <div class="bk-overflow-dropdown" id="bkOverflowDropdown"></div>
         </div>
+        <div class="bk-overflow-dropdown" id="bkOverflowDropdown"></div>
 
         <div class="content-area" id="contentArea">
             <div class="loading-indicator" id="loadingIndicator"></div>
@@ -8748,6 +8746,10 @@ setInterval(async () => {
             bkOverflowDropdown.classList.remove('visible');
         } else {
             renderOverflowDropdown();
+            // Position dropdown below the overflow button
+            var rect = bkOverflowBtn.getBoundingClientRect();
+            bkOverflowDropdown.style.top = (rect.bottom + 2) + 'px';
+            bkOverflowDropdown.style.right = (window.innerWidth - rect.right) + 'px';
             bkOverflowDropdown.classList.add('visible');
         }
     });
