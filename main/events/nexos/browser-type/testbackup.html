@@ -197,6 +197,7 @@
             flex: 1;
             transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             will-change: transform;
+            overflow: hidden;
         }
 
 
@@ -387,6 +388,7 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            position: relative;
 
             -webkit-user-drag: none;
             user-select: none;
@@ -397,6 +399,21 @@
             
             width: 20px;
             height: 20px;
+            border-radius: 50%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .tab-favicon .favicon-glow {
+            position: absolute;
+            width: 38px;
+            height: 38px;
+            left: -12px;
+            top: -9px;
+            filter: blur(10px);
+            opacity: 0.62;
+            z-index: 1;
+            pointer-events: none;
             border-radius: 50%;
         }
 
@@ -2013,7 +2030,7 @@ body.reduce-motion *::after {
     flex-wrap: wrap;
     gap: 6px;
     font-family: google sans;
-    z-index: 11;
+    z-index: 1000;
 }
 #suggestions button {
     flex: 1 0 30%;
@@ -2024,6 +2041,7 @@ body.reduce-motion *::after {
     color: #fff;
     font-family: google sans;
     cursor: pointer;
+    z-index: 1001;
 }
         .taskbar-app-shortcut {
           width: 28px;
@@ -3053,7 +3071,7 @@ body.reduce-motion *::after {
         border: 1px solid #e0e0e0;
         border-radius: 12px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        z-index: 9999;
+        z-index: 99998888;
         max-height: 400px;
         overflow-y: auto;
         display: none;
@@ -4886,11 +4904,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 img.onload = () => {
                     faviconElement.innerHTML = '';
+                    // Add blurred glow duplicate behind
+                    const glow = document.createElement('img');
+                    glow.src = sources[index];
+                    glow.className = 'favicon-glow';
+                    glow.draggable = false;
+                    faviconElement.appendChild(glow);
                     faviconElement.appendChild(img);
                     if (tab) {
                         tab.faviconUrl = sources[index];
                     }
-
                 };
             }
 
@@ -8667,6 +8690,19 @@ setInterval(async () => {
     var bkCancelBtn = document.getElementById('bkCancelBtn');
     var bkRemoveBtn = document.getElementById('bkRemoveBtn');
 
+    function syncSidebarTopFromBookmarks() {
+        if (!bookmarksBar) return;
+        var barVisible = !bookmarksBar.classList.contains('hidden') && bookmarksBar.offsetHeight > 0;
+        var offset = barVisible ? bookmarksBar.offsetHeight : 0;
+        document.documentElement.style.setProperty('--bookmark-bar-offset', offset + 'px');
+
+        var topVal = 92 + offset;
+        document.querySelectorAll('.sidebar').forEach(function(s) {
+            s.style.top = topVal + 'px';
+            s.style.height = 'calc(100vh - ' + topVal + 'px - 50px)';
+        });
+    }
+
     function getBookmarks() {
         try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY)) || []; } catch(e) { return []; }
     }
@@ -8887,7 +8923,7 @@ setInterval(async () => {
             });
             setTimeout(checkOverflow, 50);
         }
-        if (typeof updateSidebarTop === 'function') setTimeout(updateSidebarTop, 150);
+        setTimeout(syncSidebarTopFromBookmarks, 150);
     }
 
     function escapeBookmarkHtml(text) {
@@ -8970,13 +9006,26 @@ setInterval(async () => {
 
     window.addEventListener('resize', function() {
         checkOverflow();
-        if (typeof updateSidebarTop === 'function') updateSidebarTop();
+        syncSidebarTopFromBookmarks();
         if (bkOverflowDropdown.classList.contains('visible')) {
             var rect = bkOverflowBtn.getBoundingClientRect();
             bkOverflowDropdown.style.top = (rect.bottom + 2) + 'px';
             bkOverflowDropdown.style.right = (window.innerWidth - rect.right) + 'px';
         }
     });
+
+    // Keep sidebar synced to bookmark bar changes globally (not tied to settings panel state)
+    if (bookmarksBar && typeof MutationObserver !== 'undefined') {
+        var bookmarksBarObserver = new MutationObserver(function() {
+            syncSidebarTopFromBookmarks();
+            checkOverflow();
+        });
+        bookmarksBarObserver.observe(bookmarksBar, {
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+            childList: true
+        });
+    }
 
     var origSwitchForBookmarks = null;
     function hookSwitchToTab() {
@@ -8998,9 +9047,13 @@ setInterval(async () => {
     renderBookmarks();
     setTimeout(hookSwitchToTab, 600);
     setTimeout(updateStarState, 800);
-    setTimeout(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 500);
+    // Aggressively sync sidebar position on load
+    setTimeout(syncSidebarTopFromBookmarks, 100);
+    setTimeout(syncSidebarTopFromBookmarks, 300);
+    setTimeout(syncSidebarTopFromBookmarks, 500);
+    setTimeout(syncSidebarTopFromBookmarks, 1000);
     // Keep sidebar position in sync
-    setInterval(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 2000);
+    setInterval(syncSidebarTopFromBookmarks, 2000);
 
     setInterval(updateStarState, 2000);
 })();
