@@ -406,12 +406,12 @@
 
         .tab-favicon .favicon-glow {
             position: absolute;
-            width: 30px;
-            height: 30px;
-            left: -8px;
-            top: -5px;
-            filter: blur(4px);
-            opacity: 0.6;
+            width: 38px;
+            height: 38px;
+            left: -12px;
+            top: -9px;
+            filter: blur(2.5px);
+            opacity: 0.62;
             z-index: 1;
             pointer-events: none;
             border-radius: 50%;
@@ -8999,6 +8999,19 @@ setInterval(async () => {
             bkOverflowDropdown.style.right = (window.innerWidth - rect.right) + 'px';
         }
     });
+
+    // Keep sidebar synced to bookmark bar changes globally (not tied to settings panel state)
+    if (bookmarksBar && typeof MutationObserver !== 'undefined') {
+        var bookmarksBarObserver = new MutationObserver(function() {
+            if (typeof updateSidebarTop === 'function') updateSidebarTop();
+            checkOverflow();
+        });
+        bookmarksBarObserver.observe(bookmarksBar, {
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+            childList: true
+        });
+    }
 
     var origSwitchForBookmarks = null;
     function hookSwitchToTab() {
