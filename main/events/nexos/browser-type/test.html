@@ -2844,83 +2844,87 @@ body.reduce-motion *::after {
     .bookmark-star.active {
         color: #fbbc04;
     }
-    .bookmark-empty {
-        color: #999;
-        font-size: 11px;
-        padding: 2px 8px;
-    }
     .bookmark-edit-popup {
-        position: absolute;
-        top: 42px;
-        right: 100px;
-        width: 280px;
+        position: fixed;
+        width: 360px;
         background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 24px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.04);
-        padding: 16px;
-        z-index: 10000;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+        padding: 12px 16px 14px;
+        z-index: 10001;
         font-family: 'Google Sans', 'Segoe UI', sans-serif;
         display: none;
     }
     .bookmark-edit-popup.visible {
         display: block;
     }
-    .bookmark-edit-popup label {
+    .bookmark-edit-popup .bk-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: #202124;
+        margin-bottom: 12px;
+    }
+    .bookmark-edit-popup .bk-field {
+        margin-bottom: 10px;
+    }
+    .bookmark-edit-popup .bk-field span {
         display: block;
-        font-size: 11px;
+        font-size: 12px;
         color: #5f6368;
         margin-bottom: 4px;
-        font-weight: 500;
     }
-    .bookmark-edit-popup input {
+    .bookmark-edit-popup .bk-field input {
         width: 100%;
-        padding: 8px 10px;
+        padding: 6px 8px;
         border: 1px solid #dadce0;
-        border-radius: 8px;
+        border-radius: 4px;
         font-size: 13px;
         font-family: inherit;
+        color: #202124;
         outline: none;
-        margin-bottom: 12px;
         box-sizing: border-box;
+        background: #fff;
     }
-    .bookmark-edit-popup input:focus {
+    .bookmark-edit-popup .bk-field input:focus {
         border-color: #1a73e8;
+        box-shadow: 0 0 0 1px #1a73e8;
     }
-    .bookmark-edit-popup .bk-actions {
+    .bookmark-edit-popup .bk-bottom {
         display: flex;
-        justify-content: flex-end;
-        gap: 8px;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
     }
     .bookmark-edit-popup .bk-btn {
         padding: 6px 16px;
-        border-radius: 20px;
-        border: none;
+        border-radius: 4px;
+        border: 1px solid #dadce0;
         font-size: 13px;
         font-family: inherit;
         cursor: pointer;
         font-weight: 500;
+        background: #fff;
+        color: #202124;
     }
-    .bookmark-edit-popup .bk-btn-cancel {
-        background: none;
-        color: #1a73e8;
-    }
-    .bookmark-edit-popup .bk-btn-cancel:hover {
-        background: rgba(26,115,232,0.08);
+    .bookmark-edit-popup .bk-btn:hover {
+        background: #f1f3f4;
     }
     .bookmark-edit-popup .bk-btn-save {
         background: #1a73e8;
         color: #fff;
+        border-color: #1a73e8;
     }
     .bookmark-edit-popup .bk-btn-save:hover {
         background: #1765cc;
     }
     .bookmark-edit-popup .bk-btn-remove {
-        background: none;
         color: #d93025;
-        margin-right: auto;
+        border-color: transparent;
+        padding: 6px 8px;
     }
     .bookmark-edit-popup .bk-btn-remove:hover {
-        background: rgba(217,48,37,0.08);
+        background: rgba(217,48,37,0.06);
     }
 
     .profile-menu-popup {
@@ -3196,14 +3200,21 @@ body.reduce-motion *::after {
                 </button>
             </div>
             <div class="bookmark-edit-popup" id="bookmarkEditPopup">
-                <label>Name</label>
-                <input type="text" id="bkEditName" placeholder="Bookmark name">
-                <label>URL</label>
-                <input type="text" id="bkEditUrl" placeholder="URL" readonly>
-                <div class="bk-actions">
+                <div class="bk-title">Bookmark added</div>
+                <div class="bk-field">
+                    <span>Name</span>
+                    <input type="text" id="bkEditName">
+                </div>
+                <div class="bk-field">
+                    <span>URL</span>
+                    <input type="text" id="bkEditUrl" readonly>
+                </div>
+                <div class="bk-bottom">
                     <button class="bk-btn bk-btn-remove" id="bkRemoveBtn">Remove</button>
-                    <button class="bk-btn bk-btn-cancel" id="bkCancelBtn">Cancel</button>
-                    <button class="bk-btn bk-btn-save" id="bkSaveBtn">Done</button>
+                    <div style="display:flex;gap:8px;">
+                        <button class="bk-btn bk-btn-cancel" id="bkCancelBtn">Cancel</button>
+                        <button class="bk-btn bk-btn-save" id="bkSaveBtn">Done</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3314,9 +3325,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <iframe src="/pages/main/ai.html" class="ai-menu-iframe"></iframe>
 </div>
 
-        <div class="bookmarks-bar" id="bookmarksBar">
-            <span class="bookmark-empty" id="bookmarkEmpty">Add bookmarks by clicking the ★ in the address bar</span>
-        </div>
+        <div class="bookmarks-bar" id="bookmarksBar"></div>
 
         <div class="content-area" id="contentArea">
             <div class="loading-indicator" id="loadingIndicator"></div>
@@ -8474,7 +8483,7 @@ setInterval(async () => {
 (function() {
     var BOOKMARKS_KEY = 'nexos_bookmarks';
     var bookmarksBar = document.getElementById('bookmarksBar');
-    var bookmarkEmpty = document.getElementById('bookmarkEmpty');
+    
     var bookmarkStarBtn = document.getElementById('bookmarkStarBtn');
     var bookmarkEditPopup = document.getElementById('bookmarkEditPopup');
     var bkEditName = document.getElementById('bkEditName');
@@ -8537,10 +8546,7 @@ setInterval(async () => {
         var items = bookmarksBar.querySelectorAll('.bookmark-item');
         items.forEach(function(el) { el.remove(); });
 
-        if (bks.length === 0) {
-            bookmarkEmpty.style.display = '';
-        } else {
-            bookmarkEmpty.style.display = 'none';
+        if (bks.length > 0) {
             bks.forEach(function(bk, i) {
                 var btn = document.createElement('button');
                 btn.className = 'bookmark-item';
@@ -8572,6 +8578,12 @@ setInterval(async () => {
         return div.innerHTML;
     }
 
+    function positionPopupUnderStar() {
+        var rect = bookmarkStarBtn.getBoundingClientRect();
+        bookmarkEditPopup.style.top = (rect.bottom + 4) + 'px';
+        bookmarkEditPopup.style.right = (window.innerWidth - rect.right) + 'px';
+    }
+
     bookmarkStarBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         var url = getCurrentUrl();
@@ -8579,11 +8591,13 @@ setInterval(async () => {
 
         var bks = getBookmarks();
         var existing = bks.find(function(bk) { return bk.url === url; });
+        var titleNode = bookmarkEditPopup.querySelector('.bk-title');
 
         if (existing) {
             bkEditName.value = existing.name;
             bkEditUrl.value = existing.url;
             bkRemoveBtn.style.display = '';
+            if (titleNode) titleNode.textContent = 'Edit bookmark';
         } else {
             var title = getCurrentTitle() || url;
             bks.push({ name: title, url: url, favicon: getFaviconUrl(url) });
@@ -8593,7 +8607,9 @@ setInterval(async () => {
             bkEditName.value = title;
             bkEditUrl.value = url;
             bkRemoveBtn.style.display = '';
+            if (titleNode) titleNode.textContent = 'Bookmark added';
         }
+        positionPopupUnderStar();
         bookmarkEditPopup.classList.add('visible');
         bkEditName.focus();
         bkEditName.select();
