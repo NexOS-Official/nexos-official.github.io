@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -196,6 +197,7 @@
             flex: 1;
             transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             will-change: transform;
+            overflow: visible;
         }
 
 
@@ -386,6 +388,7 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            position: relative;
 
             -webkit-user-drag: none;
             user-select: none;
@@ -397,6 +400,26 @@
             width: 20px;
             height: 20px;
             border-radius: 50%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .tab-favicon .favicon-glow {
+            position: absolute;
+            width: 38px;
+            height: 38px;
+            left: -12px;
+            top: -9px;
+            filter: blur(10px);
+            opacity: 0.62;
+            z-index: 1;
+            pointer-events: none;
+            border-radius: 50%;
+            display: none;
+        }
+
+        .tab-bar.rounded-mode .tab-favicon .favicon-glow {
+            display: block;
         }
 
         .tab-title {
@@ -481,7 +504,7 @@
     align-items: center;
     gap: 8px;
     position: relative;
-    z-index: 1;
+    z-index: 502;
 }
 
 
@@ -567,7 +590,7 @@
             background: #eaf2ff;
             border: none;
             border-radius: 10px;
-            padding: 0 40px 0 16px;
+            padding: 0 68px 0 16px;
             color: #000000;
             font-size: 14px;
             outline: none;
@@ -873,10 +896,10 @@
 
         .sidebar {
             position: fixed;
-            top: 92px;
+            top: calc(92px + var(--bookmark-bar-offset, 0px));
             right: -400px;
             width: 400px;
-            height: calc(100vh - 92px - 50px);
+            height: calc(100vh - 92px - var(--bookmark-bar-offset, 0px) - 50px);
             transition: right 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             z-index: 500;
             opacity: 0;
@@ -1261,6 +1284,13 @@ body {
 
 .taskbar.hidden:hover {
   transform: translateY(0);
+}
+
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
 }
 
 .taskbar-left,
@@ -2552,6 +2582,464 @@ body {
         color: #999;
         font-size: 13px;
     }
+    
+    .annc-notification {
+        position: fixed;
+        bottom: 56px;
+        right: 16px;
+        width: 380px;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.04);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 40px 14px 16px;
+        z-index: 10001;
+        transform: translateY(calc(100% + 20px));
+        opacity: 0;
+        transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+        pointer-events: none;
+        color: #202124;
+    }
+    .annc-notification.visible {
+        transform: translateY(0);
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .annc-notification-img {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: none;
+    }
+    .annc-notification-body {
+        flex: 1;
+        min-width: 0;
+    }
+    .annc-notification-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 3px;
+    }
+    .annc-notification-label {
+        font-size: 12px;
+        font-weight: 800;
+        color: #000;
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+        letter-spacing: 0.3px;
+    }
+    .annc-notification-time {
+        font-size: 11px;
+        color: #5f6368;
+        flex-shrink: 0;
+    }
+    .annc-notification-text {
+        font-size: 13px;
+        color: #3c4043;
+        line-height: 1.4;
+        word-wrap: break-word;
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+    }
+    .annc-notification-close {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        color: #5f6368;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s, color 0.15s;
+    }
+    .annc-notification-close:hover {
+        background: rgba(0,0,0,0.06);
+        color: #202124;
+    }
+
+    @media (max-width: 600px) {
+        .taskbar {
+            padding: 0 4px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        .taskbar::-webkit-scrollbar {
+            display: none;
+        }
+        .taskbar-right {
+            gap: 4px;
+            flex-shrink: 0;
+        }
+        .taskbar-quick-divider {
+            display: none;
+        }
+        .taskbar-quick-btn,
+        .taskbar-app-shortcut {
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+        }
+        .taskbar-middle {
+            gap: 2px;
+        }
+        .cc-annc-wrapper {
+            right: 8px;
+            left: 8px;
+            width: auto;
+            bottom: 52px;
+            max-height: calc(100dvh - 100px);
+            overflow-y: auto;
+        }
+        .annc-notification {
+            right: 8px;
+            left: 8px;
+            width: auto;
+            bottom: 52px;
+        }
+        .annc-panel {
+            max-height: 160px;
+        }
+        .control-center-menu {
+            padding: 10px;
+            gap: 8px;
+        }
+        .annc-notification-img {
+            width: 32px;
+            height: 32px;
+        }
+        .cc-time-large {
+            font-size: 26px;
+        }
+        .cc-date-large {
+            font-size: 12px;
+        }
+        .cc-battery-large {
+            font-size: 12px;
+            padding: 4px 8px;
+        }
+        .profile-menu-popup {
+            right: 8px;
+            left: 8px;
+            width: auto;
+            bottom: 52px;
+        }
+        .bookmark-edit-popup {
+            right: 8px;
+            width: min(280px, calc(100vw - 16px));
+        }
+    }
+
+    @media (max-width: 768px) and (min-width: 601px) {
+        .cc-annc-wrapper {
+            right: 12px;
+            width: 300px;
+            bottom: 54px;
+            max-height: calc(100dvh - 100px);
+            overflow-y: auto;
+        }
+        .annc-notification {
+            right: 12px;
+            width: 340px;
+            bottom: 54px;
+        }
+        .annc-panel {
+            max-height: 200px;
+        }
+    }
+
+    @media (max-height: 600px) {
+        .cc-annc-wrapper {
+            bottom: 48px;
+            max-height: calc(100dvh - 80px);
+            overflow-y: auto;
+        }
+        .annc-panel {
+            max-height: 120px;
+        }
+        .annc-notification {
+            bottom: 48px;
+        }
+        .control-center-menu {
+            padding: 8px;
+            gap: 6px;
+        }
+        .cc-time-large {
+            font-size: 24px;
+        }
+    }
+
+    .bookmarks-bar {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 4px 16px;
+        background: #fff;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+        font-size: 12px;
+        min-height: 28px;
+        overflow: hidden;
+        flex-shrink: 0;
+        transition: min-height 0.25s ease, padding 0.25s ease, opacity 0.25s ease;
+        position: relative;
+        z-index: 501;
+    }
+    .bookmarks-bar.hidden {
+        min-height: 0;
+        height: 0;
+        padding: 0 16px;
+        opacity: 0;
+        pointer-events: none;
+        border-bottom: none;
+        overflow: hidden;
+    }
+    .bookmark-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: none;
+        border: none;
+        cursor: default;
+        font-size: 12px;
+        color: #3c4043;
+        font-family: inherit;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.15s;
+    }
+    .bookmark-item:hover {
+        background: rgba(0,0,0,0.06);
+    }
+    .bookmark-item img {
+        width: 16px;
+        height: 16px;
+        border-radius: 2px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+    .bookmark-item > span:first-of-type {
+        max-width: 180px;
+        overflow: hidden;
+        white-space: nowrap;
+        display: inline-block;
+        -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+        mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    }
+    .bookmark-item .bk-remove {
+        display: flex;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: none;
+        border: none;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: #9aa0a6;
+        padding: 0;
+        line-height: 14px;
+        margin-left: 2px;
+        transition: color 0.15s;
+    }
+    .bookmark-item .bk-remove:hover {
+        color: #3c4043;
+    }
+    .bk-overflow-btn {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 24px;
+        border-radius: 4px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        flex-shrink: 0;
+        margin-left: auto;
+        color: #5f6368;
+        transition: background 0.15s;
+    }
+    .bk-overflow-btn:hover {
+        background: rgba(0,0,0,0.06);
+    }
+    .bk-overflow-btn.visible {
+        display: flex;
+    }
+    .bk-overflow-dropdown {
+        position: fixed;
+        background: #fff;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        z-index: 10001;
+        min-width: 280px;
+        max-width: 400px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 4px 0;
+        display: none;
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+    }
+    .bk-overflow-dropdown.visible {
+        display: block;
+    }
+    .bk-overflow-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        color: #3c4043;
+        font-family: inherit;
+        white-space: nowrap;
+        width: 100%;
+        text-align: left;
+        transition: background 0.15s;
+    }
+    .bk-overflow-item:hover {
+        background: rgba(0,0,0,0.04);
+    }
+    .bk-overflow-item img {
+        width: 16px;
+        height: 16px;
+        border-radius: 2px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+    .bk-overflow-item span {
+        max-width: 220px;
+        overflow: hidden;
+        white-space: nowrap;
+        display: inline-block;
+        -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+        mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    }
+    .bookmark-star {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        border-radius: 50%;
+        transition: background 0.15s;
+        color: #9aa0a6;
+        position: absolute;
+        right: 32px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+    }
+    .bookmark-star:hover {
+        background: rgba(0,0,0,0.06);
+    }
+    .bookmark-star.active {
+        color: #A3ACFF;
+    }
+    .bookmark-star.active svg {
+        fill: #A3ACFF;
+    }
+    .bookmark-edit-popup {
+        position: fixed;
+        width: 360px;
+        background: #fff;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+        padding: 12px 16px 14px;
+        z-index: 10001;
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+        display: none;
+    }
+    .bookmark-edit-popup.visible {
+        display: block;
+    }
+    .bookmark-edit-popup .bk-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: #202124;
+        margin-bottom: 12px;
+    }
+    .bookmark-edit-popup .bk-field {
+        margin-bottom: 10px;
+    }
+    .bookmark-edit-popup .bk-field span {
+        display: block;
+        font-size: 12px;
+        color: #5f6368;
+        margin-bottom: 4px;
+    }
+    .bookmark-edit-popup .bk-field input {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #dadce0;
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: inherit;
+        color: #202124;
+        outline: none;
+        box-sizing: border-box;
+        background: #fff;
+    }
+    .bookmark-edit-popup .bk-field input:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 1px #1a73e8;
+    }
+    .bookmark-edit-popup .bk-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
+    }
+    .bookmark-edit-popup .bk-btn {
+        padding: 6px 16px;
+        border-radius: 4px;
+        border: 1px solid #dadce0;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        font-weight: 500;
+        background: #fff;
+        color: #202124;
+    }
+    .bookmark-edit-popup .bk-btn:hover {
+        background: #f1f3f4;
+    }
+    .bookmark-edit-popup .bk-btn-save {
+        background: #1a73e8;
+        color: #fff;
+        border-color: #1a73e8;
+    }
+    .bookmark-edit-popup .bk-btn-save:hover {
+        background: #1765cc;
+    }
+    .bookmark-edit-popup .bk-btn-remove {
+        color: #d93025;
+        border-color: transparent;
+        padding: 6px 8px;
+    }
+    .bookmark-edit-popup .bk-btn-remove:hover {
+        background: rgba(217,48,37,0.06);
+    }
+
     .profile-menu-popup {
         position: fixed;
         bottom: 60px;
@@ -2774,6 +3262,9 @@ body {
             
             <div class="address-bar-wrapper" style="position:relative;">
                 <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off" spellcheck="false">
+                <button class="bookmark-star" id="bookmarkStarBtn" title="Bookmark this page">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </button>
                 <button class="open-external-btn" id="openExternalBtn" title="Open in new browser tab">
                     <i data-lucide="external-link" width="14" height="14"></i>
                 </button>
@@ -2820,6 +3311,24 @@ body {
                 <button class="menu-btn" id="menuBtn" title="">
                     <i data-lucide="more-vertical" width="16" height="16"></i>
                 </button>
+            </div>
+            <div class="bookmark-edit-popup" id="bookmarkEditPopup">
+                <div class="bk-title">Bookmark added</div>
+                <div class="bk-field">
+                    <span>Name</span>
+                    <input type="text" id="bkEditName">
+                </div>
+                <div class="bk-field">
+                    <span>URL</span>
+                    <input type="text" id="bkEditUrl" readonly>
+                </div>
+                <div class="bk-bottom">
+                    <button class="bk-btn bk-btn-remove" id="bkRemoveBtn">Remove</button>
+                    <div style="display:flex;gap:8px;">
+                        <button class="bk-btn bk-btn-cancel" id="bkCancelBtn">Cancel</button>
+                        <button class="bk-btn bk-btn-save" id="bkSaveBtn">Done</button>
+                    </div>
+                </div>
             </div>
         </div>
 <div id="CMDL" hidden>
@@ -2928,6 +3437,13 @@ document.addEventListener("DOMContentLoaded", () => {
 <div id="aiMenuModal" class="ai-menu-modal">
     <iframe src="/pages/main/ai.html" class="ai-menu-iframe"></iframe>
 </div>
+
+        <div class="bookmarks-bar" id="bookmarksBar">
+            <button class="bk-overflow-btn" id="bkOverflowBtn" title="More bookmarks">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 8 12 13 17 8"/><polyline points="7 13 12 18 17 13"/></svg>
+            </button>
+        </div>
+        <div class="bk-overflow-dropdown" id="bkOverflowDropdown"></div>
 
         <div class="content-area" id="contentArea">
             <div class="loading-indicator" id="loadingIndicator"></div>
@@ -4392,11 +4908,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 img.onload = () => {
                     faviconElement.innerHTML = '';
+                    const glow = document.createElement('img');
+                    glow.src = sources[index];
+                    glow.className = 'favicon-glow';
+                    glow.draggable = false;
+                    faviconElement.appendChild(glow);
                     faviconElement.appendChild(img);
                     if (tab) {
                         tab.faviconUrl = sources[index];
                     }
-
                 };
             }
 
@@ -4574,6 +5094,24 @@ if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
   return;
 }
+
+                if (url.toLowerCase().startsWith('ghost://')) {
+                    var ghostRoutes = {
+                        'ghost://new-tab': '/newtab/pages/landing.html',
+                        'ghost://chat': '/chat',
+                        'ghost://games': '/games',
+                        'ghost://devs': '/credits.html',
+                        'ghost://restart': '/welcomer.html?resetagain',
+                        'ghost://streaming': '/main/events/sidebar/apps/movie.html',
+                        'ghost://docs': '/main/events/sidebar/apps/docs.html',
+                        'ghost://music': '/main/events/sidebar/apps/music.html'
+                    };
+                    var ghostTarget = ghostRoutes[url.toLowerCase()];
+                    if (ghostTarget) {
+                        this.loadUrl(ghostTarget);
+                        return;
+                    }
+                }
 
                 if (url.toLowerCase() === 'nexos://chat') {
                     this.loadUrl('/chat.html');
@@ -6082,7 +6620,13 @@ if (this.isBlockedUrl(url)) {
 
     const updateDateTime = () => {
       const now = new Date();
-      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+      let hour12 = true;
+      let showSeconds = false;
+      try { hour12 = (localStorage.getItem('nexos_clock_format') || '12') === '12'; } catch(e) {}
+      try { showSeconds = localStorage.getItem('nexos_show_seconds') === 'true'; } catch(e) {}
+      const timeOpts = { hour: "2-digit", minute: "2-digit", hour12: hour12 };
+      if (showSeconds) timeOpts.second = "2-digit";
+      const timeStr = now.toLocaleTimeString([], timeOpts);
       const dateStr = now.toLocaleDateString([], { weekday: 'short', month: "short", day: "numeric" });
       
       currentTimeElement.textContent = timeStr;
@@ -6466,7 +7010,7 @@ menu.addEventListener('mouseleave', hideMenu);
     <div class="cc-annc-wrapper" id="ccAnncWrapper">
         <div class="control-center-menu" id="controlCenterMenu" style="overflow:hidden;transition:max-height 0.4s cubic-bezier(0.25,0.46,0.45,0.94), padding 0.3s ease;">
             
-            <!-- Top row: slider bar with gear icons - EXACT match to image -->
+            
             <div class="cc-slider-bar-row" style="display:flex;align-items:center;gap:8px;">
                 <div class="cc-slider-pill" id="ccDimnessPill" style="flex:1;display:flex;align-items:center;background:rgba(180,195,230,0.45);border-radius:22px;padding:8px 12px;gap:8px;position:relative;overflow:hidden;cursor:pointer;touch-action:none;user-select:none;">
                     <div class="cc-icon-btn" id="ccSunIcon" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;z-index:2;flex-shrink:0;">
@@ -6480,7 +7024,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 </button>
             </div>
 
-            <!-- Bottom row: power, profile, download, battery - EXACT match to image -->
+            
             <div class="cc-actions-row" style="display:flex;align-items:center;background:rgba(255,255,255,0.5);border-radius:22px;padding:6px 12px;gap:4px;">
                 <div style="display:flex;align-items:center;gap:0;">
                     <button class="cc-action-btn" id="ccPowerBtn" title="Power Off" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
@@ -6500,7 +7044,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 <span id="ccBatteryInfo" style="font-size:13px;color:#444;white-space:nowrap;font-family:'google sans',sans-serif;font-weight:400;">80% - 2:35 left</span>
             </div>
 
-            <!-- Sub-panels that open inside the control center -->
+            
             <div id="ccSubPanel" style="overflow:hidden;max-height:0;transition:max-height 0.4s cubic-bezier(0.25,0.46,0.45,0.94);"></div>
         </div>
 
@@ -6513,6 +7057,22 @@ menu.addEventListener('mouseleave', hideMenu);
                 <div class="annc-empty">No announcements yet</div>
             </div>
         </div>
+
+    </div>
+
+    
+    <div class="annc-notification" id="anncNotification">
+        <img class="annc-notification-img" id="anncNotifImg" src="/images/loader/annc.png" alt="Announcement">
+        <div class="annc-notification-body">
+            <div class="annc-notification-header">
+                <span class="annc-notification-label">IMPORTANT</span>
+                <span class="annc-notification-time" id="anncNotifTime"></span>
+            </div>
+            <div class="annc-notification-text" id="anncNotifText"></div>
+        </div>
+        <button class="annc-notification-close" id="anncNotifClose" title="Dismiss">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
     </div>
 
     <div class="focus-overlay" id="focusOverlay">
@@ -7152,7 +7712,8 @@ menu.addEventListener('mouseleave', hideMenu);
         var settingsBtn1 = document.getElementById('ccSettingsBtn1');
         var settingsBtn2 = document.getElementById('ccSettingsBtn2');
         
-        var settingsContent = '<div style="padding:8px 0;">' +
+        var settingsContent = '<div style="padding:8px 0;max-height:320px;overflow-y:auto;">' +
+            
             '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:10px 12px 6px;">Tab Style</div>' +
             '<button class="cc-settings-option" id="ccTabStyleRounded" data-style="rounded" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
             '<span>Rounded</span>' +
@@ -7162,11 +7723,41 @@ menu.addEventListener('mouseleave', hideMenu);
             '<span>Chrome</span>' +
             '<svg class="s-check" viewBox="0 0 14 14" fill="none" width="14" height="14" style="opacity:0;transition:opacity 0.15s;"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
             '</button>' +
+            '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
+            '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Clock</div>' +
+            '<button class="cc-settings-option" id="ccClock12" data-clock="12" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>12-hour</span>' +
+            '<svg class="s-check" viewBox="0 0 14 14" fill="none" width="14" height="14" style="opacity:0;transition:opacity 0.15s;"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccClock24" data-clock="24" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>24-hour</span>' +
+            '<svg class="s-check" viewBox="0 0 14 14" fill="none" width="14" height="14" style="opacity:0;transition:opacity 0.15s;"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccShowSeconds" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Show Seconds</span>' +
+            '<div class="cc-toggle" id="ccShowSecondsToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
+            '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
+            '</div>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccShowBookmarks" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Show Bookmarks</span>' +
+            '<div class="cc-toggle" id="ccShowBookmarksToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
+            '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
+            '</div>' +
+            '</button>' +
+            '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
+            '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Data</div>' +
+            '<button class="cc-settings-option" id="ccClearHistory" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Clear Browsing History</span>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccResetSettings" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Reset All Settings</span>' +
+            '</button>' +
             '</div>';
 
         function openSettingsPanel(e) {
             e.stopPropagation();
-            openSubPanel(settingsContent, 120, initTabStyleButtons);
+            openSubPanel(settingsContent, 380, initAllSettings);
         }
 
         if (settingsBtn2) settingsBtn2.addEventListener('click', openSettingsPanel);
@@ -7202,6 +7793,216 @@ menu.addEventListener('mouseleave', hideMenu);
             maskedBtn.addEventListener('click', function() { applyTabStyle('masked', true); });
             roundedBtn.addEventListener('click', function() { applyTabStyle('rounded', true); });
         }
+
+        function initAllSettings() {
+            initTabStyleButtons();
+            initClockFormatButtons();
+            initToggleSettings();
+            initDataButtons();
+        }
+
+        
+        var CLOCK_FORMAT_KEY = 'nexos_clock_format';
+        function initClockFormatButtons() {
+            var btn12 = document.getElementById('ccClock12');
+            var btn24 = document.getElementById('ccClock24');
+            if (!btn12 || !btn24) return;
+
+            var current = '12';
+            try { current = localStorage.getItem(CLOCK_FORMAT_KEY) || '12'; } catch(e) {}
+            updateClockChecks(current);
+
+            btn12.addEventListener('click', function() { setClockFormat('12'); });
+            btn24.addEventListener('click', function() { setClockFormat('24'); });
+        }
+
+        function setClockFormat(fmt) {
+            try { localStorage.setItem(CLOCK_FORMAT_KEY, fmt); } catch(e) {}
+            updateClockChecks(fmt);
+            updateDateTime();
+        }
+
+        function updateClockChecks(fmt) {
+            ['ccClock12', 'ccClock24'].forEach(function(id) {
+                var btn = document.getElementById(id);
+                if (!btn) return;
+                var check = btn.querySelector('.s-check');
+                var isActive = btn.dataset.clock === fmt;
+                if (check) check.style.opacity = isActive ? '1' : '0';
+                btn.style.color = isActive ? '#007aff' : '#1d1d1f';
+            });
+        }
+
+        function applyShowBookmarks(show) {
+            var bar = document.getElementById('bookmarksBar');
+            if (!bar) return;
+            if (show) {
+                var bks = [];
+                try { bks = JSON.parse(localStorage.getItem('nexos_bookmarks')) || []; } catch(e) {}
+                if (bks.length > 0) {
+                    bar.classList.remove('hidden');
+                    bar.style.display = '';
+                } else {
+                    bar.classList.add('hidden');
+                }
+            } else {
+                bar.classList.add('hidden');
+            }
+            if (typeof window._renderBookmarks === 'function') window._renderBookmarks();
+            setTimeout(updateSidebarTop, 100);
+        }
+
+        function updateSidebarTop() {
+            var bar = document.getElementById('bookmarksBar');
+            var barVisible = bar && !bar.classList.contains('hidden') && bar.offsetHeight > 0;
+            var offset = barVisible ? bar.offsetHeight : 0;
+            document.documentElement.style.setProperty('--bookmark-bar-offset', offset + 'px');
+
+            var topVal = 92 + offset;
+            document.querySelectorAll('.sidebar').forEach(function(s) {
+                s.style.top = topVal + 'px';
+                s.style.height = 'calc(100vh - ' + topVal + 'px - 50px)';
+            });
+        }
+
+        var SHOW_SECONDS_KEY = 'nexos_show_seconds';
+        var SHOW_BOOKMARKS_KEY = 'nexos_show_bookmarks';
+
+        function setToggleState(toggleEl, on) {
+            if (!toggleEl) return;
+            var knob = toggleEl.querySelector('.cc-toggle-knob');
+            if (on) {
+                toggleEl.style.background = '#007aff';
+                if (knob) knob.style.left = '16px';
+            } else {
+                toggleEl.style.background = '#ccc';
+                if (knob) knob.style.left = '2px';
+            }
+        }
+
+        function initToggleSettings() {
+            
+            var showSecondsBtn = document.getElementById('ccShowSeconds');
+            var showSecondsToggle = document.getElementById('ccShowSecondsToggle');
+            var showSeconds = false;
+            try { showSeconds = localStorage.getItem(SHOW_SECONDS_KEY) === 'true'; } catch(e) {}
+            setToggleState(showSecondsToggle, showSeconds);
+            if (showSecondsBtn) {
+                showSecondsBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var current = localStorage.getItem(SHOW_SECONDS_KEY) === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(SHOW_SECONDS_KEY, next); } catch(e) {}
+                    setToggleState(showSecondsToggle, next);
+                    updateDateTime();
+                });
+            }
+
+            var showBookmarksBtn = document.getElementById('ccShowBookmarks');
+            var showBookmarksToggle = document.getElementById('ccShowBookmarksToggle');
+            var showBookmarks = true;
+            try { var stored = localStorage.getItem(SHOW_BOOKMARKS_KEY); if (stored !== null) showBookmarks = stored === 'true'; } catch(e) {}
+            setToggleState(showBookmarksToggle, showBookmarks);
+            applyShowBookmarks(showBookmarks);
+            if (showBookmarksBtn) {
+                showBookmarksBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var stored = localStorage.getItem(SHOW_BOOKMARKS_KEY);
+                    var current = stored === null ? true : stored === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(SHOW_BOOKMARKS_KEY, next); } catch(e) {}
+                    setToggleState(showBookmarksToggle, next);
+                    applyShowBookmarks(next);
+                });
+            }
+
+            
+            var confirmCloseBtn = document.getElementById('ccConfirmClose');
+            var confirmCloseToggle = document.getElementById('ccConfirmCloseToggle');
+            var confirmClose = false;
+            try { confirmClose = localStorage.getItem(CONFIRM_CLOSE_KEY) === 'true'; } catch(e) {}
+            setToggleState(confirmCloseToggle, confirmClose);
+            if (confirmCloseBtn) {
+                confirmCloseBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var current = localStorage.getItem(CONFIRM_CLOSE_KEY) === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(CONFIRM_CLOSE_KEY, next); } catch(e) {}
+                    setToggleState(confirmCloseToggle, next);
+                });
+            }
+
+            
+            var showFullUrlBtn = document.getElementById('ccShowFullUrl');
+            var showFullUrlToggle = document.getElementById('ccShowFullUrlToggle');
+            var showFullUrl = false;
+            try { showFullUrl = localStorage.getItem(SHOW_FULL_URL_KEY) === 'true'; } catch(e) {}
+            setToggleState(showFullUrlToggle, showFullUrl);
+            applyShowFullUrl(showFullUrl);
+            if (showFullUrlBtn) {
+                showFullUrlBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var current = localStorage.getItem(SHOW_FULL_URL_KEY) === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(SHOW_FULL_URL_KEY, next); } catch(e) {}
+                    setToggleState(showFullUrlToggle, next);
+                    applyShowFullUrl(next);
+                });
+            }
+
+            
+            var smoothScrollBtn = document.getElementById('ccSmoothScroll');
+            var smoothScrollToggle = document.getElementById('ccSmoothScrollToggle');
+            var smoothScroll = true;
+            try { var ss = localStorage.getItem(SMOOTH_SCROLL_KEY); if (ss !== null) smoothScroll = ss === 'true'; } catch(e) {}
+            setToggleState(smoothScrollToggle, smoothScroll);
+            applySmoothScroll(smoothScroll);
+            if (smoothScrollBtn) {
+                smoothScrollBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var ss = localStorage.getItem(SMOOTH_SCROLL_KEY);
+                    var current = ss === null ? true : ss === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(SMOOTH_SCROLL_KEY, next); } catch(e) {}
+                    setToggleState(smoothScrollToggle, next);
+                    applySmoothScroll(next);
+                });
+            }
+        }
+
+
+        
+        function initDataButtons() {
+            var clearBtn = document.getElementById('ccClearHistory');
+            var resetBtn = document.getElementById('ccResetSettings');
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    try { localStorage.removeItem('nexaura_browse_history'); } catch(e) {}
+                    clearBtn.querySelector('span').textContent = 'Cleared!';
+                    setTimeout(function() { clearBtn.querySelector('span').textContent = 'Clear Browsing History'; }, 1500);
+                });
+            }
+
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function() {
+                    try {
+                        localStorage.removeItem(TAB_STYLE_KEY);
+                        localStorage.removeItem(CLOCK_FORMAT_KEY);
+                        localStorage.removeItem(SHOW_SECONDS_KEY);
+                        localStorage.removeItem('nexos_dimness');
+                        localStorage.removeItem(SHOW_BOOKMARKS_KEY);
+                    } catch(e) {}
+                    resetBtn.querySelector('span').textContent = 'Reset!';
+                    setTimeout(function() { 
+                        resetBtn.querySelector('span').textContent = 'Reset All Settings';
+                        location.reload();
+                    }, 800);
+                });
+            }
+        }
+
+
 
         function updateCheckmarks(style) {
             var maskedBtn = document.getElementById('ccTabStyleMasked');
@@ -7452,11 +8253,38 @@ menu.addEventListener('mouseleave', hideMenu);
       }
     }
 
+    var anncNotification = document.getElementById('anncNotification');
+    var anncNotifText = document.getElementById('anncNotifText');
+    var anncNotifTime = document.getElementById('anncNotifTime');
+    var anncNotifClose = document.getElementById('anncNotifClose');
+    var anncNotifTimer = null;
+
+    function dismissAnncNotification() {
+      if (anncNotification) anncNotification.classList.remove('visible');
+      if (anncNotifTimer) { clearTimeout(anncNotifTimer); anncNotifTimer = null; }
+    }
+
+    function showAnncNotification(msg, time) {
+      if (!anncNotification || !anncNotifText) return;
+      anncNotifText.textContent = msg;
+      if (anncNotifTime) anncNotifTime.textContent = time;
+      
+      anncNotification.classList.remove('visible');
+      void anncNotification.offsetWidth;
+      anncNotification.classList.add('visible');
+      if (anncNotifTimer) clearTimeout(anncNotifTimer);
+      anncNotifTimer = setTimeout(dismissAnncNotification, 8000);
+    }
+
+    if (anncNotifClose) anncNotifClose.addEventListener('click', dismissAnncNotification);
+
     function showAnnouncement(msg) {
-      announcements.unshift({ text: msg, time: formatAnncTime(new Date()) });
+      var time = formatAnncTime(new Date());
+      announcements.unshift({ text: msg, time: time });
       if (announcements.length > 50) announcements.pop();
       anncDot.classList.add('visible');
       renderAnnouncements();
+      showAnncNotification(msg, time);
     }
 
     anncClearAll.addEventListener('click', function() {
@@ -7846,6 +8674,379 @@ setInterval(async () => {
     if (j.frozen && location.pathname !== "/locked") location.href = "/locked";
   } catch {}
 }, 1200);
+</script>
+<script>
+(function() {
+    var BOOKMARKS_KEY = 'nexos_bookmarks';
+    var bookmarksBar = document.getElementById('bookmarksBar');
+    var bkOverflowBtn = document.getElementById('bkOverflowBtn');
+    var bkOverflowDropdown = document.getElementById('bkOverflowDropdown');
+    
+    var bookmarkStarBtn = document.getElementById('bookmarkStarBtn');
+    var bookmarkEditPopup = document.getElementById('bookmarkEditPopup');
+    var bkEditName = document.getElementById('bkEditName');
+    var bkEditUrl = document.getElementById('bkEditUrl');
+    var bkSaveBtn = document.getElementById('bkSaveBtn');
+    var bkCancelBtn = document.getElementById('bkCancelBtn');
+    var bkRemoveBtn = document.getElementById('bkRemoveBtn');
+
+    function syncSidebarTopFromBookmarks() {
+        if (!bookmarksBar) return;
+        var barVisible = !bookmarksBar.classList.contains('hidden') && bookmarksBar.offsetHeight > 0;
+        var offset = barVisible ? bookmarksBar.offsetHeight : 0;
+        document.documentElement.style.setProperty('--bookmark-bar-offset', offset + 'px');
+
+        var topVal = 92 + offset;
+        document.querySelectorAll('.sidebar').forEach(function(s) {
+            s.style.top = topVal + 'px';
+            s.style.height = 'calc(100vh - ' + topVal + 'px - 50px)';
+        });
+    }
+
+    function getBookmarks() {
+        try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY)) || []; } catch(e) { return []; }
+    }
+
+    function saveBookmarks(bks) {
+        try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bks)); } catch(e) {}
+    }
+
+    function getCurrentUrl() {
+        var b = window.browser;
+        if (!b) return '';
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab) return '';
+        return tab.currentUrl || '';
+    }
+
+    function getCurrentTitle() {
+        var b = window.browser;
+        if (!b) return '';
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab) return '';
+        var titleEl = tab.element ? tab.element.querySelector('.tab-title') : null;
+        return titleEl ? titleEl.textContent : '';
+    }
+
+    var DEFAULT_FAVICON = 'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://www.edpuzzle.cv&size=16';
+
+    var GHOST_MAP = {
+        '/newtab/pages/landing.html': 'new-tab',
+        '/chat': 'chat',
+        '/games': 'games',
+        '/credits.html': 'devs',
+        '/welcomer.html?resetagain': 'restart',
+        '/main/events/sidebar/apps/movie.html': 'streaming',
+        '/main/events/sidebar/apps/docs.html': 'docs',
+        '/main/events/sidebar/apps/music.html': 'music'
+    };
+    var GHOST_REVERSE = {};
+    Object.keys(GHOST_MAP).forEach(function(k) { GHOST_REVERSE['ghost://' + GHOST_MAP[k]] = k; });
+
+    function isInternalUrl(url) {
+        return url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('ghost://');
+    }
+
+    function toGhostUrl(url) {
+        if (!url) return url;
+        if (GHOST_MAP[url]) return 'ghost://' + GHOST_MAP[url];
+        var base = url.split('?')[0];
+        if (GHOST_MAP[base]) return 'ghost://' + GHOST_MAP[base];
+        if (isInternalUrl(url)) {
+            var name = url.replace(/^\//, '').replace(/\.html$/, '').replace(/\//g, '-');
+            return 'ghost://' + (name || 'page');
+        }
+        return url;
+    }
+
+    function fromGhostUrl(ghostUrl) {
+        if (!ghostUrl || !ghostUrl.startsWith('ghost://')) return ghostUrl;
+        if (GHOST_REVERSE[ghostUrl]) return GHOST_REVERSE[ghostUrl];
+        return ghostUrl;
+    }
+
+    function getBookmarkDisplayUrl(url) {
+        if (isInternalUrl(url)) return toGhostUrl(url);
+        return url;
+    }
+
+    function getFaviconUrl(url) {
+        if (!url || isInternalUrl(url) || url.startsWith('ghost://')) return DEFAULT_FAVICON;
+        try {
+            var u = new URL(url);
+            return 'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=' + encodeURIComponent(u.origin) + '&size=16';
+        } catch(e) {
+            return DEFAULT_FAVICON;
+        }
+    }
+
+    function isBookmarked(url) {
+        var ghostUrl = toGhostUrl(url);
+        return getBookmarks().some(function(bk) { return bk.url === url || bk.url === ghostUrl; });
+    }
+
+    function updateStarState() {
+        var url = getCurrentUrl();
+        if (url && isBookmarked(url)) {
+            bookmarkStarBtn.classList.add('active');
+        } else {
+            bookmarkStarBtn.classList.remove('active');
+        }
+    }
+
+    function checkOverflow() {
+        var items = bookmarksBar.querySelectorAll('.bookmark-item');
+        if (items.length === 0 || bookmarksBar.classList.contains('hidden')) {
+            bkOverflowBtn.classList.remove('visible');
+            bkOverflowDropdown.classList.remove('visible');
+            return;
+        }
+
+        items.forEach(function(item) {
+            item.style.display = '';
+            item.dataset.overflow = '0';
+        });
+
+        var available = Math.max(0, bookmarksBar.clientWidth - 42);
+        var used = 0;
+        var hasOverflow = false;
+
+        items.forEach(function(item) {
+            var width = item.offsetWidth;
+            if (used + width > available) {
+                item.style.display = 'none';
+                item.dataset.overflow = '1';
+                hasOverflow = true;
+                return;
+            }
+            used += width;
+        });
+
+        bkOverflowBtn.classList.toggle('visible', hasOverflow);
+        if (!hasOverflow) bkOverflowDropdown.classList.remove('visible');
+    }
+
+    function renderOverflowDropdown() {
+        bkOverflowDropdown.innerHTML = '';
+        var bks = getBookmarks();
+        var items = bookmarksBar.querySelectorAll('.bookmark-item');
+        items.forEach(function(item, i) {
+            if (item.dataset.overflow === '1') {
+                var bk = bks[i];
+                if (!bk) return;
+                var div = document.createElement('button');
+                div.className = 'bk-overflow-item';
+                var favicon = bk.favicon || getFaviconUrl(bk.url) || DEFAULT_FAVICON;
+                div.innerHTML = '<img src="' + favicon + '" onerror="this.src=\'' + DEFAULT_FAVICON + '\'" alt="">' +
+                    '<span>' + escapeBookmarkHtml(bk.name) + '</span>';
+                div.addEventListener('click', function() {
+                    var b = window.browser;
+                    var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (b) {
+                        if (navUrl && !navUrl.startsWith('http')) {
+                            b.loadUrl(navUrl);
+                        } else {
+                            b.navigate(navUrl);
+                        }
+                    }
+                    bkOverflowDropdown.classList.remove('visible');
+                });
+                bkOverflowDropdown.appendChild(div);
+            }
+        });
+    }
+
+    bkOverflowBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        checkOverflow();
+        if (!bkOverflowBtn.classList.contains('visible')) return;
+
+        if (bkOverflowDropdown.classList.contains('visible')) {
+            bkOverflowDropdown.classList.remove('visible');
+        } else {
+            renderOverflowDropdown();
+            var rect = bkOverflowBtn.getBoundingClientRect();
+            bkOverflowDropdown.style.top = (rect.bottom + 2) + 'px';
+            bkOverflowDropdown.style.right = (window.innerWidth - rect.right) + 'px';
+            bkOverflowDropdown.classList.add('visible');
+        }
+    });
+
+    window._renderBookmarks = renderBookmarks;
+    function renderBookmarks() {
+        var bks = getBookmarks();
+        var items = bookmarksBar.querySelectorAll('.bookmark-item');
+        items.forEach(function(el) { el.remove(); });
+
+        var showBkSetting = true;
+        try { var s = localStorage.getItem('nexos_show_bookmarks'); if (s !== null) showBkSetting = s === 'true'; } catch(e) {}
+
+        if (bks.length === 0 || !showBkSetting) {
+            bookmarksBar.classList.add('hidden');
+        } else {
+            bookmarksBar.classList.remove('hidden');
+            bks.forEach(function(bk, i) {
+                var btn = document.createElement('button');
+                btn.className = 'bookmark-item';
+                var favicon = bk.favicon || getFaviconUrl(bk.url) || DEFAULT_FAVICON;
+                btn.innerHTML = '<img src="' + favicon + '" onerror="this.src=\'' + DEFAULT_FAVICON + '\'" alt="">' +
+                    '<span>' + escapeBookmarkHtml(bk.name) + '</span>' +
+                    '<span class="bk-remove" title="Remove">×</span>';
+                btn.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('bk-remove')) {
+                        e.stopPropagation();
+                        var bookmarks = getBookmarks();
+                        bookmarks.splice(i, 1);
+                        saveBookmarks(bookmarks);
+                        renderBookmarks();
+                        updateStarState();
+                        return;
+                    }
+                    var b = window.browser;
+                    var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (b) {
+                        if (navUrl && !navUrl.startsWith('http')) {
+                            b.loadUrl(navUrl);
+                        } else {
+                            b.navigate(navUrl);
+                        }
+                    }
+                });
+                bookmarksBar.insertBefore(btn, bkOverflowBtn);
+            });
+            setTimeout(checkOverflow, 50);
+        }
+        setTimeout(syncSidebarTopFromBookmarks, 150);
+    }
+
+    function escapeBookmarkHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function positionPopupUnderStar() {
+        var rect = bookmarkStarBtn.getBoundingClientRect();
+        bookmarkEditPopup.style.top = (rect.bottom + 4) + 'px';
+        bookmarkEditPopup.style.right = (window.innerWidth - rect.right) + 'px';
+    }
+
+    bookmarkStarBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var rawUrl = getCurrentUrl();
+        if (!rawUrl) return;
+
+        var storeUrl = isInternalUrl(rawUrl) ? toGhostUrl(rawUrl) : rawUrl;
+        var bks = getBookmarks();
+        var existing = bks.find(function(bk) { return bk.url === storeUrl || bk.url === rawUrl; });
+        var titleNode = bookmarkEditPopup.querySelector('.bk-title');
+
+        if (existing) {
+            bkEditName.value = existing.name;
+            bkEditUrl.value = existing.url;
+            bkRemoveBtn.style.display = '';
+            if (titleNode) titleNode.textContent = 'Edit bookmark';
+        } else {
+            var title = getCurrentTitle() || storeUrl;
+            bks.push({ name: title, url: storeUrl, favicon: getFaviconUrl(rawUrl) });
+            saveBookmarks(bks);
+            renderBookmarks();
+            updateStarState();
+            bkEditName.value = title;
+            bkEditUrl.value = storeUrl;
+            bkRemoveBtn.style.display = '';
+            if (titleNode) titleNode.textContent = 'Bookmark added';
+        }
+        positionPopupUnderStar();
+        bookmarkEditPopup.classList.add('visible');
+        bkEditName.focus();
+        bkEditName.select();
+    });
+
+    bkSaveBtn.addEventListener('click', function() {
+        var url = bkEditUrl.value;
+        var bks = getBookmarks();
+        var idx = bks.findIndex(function(bk) { return bk.url === url; });
+        if (idx !== -1) {
+            bks[idx].name = bkEditName.value || bks[idx].name;
+            saveBookmarks(bks);
+            renderBookmarks();
+        }
+        bookmarkEditPopup.classList.remove('visible');
+    });
+
+    bkCancelBtn.addEventListener('click', function() {
+        bookmarkEditPopup.classList.remove('visible');
+    });
+
+    bkRemoveBtn.addEventListener('click', function() {
+        var url = bkEditUrl.value;
+        var bks = getBookmarks().filter(function(bk) { return bk.url !== url; });
+        saveBookmarks(bks);
+        renderBookmarks();
+        updateStarState();
+        bookmarkEditPopup.classList.remove('visible');
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!bookmarkEditPopup.contains(e.target) && e.target !== bookmarkStarBtn && !bookmarkStarBtn.contains(e.target)) {
+            bookmarkEditPopup.classList.remove('visible');
+        }
+        if (!bkOverflowDropdown.contains(e.target) && e.target !== bkOverflowBtn && !bkOverflowBtn.contains(e.target)) {
+            bkOverflowDropdown.classList.remove('visible');
+        }
+    });
+
+    window.addEventListener('resize', function() {
+        checkOverflow();
+        syncSidebarTopFromBookmarks();
+        if (bkOverflowDropdown.classList.contains('visible')) {
+            var rect = bkOverflowBtn.getBoundingClientRect();
+            bkOverflowDropdown.style.top = (rect.bottom + 2) + 'px';
+            bkOverflowDropdown.style.right = (window.innerWidth - rect.right) + 'px';
+        }
+    });
+
+    if (bookmarksBar && typeof MutationObserver !== 'undefined') {
+        var bookmarksBarObserver = new MutationObserver(function() {
+            syncSidebarTopFromBookmarks();
+            checkOverflow();
+        });
+        bookmarksBarObserver.observe(bookmarksBar, {
+            attributes: true,
+            attributeFilter: ['class', 'style'],
+            childList: true
+        });
+    }
+
+    var origSwitchForBookmarks = null;
+    function hookSwitchToTab() {
+        var b = window.browser;
+        if (!b) { setTimeout(hookSwitchToTab, 300); return; }
+        if (origSwitchForBookmarks) return;
+        origSwitchForBookmarks = b.switchToTab.bind(b);
+        var origNav = b.navigate.bind(b);
+        b.switchToTab = function(tabId) {
+            origSwitchForBookmarks(tabId);
+            setTimeout(updateStarState, 100);
+        };
+        b.navigate = function(url) {
+            origNav(url);
+            setTimeout(updateStarState, 300);
+        };
+    }
+
+    renderBookmarks();
+    setTimeout(hookSwitchToTab, 600);
+    setTimeout(updateStarState, 800);
+    setTimeout(syncSidebarTopFromBookmarks, 100);
+    setTimeout(syncSidebarTopFromBookmarks, 300);
+    setTimeout(syncSidebarTopFromBookmarks, 500);
+    setTimeout(syncSidebarTopFromBookmarks, 1000);
+    setInterval(syncSidebarTopFromBookmarks, 2000);
+
+    setInterval(updateStarState, 2000);
+})();
 </script>
 </body>
 </html>
