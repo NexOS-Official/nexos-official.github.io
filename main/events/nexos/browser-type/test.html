@@ -197,6 +197,7 @@
             flex: 1;
             transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             will-change: transform;
+            overflow: hidden;
         }
 
 
@@ -387,6 +388,7 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            position: relative;
 
             -webkit-user-drag: none;
             user-select: none;
@@ -397,6 +399,21 @@
             
             width: 20px;
             height: 20px;
+            border-radius: 50%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .tab-favicon .favicon-glow {
+            position: absolute;
+            width: 34px;
+            height: 34px;
+            left: -10px;
+            top: -7px;
+            filter: blur(8px);
+            opacity: 0.55;
+            z-index: 1;
+            pointer-events: none;
             border-radius: 50%;
         }
 
@@ -4886,11 +4903,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 img.onload = () => {
                     faviconElement.innerHTML = '';
+                    // Add blurred glow duplicate behind
+                    const glow = document.createElement('img');
+                    glow.src = sources[index];
+                    glow.className = 'favicon-glow';
+                    glow.draggable = false;
+                    faviconElement.appendChild(glow);
                     faviconElement.appendChild(img);
                     if (tab) {
                         tab.faviconUrl = sources[index];
                     }
-
                 };
             }
 
