@@ -410,7 +410,7 @@
             height: 38px;
             left: -12px;
             top: -9px;
-            filter: blur(2.5px);
+            filter: blur(10px);
             opacity: 0.62;
             z-index: 1;
             pointer-events: none;
@@ -8689,6 +8689,19 @@ setInterval(async () => {
     var bkCancelBtn = document.getElementById('bkCancelBtn');
     var bkRemoveBtn = document.getElementById('bkRemoveBtn');
 
+    function syncSidebarTopFromBookmarks() {
+        if (!bookmarksBar) return;
+        var barVisible = !bookmarksBar.classList.contains('hidden') && bookmarksBar.offsetHeight > 0;
+        var offset = barVisible ? bookmarksBar.offsetHeight : 0;
+        document.documentElement.style.setProperty('--bookmark-bar-offset', offset + 'px');
+
+        var topVal = 92 + offset;
+        document.querySelectorAll('.sidebar').forEach(function(s) {
+            s.style.top = topVal + 'px';
+            s.style.height = 'calc(100vh - ' + topVal + 'px - 50px)';
+        });
+    }
+
     function getBookmarks() {
         try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY)) || []; } catch(e) { return []; }
     }
@@ -8909,7 +8922,7 @@ setInterval(async () => {
             });
             setTimeout(checkOverflow, 50);
         }
-        if (typeof updateSidebarTop === 'function') setTimeout(updateSidebarTop, 150);
+        setTimeout(syncSidebarTopFromBookmarks, 150);
     }
 
     function escapeBookmarkHtml(text) {
@@ -8992,7 +9005,7 @@ setInterval(async () => {
 
     window.addEventListener('resize', function() {
         checkOverflow();
-        if (typeof updateSidebarTop === 'function') updateSidebarTop();
+        syncSidebarTopFromBookmarks();
         if (bkOverflowDropdown.classList.contains('visible')) {
             var rect = bkOverflowBtn.getBoundingClientRect();
             bkOverflowDropdown.style.top = (rect.bottom + 2) + 'px';
@@ -9003,7 +9016,7 @@ setInterval(async () => {
     // Keep sidebar synced to bookmark bar changes globally (not tied to settings panel state)
     if (bookmarksBar && typeof MutationObserver !== 'undefined') {
         var bookmarksBarObserver = new MutationObserver(function() {
-            if (typeof updateSidebarTop === 'function') updateSidebarTop();
+            syncSidebarTopFromBookmarks();
             checkOverflow();
         });
         bookmarksBarObserver.observe(bookmarksBar, {
@@ -9034,12 +9047,12 @@ setInterval(async () => {
     setTimeout(hookSwitchToTab, 600);
     setTimeout(updateStarState, 800);
     // Aggressively sync sidebar position on load
-    setTimeout(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 100);
-    setTimeout(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 300);
-    setTimeout(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 500);
-    setTimeout(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 1000);
+    setTimeout(syncSidebarTopFromBookmarks, 100);
+    setTimeout(syncSidebarTopFromBookmarks, 300);
+    setTimeout(syncSidebarTopFromBookmarks, 500);
+    setTimeout(syncSidebarTopFromBookmarks, 1000);
     // Keep sidebar position in sync
-    setInterval(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 2000);
+    setInterval(syncSidebarTopFromBookmarks, 2000);
 
     setInterval(updateStarState, 2000);
 })();
