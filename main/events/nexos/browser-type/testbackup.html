@@ -568,7 +568,7 @@
             background: #eaf2ff;
             border: none;
             border-radius: 10px;
-            padding: 0 40px 0 16px;
+            padding: 0 68px 0 16px;
             color: #000000;
             font-size: 14px;
             outline: none;
@@ -874,10 +874,10 @@
 
         .sidebar {
             position: fixed;
-            top: 92px;
+            top: calc(92px + var(--bookmark-bar-offset, 0px));
             right: -400px;
             width: 400px;
-            height: calc(100vh - 92px - 50px);
+            height: calc(100vh - 92px - var(--bookmark-bar-offset, 0px) - 50px);
             transition: right 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             z-index: 500;
             opacity: 0;
@@ -2661,11 +2661,7 @@ body.reduce-motion *::after {
         .taskbar-quick-divider {
             display: none;
         }
-        .taskbar-quick-btn {
-            width: 28px;
-            height: 28px;
-            min-width: 28px;
-        }
+        .taskbar-quick-btn,
         .taskbar-app-shortcut {
             width: 28px;
             height: 28px;
@@ -2679,7 +2675,6 @@ body.reduce-motion *::after {
             left: 8px;
             width: auto;
             bottom: 52px;
-            max-height: calc(100vh - 100px);
             max-height: calc(100dvh - 100px);
             overflow-y: auto;
         }
@@ -2716,6 +2711,10 @@ body.reduce-motion *::after {
             width: auto;
             bottom: 52px;
         }
+        .bookmark-edit-popup {
+            right: 8px;
+            width: min(280px, calc(100vw - 16px));
+        }
     }
 
     @media (max-width: 768px) and (min-width: 601px) {
@@ -2723,7 +2722,6 @@ body.reduce-motion *::after {
             right: 12px;
             width: 300px;
             bottom: 54px;
-            max-height: calc(100vh - 100px);
             max-height: calc(100dvh - 100px);
             overflow-y: auto;
         }
@@ -2740,7 +2738,6 @@ body.reduce-motion *::after {
     @media (max-height: 600px) {
         .cc-annc-wrapper {
             bottom: 48px;
-            max-height: calc(100vh - 80px);
             max-height: calc(100dvh - 80px);
             overflow-y: auto;
         }
@@ -2757,6 +2754,268 @@ body.reduce-motion *::after {
         .cc-time-large {
             font-size: 24px;
         }
+    }
+
+    .bookmarks-bar {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding: 4px 16px;
+        background: #fff;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+        font-size: 12px;
+        min-height: 28px;
+        overflow: hidden;
+        flex-shrink: 0;
+        transition: min-height 0.25s ease, padding 0.25s ease, opacity 0.25s ease;
+        position: relative;
+        z-index: 501;
+    }
+    .bookmarks-bar.hidden {
+        min-height: 0;
+        height: 0;
+        padding: 0 16px;
+        opacity: 0;
+        pointer-events: none;
+        border-bottom: none;
+        overflow: hidden;
+    }
+    .bookmark-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: none;
+        border: none;
+        cursor: default;
+        font-size: 12px;
+        color: #3c4043;
+        font-family: inherit;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.15s;
+    }
+    .bookmark-item:hover {
+        background: rgba(0,0,0,0.06);
+    }
+    .bookmark-item img {
+        width: 16px;
+        height: 16px;
+        border-radius: 2px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+    .bookmark-item > span:first-of-type {
+        max-width: 180px;
+        overflow: hidden;
+        white-space: nowrap;
+        display: inline-block;
+        -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+        mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    }
+    .bookmark-item .bk-remove {
+        display: flex;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: none;
+        border: none;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: #9aa0a6;
+        padding: 0;
+        line-height: 14px;
+        margin-left: 2px;
+        transition: color 0.15s;
+    }
+    .bookmark-item .bk-remove:hover {
+        color: #3c4043;
+    }
+    .bk-overflow-btn {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 24px;
+        border-radius: 4px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        flex-shrink: 0;
+        margin-left: auto;
+        color: #5f6368;
+        transition: background 0.15s;
+    }
+    .bk-overflow-btn:hover {
+        background: rgba(0,0,0,0.06);
+    }
+    .bk-overflow-btn.visible {
+        display: flex;
+    }
+    .bk-overflow-dropdown {
+        position: fixed;
+        background: #fff;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        z-index: 10001;
+        min-width: 280px;
+        max-width: 400px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 4px 0;
+        display: none;
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+    }
+    .bk-overflow-dropdown.visible {
+        display: block;
+    }
+    .bk-overflow-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        color: #3c4043;
+        font-family: inherit;
+        white-space: nowrap;
+        width: 100%;
+        text-align: left;
+        transition: background 0.15s;
+    }
+    .bk-overflow-item:hover {
+        background: rgba(0,0,0,0.04);
+    }
+    .bk-overflow-item img {
+        width: 16px;
+        height: 16px;
+        border-radius: 2px;
+        object-fit: contain;
+        flex-shrink: 0;
+    }
+    .bk-overflow-item span {
+        max-width: 220px;
+        overflow: hidden;
+        white-space: nowrap;
+        display: inline-block;
+        -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+        mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    }
+    .bookmark-star {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        border-radius: 50%;
+        transition: background 0.15s;
+        color: #9aa0a6;
+        position: absolute;
+        right: 32px;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+    }
+    .bookmark-star:hover {
+        background: rgba(0,0,0,0.06);
+    }
+    .bookmark-star.active {
+        color: #A3ACFF;
+    }
+    .bookmark-star.active svg {
+        fill: #A3ACFF;
+    }
+    .bookmark-edit-popup {
+        position: fixed;
+        width: 360px;
+        background: #fff;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+        padding: 12px 16px 14px;
+        z-index: 10001;
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+        display: none;
+    }
+    .bookmark-edit-popup.visible {
+        display: block;
+    }
+    .bookmark-edit-popup .bk-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: #202124;
+        margin-bottom: 12px;
+    }
+    .bookmark-edit-popup .bk-field {
+        margin-bottom: 10px;
+    }
+    .bookmark-edit-popup .bk-field span {
+        display: block;
+        font-size: 12px;
+        color: #5f6368;
+        margin-bottom: 4px;
+    }
+    .bookmark-edit-popup .bk-field input {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px solid #dadce0;
+        border-radius: 4px;
+        font-size: 13px;
+        font-family: inherit;
+        color: #202124;
+        outline: none;
+        box-sizing: border-box;
+        background: #fff;
+    }
+    .bookmark-edit-popup .bk-field input:focus {
+        border-color: #1a73e8;
+        box-shadow: 0 0 0 1px #1a73e8;
+    }
+    .bookmark-edit-popup .bk-bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
+    }
+    .bookmark-edit-popup .bk-btn {
+        padding: 6px 16px;
+        border-radius: 4px;
+        border: 1px solid #dadce0;
+        font-size: 13px;
+        font-family: inherit;
+        cursor: pointer;
+        font-weight: 500;
+        background: #fff;
+        color: #202124;
+    }
+    .bookmark-edit-popup .bk-btn:hover {
+        background: #f1f3f4;
+    }
+    .bookmark-edit-popup .bk-btn-save {
+        background: #1a73e8;
+        color: #fff;
+        border-color: #1a73e8;
+    }
+    .bookmark-edit-popup .bk-btn-save:hover {
+        background: #1765cc;
+    }
+    .bookmark-edit-popup .bk-btn-remove {
+        color: #d93025;
+        border-color: transparent;
+        padding: 6px 8px;
+    }
+    .bookmark-edit-popup .bk-btn-remove:hover {
+        background: rgba(217,48,37,0.06);
     }
 
     .profile-menu-popup {
@@ -2981,6 +3240,9 @@ body.reduce-motion *::after {
             
             <div class="address-bar-wrapper" style="position:relative;">
                 <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off" spellcheck="false">
+                <button class="bookmark-star" id="bookmarkStarBtn" title="Bookmark this page">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </button>
                 <button class="open-external-btn" id="openExternalBtn" title="Open in new browser tab">
                     <i data-lucide="external-link" width="14" height="14"></i>
                 </button>
@@ -3027,6 +3289,24 @@ body.reduce-motion *::after {
                 <button class="menu-btn" id="menuBtn" title="">
                     <i data-lucide="more-vertical" width="16" height="16"></i>
                 </button>
+            </div>
+            <div class="bookmark-edit-popup" id="bookmarkEditPopup">
+                <div class="bk-title">Bookmark added</div>
+                <div class="bk-field">
+                    <span>Name</span>
+                    <input type="text" id="bkEditName">
+                </div>
+                <div class="bk-field">
+                    <span>URL</span>
+                    <input type="text" id="bkEditUrl" readonly>
+                </div>
+                <div class="bk-bottom">
+                    <button class="bk-btn bk-btn-remove" id="bkRemoveBtn">Remove</button>
+                    <div style="display:flex;gap:8px;">
+                        <button class="bk-btn bk-btn-cancel" id="bkCancelBtn">Cancel</button>
+                        <button class="bk-btn bk-btn-save" id="bkSaveBtn">Done</button>
+                    </div>
+                </div>
             </div>
         </div>
 <div id="CMDL" hidden>
@@ -3135,6 +3415,13 @@ document.addEventListener("DOMContentLoaded", () => {
 <div id="aiMenuModal" class="ai-menu-modal">
     <iframe src="/pages/main/ai.html" class="ai-menu-iframe"></iframe>
 </div>
+
+        <div class="bookmarks-bar" id="bookmarksBar">
+            <button class="bk-overflow-btn" id="bkOverflowBtn" title="More bookmarks">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 8 12 13 17 8"/><polyline points="7 13 12 18 17 13"/></svg>
+            </button>
+        </div>
+        <div class="bk-overflow-dropdown" id="bkOverflowDropdown"></div>
 
         <div class="content-area" id="contentArea">
             <div class="loading-indicator" id="loadingIndicator"></div>
@@ -4781,6 +5068,25 @@ if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
   return;
 }
+
+                // Handle ghost:// protocol
+                if (url.toLowerCase().startsWith('ghost://')) {
+                    var ghostRoutes = {
+                        'ghost://new-tab': '/newtab/pages/landing.html',
+                        'ghost://chat': '/chat.html',
+                        'ghost://games': '/games',
+                        'ghost://devs': '/credits.html',
+                        'ghost://restart': '/welcomer.html?resetagain',
+                        'ghost://streaming': '/main/events/sidebar/apps/movie.html',
+                        'ghost://docs': '/main/events/sidebar/apps/docs.html',
+                        'ghost://music': '/main/events/sidebar/apps/music.html'
+                    };
+                    var ghostTarget = ghostRoutes[url.toLowerCase()];
+                    if (ghostTarget) {
+                        this.loadUrl(ghostTarget);
+                        return;
+                    }
+                }
 
                 if (url.toLowerCase() === 'nexos://chat') {
                     this.loadUrl('/chat.html');
@@ -7408,6 +7714,12 @@ menu.addEventListener('mouseleave', hideMenu);
             '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
             '</div>' +
             '</button>' +
+            '<button class="cc-settings-option" id="ccShowBookmarks" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Show Bookmarks</span>' +
+            '<div class="cc-toggle" id="ccShowBookmarksToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
+            '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
+            '</div>' +
+            '</button>' +
             '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
             '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Data</div>' +
             '<button class="cc-settings-option" id="ccClearHistory" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
@@ -7496,8 +7808,41 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        
+        function applyShowBookmarks(show) {
+            var bar = document.getElementById('bookmarksBar');
+            if (!bar) return;
+            if (show) {
+                var bks = [];
+                try { bks = JSON.parse(localStorage.getItem('nexos_bookmarks')) || []; } catch(e) {}
+                if (bks.length > 0) {
+                    bar.classList.remove('hidden');
+                    bar.style.display = '';
+                } else {
+                    bar.classList.add('hidden');
+                }
+            } else {
+                bar.classList.add('hidden');
+            }
+            // Re-render bookmark items so they appear after toggling on
+            if (typeof window._renderBookmarks === 'function') window._renderBookmarks();
+            setTimeout(updateSidebarTop, 100);
+        }
+
+        function updateSidebarTop() {
+            var bar = document.getElementById('bookmarksBar');
+            var barVisible = bar && !bar.classList.contains('hidden') && bar.offsetHeight > 0;
+            var offset = barVisible ? bar.offsetHeight : 0;
+            document.documentElement.style.setProperty('--bookmark-bar-offset', offset + 'px');
+
+            var topVal = 92 + offset;
+            document.querySelectorAll('.sidebar').forEach(function(s) {
+                s.style.top = topVal + 'px';
+                s.style.height = 'calc(100vh - ' + topVal + 'px - 50px)';
+            });
+        }
+
         var SHOW_SECONDS_KEY = 'nexos_show_seconds';
+        var SHOW_BOOKMARKS_KEY = 'nexos_show_bookmarks';
 
         function setToggleState(toggleEl, on) {
             if (!toggleEl) return;
@@ -7529,6 +7874,24 @@ menu.addEventListener('mouseleave', hideMenu);
                 });
             }
 
+            // Show Bookmarks toggle
+            var showBookmarksBtn = document.getElementById('ccShowBookmarks');
+            var showBookmarksToggle = document.getElementById('ccShowBookmarksToggle');
+            var showBookmarks = true;
+            try { var stored = localStorage.getItem(SHOW_BOOKMARKS_KEY); if (stored !== null) showBookmarks = stored === 'true'; } catch(e) {}
+            setToggleState(showBookmarksToggle, showBookmarks);
+            applyShowBookmarks(showBookmarks);
+            if (showBookmarksBtn) {
+                showBookmarksBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var stored = localStorage.getItem(SHOW_BOOKMARKS_KEY);
+                    var current = stored === null ? true : stored === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(SHOW_BOOKMARKS_KEY, next); } catch(e) {}
+                    setToggleState(showBookmarksToggle, next);
+                    applyShowBookmarks(next);
+                });
+            }
 
             
             var confirmCloseBtn = document.getElementById('ccConfirmClose');
@@ -7605,6 +7968,7 @@ menu.addEventListener('mouseleave', hideMenu);
                         localStorage.removeItem(CLOCK_FORMAT_KEY);
                         localStorage.removeItem(SHOW_SECONDS_KEY);
                         localStorage.removeItem('nexos_dimness');
+                        localStorage.removeItem(SHOW_BOOKMARKS_KEY);
                     } catch(e) {}
                     resetBtn.querySelector('span').textContent = 'Reset!';
                     setTimeout(function() { 
@@ -8287,6 +8651,359 @@ setInterval(async () => {
     if (j.frozen && location.pathname !== "/locked") location.href = "/locked";
   } catch {}
 }, 1200);
+</script>
+<script>
+(function() {
+    var BOOKMARKS_KEY = 'nexos_bookmarks';
+    var bookmarksBar = document.getElementById('bookmarksBar');
+    var bkOverflowBtn = document.getElementById('bkOverflowBtn');
+    var bkOverflowDropdown = document.getElementById('bkOverflowDropdown');
+    
+    var bookmarkStarBtn = document.getElementById('bookmarkStarBtn');
+    var bookmarkEditPopup = document.getElementById('bookmarkEditPopup');
+    var bkEditName = document.getElementById('bkEditName');
+    var bkEditUrl = document.getElementById('bkEditUrl');
+    var bkSaveBtn = document.getElementById('bkSaveBtn');
+    var bkCancelBtn = document.getElementById('bkCancelBtn');
+    var bkRemoveBtn = document.getElementById('bkRemoveBtn');
+
+    function getBookmarks() {
+        try { return JSON.parse(localStorage.getItem(BOOKMARKS_KEY)) || []; } catch(e) { return []; }
+    }
+
+    function saveBookmarks(bks) {
+        try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bks)); } catch(e) {}
+    }
+
+    function getCurrentUrl() {
+        var b = window.browser;
+        if (!b) return '';
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab) return '';
+        return tab.currentUrl || '';
+    }
+
+    function getCurrentTitle() {
+        var b = window.browser;
+        if (!b) return '';
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab) return '';
+        var titleEl = tab.element ? tab.element.querySelector('.tab-title') : null;
+        return titleEl ? titleEl.textContent : '';
+    }
+
+    var DEFAULT_FAVICON = 'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://www.edpuzzle.cv&size=16';
+
+    // Map internal paths to ghost:// friendly names
+    var GHOST_MAP = {
+        '/newtab/pages/landing.html': 'new-tab',
+        '/chat.html': 'chat',
+        '/games': 'games',
+        '/credits.html': 'devs',
+        '/welcomer.html?resetagain': 'restart',
+        '/main/events/sidebar/apps/movie.html': 'streaming',
+        '/main/events/sidebar/apps/docs.html': 'docs',
+        '/main/events/sidebar/apps/music.html': 'music'
+    };
+    // Reverse map
+    var GHOST_REVERSE = {};
+    Object.keys(GHOST_MAP).forEach(function(k) { GHOST_REVERSE['ghost://' + GHOST_MAP[k]] = k; });
+
+    function isInternalUrl(url) {
+        return url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('ghost://');
+    }
+
+    function toGhostUrl(url) {
+        if (!url) return url;
+        // Check exact match first
+        if (GHOST_MAP[url]) return 'ghost://' + GHOST_MAP[url];
+        // Check without query params
+        var base = url.split('?')[0];
+        if (GHOST_MAP[base]) return 'ghost://' + GHOST_MAP[base];
+        // For any other internal path, derive a name
+        if (isInternalUrl(url)) {
+            var name = url.replace(/^\//, '').replace(/\.html$/, '').replace(/\//g, '-');
+            return 'ghost://' + (name || 'page');
+        }
+        return url;
+    }
+
+    function fromGhostUrl(ghostUrl) {
+        if (!ghostUrl || !ghostUrl.startsWith('ghost://')) return ghostUrl;
+        if (GHOST_REVERSE[ghostUrl]) return GHOST_REVERSE[ghostUrl];
+        // Fallback: can't resolve, just return the ghost url (won't break)
+        return ghostUrl;
+    }
+
+    function getBookmarkDisplayUrl(url) {
+        if (isInternalUrl(url)) return toGhostUrl(url);
+        return url;
+    }
+
+    function getFaviconUrl(url) {
+        if (!url || isInternalUrl(url) || url.startsWith('ghost://')) return DEFAULT_FAVICON;
+        try {
+            var u = new URL(url);
+            return 'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=' + encodeURIComponent(u.origin) + '&size=16';
+        } catch(e) {
+            return DEFAULT_FAVICON;
+        }
+    }
+
+    function isBookmarked(url) {
+        var ghostUrl = toGhostUrl(url);
+        return getBookmarks().some(function(bk) { return bk.url === url || bk.url === ghostUrl; });
+    }
+
+    function updateStarState() {
+        var url = getCurrentUrl();
+        if (url && isBookmarked(url)) {
+            bookmarkStarBtn.classList.add('active');
+        } else {
+            bookmarkStarBtn.classList.remove('active');
+        }
+    }
+
+    function checkOverflow() {
+        var items = bookmarksBar.querySelectorAll('.bookmark-item');
+        if (items.length === 0 || bookmarksBar.classList.contains('hidden')) {
+            bkOverflowBtn.classList.remove('visible');
+            bkOverflowDropdown.classList.remove('visible');
+            return;
+        }
+
+        items.forEach(function(item) {
+            item.style.display = '';
+            item.dataset.overflow = '0';
+        });
+
+        var available = Math.max(0, bookmarksBar.clientWidth - 42); // reserve room for chevron button
+        var used = 0;
+        var hasOverflow = false;
+
+        items.forEach(function(item) {
+            var width = item.offsetWidth;
+            if (used + width > available) {
+                item.style.display = 'none';
+                item.dataset.overflow = '1';
+                hasOverflow = true;
+                return;
+            }
+            used += width;
+        });
+
+        bkOverflowBtn.classList.toggle('visible', hasOverflow);
+        if (!hasOverflow) bkOverflowDropdown.classList.remove('visible');
+    }
+
+    function renderOverflowDropdown() {
+        bkOverflowDropdown.innerHTML = '';
+        var bks = getBookmarks();
+        var items = bookmarksBar.querySelectorAll('.bookmark-item');
+        items.forEach(function(item, i) {
+            if (item.dataset.overflow === '1') {
+                var bk = bks[i];
+                if (!bk) return;
+                var div = document.createElement('button');
+                div.className = 'bk-overflow-item';
+                var favicon = bk.favicon || getFaviconUrl(bk.url) || DEFAULT_FAVICON;
+                div.innerHTML = '<img src="' + favicon + '" onerror="this.src=\'' + DEFAULT_FAVICON + '\'" alt="">' +
+                    '<span>' + escapeBookmarkHtml(bk.name) + '</span>';
+                div.addEventListener('click', function() {
+                    var b = window.browser;
+                    var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (b) {
+                        if (navUrl && !navUrl.startsWith('http')) {
+                            b.loadUrl(navUrl);
+                        } else {
+                            b.navigate(navUrl);
+                        }
+                    }
+                    bkOverflowDropdown.classList.remove('visible');
+                });
+                bkOverflowDropdown.appendChild(div);
+            }
+        });
+    }
+
+    bkOverflowBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        checkOverflow();
+        if (!bkOverflowBtn.classList.contains('visible')) return;
+
+        if (bkOverflowDropdown.classList.contains('visible')) {
+            bkOverflowDropdown.classList.remove('visible');
+        } else {
+            renderOverflowDropdown();
+            var rect = bkOverflowBtn.getBoundingClientRect();
+            bkOverflowDropdown.style.top = (rect.bottom + 2) + 'px';
+            bkOverflowDropdown.style.right = (window.innerWidth - rect.right) + 'px';
+            bkOverflowDropdown.classList.add('visible');
+        }
+    });
+
+    window._renderBookmarks = renderBookmarks;
+    function renderBookmarks() {
+        var bks = getBookmarks();
+        var items = bookmarksBar.querySelectorAll('.bookmark-item');
+        items.forEach(function(el) { el.remove(); });
+
+        // Check if bookmarks bar is disabled in settings
+        var showBkSetting = true;
+        try { var s = localStorage.getItem('nexos_show_bookmarks'); if (s !== null) showBkSetting = s === 'true'; } catch(e) {}
+
+        if (bks.length === 0 || !showBkSetting) {
+            bookmarksBar.classList.add('hidden');
+        } else {
+            bookmarksBar.classList.remove('hidden');
+            bks.forEach(function(bk, i) {
+                var btn = document.createElement('button');
+                btn.className = 'bookmark-item';
+                var favicon = bk.favicon || getFaviconUrl(bk.url) || DEFAULT_FAVICON;
+                btn.innerHTML = '<img src="' + favicon + '" onerror="this.src=\'' + DEFAULT_FAVICON + '\'" alt="">' +
+                    '<span>' + escapeBookmarkHtml(bk.name) + '</span>' +
+                    '<span class="bk-remove" title="Remove">×</span>';
+                btn.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('bk-remove')) {
+                        e.stopPropagation();
+                        var bookmarks = getBookmarks();
+                        bookmarks.splice(i, 1);
+                        saveBookmarks(bookmarks);
+                        renderBookmarks();
+                        updateStarState();
+                        return;
+                    }
+                    var b = window.browser;
+                    var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (b) {
+                        if (navUrl && !navUrl.startsWith('http')) {
+                            b.loadUrl(navUrl);
+                        } else {
+                            b.navigate(navUrl);
+                        }
+                    }
+                });
+                bookmarksBar.insertBefore(btn, bkOverflowBtn);
+            });
+            setTimeout(checkOverflow, 50);
+        }
+        if (typeof updateSidebarTop === 'function') setTimeout(updateSidebarTop, 150);
+    }
+
+    function escapeBookmarkHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function positionPopupUnderStar() {
+        var rect = bookmarkStarBtn.getBoundingClientRect();
+        bookmarkEditPopup.style.top = (rect.bottom + 4) + 'px';
+        bookmarkEditPopup.style.right = (window.innerWidth - rect.right) + 'px';
+    }
+
+    bookmarkStarBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var rawUrl = getCurrentUrl();
+        if (!rawUrl) return;
+
+        var storeUrl = isInternalUrl(rawUrl) ? toGhostUrl(rawUrl) : rawUrl;
+        var bks = getBookmarks();
+        var existing = bks.find(function(bk) { return bk.url === storeUrl || bk.url === rawUrl; });
+        var titleNode = bookmarkEditPopup.querySelector('.bk-title');
+
+        if (existing) {
+            bkEditName.value = existing.name;
+            bkEditUrl.value = existing.url;
+            bkRemoveBtn.style.display = '';
+            if (titleNode) titleNode.textContent = 'Edit bookmark';
+        } else {
+            var title = getCurrentTitle() || storeUrl;
+            bks.push({ name: title, url: storeUrl, favicon: getFaviconUrl(rawUrl) });
+            saveBookmarks(bks);
+            renderBookmarks();
+            updateStarState();
+            bkEditName.value = title;
+            bkEditUrl.value = storeUrl;
+            bkRemoveBtn.style.display = '';
+            if (titleNode) titleNode.textContent = 'Bookmark added';
+        }
+        positionPopupUnderStar();
+        bookmarkEditPopup.classList.add('visible');
+        bkEditName.focus();
+        bkEditName.select();
+    });
+
+    bkSaveBtn.addEventListener('click', function() {
+        var url = bkEditUrl.value;
+        var bks = getBookmarks();
+        var idx = bks.findIndex(function(bk) { return bk.url === url; });
+        if (idx !== -1) {
+            bks[idx].name = bkEditName.value || bks[idx].name;
+            saveBookmarks(bks);
+            renderBookmarks();
+        }
+        bookmarkEditPopup.classList.remove('visible');
+    });
+
+    bkCancelBtn.addEventListener('click', function() {
+        bookmarkEditPopup.classList.remove('visible');
+    });
+
+    bkRemoveBtn.addEventListener('click', function() {
+        var url = bkEditUrl.value;
+        var bks = getBookmarks().filter(function(bk) { return bk.url !== url; });
+        saveBookmarks(bks);
+        renderBookmarks();
+        updateStarState();
+        bookmarkEditPopup.classList.remove('visible');
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!bookmarkEditPopup.contains(e.target) && e.target !== bookmarkStarBtn && !bookmarkStarBtn.contains(e.target)) {
+            bookmarkEditPopup.classList.remove('visible');
+        }
+        if (!bkOverflowDropdown.contains(e.target) && e.target !== bkOverflowBtn && !bkOverflowBtn.contains(e.target)) {
+            bkOverflowDropdown.classList.remove('visible');
+        }
+    });
+
+    window.addEventListener('resize', function() {
+        checkOverflow();
+        if (typeof updateSidebarTop === 'function') updateSidebarTop();
+        if (bkOverflowDropdown.classList.contains('visible')) {
+            var rect = bkOverflowBtn.getBoundingClientRect();
+            bkOverflowDropdown.style.top = (rect.bottom + 2) + 'px';
+            bkOverflowDropdown.style.right = (window.innerWidth - rect.right) + 'px';
+        }
+    });
+
+    var origSwitchForBookmarks = null;
+    function hookSwitchToTab() {
+        var b = window.browser;
+        if (!b) { setTimeout(hookSwitchToTab, 300); return; }
+        if (origSwitchForBookmarks) return;
+        origSwitchForBookmarks = b.switchToTab.bind(b);
+        var origNav = b.navigate.bind(b);
+        b.switchToTab = function(tabId) {
+            origSwitchForBookmarks(tabId);
+            setTimeout(updateStarState, 100);
+        };
+        b.navigate = function(url) {
+            origNav(url);
+            setTimeout(updateStarState, 300);
+        };
+    }
+
+    renderBookmarks();
+    setTimeout(hookSwitchToTab, 600);
+    setTimeout(updateStarState, 800);
+    setTimeout(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 500);
+    // Keep sidebar position in sync
+    setInterval(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 2000);
+
+    setInterval(updateStarState, 2000);
+})();
 </script>
 </body>
 </html>
