@@ -2759,29 +2759,31 @@ body.reduce-motion *::after {
     .bookmarks-bar {
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 2px;
         padding: 4px 16px;
         background: #fff;
         border-bottom: 1px solid rgba(0,0,0,0.06);
         font-family: 'Google Sans', 'Segoe UI', sans-serif;
         font-size: 12px;
         min-height: 28px;
-        overflow-x: auto;
-        scrollbar-width: none;
+        overflow: hidden;
         flex-shrink: 0;
-    }
-    .bookmarks-bar::-webkit-scrollbar {
-        display: none;
+        transition: min-height 0.25s ease, padding 0.25s ease, opacity 0.25s ease;
+        position: relative;
     }
     .bookmarks-bar.hidden {
-        display: none;
+        min-height: 0;
+        padding: 0 16px;
+        opacity: 0;
+        pointer-events: none;
+        border-bottom: none;
     }
     .bookmark-item {
         display: flex;
         align-items: center;
         gap: 6px;
-        padding: 4px 10px;
-        border-radius: 16px;
+        padding: 4px 8px;
+        border-radius: 4px;
         background: none;
         border: none;
         cursor: pointer;
@@ -2802,23 +2804,91 @@ body.reduce-motion *::after {
         object-fit: contain;
     }
     .bookmark-item .bk-remove {
-        display: none;
+        display: flex;
         width: 14px;
         height: 14px;
         border-radius: 50%;
-        background: rgba(0,0,0,0.08);
+        background: none;
         border: none;
         cursor: pointer;
         align-items: center;
         justify-content: center;
         font-size: 10px;
-        color: #666;
+        color: #9aa0a6;
         padding: 0;
         line-height: 14px;
         margin-left: 2px;
+        transition: color 0.15s;
     }
-    .bookmark-item:hover .bk-remove {
+    .bookmark-item .bk-remove:hover {
+        color: #3c4043;
+    }
+    .bk-overflow-btn {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 24px;
+        border-radius: 4px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        flex-shrink: 0;
+        margin-left: auto;
+        color: #5f6368;
+        transition: background 0.15s;
+    }
+    .bk-overflow-btn:hover {
+        background: rgba(0,0,0,0.06);
+    }
+    .bk-overflow-btn.visible {
         display: flex;
+    }
+    .bk-overflow-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 8px;
+        background: #fff;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        z-index: 10001;
+        min-width: 200px;
+        max-width: 320px;
+        max-height: 400px;
+        overflow-y: auto;
+        padding: 4px 0;
+        display: none;
+        font-family: 'Google Sans', 'Segoe UI', sans-serif;
+    }
+    .bk-overflow-dropdown.visible {
+        display: block;
+    }
+    .bk-overflow-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 13px;
+        color: #3c4043;
+        font-family: inherit;
+        white-space: nowrap;
+        width: 100%;
+        text-align: left;
+        transition: background 0.15s;
+    }
+    .bk-overflow-item:hover {
+        background: rgba(0,0,0,0.04);
+    }
+    .bk-overflow-item img {
+        width: 16px;
+        height: 16px;
+        border-radius: 2px;
+        object-fit: contain;
+        flex-shrink: 0;
     }
     .bookmark-star {
         display: flex;
@@ -2843,6 +2913,9 @@ body.reduce-motion *::after {
     }
     .bookmark-star.active {
         color: #A3ACFF;
+    }
+    .bookmark-star.active svg {
+        fill: #A3ACFF;
     }
     .bookmark-edit-popup {
         position: fixed;
@@ -3325,7 +3398,12 @@ document.addEventListener("DOMContentLoaded", () => {
     <iframe src="/pages/main/ai.html" class="ai-menu-iframe"></iframe>
 </div>
 
-        <div class="bookmarks-bar" id="bookmarksBar"></div>
+        <div class="bookmarks-bar" id="bookmarksBar">
+            <button class="bk-overflow-btn" id="bkOverflowBtn" title="More bookmarks">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 8 12 13 17 8"/><polyline points="7 13 12 18 17 13"/></svg>
+            </button>
+            <div class="bk-overflow-dropdown" id="bkOverflowDropdown"></div>
+        </div>
 
         <div class="content-area" id="contentArea">
             <div class="loading-indicator" id="loadingIndicator"></div>
@@ -4972,6 +5050,25 @@ if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
   return;
 }
+
+                // Handle ghost:// protocol
+                if (url.toLowerCase().startsWith('ghost://')) {
+                    var ghostRoutes = {
+                        'ghost://new-tab': '/newtab/pages/landing.html',
+                        'ghost://chat': '/chat.html',
+                        'ghost://games': '/games',
+                        'ghost://devs': '/credits.html',
+                        'ghost://restart': '/welcomer.html?resetagain',
+                        'ghost://streaming': '/main/events/sidebar/apps/movie.html',
+                        'ghost://docs': '/main/events/sidebar/apps/docs.html',
+                        'ghost://music': '/main/events/sidebar/apps/music.html'
+                    };
+                    var ghostTarget = ghostRoutes[url.toLowerCase()];
+                    if (ghostTarget) {
+                        this.loadUrl(ghostTarget);
+                        return;
+                    }
+                }
 
                 if (url.toLowerCase() === 'nexos://chat') {
                     this.loadUrl('/chat.html');
@@ -8483,6 +8580,8 @@ setInterval(async () => {
 (function() {
     var BOOKMARKS_KEY = 'nexos_bookmarks';
     var bookmarksBar = document.getElementById('bookmarksBar');
+    var bkOverflowBtn = document.getElementById('bkOverflowBtn');
+    var bkOverflowDropdown = document.getElementById('bkOverflowDropdown');
     
     var bookmarkStarBtn = document.getElementById('bookmarkStarBtn');
     var bookmarkEditPopup = document.getElementById('bookmarkEditPopup');
@@ -8519,7 +8618,54 @@ setInterval(async () => {
 
     var DEFAULT_FAVICON = 'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://www.edpuzzle.cv&size=16';
 
+    // Map internal paths to ghost:// friendly names
+    var GHOST_MAP = {
+        '/newtab/pages/landing.html': 'new-tab',
+        '/chat.html': 'chat',
+        '/games': 'games',
+        '/credits.html': 'devs',
+        '/welcomer.html?resetagain': 'restart',
+        '/main/events/sidebar/apps/movie.html': 'streaming',
+        '/main/events/sidebar/apps/docs.html': 'docs',
+        '/main/events/sidebar/apps/music.html': 'music'
+    };
+    // Reverse map
+    var GHOST_REVERSE = {};
+    Object.keys(GHOST_MAP).forEach(function(k) { GHOST_REVERSE['ghost://' + GHOST_MAP[k]] = k; });
+
+    function isInternalUrl(url) {
+        return url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('ghost://');
+    }
+
+    function toGhostUrl(url) {
+        if (!url) return url;
+        // Check exact match first
+        if (GHOST_MAP[url]) return 'ghost://' + GHOST_MAP[url];
+        // Check without query params
+        var base = url.split('?')[0];
+        if (GHOST_MAP[base]) return 'ghost://' + GHOST_MAP[base];
+        // For any other internal path, derive a name
+        if (isInternalUrl(url)) {
+            var name = url.replace(/^\//, '').replace(/\.html$/, '').replace(/\//g, '-');
+            return 'ghost://' + (name || 'page');
+        }
+        return url;
+    }
+
+    function fromGhostUrl(ghostUrl) {
+        if (!ghostUrl || !ghostUrl.startsWith('ghost://')) return ghostUrl;
+        if (GHOST_REVERSE[ghostUrl]) return GHOST_REVERSE[ghostUrl];
+        // Fallback: can't resolve, just return the ghost url (won't break)
+        return ghostUrl;
+    }
+
+    function getBookmarkDisplayUrl(url) {
+        if (isInternalUrl(url)) return toGhostUrl(url);
+        return url;
+    }
+
     function getFaviconUrl(url) {
+        if (!url || isInternalUrl(url) || url.startsWith('ghost://')) return DEFAULT_FAVICON;
         try {
             var u = new URL(url);
             return 'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=' + encodeURIComponent(u.origin) + '&size=16';
@@ -8529,19 +8675,82 @@ setInterval(async () => {
     }
 
     function isBookmarked(url) {
-        return getBookmarks().some(function(bk) { return bk.url === url; });
+        var ghostUrl = toGhostUrl(url);
+        return getBookmarks().some(function(bk) { return bk.url === url || bk.url === ghostUrl; });
     }
 
     function updateStarState() {
         var url = getCurrentUrl();
         if (url && isBookmarked(url)) {
             bookmarkStarBtn.classList.add('active');
-            bookmarkStarBtn.querySelector('svg').setAttribute('fill', '#fbbc04');
         } else {
             bookmarkStarBtn.classList.remove('active');
-            bookmarkStarBtn.querySelector('svg').setAttribute('fill', 'none');
         }
     }
+
+    function checkOverflow() {
+        var items = bookmarksBar.querySelectorAll('.bookmark-item');
+        if (items.length === 0) {
+            bkOverflowBtn.classList.remove('visible');
+            return;
+        }
+        var barRight = bookmarksBar.getBoundingClientRect().right - 40; // leave space for overflow btn
+        var hasOverflow = false;
+        items.forEach(function(item) {
+            var itemRight = item.getBoundingClientRect().right;
+            if (itemRight > barRight) {
+                item.style.display = 'none';
+                hasOverflow = true;
+            } else {
+                item.style.display = '';
+            }
+        });
+        if (hasOverflow) {
+            bkOverflowBtn.classList.add('visible');
+        } else {
+            bkOverflowBtn.classList.remove('visible');
+        }
+    }
+
+    function renderOverflowDropdown() {
+        bkOverflowDropdown.innerHTML = '';
+        var bks = getBookmarks();
+        var items = bookmarksBar.querySelectorAll('.bookmark-item');
+        items.forEach(function(item, i) {
+            if (item.style.display === 'none') {
+                var bk = bks[i];
+                if (!bk) return;
+                var div = document.createElement('button');
+                div.className = 'bk-overflow-item';
+                var favicon = bk.favicon || getFaviconUrl(bk.url) || DEFAULT_FAVICON;
+                div.innerHTML = '<img src="' + favicon + '" onerror="this.src=\'' + DEFAULT_FAVICON + '\'" alt="">' +
+                    '<span>' + escapeBookmarkHtml(bk.name) + '</span>';
+                div.addEventListener('click', function() {
+                    var b = window.browser;
+                    var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (b) {
+                        if (navUrl && !navUrl.startsWith('http')) {
+                            b.loadUrl(navUrl);
+                        } else {
+                            b.navigate(navUrl);
+                        }
+                    }
+                    bkOverflowDropdown.classList.remove('visible');
+                });
+                bkOverflowDropdown.appendChild(div);
+            }
+        });
+    }
+
+    bkOverflowBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (bkOverflowDropdown.classList.contains('visible')) {
+            bkOverflowDropdown.classList.remove('visible');
+        } else {
+            renderOverflowDropdown();
+            bkOverflowDropdown.classList.add('visible');
+        }
+    });
 
     function renderBookmarks() {
         var bks = getBookmarks();
@@ -8570,10 +8779,18 @@ setInterval(async () => {
                         return;
                     }
                     var b = window.browser;
-                    if (b) b.navigate(bk.url);
+                    var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (b) {
+                        if (navUrl && !navUrl.startsWith('http')) {
+                            b.loadUrl(navUrl);
+                        } else {
+                            b.navigate(navUrl);
+                        }
+                    }
                 });
-                bookmarksBar.appendChild(btn);
+                bookmarksBar.insertBefore(btn, bkOverflowBtn);
             });
+            setTimeout(checkOverflow, 50);
         }
     }
 
@@ -8591,11 +8808,12 @@ setInterval(async () => {
 
     bookmarkStarBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        var url = getCurrentUrl();
-        if (!url) return;
+        var rawUrl = getCurrentUrl();
+        if (!rawUrl) return;
 
+        var storeUrl = isInternalUrl(rawUrl) ? toGhostUrl(rawUrl) : rawUrl;
         var bks = getBookmarks();
-        var existing = bks.find(function(bk) { return bk.url === url; });
+        var existing = bks.find(function(bk) { return bk.url === storeUrl || bk.url === rawUrl; });
         var titleNode = bookmarkEditPopup.querySelector('.bk-title');
 
         if (existing) {
@@ -8604,13 +8822,13 @@ setInterval(async () => {
             bkRemoveBtn.style.display = '';
             if (titleNode) titleNode.textContent = 'Edit bookmark';
         } else {
-            var title = getCurrentTitle() || url;
-            bks.push({ name: title, url: url, favicon: getFaviconUrl(url) });
+            var title = getCurrentTitle() || storeUrl;
+            bks.push({ name: title, url: storeUrl, favicon: getFaviconUrl(rawUrl) });
             saveBookmarks(bks);
             renderBookmarks();
             updateStarState();
             bkEditName.value = title;
-            bkEditUrl.value = url;
+            bkEditUrl.value = storeUrl;
             bkRemoveBtn.style.display = '';
             if (titleNode) titleNode.textContent = 'Bookmark added';
         }
@@ -8649,6 +8867,16 @@ setInterval(async () => {
         if (!bookmarkEditPopup.contains(e.target) && e.target !== bookmarkStarBtn && !bookmarkStarBtn.contains(e.target)) {
             bookmarkEditPopup.classList.remove('visible');
         }
+        if (!bkOverflowDropdown.contains(e.target) && e.target !== bkOverflowBtn && !bkOverflowBtn.contains(e.target)) {
+            bkOverflowDropdown.classList.remove('visible');
+        }
+    });
+
+    window.addEventListener('resize', function() {
+        // Re-show all items then re-check overflow
+        var items = bookmarksBar.querySelectorAll('.bookmark-item');
+        items.forEach(function(item) { item.style.display = ''; });
+        setTimeout(checkOverflow, 50);
     });
 
     var origSwitchForBookmarks = null;
