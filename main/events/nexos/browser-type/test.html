@@ -7712,6 +7712,12 @@ menu.addEventListener('mouseleave', hideMenu);
             '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
             '</div>' +
             '</button>' +
+            '<button class="cc-settings-option" id="ccShowBookmarks" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Show Bookmarks</span>' +
+            '<div class="cc-toggle" id="ccShowBookmarksToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
+            '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
+            '</div>' +
+            '</button>' +
             '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
             '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Data</div>' +
             '<button class="cc-settings-option" id="ccClearHistory" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
@@ -7800,8 +7806,37 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        
+        function applyShowBookmarks(show) {
+            var bar = document.getElementById('bookmarksBar');
+            if (!bar) return;
+            if (show) {
+                // Only show if there are bookmarks
+                var bks = [];
+                try { bks = JSON.parse(localStorage.getItem('nexos_bookmarks')) || []; } catch(e) {}
+                if (bks.length > 0) {
+                    bar.classList.remove('hidden');
+                    bar.style.display = '';
+                } else {
+                    bar.classList.add('hidden');
+                }
+            } else {
+                bar.classList.add('hidden');
+            }
+            updateSidebarTop();
+        }
+
+        function updateSidebarTop() {
+            var bar = document.getElementById('bookmarksBar');
+            var barVisible = bar && !bar.classList.contains('hidden') && bar.offsetHeight > 0;
+            var topVal = barVisible ? (92 + bar.offsetHeight) : 92;
+            document.querySelectorAll('.sidebar').forEach(function(s) {
+                s.style.top = topVal + 'px';
+                s.style.height = 'calc(100vh - ' + topVal + 'px - 50px)';
+            });
+        }
+
         var SHOW_SECONDS_KEY = 'nexos_show_seconds';
+        var SHOW_BOOKMARKS_KEY = 'nexos_show_bookmarks';
 
         function setToggleState(toggleEl, on) {
             if (!toggleEl) return;
@@ -7833,6 +7868,24 @@ menu.addEventListener('mouseleave', hideMenu);
                 });
             }
 
+            // Show Bookmarks toggle
+            var showBookmarksBtn = document.getElementById('ccShowBookmarks');
+            var showBookmarksToggle = document.getElementById('ccShowBookmarksToggle');
+            var showBookmarks = true;
+            try { var stored = localStorage.getItem(SHOW_BOOKMARKS_KEY); if (stored !== null) showBookmarks = stored === 'true'; } catch(e) {}
+            setToggleState(showBookmarksToggle, showBookmarks);
+            applyShowBookmarks(showBookmarks);
+            if (showBookmarksBtn) {
+                showBookmarksBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var stored = localStorage.getItem(SHOW_BOOKMARKS_KEY);
+                    var current = stored === null ? true : stored === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(SHOW_BOOKMARKS_KEY, next); } catch(e) {}
+                    setToggleState(showBookmarksToggle, next);
+                    applyShowBookmarks(next);
+                });
+            }
 
             
             var confirmCloseBtn = document.getElementById('ccConfirmClose');
@@ -7909,6 +7962,7 @@ menu.addEventListener('mouseleave', hideMenu);
                         localStorage.removeItem(CLOCK_FORMAT_KEY);
                         localStorage.removeItem(SHOW_SECONDS_KEY);
                         localStorage.removeItem('nexos_dimness');
+                        localStorage.removeItem(SHOW_BOOKMARKS_KEY);
                     } catch(e) {}
                     resetBtn.querySelector('span').textContent = 'Reset!';
                     setTimeout(function() { 
@@ -8777,7 +8831,11 @@ setInterval(async () => {
         var items = bookmarksBar.querySelectorAll('.bookmark-item');
         items.forEach(function(el) { el.remove(); });
 
-        if (bks.length === 0) {
+        // Check if bookmarks bar is disabled in settings
+        var showBkSetting = true;
+        try { var s = localStorage.getItem('nexos_show_bookmarks'); if (s !== null) showBkSetting = s === 'true'; } catch(e) {}
+
+        if (bks.length === 0 || !showBkSetting) {
             bookmarksBar.classList.add('hidden');
         } else {
             bookmarksBar.classList.remove('hidden');
@@ -8812,6 +8870,7 @@ setInterval(async () => {
             });
             setTimeout(checkOverflow, 50);
         }
+        if (typeof updateSidebarTop === 'function') setTimeout(updateSidebarTop, 60);
     }
 
     function escapeBookmarkHtml(text) {
@@ -8919,6 +8978,7 @@ setInterval(async () => {
     renderBookmarks();
     setTimeout(hookSwitchToTab, 600);
     setTimeout(updateStarState, 800);
+    setTimeout(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 200);
 
     setInterval(updateStarState, 2000);
 })();
