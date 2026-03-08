@@ -2842,7 +2842,7 @@ body.reduce-motion *::after {
         background: rgba(0,0,0,0.06);
     }
     .bookmark-star.active {
-        color: #fbbc04;
+        color: #A3ACFF;
     }
     .bookmark-edit-popup {
         position: fixed;
@@ -8517,12 +8517,14 @@ setInterval(async () => {
         return titleEl ? titleEl.textContent : '';
     }
 
+    var DEFAULT_FAVICON = 'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://www.edpuzzle.cv&size=16';
+
     function getFaviconUrl(url) {
         try {
             var u = new URL(url);
-            return 'https://www.google.com/s2/favicons?domain=' + u.hostname + '&sz=32';
+            return 'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=' + encodeURIComponent(u.origin) + '&size=16';
         } catch(e) {
-            return '';
+            return DEFAULT_FAVICON;
         }
     }
 
@@ -8546,12 +8548,15 @@ setInterval(async () => {
         var items = bookmarksBar.querySelectorAll('.bookmark-item');
         items.forEach(function(el) { el.remove(); });
 
-        if (bks.length > 0) {
+        if (bks.length === 0) {
+            bookmarksBar.classList.add('hidden');
+        } else {
+            bookmarksBar.classList.remove('hidden');
             bks.forEach(function(bk, i) {
                 var btn = document.createElement('button');
                 btn.className = 'bookmark-item';
-                var favicon = bk.favicon || getFaviconUrl(bk.url);
-                btn.innerHTML = '<img src="' + favicon + '" alt="">' +
+                var favicon = bk.favicon || getFaviconUrl(bk.url) || DEFAULT_FAVICON;
+                btn.innerHTML = '<img src="' + favicon + '" onerror="this.src=\'' + DEFAULT_FAVICON + '\'" alt="">' +
                     '<span>' + escapeBookmarkHtml(bk.name) + '</span>' +
                     '<span class="bk-remove" title="Remove">×</span>';
                 btn.addEventListener('click', function(e) {
