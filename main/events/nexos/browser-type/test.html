@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1261,6 +1262,13 @@ body {
 
 .taskbar.hidden:hover {
   transform: translateY(0);
+}
+
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after {
+  animation-duration: 0.01ms !important;
+  transition-duration: 0.01ms !important;
 }
 
 .taskbar-left,
@@ -2552,6 +2560,80 @@ body {
         color: #999;
         font-size: 13px;
     }
+    .annc-notification {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        width: 360px;
+        background: #2d2d2d;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2);
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 16px;
+        z-index: 10001;
+        transform: translateX(calc(100% + 20px));
+        opacity: 0;
+        transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+        font-family: 'google sans', sans-serif;
+        pointer-events: auto;
+        color: #e8e8e8;
+    }
+    .annc-notification.visible {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    .annc-notification-img {
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: #444;
+    }
+    .annc-notification-body {
+        flex: 1;
+        min-width: 0;
+    }
+    .annc-notification-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #ff4c4c;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 4px;
+    }
+    .annc-notification-text {
+        font-size: 13px;
+        color: #ddd;
+        line-height: 1.4;
+        word-wrap: break-word;
+    }
+    .annc-notification-time {
+        font-size: 10px;
+        color: #888;
+        margin-top: 4px;
+    }
+    .annc-notification-close {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: none;
+        border: none;
+        color: #888;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s, color 0.15s;
+    }
+    .annc-notification-close:hover {
+        background: rgba(255,255,255,0.1);
+        color: #ccc;
+    }
     .profile-menu-popup {
         position: fixed;
         bottom: 60px;
@@ -2748,7 +2830,6 @@ body {
             </button>
         </div>
         <script>
-        // Apply saved tab style immediately to prevent flash of wrong style
         (function() {
             var TAB_STYLE_KEY = 'nexos_tab_style';
             try {
@@ -6083,7 +6164,13 @@ if (this.isBlockedUrl(url)) {
 
     const updateDateTime = () => {
       const now = new Date();
-      const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
+      let hour12 = true;
+      let showSeconds = false;
+      try { hour12 = (localStorage.getItem('nexos_clock_format') || '12') === '12'; } catch(e) {}
+      try { showSeconds = localStorage.getItem('nexos_show_seconds') === 'true'; } catch(e) {}
+      const timeOpts = { hour: "2-digit", minute: "2-digit", hour12: hour12 };
+      if (showSeconds) timeOpts.second = "2-digit";
+      const timeStr = now.toLocaleTimeString([], timeOpts);
       const dateStr = now.toLocaleDateString([], { weekday: 'short', month: "short", day: "numeric" });
       
       currentTimeElement.textContent = timeStr;
@@ -6513,6 +6600,19 @@ menu.addEventListener('mouseleave', hideMenu);
             <div id="anncList">
                 <div class="annc-empty">No announcements yet</div>
             </div>
+        </div>
+
+        <!-- Chrome-like announcement notification popup -->
+        <div class="annc-notification" id="anncNotification">
+            <img class="annc-notification-img" id="anncNotifImg" src="/images/logos/chrome.png" alt="Announcement">
+            <div class="annc-notification-body">
+                <div class="annc-notification-label">IMPORTANT</div>
+                <div class="annc-notification-text" id="anncNotifText"></div>
+                <div class="annc-notification-time" id="anncNotifTime"></div>
+            </div>
+            <button class="annc-notification-close" id="anncNotifClose" title="Dismiss">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
         </div>
     </div>
 
@@ -7096,9 +7196,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 closeSubPanel();
                 return;
             }
-            // If switching panels, smoothly transition height and crossfade content
             if (currentSubPanel && currentSubPanel !== contentHtml) {
-                // Start height transition immediately for smooth resize
                 subPanel.style.maxHeight = height + 'px';
                 subPanel.style.opacity = '0';
                 setTimeout(function() {
@@ -7128,7 +7226,6 @@ menu.addEventListener('mouseleave', hideMenu);
             setTimeout(function() { if (!currentSubPanel) subPanel.innerHTML = ''; }, 350);
         }
 
-        // Power button
         var powerBtn = document.getElementById('ccPowerBtn');
         if (powerBtn) {
             powerBtn.addEventListener('click', function(e) {
@@ -7137,7 +7234,6 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // Profile button -> opens profile sub-panel inside CC
         var profileBtn = document.getElementById('ccProfileBtn');
         if (profileBtn) {
             profileBtn.addEventListener('click', function(e) {
@@ -7146,7 +7242,6 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // Save/Download button -> opens save sub-panel inside CC
         var saveBtn = document.getElementById('ccSaveBtn');
         if (saveBtn) {
             saveBtn.addEventListener('click', function(e) {
@@ -7155,11 +7250,10 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // Settings buttons (both gear icons open settings)
         var settingsBtn1 = document.getElementById('ccSettingsBtn1');
         var settingsBtn2 = document.getElementById('ccSettingsBtn2');
         
-        var settingsContent = '<div style="padding:8px 0;">' +
+        var settingsContent = '<div style="padding:8px 0;max-height:320px;overflow-y:auto;">' +
             '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:10px 12px 6px;">Tab Style</div>' +
             '<button class="cc-settings-option" id="ccTabStyleRounded" data-style="rounded" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
             '<span>Rounded</span>' +
@@ -7169,17 +7263,40 @@ menu.addEventListener('mouseleave', hideMenu);
             '<span>Chrome</span>' +
             '<svg class="s-check" viewBox="0 0 14 14" fill="none" width="14" height="14" style="opacity:0;transition:opacity 0.15s;"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
             '</button>' +
+            '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
+            '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Clock</div>' +
+            '<button class="cc-settings-option" id="ccClock12" data-clock="12" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>12-hour</span>' +
+            '<svg class="s-check" viewBox="0 0 14 14" fill="none" width="14" height="14" style="opacity:0;transition:opacity 0.15s;"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccClock24" data-clock="24" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>24-hour</span>' +
+            '<svg class="s-check" viewBox="0 0 14 14" fill="none" width="14" height="14" style="opacity:0;transition:opacity 0.15s;"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccShowSeconds" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Show Seconds</span>' +
+            '<div class="cc-toggle" id="ccShowSecondsToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
+            '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
+            '</div>' +
+            '</button>' +
+            '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
+            '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Data</div>' +
+            '<button class="cc-settings-option" id="ccClearHistory" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Clear Browsing History</span>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccResetSettings" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Reset All Settings</span>' +
+            '</button>' +
             '</div>';
 
         function openSettingsPanel(e) {
             e.stopPropagation();
-            openSubPanel(settingsContent, 120, initTabStyleButtons);
+            openSubPanel(settingsContent, 380, initAllSettings);
         }
 
         if (settingsBtn2) settingsBtn2.addEventListener('click', openSettingsPanel);
 
 
-        // Power dropdown
         var powerDropdown = document.getElementById('ccPowerDropdown');
         if (powerDropdown) {
             powerDropdown.addEventListener('click', function(e) {
@@ -7188,14 +7305,13 @@ menu.addEventListener('mouseleave', hideMenu);
                     '<div style="padding:4px 0;">' +
                     '<button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background=\'rgba(0,0,0,0.04)\'" onmouseout="this.style.background=\'none\'" onclick="window.location.href=\'/login\'">' +
                     '<i data-lucide="power" width="14" height="14" style="color:#555;"></i><span>Sign Out</span></button>' +
-                    '<button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background=\'rgba(0,0,0,0.04)\'" onmouseout="this.style.background=\'none\'" onclick="window.location.href=\'/login\'">' +
+                    '<button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background=\'rgba(0,0,0,0.04)\'" onmouseout="this.style.background=\'none\'" onclick="window.location.href=\'/index.html\'">' +
                     '<i data-lucide="log-out" width="14" height="14" style="color:#555;"></i><span>Lock</span></button>' +
                     '</div>', 90
                 );
             });
         }
 
-        // Tab style logic
         var TAB_STYLE_KEY = 'nexos_tab_style';
         var tabBar = document.getElementById('tabBar');
 
@@ -7211,6 +7327,159 @@ menu.addEventListener('mouseleave', hideMenu);
             maskedBtn.addEventListener('click', function() { applyTabStyle('masked', true); });
             roundedBtn.addEventListener('click', function() { applyTabStyle('rounded', true); });
         }
+
+        function initAllSettings() {
+            initTabStyleButtons();
+            initClockFormatButtons();
+            initToggleSettings();
+            initDataButtons();
+        }
+
+        var CLOCK_FORMAT_KEY = 'nexos_clock_format';
+        function initClockFormatButtons() {
+            var btn12 = document.getElementById('ccClock12');
+            var btn24 = document.getElementById('ccClock24');
+            if (!btn12 || !btn24) return;
+
+            var current = '12';
+            try { current = localStorage.getItem(CLOCK_FORMAT_KEY) || '12'; } catch(e) {}
+            updateClockChecks(current);
+
+            btn12.addEventListener('click', function() { setClockFormat('12'); });
+            btn24.addEventListener('click', function() { setClockFormat('24'); });
+        }
+
+        function setClockFormat(fmt) {
+            try { localStorage.setItem(CLOCK_FORMAT_KEY, fmt); } catch(e) {}
+            updateClockChecks(fmt);
+            updateDateTime();
+        }
+
+        function updateClockChecks(fmt) {
+            ['ccClock12', 'ccClock24'].forEach(function(id) {
+                var btn = document.getElementById(id);
+                if (!btn) return;
+                var check = btn.querySelector('.s-check');
+                var isActive = btn.dataset.clock === fmt;
+                if (check) check.style.opacity = isActive ? '1' : '0';
+                btn.style.color = isActive ? '#007aff' : '#1d1d1f';
+            });
+        }
+
+        var SHOW_SECONDS_KEY = 'nexos_show_seconds';
+
+        function setToggleState(toggleEl, on) {
+            if (!toggleEl) return;
+            var knob = toggleEl.querySelector('.cc-toggle-knob');
+            if (on) {
+                toggleEl.style.background = '#007aff';
+                if (knob) knob.style.left = '16px';
+            } else {
+                toggleEl.style.background = '#ccc';
+                if (knob) knob.style.left = '2px';
+            }
+        }
+
+        function initToggleSettings() {
+            var showSecondsBtn = document.getElementById('ccShowSeconds');
+            var showSecondsToggle = document.getElementById('ccShowSecondsToggle');
+            var showSeconds = false;
+            try { showSeconds = localStorage.getItem(SHOW_SECONDS_KEY) === 'true'; } catch(e) {}
+            setToggleState(showSecondsToggle, showSeconds);
+            if (showSecondsBtn) {
+                showSecondsBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var current = localStorage.getItem(SHOW_SECONDS_KEY) === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(SHOW_SECONDS_KEY, next); } catch(e) {}
+                    setToggleState(showSecondsToggle, next);
+                    updateDateTime();
+                });
+            }
+
+
+            var confirmCloseBtn = document.getElementById('ccConfirmClose');
+            var confirmCloseToggle = document.getElementById('ccConfirmCloseToggle');
+            var confirmClose = false;
+            try { confirmClose = localStorage.getItem(CONFIRM_CLOSE_KEY) === 'true'; } catch(e) {}
+            setToggleState(confirmCloseToggle, confirmClose);
+            if (confirmCloseBtn) {
+                confirmCloseBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var current = localStorage.getItem(CONFIRM_CLOSE_KEY) === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(CONFIRM_CLOSE_KEY, next); } catch(e) {}
+                    setToggleState(confirmCloseToggle, next);
+                });
+            }
+
+            var showFullUrlBtn = document.getElementById('ccShowFullUrl');
+            var showFullUrlToggle = document.getElementById('ccShowFullUrlToggle');
+            var showFullUrl = false;
+            try { showFullUrl = localStorage.getItem(SHOW_FULL_URL_KEY) === 'true'; } catch(e) {}
+            setToggleState(showFullUrlToggle, showFullUrl);
+            applyShowFullUrl(showFullUrl);
+            if (showFullUrlBtn) {
+                showFullUrlBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var current = localStorage.getItem(SHOW_FULL_URL_KEY) === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(SHOW_FULL_URL_KEY, next); } catch(e) {}
+                    setToggleState(showFullUrlToggle, next);
+                    applyShowFullUrl(next);
+                });
+            }
+
+            var smoothScrollBtn = document.getElementById('ccSmoothScroll');
+            var smoothScrollToggle = document.getElementById('ccSmoothScrollToggle');
+            var smoothScroll = true;
+            try { var ss = localStorage.getItem(SMOOTH_SCROLL_KEY); if (ss !== null) smoothScroll = ss === 'true'; } catch(e) {}
+            setToggleState(smoothScrollToggle, smoothScroll);
+            applySmoothScroll(smoothScroll);
+            if (smoothScrollBtn) {
+                smoothScrollBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var ss = localStorage.getItem(SMOOTH_SCROLL_KEY);
+                    var current = ss === null ? true : ss === 'true';
+                    var next = !current;
+                    try { localStorage.setItem(SMOOTH_SCROLL_KEY, next); } catch(e) {}
+                    setToggleState(smoothScrollToggle, next);
+                    applySmoothScroll(next);
+                });
+            }
+        }
+
+
+        function initDataButtons() {
+            var clearBtn = document.getElementById('ccClearHistory');
+            var resetBtn = document.getElementById('ccResetSettings');
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    try { localStorage.removeItem('nexaura_browse_history'); } catch(e) {}
+                    clearBtn.querySelector('span').textContent = 'Cleared!';
+                    setTimeout(function() { clearBtn.querySelector('span').textContent = 'Clear Browsing History'; }, 1500);
+                });
+            }
+
+            if (resetBtn) {
+                resetBtn.addEventListener('click', function() {
+                    try {
+                        localStorage.removeItem(TAB_STYLE_KEY);
+                        localStorage.removeItem(CLOCK_FORMAT_KEY);
+                        localStorage.removeItem(SHOW_SECONDS_KEY);
+                        localStorage.removeItem('nexos_dimness');
+                    } catch(e) {}
+                    resetBtn.querySelector('span').textContent = 'Reset!';
+                    setTimeout(function() { 
+                        resetBtn.querySelector('span').textContent = 'Reset All Settings';
+                        location.reload();
+                    }, 800);
+                });
+            }
+        }
+
+
 
         function updateCheckmarks(style) {
             var maskedBtn = document.getElementById('ccTabStyleMasked');
@@ -7261,12 +7530,10 @@ menu.addEventListener('mouseleave', hideMenu);
             try { localStorage.setItem(TAB_STYLE_KEY, style); } catch(e) {}
         }
 
-        // Apply saved tab style on load
         var savedStyle = 'masked';
         try { savedStyle = localStorage.getItem(TAB_STYLE_KEY) || 'masked'; } catch(e) {}
         applyTabStyle(savedStyle, false);
 
-        // Update battery info in control center
         function updateCCBatteryInfo() {
             if ("getBattery" in navigator) {
                 navigator.getBattery().then(function(battery) {
@@ -7293,13 +7560,12 @@ menu.addEventListener('mouseleave', hideMenu);
             });
         }
 
-        // === DIMNESS DRAGGER on the blue pill bar ===
         (function() {
             var pill = document.getElementById('ccDimnessPill');
             var fill = document.getElementById('ccSliderFill');
             if (!pill || !fill) return;
 
-            var dimness = 0; // 0 = full brightness, 100 = fully dim
+            var dimness = 0;
             try {
                 var saved = localStorage.getItem('nexos_dimness');
                 if (saved !== null) {
@@ -7314,7 +7580,7 @@ menu.addEventListener('mouseleave', hideMenu);
                 var rect = pill.getBoundingClientRect();
                 var x = clientX - rect.left;
                 var pct = Math.max(0, Math.min(100, (x / rect.width) * 100));
-                return 100 - pct; // left = bright (fill full), right = dim (fill empty)
+                return 100 - pct;
             }
 
             function applyDimness(val) {
@@ -7322,14 +7588,13 @@ menu.addEventListener('mouseleave', hideMenu);
                 var brightness = 100 - val;
                 fill.style.width = brightness + '%';
                 fill.style.transition = dragging ? 'none' : 'width 0.15s ease';
-                // Apply actual screen dimness
                 var contentArea = document.getElementById('contentArea');
                 if (contentArea) contentArea.style.filter = 'brightness(' + (brightness / 100) + ')';
                 try { localStorage.setItem('nexos_dimness', val); } catch(e) {}
             }
 
             pill.addEventListener('mousedown', function(e) {
-                if (e.target.closest('.cc-icon-btn')) return; // don't drag when clicking settings icon
+                if (e.target.closest('.cc-icon-btn')) return;
                 e.preventDefault();
                 dragging = true;
                 applyDimness(getDimnessFromX(e.clientX));
@@ -7348,7 +7613,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 }
             });
 
-            // Touch support
             pill.addEventListener('touchstart', function(e) {
                 if (e.target.closest('.cc-icon-btn')) return;
                 dragging = true;
@@ -7367,11 +7631,9 @@ menu.addEventListener('mouseleave', hideMenu);
                 }
             });
 
-            // Init fill on load
             applyDimness(dimness);
         })();
 
-        // Close sub-panel when clicking outside
         document.addEventListener('click', function(e) {
             var ccMenu = document.getElementById('controlCenterMenu');
             if (ccMenu && !ccMenu.contains(e.target)) {
@@ -7468,11 +7730,37 @@ menu.addEventListener('mouseleave', hideMenu);
       }
     }
 
+    var anncNotification = document.getElementById('anncNotification');
+    var anncNotifText = document.getElementById('anncNotifText');
+    var anncNotifTime = document.getElementById('anncNotifTime');
+    var anncNotifClose = document.getElementById('anncNotifClose');
+    var anncNotifTimer = null;
+
+    function dismissAnncNotification() {
+      if (anncNotification) anncNotification.classList.remove('visible');
+      if (anncNotifTimer) { clearTimeout(anncNotifTimer); anncNotifTimer = null; }
+    }
+
+    function showAnncNotification(msg, time) {
+      if (!anncNotification || !anncNotifText) return;
+      anncNotifText.textContent = msg;
+      if (anncNotifTime) anncNotifTime.textContent = time;
+      anncNotification.classList.remove('visible');
+      void anncNotification.offsetWidth;
+      anncNotification.classList.add('visible');
+      if (anncNotifTimer) clearTimeout(anncNotifTimer);
+      anncNotifTimer = setTimeout(dismissAnncNotification, 8000);
+    }
+
+    if (anncNotifClose) anncNotifClose.addEventListener('click', dismissAnncNotification);
+
     function showAnnouncement(msg) {
-      announcements.unshift({ text: msg, time: formatAnncTime(new Date()) });
+      var time = formatAnncTime(new Date());
+      announcements.unshift({ text: msg, time: time });
       if (announcements.length > 50) announcements.pop();
       anncDot.classList.add('visible');
       renderAnnouncements();
+      showAnncNotification(msg, time);
     }
 
     anncClearAll.addEventListener('click', function() {
