@@ -874,10 +874,10 @@
 
         .sidebar {
             position: fixed;
-            top: 92px;
+            top: calc(92px + var(--bookmark-bar-offset, 0px));
             right: -400px;
             width: 400px;
-            height: calc(100vh - 92px - 50px);
+            height: calc(100vh - 92px - var(--bookmark-bar-offset, 0px) - 50px);
             transition: right 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             z-index: 500;
             opacity: 0;
@@ -2774,10 +2774,12 @@ body.reduce-motion *::after {
     }
     .bookmarks-bar.hidden {
         min-height: 0;
+        height: 0;
         padding: 0 16px;
         opacity: 0;
         pointer-events: none;
         border-bottom: none;
+        overflow: hidden;
     }
     .bookmark-item {
         display: flex;
@@ -7828,7 +7830,10 @@ menu.addEventListener('mouseleave', hideMenu);
         function updateSidebarTop() {
             var bar = document.getElementById('bookmarksBar');
             var barVisible = bar && !bar.classList.contains('hidden') && bar.offsetHeight > 0;
-            var topVal = barVisible ? (92 + bar.offsetHeight) : 92;
+            var offset = barVisible ? bar.offsetHeight : 0;
+            document.documentElement.style.setProperty('--bookmark-bar-offset', offset + 'px');
+
+            var topVal = 92 + offset;
             document.querySelectorAll('.sidebar').forEach(function(s) {
                 s.style.top = topVal + 'px';
                 s.style.height = 'calc(100vh - ' + topVal + 'px - 50px)';
@@ -8760,26 +8765,34 @@ setInterval(async () => {
 
     function checkOverflow() {
         var items = bookmarksBar.querySelectorAll('.bookmark-item');
-        if (items.length === 0) {
+        if (items.length === 0 || bookmarksBar.classList.contains('hidden')) {
             bkOverflowBtn.classList.remove('visible');
+            bkOverflowDropdown.classList.remove('visible');
             return;
         }
-        var barRight = bookmarksBar.getBoundingClientRect().right - 40; // leave space for overflow btn
-        var hasOverflow = false;
+
         items.forEach(function(item) {
-            var itemRight = item.getBoundingClientRect().right;
-            if (itemRight > barRight) {
-                item.style.display = 'none';
-                hasOverflow = true;
-            } else {
-                item.style.display = '';
-            }
+            item.style.display = '';
+            item.dataset.overflow = '0';
         });
-        if (hasOverflow) {
-            bkOverflowBtn.classList.add('visible');
-        } else {
-            bkOverflowBtn.classList.remove('visible');
-        }
+
+        var available = Math.max(0, bookmarksBar.clientWidth - 42); // reserve room for chevron button
+        var used = 0;
+        var hasOverflow = false;
+
+        items.forEach(function(item) {
+            var width = item.offsetWidth;
+            if (used + width > available) {
+                item.style.display = 'none';
+                item.dataset.overflow = '1';
+                hasOverflow = true;
+                return;
+            }
+            used += width;
+        });
+
+        bkOverflowBtn.classList.toggle('visible', hasOverflow);
+        if (!hasOverflow) bkOverflowDropdown.classList.remove('visible');
     }
 
     function renderOverflowDropdown() {
@@ -8787,7 +8800,7 @@ setInterval(async () => {
         var bks = getBookmarks();
         var items = bookmarksBar.querySelectorAll('.bookmark-item');
         items.forEach(function(item, i) {
-            if (item.style.display === 'none') {
+            if (item.dataset.overflow === '1') {
                 var bk = bks[i];
                 if (!bk) return;
                 var div = document.createElement('button');
@@ -8814,11 +8827,13 @@ setInterval(async () => {
 
     bkOverflowBtn.addEventListener('click', function(e) {
         e.stopPropagation();
+        checkOverflow();
+        if (!bkOverflowBtn.classList.contains('visible')) return;
+
         if (bkOverflowDropdown.classList.contains('visible')) {
             bkOverflowDropdown.classList.remove('visible');
         } else {
             renderOverflowDropdown();
-            // Position dropdown below the overflow button
             var rect = bkOverflowBtn.getBoundingClientRect();
             bkOverflowDropdown.style.top = (rect.bottom + 2) + 'px';
             bkOverflowDropdown.style.right = (window.innerWidth - rect.right) + 'px';
@@ -8952,10 +8967,13 @@ setInterval(async () => {
     });
 
     window.addEventListener('resize', function() {
-        // Re-show all items then re-check overflow
-        var items = bookmarksBar.querySelectorAll('.bookmark-item');
-        items.forEach(function(item) { item.style.display = ''; });
-        setTimeout(checkOverflow, 50);
+        checkOverflow();
+        if (typeof updateSidebarTop === 'function') updateSidebarTop();
+        if (bkOverflowDropdown.classList.contains('visible')) {
+            var rect = bkOverflowBtn.getBoundingClientRect();
+            bkOverflowDropdown.style.top = (rect.bottom + 2) + 'px';
+            bkOverflowDropdown.style.right = (window.innerWidth - rect.right) + 'px';
+        }
     });
 
     var origSwitchForBookmarks = null;
