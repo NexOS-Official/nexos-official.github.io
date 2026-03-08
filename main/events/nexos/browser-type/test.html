@@ -7812,7 +7812,6 @@ menu.addEventListener('mouseleave', hideMenu);
             var bar = document.getElementById('bookmarksBar');
             if (!bar) return;
             if (show) {
-                // Only show if there are bookmarks
                 var bks = [];
                 try { bks = JSON.parse(localStorage.getItem('nexos_bookmarks')) || []; } catch(e) {}
                 if (bks.length > 0) {
@@ -7824,7 +7823,9 @@ menu.addEventListener('mouseleave', hideMenu);
             } else {
                 bar.classList.add('hidden');
             }
-            updateSidebarTop();
+            // Re-render bookmark items so they appear after toggling on
+            if (typeof window._renderBookmarks === 'function') window._renderBookmarks();
+            setTimeout(updateSidebarTop, 100);
         }
 
         function updateSidebarTop() {
@@ -8841,6 +8842,7 @@ setInterval(async () => {
         }
     });
 
+    window._renderBookmarks = renderBookmarks;
     function renderBookmarks() {
         var bks = getBookmarks();
         var items = bookmarksBar.querySelectorAll('.bookmark-item');
@@ -8885,7 +8887,7 @@ setInterval(async () => {
             });
             setTimeout(checkOverflow, 50);
         }
-        if (typeof updateSidebarTop === 'function') setTimeout(updateSidebarTop, 60);
+        if (typeof updateSidebarTop === 'function') setTimeout(updateSidebarTop, 150);
     }
 
     function escapeBookmarkHtml(text) {
@@ -8996,7 +8998,9 @@ setInterval(async () => {
     renderBookmarks();
     setTimeout(hookSwitchToTab, 600);
     setTimeout(updateStarState, 800);
-    setTimeout(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 200);
+    setTimeout(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 500);
+    // Keep sidebar position in sync
+    setInterval(function() { if (typeof updateSidebarTop === 'function') updateSidebarTop(); }, 2000);
 
     setInterval(updateStarState, 2000);
 })();
