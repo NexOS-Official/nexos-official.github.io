@@ -5025,20 +5025,24 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
                     
-                    // Force a fresh title read from iframe on tab switch
-                    try {
-                        if (newTab.iframe.contentDocument && newTab.iframe.contentDocument.title) {
-                            const freshTitle = newTab.iframe.contentDocument.title;
-                            if (freshTitle && freshTitle !== newTab.title) {
-                                newTab.title = freshTitle;
-                                const titleEl = newTab.element.querySelector('.tab-title');
-                                if (titleEl) {
-                                    titleEl.textContent = freshTitle;
-                                    titleEl.title = freshTitle;
-                                }
-                            }
+                    // Force a fresh title read from deepest iframe on tab switch
+                    const freshTitle = this.getDeepIframeTitle(newTab);
+                    if (freshTitle && freshTitle !== newTab.title) {
+                        newTab.title = freshTitle;
+                        const titleEl = newTab.element.querySelector('.tab-title');
+                        if (titleEl) {
+                            titleEl.textContent = freshTitle;
+                            titleEl.title = freshTitle;
                         }
-                    } catch(e) {}
+                    }
+                    
+                    // Also refresh URL from deep iframe
+                    const freshUrl = this.getDeepIframeUrl(newTab);
+                    if (freshUrl && freshUrl !== newTab.currentUrl && freshUrl.startsWith('http')) {
+                        newTab.currentUrl = freshUrl;
+                        this.addressBar.value = freshUrl;
+                        this.updateFavicon(newTab, freshUrl);
+                    }
                     
                     this.updateNavigationButtons();
                 }
@@ -5334,20 +5338,26 @@ if (this.isBlockedUrl(url)) {
                 const domain = this.extractDomain(url);
                 const previousTitle = tab.title;
                 
-                try {
-                    const iframe = tab.iframe;
-                    if (iframe.contentDocument && iframe.contentDocument.title) {
-                        tab.title = iframe.contentDocument.title;
-                    } else if (domain) {
-                        tab.title = this.formatDomainTitle(domain);
-                    } else {
-                        tab.title = 'nexORAos';
-                    }
-                } catch (error) {
-                    if (domain) {
-                        tab.title = this.formatDomainTitle(domain);
-                    } else {
-                        tab.title = 'nexAURAos';
+                // Try getting title from the deepest accessible iframe first
+                const deepTitle = this.getDeepIframeTitle(tab);
+                if (deepTitle) {
+                    tab.title = deepTitle;
+                } else {
+                    try {
+                        const iframe = tab.iframe;
+                        if (iframe.contentDocument && iframe.contentDocument.title) {
+                            tab.title = iframe.contentDocument.title;
+                        } else if (domain) {
+                            tab.title = this.formatDomainTitle(domain);
+                        } else {
+                            tab.title = 'nexORAos';
+                        }
+                    } catch (error) {
+                        if (domain) {
+                            tab.title = this.formatDomainTitle(domain);
+                        } else {
+                            tab.title = 'nexAURAos';
+                        }
                     }
                 }
                 
@@ -5418,7 +5428,72 @@ if (this.isBlockedUrl(url)) {
                 });
             }
 
+            // Traverse nested iframes to find the deepest accessible one (the actual proxied content)
+            getDeepestAccessibleIframe(iframe) {
+                let deepest = iframe;
+                try {
+                    const win = iframe.contentWindow;
+                    if (!win || !win.document) return deepest;
+                    
+                    const nestedIframes = win.document.querySelectorAll('iframe');
+                    for (const nested of nestedIframes) {
+                        try {
+                            if (nested.contentWindow && nested.contentDocument) {
+                                const deeper = this.getDeepestAccessibleIframe(nested);
+                                if (deeper) deepest = deeper;
+                            }
+                        } catch(e) {}
+                    }
+                } catch(e) {}
+                return deepest;
+            }
+
+            // Get the title from the deepest accessible iframe
+            getDeepIframeTitle(tab) {
+                try {
+                    const deepest = this.getDeepestAccessibleIframe(tab.iframe);
+                    if (deepest && deepest.contentDocument && deepest.contentDocument.title) {
+                        return deepest.contentDocument.title;
+                    }
+                } catch(e) {}
+                
+                // Also try the direct iframe
+                try {
+                    if (tab.iframe.contentDocument && tab.iframe.contentDocument.title) {
+                        return tab.iframe.contentDocument.title;
+                    }
+                } catch(e) {}
+                
+                return null;
+            }
+
+            // Get the URL from the deepest accessible iframe, decoded from proxy format
+            getDeepIframeUrl(tab) {
+                try {
+                    const deepest = this.getDeepestAccessibleIframe(tab.iframe);
+                    if (deepest && deepest.contentWindow) {
+                        const href = deepest.contentWindow.location.href;
+                        if (href && href !== 'about:blank') {
+                            const decoded = this.extractOriginalUrl(href);
+                            if (decoded.startsWith('http')) {
+                                return decoded;
+                            }
+                            // If we can't decode it but it's a proxy URL, try the raw href
+                            if (href.startsWith('http') && !href.includes('/active/')) {
+                                return href;
+                            }
+                        }
+                    }
+                } catch(e) {}
+                return null;
+            }
+
             getIframeCurrentUrl(tab) {
+                // First try the deep iframe (actual proxied content)
+                const deepUrl = this.getDeepIframeUrl(tab);
+                if (deepUrl) return deepUrl;
+                
+                // Fallback to top-level iframe
                 try {
                     const iframeHref = tab.iframe.contentWindow.location.href;
                     if (iframeHref && iframeHref !== 'about:blank') {
@@ -5431,6 +5506,22 @@ if (this.isBlockedUrl(url)) {
                 }
                 return null;
             }
+            // Check if a window is the same as or a descendant of a parent window
+            _isWindowDescendant(parentWin, childWin) {
+                if (!parentWin || !childWin) return false;
+                if (parentWin === childWin) return true;
+                try {
+                    // Check all nested iframes recursively
+                    const iframes = parentWin.document.querySelectorAll('iframe');
+                    for (const iframe of iframes) {
+                        try {
+                            if (iframe.contentWindow === childWin) return true;
+                            if (this._isWindowDescendant(iframe.contentWindow, childWin)) return true;
+                        } catch(e) {}
+                    }
+                } catch(e) {}
+                return false;
+            }
 
             setupPeriodicUpdates(tabId) {
                 if (this.updateIntervals.has(tabId)) {
@@ -5442,17 +5533,15 @@ if (this.isBlockedUrl(url)) {
                     if (!tab || !tab.iframe.src || tab.iframe.src === 'about:blank' || tab._navigatingHistory) return;
 
                     // Always try to update title (even for non-active tabs) for live title sync
+                    // Use deep iframe traversal to get the ACTUAL proxied page's title
                     try {
-                        const iframe = tab.iframe;
-                        if (iframe.contentDocument && iframe.contentDocument.title) {
-                            const iframeTitle = iframe.contentDocument.title;
-                            if (iframeTitle && iframeTitle !== tab.title) {
-                                tab.title = iframeTitle;
-                                const titleEl = tab.element.querySelector('.tab-title');
-                                if (titleEl) {
-                                    titleEl.textContent = iframeTitle;
-                                    titleEl.title = iframeTitle;
-                                }
+                        const deepTitle = this.getDeepIframeTitle(tab);
+                        if (deepTitle && deepTitle !== tab.title) {
+                            tab.title = deepTitle;
+                            const titleEl = tab.element.querySelector('.tab-title');
+                            if (titleEl) {
+                                titleEl.textContent = deepTitle;
+                                titleEl.title = deepTitle;
                             }
                         }
                     } catch(e) {}
@@ -5863,10 +5952,10 @@ if (this.isBlockedUrl(url)) {
                     }
                     // Live title updates from injected observer
                     if (e.data && e.data.type === 'nexos-title-update' && e.data.title !== undefined) {
-                        // Find the tab whose iframe sent this message
+                        // Find the tab that contains the source window (could be nested iframe)
                         for (const [tabId, tab] of this.tabs) {
                             try {
-                                if (tab.iframe && tab.iframe.contentWindow === e.source) {
+                                if (tab.iframe && this._isWindowDescendant(tab.iframe.contentWindow, e.source)) {
                                     const newTitle = e.data.title || tab.title;
                                     if (newTitle !== tab.title) {
                                         tab.title = newTitle;
@@ -5885,8 +5974,10 @@ if (this.isBlockedUrl(url)) {
                     if (e.data && e.data.type === 'nexos-spa-url-update' && e.data.url) {
                         for (const [tabId, tab] of this.tabs) {
                             try {
-                                if (tab.iframe && tab.iframe.contentWindow === e.source) {
-                                    const newUrl = e.data.url;
+                                if (tab.iframe && this._isWindowDescendant(tab.iframe.contentWindow, e.source)) {
+                                    const rawUrl = e.data.url;
+                                    // Decode the URL if it's a proxy URL
+                                    const newUrl = this.extractOriginalUrl(rawUrl);
                                     if (newUrl !== tab.currentUrl && newUrl !== 'about:blank') {
                                         const oldUrl = tab.currentUrl;
                                         tab.currentUrl = newUrl;
@@ -6183,6 +6274,8 @@ if (this.isBlockedUrl(url)) {
                                         node.addEventListener('load', () => {
                                             try { this.injectNewTabInterceptor(node); } catch(e) {}
                                         });
+                                        // Also try immediately in case it's already loaded
+                                        try { this.injectNewTabInterceptor(node); } catch(e) {}
                                     }
                                 });
                             });
@@ -6191,6 +6284,26 @@ if (this.isBlockedUrl(url)) {
                             childList: true, subtree: true
                         });
                     } catch(e) {}
+
+                    // === DELAYED RETRY for nested proxy iframes ===
+                    // The proxy (UV/embed) inner iframe may not exist yet when outer embed.html loads
+                    // Retry injection at increasing intervals to catch it
+                    const retryDelays = [200, 500, 1000, 2000, 4000];
+                    retryDelays.forEach((delay) => {
+                        setTimeout(() => {
+                            try {
+                                const freshNested = iframeWin.document.querySelectorAll('iframe');
+                                freshNested.forEach((nested) => {
+                                    try {
+                                        if (nested.contentWindow && nested.contentDocument && !nested._nexosInjected) {
+                                            nested._nexosInjected = true;
+                                            this.injectNewTabInterceptor(nested);
+                                        }
+                                    } catch(e) {}
+                                });
+                            } catch(e) {}
+                        }, delay);
+                    });
 
                 } catch(e) {
                 }
