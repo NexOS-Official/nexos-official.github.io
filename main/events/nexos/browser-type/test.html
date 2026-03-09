@@ -5423,50 +5423,80 @@ if (this.isBlockedUrl(url)) {
             }
 
             getDeepIframeUrl(tab) {
+                // Collect all accessible windows (outer + all nested iframes at any depth)
+                const wins = [];
                 try {
                     const outerWin = tab.iframe.contentWindow;
                     if (!outerWin) return null;
-                    // Try to find inner iframe inside embed.html (the proxy wrapper)
-                    const innerIframes = outerWin.document.querySelectorAll('iframe');
-                    if (innerIframes.length > 0) {
-                        for (const inner of innerIframes) {
-                            try {
-                                const href = inner.contentWindow.location.href;
-                                if (href && href !== 'about:blank') {
-                                    const decoded = this.extractOriginalUrl(href);
-                                    if (decoded.startsWith('http')) return decoded;
-                                    return href;
-                                }
-                            } catch(e) {}
+                    const collectWindows = (win, depth) => {
+                        if (depth > 4) return;
+                        wins.push(win);
+                        try {
+                            const iframes = win.document.querySelectorAll('iframe');
+                            for (const f of iframes) {
+                                try { collectWindows(f.contentWindow, depth + 1); } catch(e) {}
+                            }
+                        } catch(e) {}
+                    };
+                    collectWindows(outerWin, 0);
+                } catch(e) { return null; }
+
+                // Search all windows for the real URL
+                for (const win of wins) {
+                    // Ultraviolet proxy: __uv$location
+                    try {
+                        const uvLoc = win.__uv$location;
+                        if (uvLoc && uvLoc.href && uvLoc.href.startsWith('http')) return uvLoc.href;
+                    } catch(e) {}
+                    // Alternative proxy: __location
+                    try {
+                        const loc = win.__location;
+                        if (loc && loc.href && loc.href.startsWith('http')) return loc.href;
+                    } catch(e) {}
+                }
+                // Then try raw location decoding on all windows (reverse order = deepest first)
+                for (let i = wins.length - 1; i >= 0; i--) {
+                    try {
+                        const href = wins[i].location.href;
+                        if (href && href !== 'about:blank') {
+                            const decoded = this.extractOriginalUrl(href);
+                            if (decoded !== href && decoded.startsWith('http')) return decoded;
                         }
-                    }
-                    // Fallback: read outer iframe location
-                    const href = outerWin.location.href;
-                    if (href && href !== 'about:blank') {
-                        const decoded = this.extractOriginalUrl(href);
-                        if (decoded.startsWith('http')) return decoded;
-                    }
-                } catch(e) {}
+                    } catch(e) {}
+                }
                 return null;
             }
 
             getDeepIframeTitle(tab) {
+                const wins = [];
                 try {
                     const outerWin = tab.iframe.contentWindow;
                     if (!outerWin) return null;
-                    const innerIframes = outerWin.document.querySelectorAll('iframe');
-                    if (innerIframes.length > 0) {
-                        for (const inner of innerIframes) {
-                            try {
-                                const title = inner.contentDocument.title;
-                                if (title && title.trim()) return title.trim();
-                            } catch(e) {}
-                        }
-                    }
-                    // Fallback: outer iframe title
-                    const title = outerWin.document.title;
-                    if (title && title.trim()) return title.trim();
-                } catch(e) {}
+                    const collectWindows = (win, depth) => {
+                        if (depth > 4) return;
+                        wins.push(win);
+                        try {
+                            const iframes = win.document.querySelectorAll('iframe');
+                            for (const f of iframes) {
+                                try { collectWindows(f.contentWindow, depth + 1); } catch(e) {}
+                            }
+                        } catch(e) {}
+                    };
+                    collectWindows(outerWin, 0);
+                } catch(e) { return null; }
+
+                // Search deepest first for the most specific title
+                for (let i = wins.length - 1; i >= 0; i--) {
+                    try {
+                        const title = wins[i].document.title;
+                        if (title && title.trim()) return title.trim();
+                    } catch(e) {}
+                    // UV document proxy
+                    try {
+                        const doc = wins[i].__uv$document;
+                        if (doc && doc.title && doc.title.trim()) return doc.title.trim();
+                    } catch(e) {}
+                }
                 return null;
             }
 
@@ -5601,7 +5631,10 @@ if (this.isBlockedUrl(url)) {
                 if (!tab || tab._navigatingHistory) return;
                 
                 // --- URL detection ---
-                const realUrl = this.getDeepIframeUrl(tab) || this.getIframeCurrentUrl(tab);
+                const deepUrl = this.getDeepIframeUrl(tab);
+                const fallbackUrl = this.getIframeCurrentUrl(tab);
+                const realUrl = deepUrl || fallbackUrl;
+                console.log('[NexOS Debug] URL detection:', { deepUrl, fallbackUrl, currentUrl: tab.currentUrl });
                 if (realUrl && realUrl !== 'about:blank') {
                     const oldUrl = tab.currentUrl;
                     if (realUrl !== oldUrl) {
@@ -5669,117 +5702,63 @@ if (this.isBlockedUrl(url)) {
 
             goBack() {
                 if (!this.activeTabId) return;
-                
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
 
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
 
-                // If we have tracked history entries to go back to, use them (reliable)
-                if (history && currentIndex > 0) {
-                    // First try iframe internal history (preserves SPA state)
-                    let usedInternal = false;
-                    try {
-                        const outerWin = tab.iframe.contentWindow;
-                        if (outerWin) {
-                            const innerIframes = outerWin.document.querySelectorAll('iframe');
-                            if (innerIframes.length > 0) {
-                                for (const inner of innerIframes) {
-                                    try {
-                                        inner.contentWindow.history.back();
-                                        usedInternal = true;
-                                        break;
-                                    } catch(e) {}
-                                }
-                            }
-                            if (!usedInternal) {
-                                outerWin.history.back();
-                                usedInternal = true;
-                            }
-                        }
-                    } catch(e) { usedInternal = false; }
+                if (!history || currentIndex <= 0) return;
 
-                    this.historyIndex[this.activeTabId]--;
-                    this.updateNavigationButtons();
-
-                    if (usedInternal) {
-                        tab._navigatingHistory = true;
-                        setTimeout(() => {
-                            tab._navigatingHistory = false;
-                            this._handleUrlTitleUpdate(this.activeTabId);
-                        }, 500);
-                    } else {
-                        // Fallback: load the URL from tracked history
-                        const previousUrl = history[this.historyIndex[this.activeTabId]];
-                        const decoded = this.extractOriginalUrl(previousUrl);
-                        tab.currentUrl = decoded;
-                        tab.url = previousUrl;
-                        tab._navigatingHistory = true;
-                        tab.iframe.src = previousUrl;
-                        this.addressBar.value = decoded;
-                        this.updateFavicon(tab, decoded);
-                        this.updateTabTitle(tab, decoded);
-                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
-                    }
-                }
+                this.historyIndex[this.activeTabId]--;
+                const previousUrl = history[this.historyIndex[this.activeTabId]];
+                const decoded = this.extractOriginalUrl(previousUrl);
+                
+                tab.currentUrl = decoded;
+                tab.url = previousUrl;
+                tab._navigatingHistory = true;
+                tab.iframe.src = previousUrl;
+                this.addressBar.value = decoded;
+                this.updateFavicon(tab, decoded);
+                this.updateTabTitle(tab, decoded);
+                this.updateNavigationButtons();
+                
+                setTimeout(() => {
+                    tab._navigatingHistory = false;
+                    this._handleUrlTitleUpdate(this.activeTabId);
+                }, 1500);
             }
 
             goForward() {
                 if (!this.activeTabId) return;
-                
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
 
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
 
-                // Only proceed if we have tracked history entries ahead
-                if (history && currentIndex < history.length - 1) {
-                    let usedInternal = false;
-                    try {
-                        const outerWin = tab.iframe.contentWindow;
-                        if (outerWin) {
-                            const innerIframes = outerWin.document.querySelectorAll('iframe');
-                            if (innerIframes.length > 0) {
-                                for (const inner of innerIframes) {
-                                    try {
-                                        inner.contentWindow.history.forward();
-                                        usedInternal = true;
-                                        break;
-                                    } catch(e) {}
-                                }
-                            }
-                            if (!usedInternal) {
-                                outerWin.history.forward();
-                                usedInternal = true;
-                            }
-                        }
-                    } catch(e) { usedInternal = false; }
+                if (!history || currentIndex >= history.length - 1) return;
 
-                    this.historyIndex[this.activeTabId]++;
-                    this.updateNavigationButtons();
-
-                    if (usedInternal) {
-                        tab._navigatingHistory = true;
-                        setTimeout(() => {
-                            tab._navigatingHistory = false;
-                            this._handleUrlTitleUpdate(this.activeTabId);
-                        }, 500);
-                    } else {
-                        const nextUrl = history[this.historyIndex[this.activeTabId]];
-                        const decoded = this.extractOriginalUrl(nextUrl);
-                        tab.currentUrl = decoded;
-                        tab.url = nextUrl;
-                        tab._navigatingHistory = true;
-                        tab.iframe.src = nextUrl;
-                        this.addressBar.value = decoded;
-                        this.updateFavicon(tab, decoded);
-                        this.updateTabTitle(tab, decoded);
-                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
-                    }
-                }
+                this.historyIndex[this.activeTabId]++;
+                const nextUrl = history[this.historyIndex[this.activeTabId]];
+                const decoded = this.extractOriginalUrl(nextUrl);
+                
+                tab.currentUrl = decoded;
+                tab.url = nextUrl;
+                tab._navigatingHistory = true;
+                tab.iframe.src = nextUrl;
+                this.addressBar.value = decoded;
+                this.updateFavicon(tab, decoded);
+                this.updateTabTitle(tab, decoded);
+                this.updateNavigationButtons();
+                
+                setTimeout(() => {
+                    tab._navigatingHistory = false;
+                    this._handleUrlTitleUpdate(this.activeTabId);
+                }, 1500);
             }
+
+
 
             refresh() {
                 if (!this.activeTabId) return;
