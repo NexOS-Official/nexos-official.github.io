@@ -4,6 +4,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -168,6 +169,7 @@
             margin: 0;
             user-select: none;
             flex-shrink: 0;
+            overflow: hidden;
         }
 
         .tab-bar::after {
@@ -197,7 +199,7 @@
             flex: 1;
             transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
             will-change: transform;
-            overflow: hidden;
+            overflow: visible;
         }
 
 
@@ -476,6 +478,7 @@
 
         .new-tab-btn {
             width: 28px;
+            min-width: 28px;
             height: 28px;
             margin: 4px 8px;
             border-radius: 50%;
@@ -487,6 +490,7 @@
             cursor: auto;
             transition: background 0.15s ease;
             color: #5f6368;
+            flex-shrink: 0;
         }
 
         .new-tab-btn:hover {
@@ -4433,10 +4437,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const tabBarWidth = this.tabBar.offsetWidth;
                 const newTabBtnWidth = 32;
-                const pinnedTabsWidth = pinnedTabs.length * 28;
-                const availableWidth = tabBarWidth - newTabBtnWidth - pinnedTabsWidth - 20;
+                const pinnedTabsWidth = pinnedTabs.length * 32;
+                const padding = 25;
+                const availableWidth = tabBarWidth - newTabBtnWidth - pinnedTabsWidth - padding - 10;
                 
-                let idealTabWidth = Math.max(32, availableWidth / regularTabs.length);
+                let idealTabWidth = Math.max(28, availableWidth / regularTabs.length);
                 
                 idealTabWidth = Math.min(240, idealTabWidth);
 
@@ -4908,7 +4913,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 img.onload = () => {
                     faviconElement.innerHTML = '';
-                    // Add blurred glow duplicate behind
                     const glow = document.createElement('img');
                     glow.src = sources[index];
                     glow.className = 'favicon-glow';
@@ -4933,7 +4937,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 tab.loadHandler = () => {
                     this.injectNewTabInterceptor(iframe);
-
+                    // Inject SPA pushState/replaceState/popstate listeners for better detection
+                    setTimeout(() => this.injectSPAListeners(tab), 300);
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
@@ -5096,7 +5101,6 @@ if (this.isBlockedUrl(url)) {
   return;
 }
 
-                // Handle ghost:// protocol
                 if (url.toLowerCase().startsWith('ghost://')) {
                     var ghostRoutes = {
                         'ghost://new-tab': '/newtab/pages/landing.html',
@@ -5314,20 +5318,26 @@ if (this.isBlockedUrl(url)) {
                 const domain = this.extractDomain(url);
                 const previousTitle = tab.title;
                 
-                try {
-                    const iframe = tab.iframe;
-                    if (iframe.contentDocument && iframe.contentDocument.title) {
-                        tab.title = iframe.contentDocument.title;
-                    } else if (domain) {
-                        tab.title = this.formatDomainTitle(domain);
-                    } else {
-                        tab.title = 'nexORAos';
-                    }
-                } catch (error) {
-                    if (domain) {
-                        tab.title = this.formatDomainTitle(domain);
-                    } else {
-                        tab.title = 'nexAURAos';
+                // Try deep iframe title first (reads from proxied content)
+                const deepTitle = this.getDeepIframeTitle(tab);
+                if (deepTitle) {
+                    tab.title = deepTitle;
+                } else {
+                    try {
+                        const iframe = tab.iframe;
+                        if (iframe.contentDocument && iframe.contentDocument.title) {
+                            tab.title = iframe.contentDocument.title;
+                        } else if (domain) {
+                            tab.title = this.formatDomainTitle(domain);
+                        } else {
+                            tab.title = 'nexORAos';
+                        }
+                    } catch (error) {
+                        if (domain) {
+                            tab.title = this.formatDomainTitle(domain);
+                        } else {
+                            tab.title = 'nexAURAos';
+                        }
                     }
                 }
                 
@@ -5412,74 +5422,244 @@ if (this.isBlockedUrl(url)) {
                 return null;
             }
 
+            getDeepIframeUrl(tab) {
+                try {
+                    const outerWin = tab.iframe.contentWindow;
+                    if (!outerWin) return null;
+                    // Try to find inner iframe inside embed.html (the proxy wrapper)
+                    const innerIframes = outerWin.document.querySelectorAll('iframe');
+                    if (innerIframes.length > 0) {
+                        for (const inner of innerIframes) {
+                            try {
+                                const href = inner.contentWindow.location.href;
+                                if (href && href !== 'about:blank') {
+                                    const decoded = this.extractOriginalUrl(href);
+                                    if (decoded.startsWith('http')) return decoded;
+                                    return href;
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                    // Fallback: read outer iframe location
+                    const href = outerWin.location.href;
+                    if (href && href !== 'about:blank') {
+                        const decoded = this.extractOriginalUrl(href);
+                        if (decoded.startsWith('http')) return decoded;
+                    }
+                } catch(e) {}
+                return null;
+            }
+
+            getDeepIframeTitle(tab) {
+                try {
+                    const outerWin = tab.iframe.contentWindow;
+                    if (!outerWin) return null;
+                    const innerIframes = outerWin.document.querySelectorAll('iframe');
+                    if (innerIframes.length > 0) {
+                        for (const inner of innerIframes) {
+                            try {
+                                const title = inner.contentDocument.title;
+                                if (title && title.trim()) return title.trim();
+                            } catch(e) {}
+                        }
+                    }
+                    // Fallback: outer iframe title
+                    const title = outerWin.document.title;
+                    if (title && title.trim()) return title.trim();
+                } catch(e) {}
+                return null;
+            }
+
+            injectSPAListeners(tab) {
+                try {
+                    const outerWin = tab.iframe.contentWindow;
+                    if (!outerWin) return;
+                    const targets = [outerWin];
+                    // Also try inner iframes
+                    try {
+                        const innerIframes = outerWin.document.querySelectorAll('iframe');
+                        innerIframes.forEach(inner => {
+                            try { targets.push(inner.contentWindow); } catch(e) {}
+                        });
+                    } catch(e) {}
+
+                    targets.forEach(win => {
+                        try {
+                            if (win._spaListenersInjected) return;
+                            win._spaListenersInjected = true;
+                            
+                            const origPushState = win.history.pushState.bind(win.history);
+                            const origReplaceState = win.history.replaceState.bind(win.history);
+                            
+                            win.history.pushState = function() {
+                                origPushState.apply(this, arguments);
+                                win.dispatchEvent(new Event('__spa_nav'));
+                            };
+                            win.history.replaceState = function() {
+                                origReplaceState.apply(this, arguments);
+                                win.dispatchEvent(new Event('__spa_nav'));
+                            };
+                            
+                            win.addEventListener('popstate', () => {
+                                win.dispatchEvent(new Event('__spa_nav'));
+                            });
+                            
+                            win.addEventListener('__spa_nav', () => {
+                                if (tab._spaNavCallback) tab._spaNavCallback();
+                            });
+                        } catch(e) {}
+                    });
+                } catch(e) {}
+            }
+
             setupPeriodicUpdates(tabId) {
                 if (this.updateIntervals.has(tabId)) {
                     clearInterval(this.updateIntervals.get(tabId));
+                }
+
+                const tab = this.tabs.get(tabId);
+                
+                // SPA nav callback - triggered immediately on pushState/replaceState
+                if (tab) {
+                    tab._spaNavCallback = () => {
+                        this._handleUrlTitleUpdate(tabId);
+                    };
                 }
 
                 const interval = setInterval(() => {
                     if (this.activeTabId === tabId) {
                         const tab = this.tabs.get(tabId);
                         if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
-                            const realUrl = this.getIframeCurrentUrl(tab);
-                            if (realUrl && realUrl !== 'about:blank') {
-                                const oldUrl = tab.currentUrl;
-                                if (realUrl !== oldUrl) {
-                                    if (this.isBlockedUrl(realUrl)) {
-                                        tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
-                                        tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
-                                        this.addressBar.value = '';
-                                        return;
-                                    }
-                                    tab.currentUrl = realUrl;
-                                    tab.url = tab.iframe.src;
-                                    this.addressBar.value = realUrl;
-                                    this.updateFavicon(tab, realUrl);
-                                    this.updateTabTitle(tab, realUrl);
-                                    
-                                    const isSecure = realUrl.startsWith('https://');
-                                    this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                                    const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                                    if (securityIcon) {
-                                        securityIcon.innerHTML = isSecure ? 
-                                            '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                            '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                        lucide.createIcons();
-                                    }
-                                    
-                                    if (!tab._navigatingHistory) {
-                                        const history = this.history[this.activeTabId];
-                                        if (history) {
-                                            const currentIndex = this.historyIndex[this.activeTabId];
-                                            const currentEntry = history[currentIndex];
-                                            const currentExtracted = this.extractOriginalUrl(currentEntry || '');
-                                            if (currentExtracted !== realUrl) {
-                                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
-                                                history.splice(currentIndex + 1);
-                                                history.push(proxyUrl);
-                                                this.historyIndex[this.activeTabId] = history.length - 1;
-                                                this.updateNavigationButtons();
-                                            }
-                                        }
-                                    }
-                                    
-                                    if (this._addToBrowseHistory) {
-                                        this._addToBrowseHistory(realUrl, tab);
-                                    }
-                                }
-                            } else {
-                                this.updateTabInfo(tabId);
-                            }
+                            // Re-inject SPA listeners periodically (inner iframes may load later)
+                            this.injectSPAListeners(tab);
+                            this._handleUrlTitleUpdate(tabId);
                         }
                     }
-                }, 800);
+                }, 400);
 
                 this.updateIntervals.set(tabId, interval);
+            }
+
+            _handleUrlTitleUpdate(tabId) {
+                const tab = this.tabs.get(tabId);
+                if (!tab || tab._navigatingHistory) return;
+                
+                // --- URL detection ---
+                const realUrl = this.getDeepIframeUrl(tab) || this.getIframeCurrentUrl(tab);
+                if (realUrl && realUrl !== 'about:blank') {
+                    const oldUrl = tab.currentUrl;
+                    if (realUrl !== oldUrl) {
+                        if (this.isBlockedUrl(realUrl)) {
+                            tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
+                            tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
+                            this.addressBar.value = '';
+                            return;
+                        }
+                        tab.currentUrl = realUrl;
+                        tab.url = tab.iframe.src;
+                        if (this.activeTabId === tabId) {
+                            this.addressBar.value = realUrl;
+                            const isSecure = realUrl.startsWith('https://');
+                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                            if (securityIcon) {
+                                securityIcon.innerHTML = isSecure ? 
+                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                lucide.createIcons();
+                            }
+                        }
+                        this.updateFavicon(tab, realUrl);
+
+                        if (!tab._navigatingHistory) {
+                            const history = this.history[tabId];
+                            if (history) {
+                                const currentIndex = this.historyIndex[tabId];
+                                const currentEntry = history[currentIndex];
+                                const currentExtracted = this.extractOriginalUrl(currentEntry || '');
+                                if (currentExtracted !== realUrl) {
+                                    const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                    history.splice(currentIndex + 1);
+                                    history.push(proxyUrl);
+                                    this.historyIndex[tabId] = history.length - 1;
+                                    this.updateNavigationButtons();
+                                }
+                            }
+                        }
+
+                        if (this._addToBrowseHistory) {
+                            this._addToBrowseHistory(realUrl, tab);
+                        }
+                    }
+                } else {
+                    this.updateTabInfo(tabId);
+                }
+                
+                // --- Title detection (always poll, even if URL didn't change) ---
+                const deepTitle = this.getDeepIframeTitle(tab);
+                if (deepTitle && deepTitle !== tab.title) {
+                    const previousTitle = tab.title;
+                    tab.title = deepTitle;
+                    const titleElement = tab.element.querySelector('.tab-title');
+                    if (titleElement) {
+                        titleElement.textContent = deepTitle;
+                        titleElement.title = deepTitle;
+                    }
+                    if (previousTitle && previousTitle !== deepTitle && this.activeTabId === tabId) {
+                        this.showSiteToast(tab, tab.currentUrl || '');
+                    }
+                }
             }
 
             goBack() {
                 if (!this.activeTabId) return;
                 
+                const tab = this.tabs.get(this.activeTabId);
+                if (!tab) return;
+
+                // Try using the iframe's internal history first (works for SPA navigation)
+                let usedInternalHistory = false;
+                try {
+                    const outerWin = tab.iframe.contentWindow;
+                    if (outerWin) {
+                        // Check for inner iframe (proxy wrapper)
+                        const innerIframes = outerWin.document.querySelectorAll('iframe');
+                        if (innerIframes.length > 0) {
+                            for (const inner of innerIframes) {
+                                try {
+                                    inner.contentWindow.history.back();
+                                    usedInternalHistory = true;
+                                    break;
+                                } catch(e) {}
+                            }
+                        }
+                        if (!usedInternalHistory) {
+                            outerWin.history.back();
+                            usedInternalHistory = true;
+                        }
+                    }
+                } catch(e) {
+                    usedInternalHistory = false;
+                }
+
+                if (usedInternalHistory) {
+                    // Update history index if we have entries
+                    const history = this.history[this.activeTabId];
+                    const currentIndex = this.historyIndex[this.activeTabId];
+                    if (currentIndex > 0) {
+                        this.historyIndex[this.activeTabId]--;
+                        this.updateNavigationButtons();
+                    }
+                    // Set flag and schedule URL/title refresh
+                    tab._navigatingHistory = true;
+                    setTimeout(() => {
+                        tab._navigatingHistory = false;
+                        this._handleUrlTitleUpdate(this.activeTabId);
+                    }, 500);
+                    return;
+                }
+
+                // Fallback: use our tracked history
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
                 
@@ -5487,27 +5667,67 @@ if (this.isBlockedUrl(url)) {
                     this.historyIndex[this.activeTabId]--;
                     const previousUrl = history[this.historyIndex[this.activeTabId]];
                     
-                    const tab = this.tabs.get(this.activeTabId);
-                    if (tab) {
-                        const decoded = this.extractOriginalUrl(previousUrl);
-                        tab.currentUrl = decoded;
-                        tab.url = previousUrl;
-                        tab._navigatingHistory = true;
-                        tab.iframe.src = previousUrl;
-                        this.addressBar.value = decoded;
-                        this.updateFavicon(tab, decoded);
-                        this.updateTabTitle(tab, decoded);
-                        
-                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
-                    }
+                    const decoded = this.extractOriginalUrl(previousUrl);
+                    tab.currentUrl = decoded;
+                    tab.url = previousUrl;
+                    tab._navigatingHistory = true;
+                    tab.iframe.src = previousUrl;
+                    this.addressBar.value = decoded;
+                    this.updateFavicon(tab, decoded);
+                    this.updateTabTitle(tab, decoded);
                     
-                    this.updateNavigationButtons();
+                    setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                 }
+                
+                this.updateNavigationButtons();
             }
 
             goForward() {
                 if (!this.activeTabId) return;
                 
+                const tab = this.tabs.get(this.activeTabId);
+                if (!tab) return;
+
+                // Try using the iframe's internal history first
+                let usedInternalHistory = false;
+                try {
+                    const outerWin = tab.iframe.contentWindow;
+                    if (outerWin) {
+                        const innerIframes = outerWin.document.querySelectorAll('iframe');
+                        if (innerIframes.length > 0) {
+                            for (const inner of innerIframes) {
+                                try {
+                                    inner.contentWindow.history.forward();
+                                    usedInternalHistory = true;
+                                    break;
+                                } catch(e) {}
+                            }
+                        }
+                        if (!usedInternalHistory) {
+                            outerWin.history.forward();
+                            usedInternalHistory = true;
+                        }
+                    }
+                } catch(e) {
+                    usedInternalHistory = false;
+                }
+
+                if (usedInternalHistory) {
+                    const history = this.history[this.activeTabId];
+                    const currentIndex = this.historyIndex[this.activeTabId];
+                    if (currentIndex < history.length - 1) {
+                        this.historyIndex[this.activeTabId]++;
+                        this.updateNavigationButtons();
+                    }
+                    tab._navigatingHistory = true;
+                    setTimeout(() => {
+                        tab._navigatingHistory = false;
+                        this._handleUrlTitleUpdate(this.activeTabId);
+                    }, 500);
+                    return;
+                }
+
+                // Fallback: use our tracked history
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
                 
@@ -5515,22 +5735,19 @@ if (this.isBlockedUrl(url)) {
                     this.historyIndex[this.activeTabId]++;
                     const nextUrl = history[this.historyIndex[this.activeTabId]];
                     
-                    const tab = this.tabs.get(this.activeTabId);
-                    if (tab) {
-                        const decoded = this.extractOriginalUrl(nextUrl);
-                        tab.currentUrl = decoded;
-                        tab.url = nextUrl;
-                        tab._navigatingHistory = true;
-                        tab.iframe.src = nextUrl;
-                        this.addressBar.value = decoded;
-                        this.updateFavicon(tab, decoded);
-                        this.updateTabTitle(tab, decoded);
-                        
-                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
-                    }
+                    const decoded = this.extractOriginalUrl(nextUrl);
+                    tab.currentUrl = decoded;
+                    tab.url = nextUrl;
+                    tab._navigatingHistory = true;
+                    tab.iframe.src = nextUrl;
+                    this.addressBar.value = decoded;
+                    this.updateFavicon(tab, decoded);
+                    this.updateTabTitle(tab, decoded);
                     
-                    this.updateNavigationButtons();
+                    setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                 }
+                
+                this.updateNavigationButtons();
             }
 
             refresh() {
@@ -7850,7 +8067,6 @@ menu.addEventListener('mouseleave', hideMenu);
             } else {
                 bar.classList.add('hidden');
             }
-            // Re-render bookmark items so they appear after toggling on
             if (typeof window._renderBookmarks === 'function') window._renderBookmarks();
             setTimeout(updateSidebarTop, 100);
         }
@@ -7901,7 +8117,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 });
             }
 
-            // Show Bookmarks toggle
             var showBookmarksBtn = document.getElementById('ccShowBookmarks');
             var showBookmarksToggle = document.getElementById('ccShowBookmarksToggle');
             var showBookmarks = true;
@@ -8734,7 +8949,6 @@ setInterval(async () => {
 
     var DEFAULT_FAVICON = 'https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://www.edpuzzle.cv&size=16';
 
-    // Map internal paths to ghost:// friendly names
     var GHOST_MAP = {
         '/newtab/pages/landing.html': 'new-tab',
         '/chat.html': 'chat',
@@ -8745,7 +8959,6 @@ setInterval(async () => {
         '/main/events/sidebar/apps/docs.html': 'docs',
         '/main/events/sidebar/apps/music.html': 'music'
     };
-    // Reverse map
     var GHOST_REVERSE = {};
     Object.keys(GHOST_MAP).forEach(function(k) { GHOST_REVERSE['ghost://' + GHOST_MAP[k]] = k; });
 
@@ -8755,12 +8968,9 @@ setInterval(async () => {
 
     function toGhostUrl(url) {
         if (!url) return url;
-        // Check exact match first
         if (GHOST_MAP[url]) return 'ghost://' + GHOST_MAP[url];
-        // Check without query params
         var base = url.split('?')[0];
         if (GHOST_MAP[base]) return 'ghost://' + GHOST_MAP[base];
-        // For any other internal path, derive a name
         if (isInternalUrl(url)) {
             var name = url.replace(/^\//, '').replace(/\.html$/, '').replace(/\//g, '-');
             return 'ghost://' + (name || 'page');
@@ -8771,7 +8981,6 @@ setInterval(async () => {
     function fromGhostUrl(ghostUrl) {
         if (!ghostUrl || !ghostUrl.startsWith('ghost://')) return ghostUrl;
         if (GHOST_REVERSE[ghostUrl]) return GHOST_REVERSE[ghostUrl];
-        // Fallback: can't resolve, just return the ghost url (won't break)
         return ghostUrl;
     }
 
@@ -8817,7 +9026,7 @@ setInterval(async () => {
             item.dataset.overflow = '0';
         });
 
-        var available = Math.max(0, bookmarksBar.clientWidth - 42); // reserve room for chevron button
+        var available = Math.max(0, bookmarksBar.clientWidth - 42);
         var used = 0;
         var hasOverflow = false;
 
@@ -8888,7 +9097,6 @@ setInterval(async () => {
         var items = bookmarksBar.querySelectorAll('.bookmark-item');
         items.forEach(function(el) { el.remove(); });
 
-        // Check if bookmarks bar is disabled in settings
         var showBkSetting = true;
         try { var s = localStorage.getItem('nexos_show_bookmarks'); if (s !== null) showBkSetting = s === 'true'; } catch(e) {}
 
@@ -9018,7 +9226,6 @@ setInterval(async () => {
         }
     });
 
-    // Keep sidebar synced to bookmark bar changes globally (not tied to settings panel state)
     if (bookmarksBar && typeof MutationObserver !== 'undefined') {
         var bookmarksBarObserver = new MutationObserver(function() {
             syncSidebarTopFromBookmarks();
@@ -9051,12 +9258,10 @@ setInterval(async () => {
     renderBookmarks();
     setTimeout(hookSwitchToTab, 600);
     setTimeout(updateStarState, 800);
-    // Aggressively sync sidebar position on load
     setTimeout(syncSidebarTopFromBookmarks, 100);
     setTimeout(syncSidebarTopFromBookmarks, 300);
     setTimeout(syncSidebarTopFromBookmarks, 500);
     setTimeout(syncSidebarTopFromBookmarks, 1000);
-    // Keep sidebar position in sync
     setInterval(syncSidebarTopFromBookmarks, 2000);
 
     setInterval(updateStarState, 2000);
