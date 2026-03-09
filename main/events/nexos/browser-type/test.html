@@ -5503,10 +5503,66 @@ if (this.isBlockedUrl(url)) {
                             win.addEventListener('popstate', () => {
                                 win.dispatchEvent(new Event('__spa_nav'));
                             });
+
+                            // Catch hash-based SPA routing
+                            win.addEventListener('hashchange', () => {
+                                win.dispatchEvent(new Event('__spa_nav'));
+                            });
                             
                             win.addEventListener('__spa_nav', () => {
                                 if (tab._spaNavCallback) tab._spaNavCallback();
                             });
+
+                            // MutationObserver on <title> for instant title change detection
+                            try {
+                                const titleEl = win.document.querySelector('title');
+                                if (titleEl) {
+                                    const titleObs = new MutationObserver(() => {
+                                        if (tab._spaNavCallback) tab._spaNavCallback();
+                                    });
+                                    titleObs.observe(titleEl, { childList: true, characterData: true, subtree: true });
+                                }
+                                // Also observe head for dynamically added <title>
+                                const head = win.document.head;
+                                if (head) {
+                                    const headObs = new MutationObserver(() => {
+                                        const newTitle = win.document.querySelector('title');
+                                        if (newTitle && !newTitle._observed) {
+                                            newTitle._observed = true;
+                                            const tObs = new MutationObserver(() => {
+                                                if (tab._spaNavCallback) tab._spaNavCallback();
+                                            });
+                                            tObs.observe(newTitle, { childList: true, characterData: true, subtree: true });
+                                        }
+                                        if (tab._spaNavCallback) tab._spaNavCallback();
+                                    });
+                                    headObs.observe(head, { childList: true, subtree: true });
+                                }
+                            } catch(e) {}
+
+                            // Internal micro-poll: catches SPAs that set document.title or 
+                            // change URL without using history API (e.g., TikTok navigation)
+                            let lastHref = '';
+                            let lastTitle = '';
+                            try { lastHref = win.location.href; } catch(e) {}
+                            try { lastTitle = win.document.title; } catch(e) {}
+                            const microPoll = setInterval(() => {
+                                try {
+                                    let changed = false;
+                                    try {
+                                        const h = win.location.href;
+                                        if (h !== lastHref) { lastHref = h; changed = true; }
+                                    } catch(e) { clearInterval(microPoll); return; }
+                                    try {
+                                        const t = win.document.title;
+                                        if (t !== lastTitle) { lastTitle = t; changed = true; }
+                                    } catch(e) {}
+                                    if (changed && tab._spaNavCallback) tab._spaNavCallback();
+                                } catch(e) { clearInterval(microPoll); }
+                            }, 150);
+
+                            // Clean up micro-poll if window unloads
+                            win.addEventListener('unload', () => clearInterval(microPoll));
                         } catch(e) {}
                     });
                 } catch(e) {}
@@ -5535,7 +5591,7 @@ if (this.isBlockedUrl(url)) {
                             this._handleUrlTitleUpdate(tabId);
                         }
                     }
-                }, 400);
+                }, 250);
 
                 this.updateIntervals.set(tabId, interval);
             }
@@ -5617,69 +5673,56 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
 
-                // Try using the iframe's internal history first (works for SPA navigation)
-                let usedInternalHistory = false;
-                try {
-                    const outerWin = tab.iframe.contentWindow;
-                    if (outerWin) {
-                        // Check for inner iframe (proxy wrapper)
-                        const innerIframes = outerWin.document.querySelectorAll('iframe');
-                        if (innerIframes.length > 0) {
-                            for (const inner of innerIframes) {
-                                try {
-                                    inner.contentWindow.history.back();
-                                    usedInternalHistory = true;
-                                    break;
-                                } catch(e) {}
-                            }
-                        }
-                        if (!usedInternalHistory) {
-                            outerWin.history.back();
-                            usedInternalHistory = true;
-                        }
-                    }
-                } catch(e) {
-                    usedInternalHistory = false;
-                }
-
-                if (usedInternalHistory) {
-                    // Update history index if we have entries
-                    const history = this.history[this.activeTabId];
-                    const currentIndex = this.historyIndex[this.activeTabId];
-                    if (currentIndex > 0) {
-                        this.historyIndex[this.activeTabId]--;
-                        this.updateNavigationButtons();
-                    }
-                    // Set flag and schedule URL/title refresh
-                    tab._navigatingHistory = true;
-                    setTimeout(() => {
-                        tab._navigatingHistory = false;
-                        this._handleUrlTitleUpdate(this.activeTabId);
-                    }, 500);
-                    return;
-                }
-
-                // Fallback: use our tracked history
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
-                
-                if (currentIndex > 0) {
+
+                // If we have tracked history entries to go back to, use them (reliable)
+                if (history && currentIndex > 0) {
+                    // First try iframe internal history (preserves SPA state)
+                    let usedInternal = false;
+                    try {
+                        const outerWin = tab.iframe.contentWindow;
+                        if (outerWin) {
+                            const innerIframes = outerWin.document.querySelectorAll('iframe');
+                            if (innerIframes.length > 0) {
+                                for (const inner of innerIframes) {
+                                    try {
+                                        inner.contentWindow.history.back();
+                                        usedInternal = true;
+                                        break;
+                                    } catch(e) {}
+                                }
+                            }
+                            if (!usedInternal) {
+                                outerWin.history.back();
+                                usedInternal = true;
+                            }
+                        }
+                    } catch(e) { usedInternal = false; }
+
                     this.historyIndex[this.activeTabId]--;
-                    const previousUrl = history[this.historyIndex[this.activeTabId]];
-                    
-                    const decoded = this.extractOriginalUrl(previousUrl);
-                    tab.currentUrl = decoded;
-                    tab.url = previousUrl;
-                    tab._navigatingHistory = true;
-                    tab.iframe.src = previousUrl;
-                    this.addressBar.value = decoded;
-                    this.updateFavicon(tab, decoded);
-                    this.updateTabTitle(tab, decoded);
-                    
-                    setTimeout(() => { tab._navigatingHistory = false; }, 2000);
+                    this.updateNavigationButtons();
+
+                    if (usedInternal) {
+                        tab._navigatingHistory = true;
+                        setTimeout(() => {
+                            tab._navigatingHistory = false;
+                            this._handleUrlTitleUpdate(this.activeTabId);
+                        }, 500);
+                    } else {
+                        // Fallback: load the URL from tracked history
+                        const previousUrl = history[this.historyIndex[this.activeTabId]];
+                        const decoded = this.extractOriginalUrl(previousUrl);
+                        tab.currentUrl = decoded;
+                        tab.url = previousUrl;
+                        tab._navigatingHistory = true;
+                        tab.iframe.src = previousUrl;
+                        this.addressBar.value = decoded;
+                        this.updateFavicon(tab, decoded);
+                        this.updateTabTitle(tab, decoded);
+                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
+                    }
                 }
-                
-                this.updateNavigationButtons();
             }
 
             goForward() {
@@ -5688,66 +5731,54 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
 
-                // Try using the iframe's internal history first
-                let usedInternalHistory = false;
-                try {
-                    const outerWin = tab.iframe.contentWindow;
-                    if (outerWin) {
-                        const innerIframes = outerWin.document.querySelectorAll('iframe');
-                        if (innerIframes.length > 0) {
-                            for (const inner of innerIframes) {
-                                try {
-                                    inner.contentWindow.history.forward();
-                                    usedInternalHistory = true;
-                                    break;
-                                } catch(e) {}
-                            }
-                        }
-                        if (!usedInternalHistory) {
-                            outerWin.history.forward();
-                            usedInternalHistory = true;
-                        }
-                    }
-                } catch(e) {
-                    usedInternalHistory = false;
-                }
-
-                if (usedInternalHistory) {
-                    const history = this.history[this.activeTabId];
-                    const currentIndex = this.historyIndex[this.activeTabId];
-                    if (currentIndex < history.length - 1) {
-                        this.historyIndex[this.activeTabId]++;
-                        this.updateNavigationButtons();
-                    }
-                    tab._navigatingHistory = true;
-                    setTimeout(() => {
-                        tab._navigatingHistory = false;
-                        this._handleUrlTitleUpdate(this.activeTabId);
-                    }, 500);
-                    return;
-                }
-
-                // Fallback: use our tracked history
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
-                
-                if (currentIndex < history.length - 1) {
+
+                // Only proceed if we have tracked history entries ahead
+                if (history && currentIndex < history.length - 1) {
+                    let usedInternal = false;
+                    try {
+                        const outerWin = tab.iframe.contentWindow;
+                        if (outerWin) {
+                            const innerIframes = outerWin.document.querySelectorAll('iframe');
+                            if (innerIframes.length > 0) {
+                                for (const inner of innerIframes) {
+                                    try {
+                                        inner.contentWindow.history.forward();
+                                        usedInternal = true;
+                                        break;
+                                    } catch(e) {}
+                                }
+                            }
+                            if (!usedInternal) {
+                                outerWin.history.forward();
+                                usedInternal = true;
+                            }
+                        }
+                    } catch(e) { usedInternal = false; }
+
                     this.historyIndex[this.activeTabId]++;
-                    const nextUrl = history[this.historyIndex[this.activeTabId]];
-                    
-                    const decoded = this.extractOriginalUrl(nextUrl);
-                    tab.currentUrl = decoded;
-                    tab.url = nextUrl;
-                    tab._navigatingHistory = true;
-                    tab.iframe.src = nextUrl;
-                    this.addressBar.value = decoded;
-                    this.updateFavicon(tab, decoded);
-                    this.updateTabTitle(tab, decoded);
-                    
-                    setTimeout(() => { tab._navigatingHistory = false; }, 2000);
+                    this.updateNavigationButtons();
+
+                    if (usedInternal) {
+                        tab._navigatingHistory = true;
+                        setTimeout(() => {
+                            tab._navigatingHistory = false;
+                            this._handleUrlTitleUpdate(this.activeTabId);
+                        }, 500);
+                    } else {
+                        const nextUrl = history[this.historyIndex[this.activeTabId]];
+                        const decoded = this.extractOriginalUrl(nextUrl);
+                        tab.currentUrl = decoded;
+                        tab.url = nextUrl;
+                        tab._navigatingHistory = true;
+                        tab.iframe.src = nextUrl;
+                        this.addressBar.value = decoded;
+                        this.updateFavicon(tab, decoded);
+                        this.updateTabTitle(tab, decoded);
+                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
+                    }
                 }
-                
-                this.updateNavigationButtons();
             }
 
             refresh() {
