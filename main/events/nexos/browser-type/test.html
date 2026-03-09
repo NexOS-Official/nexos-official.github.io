@@ -4937,8 +4937,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 tab.loadHandler = () => {
                     this.injectNewTabInterceptor(iframe);
-                    // Inject SPA pushState/replaceState/popstate listeners for better detection
-                    setTimeout(() => this.injectSPAListeners(tab), 300);
+
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
@@ -5025,6 +5024,23 @@ document.addEventListener("DOMContentLoaded", () => {
                             lucide.createIcons();
                         }
                     }
+                    
+                    // Force a fresh title read from iframe on tab switch
+                    try {
+                        if (newTab.iframe.contentDocument && newTab.iframe.contentDocument.title) {
+                            const freshTitle = newTab.iframe.contentDocument.title;
+                            if (freshTitle && freshTitle !== newTab.title) {
+                                newTab.title = freshTitle;
+                                const titleEl = newTab.element.querySelector('.tab-title');
+                                if (titleEl) {
+                                    titleEl.textContent = freshTitle;
+                                    titleEl.title = freshTitle;
+                                }
+                            }
+                        }
+                    } catch(e) {}
+                    
+                    this.updateNavigationButtons();
                 }
             }
 
@@ -5318,26 +5334,20 @@ if (this.isBlockedUrl(url)) {
                 const domain = this.extractDomain(url);
                 const previousTitle = tab.title;
                 
-                // Try deep iframe title first (reads from proxied content)
-                const deepTitle = this.getDeepIframeTitle(tab);
-                if (deepTitle) {
-                    tab.title = deepTitle;
-                } else {
-                    try {
-                        const iframe = tab.iframe;
-                        if (iframe.contentDocument && iframe.contentDocument.title) {
-                            tab.title = iframe.contentDocument.title;
-                        } else if (domain) {
-                            tab.title = this.formatDomainTitle(domain);
-                        } else {
-                            tab.title = 'nexORAos';
-                        }
-                    } catch (error) {
-                        if (domain) {
-                            tab.title = this.formatDomainTitle(domain);
-                        } else {
-                            tab.title = 'nexAURAos';
-                        }
+                try {
+                    const iframe = tab.iframe;
+                    if (iframe.contentDocument && iframe.contentDocument.title) {
+                        tab.title = iframe.contentDocument.title;
+                    } else if (domain) {
+                        tab.title = this.formatDomainTitle(domain);
+                    } else {
+                        tab.title = 'nexORAos';
+                    }
+                } catch (error) {
+                    if (domain) {
+                        tab.title = this.formatDomainTitle(domain);
+                    } else {
+                        tab.title = 'nexAURAos';
                     }
                 }
                 
@@ -5422,343 +5432,219 @@ if (this.isBlockedUrl(url)) {
                 return null;
             }
 
-            getDeepIframeUrl(tab) {
-                // Collect all accessible windows (outer + all nested iframes at any depth)
-                const wins = [];
-                try {
-                    const outerWin = tab.iframe.contentWindow;
-                    if (!outerWin) return null;
-                    const collectWindows = (win, depth) => {
-                        if (depth > 4) return;
-                        wins.push(win);
-                        try {
-                            const iframes = win.document.querySelectorAll('iframe');
-                            for (const f of iframes) {
-                                try { collectWindows(f.contentWindow, depth + 1); } catch(e) {}
-                            }
-                        } catch(e) {}
-                    };
-                    collectWindows(outerWin, 0);
-                } catch(e) { return null; }
-
-                // Search all windows for the real URL
-                for (const win of wins) {
-                    // Ultraviolet proxy: __uv$location
-                    try {
-                        const uvLoc = win.__uv$location;
-                        if (uvLoc && uvLoc.href && uvLoc.href.startsWith('http')) return uvLoc.href;
-                    } catch(e) {}
-                    // Alternative proxy: __location
-                    try {
-                        const loc = win.__location;
-                        if (loc && loc.href && loc.href.startsWith('http')) return loc.href;
-                    } catch(e) {}
-                }
-                // Then try raw location decoding on all windows (reverse order = deepest first)
-                for (let i = wins.length - 1; i >= 0; i--) {
-                    try {
-                        const href = wins[i].location.href;
-                        if (href && href !== 'about:blank') {
-                            const decoded = this.extractOriginalUrl(href);
-                            if (decoded !== href && decoded.startsWith('http')) return decoded;
-                        }
-                    } catch(e) {}
-                }
-                return null;
-            }
-
-            getDeepIframeTitle(tab) {
-                const wins = [];
-                try {
-                    const outerWin = tab.iframe.contentWindow;
-                    if (!outerWin) return null;
-                    const collectWindows = (win, depth) => {
-                        if (depth > 4) return;
-                        wins.push(win);
-                        try {
-                            const iframes = win.document.querySelectorAll('iframe');
-                            for (const f of iframes) {
-                                try { collectWindows(f.contentWindow, depth + 1); } catch(e) {}
-                            }
-                        } catch(e) {}
-                    };
-                    collectWindows(outerWin, 0);
-                } catch(e) { return null; }
-
-                // Search deepest first for the most specific title
-                for (let i = wins.length - 1; i >= 0; i--) {
-                    try {
-                        const title = wins[i].document.title;
-                        if (title && title.trim()) return title.trim();
-                    } catch(e) {}
-                    // UV document proxy
-                    try {
-                        const doc = wins[i].__uv$document;
-                        if (doc && doc.title && doc.title.trim()) return doc.title.trim();
-                    } catch(e) {}
-                }
-                return null;
-            }
-
-            injectSPAListeners(tab) {
-                try {
-                    const outerWin = tab.iframe.contentWindow;
-                    if (!outerWin) return;
-                    const targets = [outerWin];
-                    // Also try inner iframes
-                    try {
-                        const innerIframes = outerWin.document.querySelectorAll('iframe');
-                        innerIframes.forEach(inner => {
-                            try { targets.push(inner.contentWindow); } catch(e) {}
-                        });
-                    } catch(e) {}
-
-                    targets.forEach(win => {
-                        try {
-                            if (win._spaListenersInjected) return;
-                            win._spaListenersInjected = true;
-                            
-                            const origPushState = win.history.pushState.bind(win.history);
-                            const origReplaceState = win.history.replaceState.bind(win.history);
-                            
-                            win.history.pushState = function() {
-                                origPushState.apply(this, arguments);
-                                win.dispatchEvent(new Event('__spa_nav'));
-                            };
-                            win.history.replaceState = function() {
-                                origReplaceState.apply(this, arguments);
-                                win.dispatchEvent(new Event('__spa_nav'));
-                            };
-                            
-                            win.addEventListener('popstate', () => {
-                                win.dispatchEvent(new Event('__spa_nav'));
-                            });
-
-                            // Catch hash-based SPA routing
-                            win.addEventListener('hashchange', () => {
-                                win.dispatchEvent(new Event('__spa_nav'));
-                            });
-                            
-                            win.addEventListener('__spa_nav', () => {
-                                if (tab._spaNavCallback) tab._spaNavCallback();
-                            });
-
-                            // MutationObserver on <title> for instant title change detection
-                            try {
-                                const titleEl = win.document.querySelector('title');
-                                if (titleEl) {
-                                    const titleObs = new MutationObserver(() => {
-                                        if (tab._spaNavCallback) tab._spaNavCallback();
-                                    });
-                                    titleObs.observe(titleEl, { childList: true, characterData: true, subtree: true });
-                                }
-                                // Also observe head for dynamically added <title>
-                                const head = win.document.head;
-                                if (head) {
-                                    const headObs = new MutationObserver(() => {
-                                        const newTitle = win.document.querySelector('title');
-                                        if (newTitle && !newTitle._observed) {
-                                            newTitle._observed = true;
-                                            const tObs = new MutationObserver(() => {
-                                                if (tab._spaNavCallback) tab._spaNavCallback();
-                                            });
-                                            tObs.observe(newTitle, { childList: true, characterData: true, subtree: true });
-                                        }
-                                        if (tab._spaNavCallback) tab._spaNavCallback();
-                                    });
-                                    headObs.observe(head, { childList: true, subtree: true });
-                                }
-                            } catch(e) {}
-
-                            // Internal micro-poll: catches SPAs that set document.title or 
-                            // change URL without using history API (e.g., TikTok navigation)
-                            let lastHref = '';
-                            let lastTitle = '';
-                            try { lastHref = win.location.href; } catch(e) {}
-                            try { lastTitle = win.document.title; } catch(e) {}
-                            const microPoll = setInterval(() => {
-                                try {
-                                    let changed = false;
-                                    try {
-                                        const h = win.location.href;
-                                        if (h !== lastHref) { lastHref = h; changed = true; }
-                                    } catch(e) { clearInterval(microPoll); return; }
-                                    try {
-                                        const t = win.document.title;
-                                        if (t !== lastTitle) { lastTitle = t; changed = true; }
-                                    } catch(e) {}
-                                    if (changed && tab._spaNavCallback) tab._spaNavCallback();
-                                } catch(e) { clearInterval(microPoll); }
-                            }, 150);
-
-                            // Clean up micro-poll if window unloads
-                            win.addEventListener('unload', () => clearInterval(microPoll));
-                        } catch(e) {}
-                    });
-                } catch(e) {}
-            }
-
             setupPeriodicUpdates(tabId) {
                 if (this.updateIntervals.has(tabId)) {
                     clearInterval(this.updateIntervals.get(tabId));
                 }
 
-                const tab = this.tabs.get(tabId);
-                
-                // SPA nav callback - triggered immediately on pushState/replaceState
-                if (tab) {
-                    tab._spaNavCallback = () => {
-                        this._handleUrlTitleUpdate(tabId);
-                    };
-                }
-
                 const interval = setInterval(() => {
+                    const tab = this.tabs.get(tabId);
+                    if (!tab || !tab.iframe.src || tab.iframe.src === 'about:blank' || tab._navigatingHistory) return;
+
+                    // Always try to update title (even for non-active tabs) for live title sync
+                    try {
+                        const iframe = tab.iframe;
+                        if (iframe.contentDocument && iframe.contentDocument.title) {
+                            const iframeTitle = iframe.contentDocument.title;
+                            if (iframeTitle && iframeTitle !== tab.title) {
+                                tab.title = iframeTitle;
+                                const titleEl = tab.element.querySelector('.tab-title');
+                                if (titleEl) {
+                                    titleEl.textContent = iframeTitle;
+                                    titleEl.title = iframeTitle;
+                                }
+                            }
+                        }
+                    } catch(e) {}
+
+                    // URL sync only for active tab
                     if (this.activeTabId === tabId) {
-                        const tab = this.tabs.get(tabId);
-                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
-                            // Re-inject SPA listeners periodically (inner iframes may load later)
-                            this.injectSPAListeners(tab);
-                            this._handleUrlTitleUpdate(tabId);
+                        const realUrl = this.getIframeCurrentUrl(tab);
+                        if (realUrl && realUrl !== 'about:blank') {
+                            const oldUrl = tab.currentUrl;
+                            if (realUrl !== oldUrl) {
+                                if (this.isBlockedUrl(realUrl)) {
+                                    tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
+                                    tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
+                                    this.addressBar.value = '';
+                                    return;
+                                }
+                                tab.currentUrl = realUrl;
+                                tab.url = tab.iframe.src;
+                                this.addressBar.value = realUrl;
+                                this.updateFavicon(tab, realUrl);
+                                this.updateTabTitle(tab, realUrl);
+                                
+                                const isSecure = realUrl.startsWith('https://');
+                                this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                                const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                                if (securityIcon) {
+                                    securityIcon.innerHTML = isSecure ? 
+                                        '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                        '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                    lucide.createIcons();
+                                }
+                                
+                                if (!tab._navigatingHistory) {
+                                    const history = this.history[this.activeTabId];
+                                    if (history) {
+                                        const currentIndex = this.historyIndex[this.activeTabId];
+                                        const currentEntry = history[currentIndex];
+                                        const currentExtracted = this.extractOriginalUrl(currentEntry || '');
+                                        if (currentExtracted !== realUrl) {
+                                            const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                            history.splice(currentIndex + 1);
+                                            history.push(proxyUrl);
+                                            this.historyIndex[this.activeTabId] = history.length - 1;
+                                            this.updateNavigationButtons();
+                                        }
+                                    }
+                                }
+                                
+                                if (this._addToBrowseHistory) {
+                                    this._addToBrowseHistory(realUrl, tab);
+                                }
+                            }
+                        } else {
+                            this.updateTabInfo(tabId);
                         }
                     }
-                }, 250);
+                }, 400);
 
                 this.updateIntervals.set(tabId, interval);
             }
 
-            _handleUrlTitleUpdate(tabId) {
-                const tab = this.tabs.get(tabId);
-                if (!tab || tab._navigatingHistory) return;
-                
-                // --- URL detection ---
-                const deepUrl = this.getDeepIframeUrl(tab);
-                const fallbackUrl = this.getIframeCurrentUrl(tab);
-                const realUrl = deepUrl || fallbackUrl;
-                console.log('[NexOS Debug] URL detection:', { deepUrl, fallbackUrl, currentUrl: tab.currentUrl });
-                if (realUrl && realUrl !== 'about:blank') {
-                    const oldUrl = tab.currentUrl;
-                    if (realUrl !== oldUrl) {
-                        if (this.isBlockedUrl(realUrl)) {
-                            tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
-                            tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
-                            this.addressBar.value = '';
-                            return;
-                        }
-                        tab.currentUrl = realUrl;
-                        tab.url = tab.iframe.src;
-                        if (this.activeTabId === tabId) {
-                            this.addressBar.value = realUrl;
-                            const isSecure = realUrl.startsWith('https://');
-                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                            if (securityIcon) {
-                                securityIcon.innerHTML = isSecure ? 
-                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                lucide.createIcons();
-                            }
-                        }
-                        this.updateFavicon(tab, realUrl);
-
-                        if (!tab._navigatingHistory) {
-                            const history = this.history[tabId];
-                            if (history) {
-                                const currentIndex = this.historyIndex[tabId];
-                                const currentEntry = history[currentIndex];
-                                const currentExtracted = this.extractOriginalUrl(currentEntry || '');
-                                if (currentExtracted !== realUrl) {
-                                    const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
-                                    history.splice(currentIndex + 1);
-                                    history.push(proxyUrl);
-                                    this.historyIndex[tabId] = history.length - 1;
-                                    this.updateNavigationButtons();
-                                }
-                            }
-                        }
-
-                        if (this._addToBrowseHistory) {
-                            this._addToBrowseHistory(realUrl, tab);
-                        }
-                    }
-                } else {
-                    this.updateTabInfo(tabId);
-                }
-                
-                // --- Title detection (always poll, even if URL didn't change) ---
-                const deepTitle = this.getDeepIframeTitle(tab);
-                if (deepTitle && deepTitle !== tab.title) {
-                    const previousTitle = tab.title;
-                    tab.title = deepTitle;
-                    const titleElement = tab.element.querySelector('.tab-title');
-                    if (titleElement) {
-                        titleElement.textContent = deepTitle;
-                        titleElement.title = deepTitle;
-                    }
-                    if (previousTitle && previousTitle !== deepTitle && this.activeTabId === tabId) {
-                        this.showSiteToast(tab, tab.currentUrl || '');
-                    }
-                }
-            }
-
             goBack() {
                 if (!this.activeTabId) return;
+                
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
-
+                
+                // First try using the iframe's own history (handles SPA internal navigation)
+                try {
+                    if (tab.iframe.contentWindow && tab.iframe.contentWindow.history.length > 1) {
+                        tab._navigatingHistory = true;
+                        tab.iframe.contentWindow.history.back();
+                        // After a short delay, sync the URL and title
+                        setTimeout(() => {
+                            const realUrl = this.getIframeCurrentUrl(tab);
+                            if (realUrl && realUrl !== 'about:blank' && realUrl !== tab.currentUrl) {
+                                tab.currentUrl = realUrl;
+                                this.addressBar.value = realUrl;
+                                this.updateFavicon(tab, realUrl);
+                                this.updateTabTitle(tab, realUrl);
+                                
+                                const isSecure = realUrl.startsWith('https://');
+                                this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                                const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                                if (securityIcon) {
+                                    securityIcon.innerHTML = isSecure ? 
+                                        '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                        '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                    lucide.createIcons();
+                                }
+                            }
+                            tab._navigatingHistory = false;
+                        }, 300);
+                        
+                        // Also update our tracked history index
+                        const history = this.history[this.activeTabId];
+                        const currentIndex = this.historyIndex[this.activeTabId];
+                        if (currentIndex > 0) {
+                            this.historyIndex[this.activeTabId]--;
+                            this.updateNavigationButtons();
+                        }
+                        return;
+                    }
+                } catch(e) {}
+                
+                // Fallback to our tracked history
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
-
-                if (!history || currentIndex <= 0) return;
-
-                this.historyIndex[this.activeTabId]--;
-                const previousUrl = history[this.historyIndex[this.activeTabId]];
-                const decoded = this.extractOriginalUrl(previousUrl);
                 
-                tab.currentUrl = decoded;
-                tab.url = previousUrl;
-                tab._navigatingHistory = true;
-                tab.iframe.src = previousUrl;
-                this.addressBar.value = decoded;
-                this.updateFavicon(tab, decoded);
-                this.updateTabTitle(tab, decoded);
-                this.updateNavigationButtons();
-                
-                setTimeout(() => {
-                    tab._navigatingHistory = false;
-                    this._handleUrlTitleUpdate(this.activeTabId);
-                }, 1500);
+                if (currentIndex > 0) {
+                    this.historyIndex[this.activeTabId]--;
+                    const previousUrl = history[this.historyIndex[this.activeTabId]];
+                    
+                    const decoded = this.extractOriginalUrl(previousUrl);
+                    tab.currentUrl = decoded;
+                    tab.url = previousUrl;
+                    tab._navigatingHistory = true;
+                    tab.iframe.src = previousUrl;
+                    this.addressBar.value = decoded;
+                    this.updateFavicon(tab, decoded);
+                    this.updateTabTitle(tab, decoded);
+                    
+                    setTimeout(() => { tab._navigatingHistory = false; }, 2000);
+                    
+                    this.updateNavigationButtons();
+                }
             }
 
             goForward() {
                 if (!this.activeTabId) return;
+                
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
-
+                
+                // First try using the iframe's own history
+                try {
+                    if (tab.iframe.contentWindow) {
+                        tab._navigatingHistory = true;
+                        tab.iframe.contentWindow.history.forward();
+                        setTimeout(() => {
+                            const realUrl = this.getIframeCurrentUrl(tab);
+                            if (realUrl && realUrl !== 'about:blank' && realUrl !== tab.currentUrl) {
+                                tab.currentUrl = realUrl;
+                                this.addressBar.value = realUrl;
+                                this.updateFavicon(tab, realUrl);
+                                this.updateTabTitle(tab, realUrl);
+                                
+                                const isSecure = realUrl.startsWith('https://');
+                                this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                                const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                                if (securityIcon) {
+                                    securityIcon.innerHTML = isSecure ? 
+                                        '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                        '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                    lucide.createIcons();
+                                }
+                            }
+                            tab._navigatingHistory = false;
+                        }, 300);
+                        
+                        const history = this.history[this.activeTabId];
+                        const currentIndex = this.historyIndex[this.activeTabId];
+                        if (currentIndex < history.length - 1) {
+                            this.historyIndex[this.activeTabId]++;
+                            this.updateNavigationButtons();
+                        }
+                        return;
+                    }
+                } catch(e) {}
+                
+                // Fallback to tracked history
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
-
-                if (!history || currentIndex >= history.length - 1) return;
-
-                this.historyIndex[this.activeTabId]++;
-                const nextUrl = history[this.historyIndex[this.activeTabId]];
-                const decoded = this.extractOriginalUrl(nextUrl);
                 
-                tab.currentUrl = decoded;
-                tab.url = nextUrl;
-                tab._navigatingHistory = true;
-                tab.iframe.src = nextUrl;
-                this.addressBar.value = decoded;
-                this.updateFavicon(tab, decoded);
-                this.updateTabTitle(tab, decoded);
-                this.updateNavigationButtons();
-                
-                setTimeout(() => {
-                    tab._navigatingHistory = false;
-                    this._handleUrlTitleUpdate(this.activeTabId);
-                }, 1500);
+                if (currentIndex < history.length - 1) {
+                    this.historyIndex[this.activeTabId]++;
+                    const nextUrl = history[this.historyIndex[this.activeTabId]];
+                    
+                    const decoded = this.extractOriginalUrl(nextUrl);
+                    tab.currentUrl = decoded;
+                    tab.url = nextUrl;
+                    tab._navigatingHistory = true;
+                    tab.iframe.src = nextUrl;
+                    this.addressBar.value = decoded;
+                    this.updateFavicon(tab, decoded);
+                    this.updateTabTitle(tab, decoded);
+                    
+                    setTimeout(() => { tab._navigatingHistory = false; }, 2000);
+                    
+                    this.updateNavigationButtons();
+                }
             }
-
-
 
             refresh() {
                 if (!this.activeTabId) return;
@@ -5975,6 +5861,78 @@ if (this.isBlockedUrl(url)) {
                             this.updateTabTitle(tab, url);
                         }
                     }
+                    // Live title updates from injected observer
+                    if (e.data && e.data.type === 'nexos-title-update' && e.data.title !== undefined) {
+                        // Find the tab whose iframe sent this message
+                        for (const [tabId, tab] of this.tabs) {
+                            try {
+                                if (tab.iframe && tab.iframe.contentWindow === e.source) {
+                                    const newTitle = e.data.title || tab.title;
+                                    if (newTitle !== tab.title) {
+                                        tab.title = newTitle;
+                                        const titleEl = tab.element.querySelector('.tab-title');
+                                        if (titleEl) {
+                                            titleEl.textContent = newTitle;
+                                            titleEl.title = newTitle;
+                                        }
+                                    }
+                                    break;
+                                }
+                            } catch(err) {}
+                        }
+                    }
+                    // SPA URL updates from injected pushState/replaceState/popstate hooks
+                    if (e.data && e.data.type === 'nexos-spa-url-update' && e.data.url) {
+                        for (const [tabId, tab] of this.tabs) {
+                            try {
+                                if (tab.iframe && tab.iframe.contentWindow === e.source) {
+                                    const newUrl = e.data.url;
+                                    if (newUrl !== tab.currentUrl && newUrl !== 'about:blank') {
+                                        const oldUrl = tab.currentUrl;
+                                        tab.currentUrl = newUrl;
+                                        
+                                        if (tabId === this.activeTabId) {
+                                            this.addressBar.value = newUrl;
+                                            const isSecure = newUrl.startsWith('https://');
+                                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                                            if (securityIcon) {
+                                                securityIcon.innerHTML = isSecure ? 
+                                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                                lucide.createIcons();
+                                            }
+                                        }
+                                        
+                                        this.updateFavicon(tab, newUrl);
+                                        this.updateTabTitle(tab, newUrl);
+                                        
+                                        // Add to history for back/forward
+                                        if (!tab._navigatingHistory) {
+                                            const history = this.history[tabId];
+                                            if (history) {
+                                                const currentIndex = this.historyIndex[tabId];
+                                                const currentEntry = history[currentIndex];
+                                                const currentExtracted = this.extractOriginalUrl(currentEntry || '');
+                                                if (currentExtracted !== newUrl) {
+                                                    const proxyUrl = `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
+                                                    history.splice(currentIndex + 1);
+                                                    history.push(proxyUrl);
+                                                    this.historyIndex[tabId] = history.length - 1;
+                                                    this.updateNavigationButtons();
+                                                }
+                                            }
+                                        }
+                                        
+                                        if (this._addToBrowseHistory) {
+                                            this._addToBrowseHistory(newUrl, tab);
+                                        }
+                                    }
+                                    break;
+                                }
+                            } catch(err) {}
+                        }
+                    }
                 });
 
                 const originalWindowOpen = window.open.bind(window);
@@ -6107,6 +6065,110 @@ if (this.isBlockedUrl(url)) {
                             window.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
                         }
                     }, true);
+
+                    // === LIVE TITLE OBSERVER ===
+                    // Watch for <title> changes (handles animated titles like guns.lol bios)
+                    try {
+                        const titleEl = iframeWin.document.querySelector('title');
+                        if (titleEl) {
+                            const titleObserver = new iframeWin.MutationObserver(() => {
+                                const newTitle = iframeWin.document.title;
+                                if (newTitle) {
+                                    window.postMessage({ type: 'nexos-title-update', title: newTitle }, '*');
+                                }
+                            });
+                            titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
+                        }
+                        // Also observe <head> for dynamically added <title> elements
+                        const headEl = iframeWin.document.head;
+                        if (headEl) {
+                            const headObserver = new iframeWin.MutationObserver((mutations) => {
+                                for (const mutation of mutations) {
+                                    for (const node of mutation.addedNodes) {
+                                        if (node.tagName === 'TITLE') {
+                                            const innerObserver = new iframeWin.MutationObserver(() => {
+                                                window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                            });
+                                            innerObserver.observe(node, { childList: true, characterData: true, subtree: true });
+                                            window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                        }
+                                    }
+                                }
+                            });
+                            headObserver.observe(headEl, { childList: true });
+                        }
+                    } catch(e) {}
+
+                    // === SPA NAVIGATION HOOKS ===
+                    // Intercept pushState/replaceState for SPA URL changes (TikTok, YouTube, etc.)
+                    try {
+                        const origPushState = iframeWin.history.pushState.bind(iframeWin.history);
+                        const origReplaceState = iframeWin.history.replaceState.bind(iframeWin.history);
+                        
+                        iframeWin.history.pushState = function(state, title, url) {
+                            origPushState(state, title, url);
+                            try {
+                                const newUrl = iframeWin.location.href;
+                                window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
+                                // Also send title after a small delay (page may update title after pushState)
+                                setTimeout(() => {
+                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                }, 100);
+                                setTimeout(() => {
+                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                }, 500);
+                            } catch(e) {}
+                        };
+                        
+                        iframeWin.history.replaceState = function(state, title, url) {
+                            origReplaceState(state, title, url);
+                            try {
+                                const newUrl = iframeWin.location.href;
+                                window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
+                                setTimeout(() => {
+                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                }, 100);
+                            } catch(e) {}
+                        };
+                        
+                        // Listen for popstate (browser back/forward within the iframe)
+                        iframeWin.addEventListener('popstate', function() {
+                            try {
+                                const newUrl = iframeWin.location.href;
+                                window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
+                                setTimeout(() => {
+                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                }, 100);
+                            } catch(e) {}
+                        });
+                        
+                        // Listen for hashchange too
+                        iframeWin.addEventListener('hashchange', function() {
+                            try {
+                                const newUrl = iframeWin.location.href;
+                                window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
+                                setTimeout(() => {
+                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                }, 100);
+                            } catch(e) {}
+                        });
+                    } catch(e) {}
+
+                    // === PERIODIC TITLE POLL (for sites that update title via JS without DOM mutation) ===
+                    try {
+                        let lastKnownTitle = iframeWin.document.title;
+                        const titlePollInterval = setInterval(() => {
+                            try {
+                                const currentTitle = iframeWin.document.title;
+                                if (currentTitle !== lastKnownTitle) {
+                                    lastKnownTitle = currentTitle;
+                                    window.postMessage({ type: 'nexos-title-update', title: currentTitle }, '*');
+                                }
+                            } catch(e) {
+                                clearInterval(titlePollInterval);
+                            }
+                        }, 200); // 200ms for near-realtime title updates (animated titles)
+                    } catch(e) {}
 
                     const nestedIframes = iframeWin.document.querySelectorAll('iframe');
                     nestedIframes.forEach((nested) => {
