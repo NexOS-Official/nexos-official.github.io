@@ -5261,7 +5261,18 @@ if (this.isBlockedUrl(url)) {
             }
 
             extractOriginalUrl(proxyUrl) {
-                const match = proxyUrl.match(/url=([^&]+)/);
+                // Strip known tracking/redirect paths (e.g. DuckDuckGo's /post3.html, /l/?uddg=...)
+                if (proxyUrl && (
+                    /duckduckgo\.com\/post\d+\.html/i.test(proxyUrl) ||
+                    /duckduckgo\.com\/l\/\?/i.test(proxyUrl)
+                )) {
+                    try {
+                        const urlObj = new URL(proxyUrl.startsWith('http') ? proxyUrl : 'https://x.com' + proxyUrl);
+                        const uddg = urlObj.searchParams.get('uddg') || urlObj.searchParams.get('u');
+                        if (uddg) return decodeURIComponent(uddg);
+                    } catch(e) {}
+                }
+                const match = proxyUrl.match(/[?&]url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
                 }
@@ -5410,7 +5421,10 @@ if (this.isBlockedUrl(url)) {
                 }
                 
                 const faviconSources = [
-                    `https://www.google.com/s2/favicons?domain=${domain}&sz=16`,
+                    `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
+                    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
+                    `https://${domain}/favicon.ico`,
+                    `https://www.${domain}/favicon.ico`,
                 ];
                 
                 tab.faviconDomain = domain;
@@ -5954,6 +5968,7 @@ if (this.isBlockedUrl(url)) {
                     // Live title updates from injected observer
                     if (e.data && e.data.type === 'nexos-title-update' && e.data.title !== undefined) {
                         // Find the tab that contains the source window (could be nested iframe)
+                        let _titleMatched = false;
                         for (const [tabId, tab] of this.tabs) {
                             try {
                                 if (tab.iframe && this._isWindowDescendant(tab.iframe.contentWindow, e.source)) {
@@ -5966,9 +5981,22 @@ if (this.isBlockedUrl(url)) {
                                             titleEl.title = newTitle;
                                         }
                                     }
+                                    _titleMatched = true;
                                     break;
                                 }
-                            } catch(err) {}
+                            } catch(e2) {}
+                        }
+                        // Fallback: cross-origin proxy frames — apply to the active tab
+                        if (!_titleMatched && this.activeTabId) {
+                            const _at = this.tabs.get(this.activeTabId);
+                            if (_at) {
+                                const newTitle = e.data.title || _at.title;
+                                if (newTitle && newTitle !== _at.title) {
+                                    _at.title = newTitle;
+                                    const titleEl = _at.element && _at.element.querySelector('.tab-title');
+                                    if (titleEl) { titleEl.textContent = newTitle; titleEl.title = newTitle; }
+                                }
+                            }
                         }
                     }
                     // SPA URL updates from injected pushState/replaceState/popstate hooks
@@ -6075,7 +6103,7 @@ if (this.isBlockedUrl(url)) {
                                 resolved = new URL(url, iframeWin.location.href).href;
                             } catch(e) {}
                             if (self._isValidNewTabUrl(resolved)) {
-                                window.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
+                                top.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
                             }
                         }
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
@@ -6091,7 +6119,7 @@ if (this.isBlockedUrl(url)) {
                                         return new Proxy(window, {
                                             set: function(target, prop, value) {
                                                 if (prop === 'location' || prop === 'href') {
-                                                    window.postMessage({ type: 'nexos-redirect-intercept', url: value }, '*');
+                                                    top.postMessage({ type: 'nexos-redirect-intercept', url: value }, '*');
                                                     return true;
                                                 }
                                                 target[prop] = value;
@@ -6102,15 +6130,13 @@ if (this.isBlockedUrl(url)) {
                                                     return new Proxy(iframeWin.location, {
                                                         set: function(lt, lp, lv) {
                                                             if (lp === 'href' || lp === 'replace' || lp === 'assign') {
-                                                                window.postMessage({ type: 'nexos-redirect-intercept', url: lv }, '*');
+                                                                top.postMessage({ type: 'nexos-redirect-intercept', url: lv }, '*');
                                                                 return true;
                                                             }
-                                                            return true;
-                                                        },
-                                                        get: function(lt, lp) {
+...
                                                             if (lp === 'replace' || lp === 'assign') {
                                                                 return function(url) {
-                                                                    window.postMessage({ type: 'nexos-redirect-intercept', url: url }, '*');
+                                                                    top.postMessage({ type: 'nexos-redirect-intercept', url: url }, '*');
                                                                 };
                                                             }
                                                             return lt[lp];
@@ -6138,7 +6164,7 @@ if (this.isBlockedUrl(url)) {
                         if (form && (form.target === '_top' || form.target === '_parent')) {
                             e.preventDefault();
                             const action = form.action || iframeWin.location.href;
-                            window.postMessage({ type: 'nexos-redirect-intercept', url: action }, '*');
+                            top.postMessage({ type: 'nexos-redirect-intercept', url: action }, '*');
                         }
                     }, true);
 
@@ -6150,11 +6176,11 @@ if (this.isBlockedUrl(url)) {
                         if (link.target === '_top' || link.target === '_parent') {
                             e.preventDefault();
                             e.stopPropagation();
-                            window.postMessage({ type: 'nexos-redirect-intercept', url: link.href }, '*');
+                            top.postMessage({ type: 'nexos-redirect-intercept', url: link.href }, '*');
                         } else if (link.target === '_blank' && self._isValidNewTabUrl(link.href)) {
                             e.preventDefault();
                             e.stopPropagation();
-                            window.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
+                            top.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
                         }
                     }, true);
 
@@ -6173,7 +6199,7 @@ if (this.isBlockedUrl(url)) {
                                 get: function() { return origTitleGet.call(this); },
                                 set: function(val) {
                                     origTitleSet.call(this, val);
-                                    try { window.postMessage({ type: 'nexos-title-update', title: val }, '*'); } catch(e2) {}
+                                    try { top.postMessage({ type: 'nexos-title-update', title: val }, '*'); } catch(e2) {}
                                 },
                                 configurable: true
                             });
@@ -6184,7 +6210,7 @@ if (this.isBlockedUrl(url)) {
                             const titleObserver = new iframeWin.MutationObserver(() => {
                                 const newTitle = iframeWin.document.title;
                                 if (newTitle) {
-                                    window.postMessage({ type: 'nexos-title-update', title: newTitle }, '*');
+                                    top.postMessage({ type: 'nexos-title-update', title: newTitle }, '*');
                                 }
                             });
                             titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
@@ -6197,10 +6223,10 @@ if (this.isBlockedUrl(url)) {
                                     for (const node of mutation.addedNodes) {
                                         if (node.tagName === 'TITLE') {
                                             const innerObserver = new iframeWin.MutationObserver(() => {
-                                                window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                                top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                             });
                                             innerObserver.observe(node, { childList: true, characterData: true, subtree: true });
-                                            window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                            top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                         }
                                     }
                                 }
@@ -6221,14 +6247,14 @@ if (this.isBlockedUrl(url)) {
                                 origPushState(state, title, url);
                                 try {
                                     const newUrl = iframeWin.location.href;
-                                    window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
+                                    top.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
                                     // Send title immediately AND after delays (TikTok updates it async)
-                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                    top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                     setTimeout(() => {
-                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                     }, 150);
                                     setTimeout(() => {
-                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                     }, 600);
                                 } catch(e) {}
                             };
@@ -6237,10 +6263,10 @@ if (this.isBlockedUrl(url)) {
                                 origReplaceState(state, title, url);
                                 try {
                                     const newUrl = iframeWin.location.href;
-                                    window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                    top.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
+                                    top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                     setTimeout(() => {
-                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                     }, 150);
                                 } catch(e) {}
                             };
@@ -6249,10 +6275,10 @@ if (this.isBlockedUrl(url)) {
                             iframeWin.addEventListener('popstate', function() {
                                 try {
                                     const newUrl = iframeWin.location.href;
-                                    window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                    top.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
+                                    top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                     setTimeout(() => {
-                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                     }, 150);
                                 } catch(e) {}
                             });
@@ -6261,10 +6287,10 @@ if (this.isBlockedUrl(url)) {
                             iframeWin.addEventListener('hashchange', function() {
                                 try {
                                     const newUrl = iframeWin.location.href;
-                                    window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                    top.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
+                                    top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                     setTimeout(() => {
-                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
                                     }, 150);
                                 } catch(e) {}
                             });
@@ -6283,12 +6309,12 @@ if (this.isBlockedUrl(url)) {
                                     const currentHref = iframeWin.location.href;
                                     if (currentTitle !== lastKnownTitle) {
                                         lastKnownTitle = currentTitle;
-                                        window.postMessage({ type: 'nexos-title-update', title: currentTitle }, '*');
+                                        top.postMessage({ type: 'nexos-title-update', title: currentTitle }, '*');
                                     }
                                     // Also catch URL changes that slipped past pushState hooks
                                     if (currentHref !== lastKnownHref) {
                                         lastKnownHref = currentHref;
-                                        window.postMessage({ type: 'nexos-spa-url-update', url: currentHref }, '*');
+                                        top.postMessage({ type: 'nexos-spa-url-update', url: currentHref }, '*');
                                     }
                                 } catch(e) {
                                     clearInterval(titlePollInterval);
@@ -8909,7 +8935,12 @@ menu.addEventListener('mouseleave', hideMenu);
             debounceTimer = setTimeout(() => fetchSuggestions(query), 200);
         });
 
+        addressBar.addEventListener('click', function() {
+            addressBar.select();
+        });
+
         addressBar.addEventListener('focus', function() {
+            addressBar.select();
             const query = addressBar.value.trim();
             if (query.length >= 1 && currentSuggestions.length > 0) {
                 suggestionsBox.classList.add('visible');
