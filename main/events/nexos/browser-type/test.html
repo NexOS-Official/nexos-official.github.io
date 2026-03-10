@@ -5,6 +5,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5598,7 +5599,7 @@ if (this.isBlockedUrl(url)) {
                             this.updateTabInfo(tabId);
                         }
                     }
-                }, 400);
+                }, 100);
 
                 this.updateIntervals.set(tabId, interval);
             }
@@ -6158,8 +6159,26 @@ if (this.isBlockedUrl(url)) {
                     }, true);
 
                     // === LIVE TITLE OBSERVER ===
-                    // Watch for <title> changes (handles animated titles like guns.lol bios)
+                    // Watch for <title> changes + trap document.title setter (TikTok sets it directly)
                     try {
+                        // Trap document.title setter so direct assignments fire instantly
+                        const docProto = Object.getPrototypeOf(iframeWin.document);
+                        const titleDesc = Object.getOwnPropertyDescriptor(docProto, 'title') ||
+                                          Object.getOwnPropertyDescriptor(iframeWin.Document.prototype, 'title');
+                        if (titleDesc && titleDesc.set && !iframeWin.document._nexosTitleTrapped) {
+                            iframeWin.document._nexosTitleTrapped = true;
+                            const origTitleSet = titleDesc.set;
+                            const origTitleGet = titleDesc.get;
+                            Object.defineProperty(iframeWin.document, 'title', {
+                                get: function() { return origTitleGet.call(this); },
+                                set: function(val) {
+                                    origTitleSet.call(this, val);
+                                    try { window.postMessage({ type: 'nexos-title-update', title: val }, '*'); } catch(e2) {}
+                                },
+                                configurable: true
+                            });
+                        }
+
                         const titleEl = iframeWin.document.querySelector('title');
                         if (titleEl) {
                             const titleObserver = new iframeWin.MutationObserver(() => {
@@ -6193,72 +6212,89 @@ if (this.isBlockedUrl(url)) {
                     // === SPA NAVIGATION HOOKS ===
                     // Intercept pushState/replaceState for SPA URL changes (TikTok, YouTube, etc.)
                     try {
-                        const origPushState = iframeWin.history.pushState.bind(iframeWin.history);
-                        const origReplaceState = iframeWin.history.replaceState.bind(iframeWin.history);
-                        
-                        iframeWin.history.pushState = function(state, title, url) {
-                            origPushState(state, title, url);
-                            try {
-                                const newUrl = iframeWin.location.href;
-                                window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                // Also send title after a small delay (page may update title after pushState)
-                                setTimeout(() => {
+                        if (!iframeWin.history._nexosSPAHooked) {
+                            iframeWin.history._nexosSPAHooked = true;
+                            const origPushState = iframeWin.history.pushState.bind(iframeWin.history);
+                            const origReplaceState = iframeWin.history.replaceState.bind(iframeWin.history);
+                            
+                            iframeWin.history.pushState = function(state, title, url) {
+                                origPushState(state, title, url);
+                                try {
+                                    const newUrl = iframeWin.location.href;
+                                    window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
+                                    // Send title immediately AND after delays (TikTok updates it async)
                                     window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                }, 100);
-                                setTimeout(() => {
+                                    setTimeout(() => {
+                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                    }, 150);
+                                    setTimeout(() => {
+                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                    }, 600);
+                                } catch(e) {}
+                            };
+                            
+                            iframeWin.history.replaceState = function(state, title, url) {
+                                origReplaceState(state, title, url);
+                                try {
+                                    const newUrl = iframeWin.location.href;
+                                    window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
                                     window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                }, 500);
-                            } catch(e) {}
-                        };
-                        
-                        iframeWin.history.replaceState = function(state, title, url) {
-                            origReplaceState(state, title, url);
-                            try {
-                                const newUrl = iframeWin.location.href;
-                                window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                setTimeout(() => {
+                                    setTimeout(() => {
+                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                    }, 150);
+                                } catch(e) {}
+                            };
+                            
+                            // Listen for popstate (browser back/forward within the iframe)
+                            iframeWin.addEventListener('popstate', function() {
+                                try {
+                                    const newUrl = iframeWin.location.href;
+                                    window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
                                     window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                }, 100);
-                            } catch(e) {}
-                        };
-                        
-                        // Listen for popstate (browser back/forward within the iframe)
-                        iframeWin.addEventListener('popstate', function() {
-                            try {
-                                const newUrl = iframeWin.location.href;
-                                window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                setTimeout(() => {
+                                    setTimeout(() => {
+                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                    }, 150);
+                                } catch(e) {}
+                            });
+                            
+                            // Listen for hashchange too
+                            iframeWin.addEventListener('hashchange', function() {
+                                try {
+                                    const newUrl = iframeWin.location.href;
+                                    window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
                                     window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                }, 100);
-                            } catch(e) {}
-                        });
-                        
-                        // Listen for hashchange too
-                        iframeWin.addEventListener('hashchange', function() {
-                            try {
-                                const newUrl = iframeWin.location.href;
-                                window.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                setTimeout(() => {
-                                    window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                }, 100);
-                            } catch(e) {}
-                        });
+                                    setTimeout(() => {
+                                        window.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
+                                    }, 150);
+                                } catch(e) {}
+                            });
+                        }
                     } catch(e) {}
 
-                    // === PERIODIC TITLE POLL (for sites that update title via JS without DOM mutation) ===
+                    // === PERIODIC TITLE POLL (safety net for any remaining edge cases) ===
                     try {
-                        let lastKnownTitle = iframeWin.document.title;
-                        const titlePollInterval = setInterval(() => {
-                            try {
-                                const currentTitle = iframeWin.document.title;
-                                if (currentTitle !== lastKnownTitle) {
-                                    lastKnownTitle = currentTitle;
-                                    window.postMessage({ type: 'nexos-title-update', title: currentTitle }, '*');
+                        if (!iframeWin._nexosTitlePollStarted) {
+                            iframeWin._nexosTitlePollStarted = true;
+                            let lastKnownTitle = iframeWin.document.title;
+                            let lastKnownHref = iframeWin.location.href;
+                            const titlePollInterval = setInterval(() => {
+                                try {
+                                    const currentTitle = iframeWin.document.title;
+                                    const currentHref = iframeWin.location.href;
+                                    if (currentTitle !== lastKnownTitle) {
+                                        lastKnownTitle = currentTitle;
+                                        window.postMessage({ type: 'nexos-title-update', title: currentTitle }, '*');
+                                    }
+                                    // Also catch URL changes that slipped past pushState hooks
+                                    if (currentHref !== lastKnownHref) {
+                                        lastKnownHref = currentHref;
+                                        window.postMessage({ type: 'nexos-spa-url-update', url: currentHref }, '*');
+                                    }
+                                } catch(e) {
+                                    clearInterval(titlePollInterval);
                                 }
-                            } catch(e) {
-                                clearInterval(titlePollInterval);
-                            }
-                        }, 200); // 200ms for near-realtime title updates (animated titles)
+                            }, 100); // 100ms for near-instant updates
+                        }
                     } catch(e) {}
 
                     const nestedIframes = iframeWin.document.querySelectorAll('iframe');
