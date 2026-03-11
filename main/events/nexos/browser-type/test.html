@@ -5,7 +5,6 @@
 
 
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5025,27 +5024,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             lucide.createIcons();
                         }
                     }
-                    
-                    // Force a fresh title read from deepest iframe on tab switch
-                    const freshTitle = this.getDeepIframeTitle(newTab);
-                    if (freshTitle && freshTitle !== newTab.title) {
-                        newTab.title = freshTitle;
-                        const titleEl = newTab.element.querySelector('.tab-title');
-                        if (titleEl) {
-                            titleEl.textContent = freshTitle;
-                            titleEl.title = freshTitle;
-                        }
-                    }
-                    
-                    // Also refresh URL from deep iframe
-                    const freshUrl = this.getDeepIframeUrl(newTab);
-                    if (freshUrl && freshUrl !== newTab.currentUrl && freshUrl.startsWith('http')) {
-                        newTab.currentUrl = freshUrl;
-                        this.addressBar.value = freshUrl;
-                        this.updateFavicon(newTab, freshUrl);
-                    }
-                    
-                    this.updateNavigationButtons();
                 }
             }
 
@@ -5261,22 +5239,15 @@ if (this.isBlockedUrl(url)) {
             }
 
             extractOriginalUrl(proxyUrl) {
-                // Strip known tracking/redirect paths (e.g. DuckDuckGo's /post3.html, /l/?uddg=...)
-                if (proxyUrl && (
-                    /duckduckgo\.com\/post\d+\.html/i.test(proxyUrl) ||
-                    /duckduckgo\.com\/l\/\?/i.test(proxyUrl)
-                )) {
-                    try {
-                        const urlObj = new URL(proxyUrl.startsWith('http') ? proxyUrl : 'https://x.com' + proxyUrl);
-                        const uddg = urlObj.searchParams.get('uddg') || urlObj.searchParams.get('u');
-                        if (uddg) return decodeURIComponent(uddg);
-                    } catch(e) {}
-                }
+                if (!proxyUrl) return proxyUrl;
+
+                // ?url= style proxy
                 const match = proxyUrl.match(/[?&]url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
                 }
                 
+                // /active/go/ encoded style proxy
                 const uvMatch = proxyUrl.match(/\/active\/go\/(.+)/);
                 if (uvMatch) {
                     try {
@@ -5289,7 +5260,19 @@ if (this.isBlockedUrl(url)) {
                         }
                     } catch(e) {}
                 }
-                
+
+                // Already an absolute URL — return as-is
+                if (proxyUrl.startsWith('http://') || proxyUrl.startsWith('https://')) {
+                    return proxyUrl;
+                }
+
+                // Internal path like /games or /credits.html — resolve to full origin URL
+                if (proxyUrl.startsWith('/') || proxyUrl.startsWith('./') || proxyUrl.startsWith('../')) {
+                    try {
+                        return new URL(proxyUrl, window.location.origin).href;
+                    } catch(e) {}
+                }
+
                 return proxyUrl;
             }
 
@@ -5350,26 +5333,20 @@ if (this.isBlockedUrl(url)) {
                 const domain = this.extractDomain(url);
                 const previousTitle = tab.title;
                 
-                // Try getting title from the deepest accessible iframe first
-                const deepTitle = this.getDeepIframeTitle(tab);
-                if (deepTitle) {
-                    tab.title = deepTitle;
-                } else {
-                    try {
-                        const iframe = tab.iframe;
-                        if (iframe.contentDocument && iframe.contentDocument.title) {
-                            tab.title = iframe.contentDocument.title;
-                        } else if (domain) {
-                            tab.title = this.formatDomainTitle(domain);
-                        } else {
-                            tab.title = 'nexORAos';
-                        }
-                    } catch (error) {
-                        if (domain) {
-                            tab.title = this.formatDomainTitle(domain);
-                        } else {
-                            tab.title = 'nexAURAos';
-                        }
+                try {
+                    const iframe = tab.iframe;
+                    if (iframe.contentDocument && iframe.contentDocument.title) {
+                        tab.title = iframe.contentDocument.title;
+                    } else if (domain) {
+                        tab.title = this.formatDomainTitle(domain);
+                    } else {
+                        tab.title = 'nexORAos';
+                    }
+                } catch (error) {
+                    if (domain) {
+                        tab.title = this.formatDomainTitle(domain);
+                    } else {
+                        tab.title = 'nexAURAos';
                     }
                 }
                 
@@ -5421,10 +5398,7 @@ if (this.isBlockedUrl(url)) {
                 }
                 
                 const faviconSources = [
-                    `https://www.google.com/s2/favicons?domain=${domain}&sz=32`,
-                    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
-                    `https://${domain}/favicon.ico`,
-                    `https://www.${domain}/favicon.ico`,
+                    `https://www.google.com/s2/favicons?domain=${domain}&sz=16`,
                 ];
                 
                 tab.faviconDomain = domain;
@@ -5443,99 +5417,24 @@ if (this.isBlockedUrl(url)) {
                 });
             }
 
-            // Traverse nested iframes to find the deepest accessible one (the actual proxied content)
-            getDeepestAccessibleIframe(iframe) {
-                let deepest = iframe;
-                try {
-                    const win = iframe.contentWindow;
-                    if (!win || !win.document) return deepest;
-                    
-                    const nestedIframes = win.document.querySelectorAll('iframe');
-                    for (const nested of nestedIframes) {
-                        try {
-                            if (nested.contentWindow && nested.contentDocument) {
-                                const deeper = this.getDeepestAccessibleIframe(nested);
-                                if (deeper) deepest = deeper;
-                            }
-                        } catch(e) {}
-                    }
-                } catch(e) {}
-                return deepest;
-            }
-
-            // Get the title from the deepest accessible iframe
-            getDeepIframeTitle(tab) {
-                try {
-                    const deepest = this.getDeepestAccessibleIframe(tab.iframe);
-                    if (deepest && deepest.contentDocument && deepest.contentDocument.title) {
-                        return deepest.contentDocument.title;
-                    }
-                } catch(e) {}
-                
-                // Also try the direct iframe
-                try {
-                    if (tab.iframe.contentDocument && tab.iframe.contentDocument.title) {
-                        return tab.iframe.contentDocument.title;
-                    }
-                } catch(e) {}
-                
-                return null;
-            }
-
-            // Get the URL from the deepest accessible iframe, decoded from proxy format
-            getDeepIframeUrl(tab) {
-                try {
-                    const deepest = this.getDeepestAccessibleIframe(tab.iframe);
-                    if (deepest && deepest.contentWindow) {
-                        const href = deepest.contentWindow.location.href;
-                        if (href && href !== 'about:blank') {
-                            const decoded = this.extractOriginalUrl(href);
-                            if (decoded.startsWith('http')) {
-                                return decoded;
-                            }
-                            // If we can't decode it but it's a proxy URL, try the raw href
-                            if (href.startsWith('http') && !href.includes('/active/')) {
-                                return href;
-                            }
-                        }
-                    }
-                } catch(e) {}
-                return null;
-            }
-
             getIframeCurrentUrl(tab) {
-                // First try the deep iframe (actual proxied content)
-                const deepUrl = this.getDeepIframeUrl(tab);
-                if (deepUrl) return deepUrl;
-                
-                // Fallback to top-level iframe
                 try {
                     const iframeHref = tab.iframe.contentWindow.location.href;
                     if (iframeHref && iframeHref !== 'about:blank') {
                         const decoded = this.extractOriginalUrl(iframeHref);
-                        if (decoded !== iframeHref && decoded.startsWith('http')) {
+                        // Return decoded proxy URL, absolute URL, or full same-origin URL
+                        if (decoded && decoded !== 'about:blank') {
                             return decoded;
                         }
                     }
                 } catch(e) {
+                    // Cross-origin blocked — fall back to resolving iframe.src
+                    const src = tab.iframe.src;
+                    if (src && src !== 'about:blank') {
+                        return this.extractOriginalUrl(src);
+                    }
                 }
                 return null;
-            }
-            // Check if a window is the same as or a descendant of a parent window
-            _isWindowDescendant(parentWin, childWin) {
-                if (!parentWin || !childWin) return false;
-                if (parentWin === childWin) return true;
-                try {
-                    // Check all nested iframes recursively
-                    const iframes = parentWin.document.querySelectorAll('iframe');
-                    for (const iframe of iframes) {
-                        try {
-                            if (iframe.contentWindow === childWin) return true;
-                            if (this._isWindowDescendant(iframe.contentWindow, childWin)) return true;
-                        } catch(e) {}
-                    }
-                } catch(e) {}
-                return false;
             }
 
             setupPeriodicUpdates(tabId) {
@@ -5544,143 +5443,93 @@ if (this.isBlockedUrl(url)) {
                 }
 
                 const interval = setInterval(() => {
-                    const tab = this.tabs.get(tabId);
-                    if (!tab || !tab.iframe.src || tab.iframe.src === 'about:blank' || tab._navigatingHistory) return;
-
-                    // Always try to update title (even for non-active tabs) for live title sync
-                    // Use deep iframe traversal to get the ACTUAL proxied page's title
-                    try {
-                        const deepTitle = this.getDeepIframeTitle(tab);
-                        if (deepTitle && deepTitle !== tab.title) {
-                            tab.title = deepTitle;
-                            const titleEl = tab.element.querySelector('.tab-title');
-                            if (titleEl) {
-                                titleEl.textContent = deepTitle;
-                                titleEl.title = deepTitle;
-                            }
-                        }
-                    } catch(e) {}
-
-                    // URL sync only for active tab
                     if (this.activeTabId === tabId) {
-                        const realUrl = this.getIframeCurrentUrl(tab);
-                        if (realUrl && realUrl !== 'about:blank') {
-                            const oldUrl = tab.currentUrl;
-                            if (realUrl !== oldUrl) {
-                                if (this.isBlockedUrl(realUrl)) {
-                                    tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
-                                    tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
-                                    this.addressBar.value = '';
-                                    return;
-                                }
-                                tab.currentUrl = realUrl;
-                                tab.url = tab.iframe.src;
-                                this.addressBar.value = realUrl;
-                                this.updateFavicon(tab, realUrl);
-                                this.updateTabTitle(tab, realUrl);
-                                
-                                const isSecure = realUrl.startsWith('https://');
-                                this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                                const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                                if (securityIcon) {
-                                    securityIcon.innerHTML = isSecure ? 
-                                        '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                        '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                    lucide.createIcons();
-                                }
-                                
-                                if (!tab._navigatingHistory) {
-                                    const history = this.history[this.activeTabId];
-                                    if (history) {
-                                        const currentIndex = this.historyIndex[this.activeTabId];
-                                        const currentEntry = history[currentIndex];
-                                        const currentExtracted = this.extractOriginalUrl(currentEntry || '');
-                                        if (currentExtracted !== realUrl) {
-                                            const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
-                                            history.splice(currentIndex + 1);
-                                            history.push(proxyUrl);
-                                            this.historyIndex[this.activeTabId] = history.length - 1;
-                                            this.updateNavigationButtons();
+                        const tab = this.tabs.get(tabId);
+                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
+                            const realUrl = this.getIframeCurrentUrl(tab);
+                            if (realUrl && realUrl !== 'about:blank') {
+                                const oldUrl = tab.currentUrl;
+                                if (realUrl !== oldUrl) {
+                                    if (this.isBlockedUrl(realUrl)) {
+                                        tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
+                                        tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
+                                        this.addressBar.value = '';
+                                        return;
+                                    }
+                                    tab.currentUrl = realUrl;
+                                    tab.url = tab.iframe.src;
+                                    this.addressBar.value = realUrl;
+                                    this.updateFavicon(tab, realUrl);
+                                    this.updateTabTitle(tab, realUrl);
+                                    
+                                    const isSecure = realUrl.startsWith('https://');
+                                    this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                                    const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                                    if (securityIcon) {
+                                        securityIcon.innerHTML = isSecure ? 
+                                            '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                            '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                        lucide.createIcons();
+                                    }
+                                    
+                                    if (!tab._navigatingHistory) {
+                                        const history = this.history[this.activeTabId];
+                                        if (history) {
+                                            const currentIndex = this.historyIndex[this.activeTabId];
+                                            const currentEntry = history[currentIndex];
+                                            const currentExtracted = this.extractOriginalUrl(currentEntry || '');
+                                            if (currentExtracted !== realUrl) {
+                                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                                history.splice(currentIndex + 1);
+                                                history.push(proxyUrl);
+                                                this.historyIndex[this.activeTabId] = history.length - 1;
+                                                this.updateNavigationButtons();
+                                            }
                                         }
                                     }
+                                    
+                                    if (this._addToBrowseHistory) {
+                                        this._addToBrowseHistory(realUrl, tab);
+                                    }
                                 }
-                                
-                                if (this._addToBrowseHistory) {
-                                    this._addToBrowseHistory(realUrl, tab);
-                                }
+                            } else {
+                                this.updateTabInfo(tabId);
                             }
-                        } else {
-                            this.updateTabInfo(tabId);
                         }
                     }
-                }, 100);
+                }, 800);
 
                 this.updateIntervals.set(tabId, interval);
+            }
+
+            _navToHistoryEntry(url) {
+                const tab = this.tabs.get(this.activeTabId);
+                if (!tab) return;
+                const decoded = this.extractOriginalUrl(url);
+                tab.currentUrl = decoded;
+                tab.url = url;
+                tab._navigatingHistory = true;
+                tab.iframe.src = url;
+                this.addressBar.value = decoded;
+                this.updateFavicon(tab, decoded);
+                this.updateTabTitle(tab, decoded);
+
+                // Clear the flag on actual load (with safety fallback)
+                const clearFlag = () => { tab._navigatingHistory = false; };
+                tab.iframe.addEventListener('load', clearFlag, { once: true });
+                setTimeout(clearFlag, 3000);
             }
 
             goBack() {
                 if (!this.activeTabId) return;
                 
-                const tab = this.tabs.get(this.activeTabId);
-                if (!tab) return;
-                
-                // First try using the iframe's own history (handles SPA internal navigation)
-                try {
-                    if (tab.iframe.contentWindow && tab.iframe.contentWindow.history.length > 1) {
-                        tab._navigatingHistory = true;
-                        tab.iframe.contentWindow.history.back();
-                        // After a short delay, sync the URL and title
-                        setTimeout(() => {
-                            const realUrl = this.getIframeCurrentUrl(tab);
-                            if (realUrl && realUrl !== 'about:blank' && realUrl !== tab.currentUrl) {
-                                tab.currentUrl = realUrl;
-                                this.addressBar.value = realUrl;
-                                this.updateFavicon(tab, realUrl);
-                                this.updateTabTitle(tab, realUrl);
-                                
-                                const isSecure = realUrl.startsWith('https://');
-                                this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                                const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                                if (securityIcon) {
-                                    securityIcon.innerHTML = isSecure ? 
-                                        '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                        '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                    lucide.createIcons();
-                                }
-                            }
-                            tab._navigatingHistory = false;
-                        }, 300);
-                        
-                        // Also update our tracked history index
-                        const history = this.history[this.activeTabId];
-                        const currentIndex = this.historyIndex[this.activeTabId];
-                        if (currentIndex > 0) {
-                            this.historyIndex[this.activeTabId]--;
-                            this.updateNavigationButtons();
-                        }
-                        return;
-                    }
-                } catch(e) {}
-                
-                // Fallback to our tracked history
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
                 
                 if (currentIndex > 0) {
                     this.historyIndex[this.activeTabId]--;
                     const previousUrl = history[this.historyIndex[this.activeTabId]];
-                    
-                    const decoded = this.extractOriginalUrl(previousUrl);
-                    tab.currentUrl = decoded;
-                    tab.url = previousUrl;
-                    tab._navigatingHistory = true;
-                    tab.iframe.src = previousUrl;
-                    this.addressBar.value = decoded;
-                    this.updateFavicon(tab, decoded);
-                    this.updateTabTitle(tab, decoded);
-                    
-                    setTimeout(() => { tab._navigatingHistory = false; }, 2000);
-                    
+                    this._navToHistoryEntry(previousUrl);
                     this.updateNavigationButtons();
                 }
             }
@@ -5688,67 +5537,17 @@ if (this.isBlockedUrl(url)) {
             goForward() {
                 if (!this.activeTabId) return;
                 
-                const tab = this.tabs.get(this.activeTabId);
-                if (!tab) return;
-                
-                // First try using the iframe's own history
-                try {
-                    if (tab.iframe.contentWindow) {
-                        tab._navigatingHistory = true;
-                        tab.iframe.contentWindow.history.forward();
-                        setTimeout(() => {
-                            const realUrl = this.getIframeCurrentUrl(tab);
-                            if (realUrl && realUrl !== 'about:blank' && realUrl !== tab.currentUrl) {
-                                tab.currentUrl = realUrl;
-                                this.addressBar.value = realUrl;
-                                this.updateFavicon(tab, realUrl);
-                                this.updateTabTitle(tab, realUrl);
-                                
-                                const isSecure = realUrl.startsWith('https://');
-                                this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                                const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                                if (securityIcon) {
-                                    securityIcon.innerHTML = isSecure ? 
-                                        '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                        '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                    lucide.createIcons();
-                                }
-                            }
-                            tab._navigatingHistory = false;
-                        }, 300);
-                        
-                        const history = this.history[this.activeTabId];
-                        const currentIndex = this.historyIndex[this.activeTabId];
-                        if (currentIndex < history.length - 1) {
-                            this.historyIndex[this.activeTabId]++;
-                            this.updateNavigationButtons();
-                        }
-                        return;
-                    }
-                } catch(e) {}
-                
-                // Fallback to tracked history
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
                 
                 if (currentIndex < history.length - 1) {
                     this.historyIndex[this.activeTabId]++;
                     const nextUrl = history[this.historyIndex[this.activeTabId]];
-                    
-                    const decoded = this.extractOriginalUrl(nextUrl);
-                    tab.currentUrl = decoded;
-                    tab.url = nextUrl;
-                    tab._navigatingHistory = true;
-                    tab.iframe.src = nextUrl;
-                    this.addressBar.value = decoded;
-                    this.updateFavicon(tab, decoded);
-                    this.updateTabTitle(tab, decoded);
-                    
-                    setTimeout(() => { tab._navigatingHistory = false; }, 2000);
-                    
+                    this._navToHistoryEntry(nextUrl);
                     this.updateNavigationButtons();
                 }
             }
+
 
             refresh() {
                 if (!this.activeTabId) return;
@@ -5965,94 +5764,6 @@ if (this.isBlockedUrl(url)) {
                             this.updateTabTitle(tab, url);
                         }
                     }
-                    // Live title updates from injected observer
-                    if (e.data && e.data.type === 'nexos-title-update' && e.data.title !== undefined) {
-                        // Find the tab that contains the source window (could be nested iframe)
-                        let _titleMatched = false;
-                        for (const [tabId, tab] of this.tabs) {
-                            try {
-                                if (tab.iframe && this._isWindowDescendant(tab.iframe.contentWindow, e.source)) {
-                                    const newTitle = e.data.title || tab.title;
-                                    if (newTitle !== tab.title) {
-                                        tab.title = newTitle;
-                                        const titleEl = tab.element.querySelector('.tab-title');
-                                        if (titleEl) {
-                                            titleEl.textContent = newTitle;
-                                            titleEl.title = newTitle;
-                                        }
-                                    }
-                                    _titleMatched = true;
-                                    break;
-                                }
-                            } catch(e2) {}
-                        }
-                        // Fallback: cross-origin proxy frames — apply to the active tab
-                        if (!_titleMatched && this.activeTabId) {
-                            const _at = this.tabs.get(this.activeTabId);
-                            if (_at) {
-                                const newTitle = e.data.title || _at.title;
-                                if (newTitle && newTitle !== _at.title) {
-                                    _at.title = newTitle;
-                                    const titleEl = _at.element && _at.element.querySelector('.tab-title');
-                                    if (titleEl) { titleEl.textContent = newTitle; titleEl.title = newTitle; }
-                                }
-                            }
-                        }
-                    }
-                    // SPA URL updates from injected pushState/replaceState/popstate hooks
-                    if (e.data && e.data.type === 'nexos-spa-url-update' && e.data.url) {
-                        for (const [tabId, tab] of this.tabs) {
-                            try {
-                                if (tab.iframe && this._isWindowDescendant(tab.iframe.contentWindow, e.source)) {
-                                    const rawUrl = e.data.url;
-                                    // Decode the URL if it's a proxy URL
-                                    const newUrl = this.extractOriginalUrl(rawUrl);
-                                    if (newUrl !== tab.currentUrl && newUrl !== 'about:blank') {
-                                        const oldUrl = tab.currentUrl;
-                                        tab.currentUrl = newUrl;
-                                        
-                                        if (tabId === this.activeTabId) {
-                                            this.addressBar.value = newUrl;
-                                            const isSecure = newUrl.startsWith('https://');
-                                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                                            if (securityIcon) {
-                                                securityIcon.innerHTML = isSecure ? 
-                                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                                lucide.createIcons();
-                                            }
-                                        }
-                                        
-                                        this.updateFavicon(tab, newUrl);
-                                        this.updateTabTitle(tab, newUrl);
-                                        
-                                        // Add to history for back/forward
-                                        if (!tab._navigatingHistory) {
-                                            const history = this.history[tabId];
-                                            if (history) {
-                                                const currentIndex = this.historyIndex[tabId];
-                                                const currentEntry = history[currentIndex];
-                                                const currentExtracted = this.extractOriginalUrl(currentEntry || '');
-                                                if (currentExtracted !== newUrl) {
-                                                    const proxyUrl = `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
-                                                    history.splice(currentIndex + 1);
-                                                    history.push(proxyUrl);
-                                                    this.historyIndex[tabId] = history.length - 1;
-                                                    this.updateNavigationButtons();
-                                                }
-                                            }
-                                        }
-                                        
-                                        if (this._addToBrowseHistory) {
-                                            this._addToBrowseHistory(newUrl, tab);
-                                        }
-                                    }
-                                    break;
-                                }
-                            } catch(err) {}
-                        }
-                    }
                 });
 
                 const originalWindowOpen = window.open.bind(window);
@@ -6103,7 +5814,7 @@ if (this.isBlockedUrl(url)) {
                                 resolved = new URL(url, iframeWin.location.href).href;
                             } catch(e) {}
                             if (self._isValidNewTabUrl(resolved)) {
-                                top.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
+                                window.postMessage({ type: 'nexos-open-new-tab', url: resolved }, '*');
                             }
                         }
                         return { closed: false, close: function(){}, focus: function(){}, blur: function(){} };
@@ -6119,7 +5830,7 @@ if (this.isBlockedUrl(url)) {
                                         return new Proxy(window, {
                                             set: function(target, prop, value) {
                                                 if (prop === 'location' || prop === 'href') {
-                                                    top.postMessage({ type: 'nexos-redirect-intercept', url: value }, '*');
+                                                    window.postMessage({ type: 'nexos-redirect-intercept', url: value }, '*');
                                                     return true;
                                                 }
                                                 target[prop] = value;
@@ -6130,13 +5841,15 @@ if (this.isBlockedUrl(url)) {
                                                     return new Proxy(iframeWin.location, {
                                                         set: function(lt, lp, lv) {
                                                             if (lp === 'href' || lp === 'replace' || lp === 'assign') {
-                                                                top.postMessage({ type: 'nexos-redirect-intercept', url: lv }, '*');
+                                                                window.postMessage({ type: 'nexos-redirect-intercept', url: lv }, '*');
                                                                 return true;
                                                             }
-...
+                                                            return true;
+                                                        },
+                                                        get: function(lt, lp) {
                                                             if (lp === 'replace' || lp === 'assign') {
                                                                 return function(url) {
-                                                                    top.postMessage({ type: 'nexos-redirect-intercept', url: url }, '*');
+                                                                    window.postMessage({ type: 'nexos-redirect-intercept', url: url }, '*');
                                                                 };
                                                             }
                                                             return lt[lp];
@@ -6164,7 +5877,7 @@ if (this.isBlockedUrl(url)) {
                         if (form && (form.target === '_top' || form.target === '_parent')) {
                             e.preventDefault();
                             const action = form.action || iframeWin.location.href;
-                            top.postMessage({ type: 'nexos-redirect-intercept', url: action }, '*');
+                            window.postMessage({ type: 'nexos-redirect-intercept', url: action }, '*');
                         }
                     }, true);
 
@@ -6176,152 +5889,13 @@ if (this.isBlockedUrl(url)) {
                         if (link.target === '_top' || link.target === '_parent') {
                             e.preventDefault();
                             e.stopPropagation();
-                            top.postMessage({ type: 'nexos-redirect-intercept', url: link.href }, '*');
+                            window.postMessage({ type: 'nexos-redirect-intercept', url: link.href }, '*');
                         } else if (link.target === '_blank' && self._isValidNewTabUrl(link.href)) {
                             e.preventDefault();
                             e.stopPropagation();
-                            top.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
+                            window.postMessage({ type: 'nexos-open-new-tab', url: link.href }, '*');
                         }
                     }, true);
-
-                    // === LIVE TITLE OBSERVER ===
-                    // Watch for <title> changes + trap document.title setter (TikTok sets it directly)
-                    try {
-                        // Trap document.title setter so direct assignments fire instantly
-                        const docProto = Object.getPrototypeOf(iframeWin.document);
-                        const titleDesc = Object.getOwnPropertyDescriptor(docProto, 'title') ||
-                                          Object.getOwnPropertyDescriptor(iframeWin.Document.prototype, 'title');
-                        if (titleDesc && titleDesc.set && !iframeWin.document._nexosTitleTrapped) {
-                            iframeWin.document._nexosTitleTrapped = true;
-                            const origTitleSet = titleDesc.set;
-                            const origTitleGet = titleDesc.get;
-                            Object.defineProperty(iframeWin.document, 'title', {
-                                get: function() { return origTitleGet.call(this); },
-                                set: function(val) {
-                                    origTitleSet.call(this, val);
-                                    try { top.postMessage({ type: 'nexos-title-update', title: val }, '*'); } catch(e2) {}
-                                },
-                                configurable: true
-                            });
-                        }
-
-                        const titleEl = iframeWin.document.querySelector('title');
-                        if (titleEl) {
-                            const titleObserver = new iframeWin.MutationObserver(() => {
-                                const newTitle = iframeWin.document.title;
-                                if (newTitle) {
-                                    top.postMessage({ type: 'nexos-title-update', title: newTitle }, '*');
-                                }
-                            });
-                            titleObserver.observe(titleEl, { childList: true, characterData: true, subtree: true });
-                        }
-                        // Also observe <head> for dynamically added <title> elements
-                        const headEl = iframeWin.document.head;
-                        if (headEl) {
-                            const headObserver = new iframeWin.MutationObserver((mutations) => {
-                                for (const mutation of mutations) {
-                                    for (const node of mutation.addedNodes) {
-                                        if (node.tagName === 'TITLE') {
-                                            const innerObserver = new iframeWin.MutationObserver(() => {
-                                                top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                            });
-                                            innerObserver.observe(node, { childList: true, characterData: true, subtree: true });
-                                            top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                        }
-                                    }
-                                }
-                            });
-                            headObserver.observe(headEl, { childList: true });
-                        }
-                    } catch(e) {}
-
-                    // === SPA NAVIGATION HOOKS ===
-                    // Intercept pushState/replaceState for SPA URL changes (TikTok, YouTube, etc.)
-                    try {
-                        if (!iframeWin.history._nexosSPAHooked) {
-                            iframeWin.history._nexosSPAHooked = true;
-                            const origPushState = iframeWin.history.pushState.bind(iframeWin.history);
-                            const origReplaceState = iframeWin.history.replaceState.bind(iframeWin.history);
-                            
-                            iframeWin.history.pushState = function(state, title, url) {
-                                origPushState(state, title, url);
-                                try {
-                                    const newUrl = iframeWin.location.href;
-                                    top.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                    // Send title immediately AND after delays (TikTok updates it async)
-                                    top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                    setTimeout(() => {
-                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                    }, 150);
-                                    setTimeout(() => {
-                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                    }, 600);
-                                } catch(e) {}
-                            };
-                            
-                            iframeWin.history.replaceState = function(state, title, url) {
-                                origReplaceState(state, title, url);
-                                try {
-                                    const newUrl = iframeWin.location.href;
-                                    top.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                    top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                    setTimeout(() => {
-                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                    }, 150);
-                                } catch(e) {}
-                            };
-                            
-                            // Listen for popstate (browser back/forward within the iframe)
-                            iframeWin.addEventListener('popstate', function() {
-                                try {
-                                    const newUrl = iframeWin.location.href;
-                                    top.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                    top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                    setTimeout(() => {
-                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                    }, 150);
-                                } catch(e) {}
-                            });
-                            
-                            // Listen for hashchange too
-                            iframeWin.addEventListener('hashchange', function() {
-                                try {
-                                    const newUrl = iframeWin.location.href;
-                                    top.postMessage({ type: 'nexos-spa-url-update', url: newUrl }, '*');
-                                    top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                    setTimeout(() => {
-                                        top.postMessage({ type: 'nexos-title-update', title: iframeWin.document.title }, '*');
-                                    }, 150);
-                                } catch(e) {}
-                            });
-                        }
-                    } catch(e) {}
-
-                    // === PERIODIC TITLE POLL (safety net for any remaining edge cases) ===
-                    try {
-                        if (!iframeWin._nexosTitlePollStarted) {
-                            iframeWin._nexosTitlePollStarted = true;
-                            let lastKnownTitle = iframeWin.document.title;
-                            let lastKnownHref = iframeWin.location.href;
-                            const titlePollInterval = setInterval(() => {
-                                try {
-                                    const currentTitle = iframeWin.document.title;
-                                    const currentHref = iframeWin.location.href;
-                                    if (currentTitle !== lastKnownTitle) {
-                                        lastKnownTitle = currentTitle;
-                                        top.postMessage({ type: 'nexos-title-update', title: currentTitle }, '*');
-                                    }
-                                    // Also catch URL changes that slipped past pushState hooks
-                                    if (currentHref !== lastKnownHref) {
-                                        lastKnownHref = currentHref;
-                                        top.postMessage({ type: 'nexos-spa-url-update', url: currentHref }, '*');
-                                    }
-                                } catch(e) {
-                                    clearInterval(titlePollInterval);
-                                }
-                            }, 100); // 100ms for near-instant updates
-                        }
-                    } catch(e) {}
 
                     const nestedIframes = iframeWin.document.querySelectorAll('iframe');
                     nestedIframes.forEach((nested) => {
@@ -6336,8 +5910,6 @@ if (this.isBlockedUrl(url)) {
                                         node.addEventListener('load', () => {
                                             try { this.injectNewTabInterceptor(node); } catch(e) {}
                                         });
-                                        // Also try immediately in case it's already loaded
-                                        try { this.injectNewTabInterceptor(node); } catch(e) {}
                                     }
                                 });
                             });
@@ -6346,26 +5918,6 @@ if (this.isBlockedUrl(url)) {
                             childList: true, subtree: true
                         });
                     } catch(e) {}
-
-                    // === DELAYED RETRY for nested proxy iframes ===
-                    // The proxy (UV/embed) inner iframe may not exist yet when outer embed.html loads
-                    // Retry injection at increasing intervals to catch it
-                    const retryDelays = [200, 500, 1000, 2000, 4000];
-                    retryDelays.forEach((delay) => {
-                        setTimeout(() => {
-                            try {
-                                const freshNested = iframeWin.document.querySelectorAll('iframe');
-                                freshNested.forEach((nested) => {
-                                    try {
-                                        if (nested.contentWindow && nested.contentDocument && !nested._nexosInjected) {
-                                            nested._nexosInjected = true;
-                                            this.injectNewTabInterceptor(nested);
-                                        }
-                                    } catch(e) {}
-                                });
-                            } catch(e) {}
-                        }, delay);
-                    });
 
                 } catch(e) {
                 }
@@ -8935,12 +8487,7 @@ menu.addEventListener('mouseleave', hideMenu);
             debounceTimer = setTimeout(() => fetchSuggestions(query), 200);
         });
 
-        addressBar.addEventListener('click', function() {
-            addressBar.select();
-        });
-
         addressBar.addEventListener('focus', function() {
-            addressBar.select();
             const query = addressBar.value.trim();
             if (query.length >= 1 && currentSuggestions.length > 0) {
                 suggestionsBox.classList.add('visible');
