@@ -4968,6 +4968,23 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (originalUrl && originalUrl !== 'about:blank') {
                         this.updateTabInfo(tabId);
                         
+                        // Push to history if this is a new navigation (not triggered by back/forward)
+                        if (!tab._navigatingHistory && this.activeTabId === tabId) {
+                            const history = this.history[tabId];
+                            if (history) {
+                                const currentIndex = this.historyIndex[tabId];
+                                const currentEntry = history[currentIndex];
+                                const currentExtracted = this.extractOriginalUrl(currentEntry || '');
+                                if (currentExtracted !== originalUrl) {
+                                    const iframeSrc = tab.iframe.src;
+                                    history.splice(currentIndex + 1);
+                                    history.push(iframeSrc);
+                                    this.historyIndex[tabId] = history.length - 1;
+                                    this.updateNavigationButtons();
+                                }
+                            }
+                        }
+                        
                         if (this.activeTabId === tabId) {
                             this.updateFavicon(tab, originalUrl);
                             this.addressBar.value = originalUrl;
@@ -4983,6 +5000,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                             
                             this.showSiteToast(tab, originalUrl);
+                            this.updateNavigationButtons();
                         }
                         
                         setTimeout(() => {
@@ -4990,6 +5008,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (this.activeTabId === tabId) {
                                 this.updateFavicon(tab, originalUrl);
                                 this.addressBar.value = originalUrl;
+                                this.updateNavigationButtons();
                             }
                         }, 100);
                     }
@@ -5039,6 +5058,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             lucide.createIcons();
                         }
                     }
+                    
+                    this.updateNavigationButtons();
                 }
             }
 
@@ -5369,18 +5390,18 @@ if (this.isBlockedUrl(url)) {
                     }
                 }
                 
-                const titleElement = tab.element.querySelector('.tab-title');
-                if (titleElement) {
-                    titleElement.textContent = tab.title;
-                    titleElement.title = tab.title;
+                    const titleElement = tab.element.querySelector('.tab-title');
+                    if (titleElement) {
+                        titleElement.textContent = tab.title;
+                        titleElement.title = tab.title;
+                    }
+                    
+                    if (previousTitle && previousTitle !== tab.title && this.activeTabId && this.tabs.get(this.activeTabId) === tab) {
+                        this.showSiteToast(tab, url);
+                    }
                 }
-                
-                if (previousTitle && previousTitle !== tab.title && this.activeTabId && this.tabs.get(this.activeTabId) === tab) {
-                    this.showSiteToast(tab, url);
-                }
-            }
 
-            formatDomainTitle(domain) {
+                formatDomainTitle(domain) {
                 let title = domain.replace(/^www\./, '');
                 
                 const domainMap = {
