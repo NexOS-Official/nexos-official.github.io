@@ -5106,9 +5106,20 @@ document.addEventListener("DOMContentLoaded", () => {
                                 const currentEntry = history[currentIndex];
                                 const currentExtracted = this.extractOriginalUrl(currentEntry || '');
                                 if (currentExtracted !== originalUrl) {
-                                    const iframeSrc = tab.iframe.src;
+                                    // For internal pages, store the actual current URL path (not stale iframe.src)
+                                    let historyUrl;
+                                    if (this.isInternalUrl(originalUrl)) {
+                                        try {
+                                            const u = new URL(originalUrl);
+                                            historyUrl = u.pathname + u.search + u.hash;
+                                        } catch(e) {
+                                            historyUrl = originalUrl;
+                                        }
+                                    } else {
+                                        historyUrl = tab.iframe.src;
+                                    }
                                     history.splice(currentIndex + 1);
-                                    history.push(iframeSrc);
+                                    history.push(historyUrl);
                                     this.historyIndex[tabId] = history.length - 1;
                                     this.updateNavigationButtons();
                                 }
@@ -5650,20 +5661,31 @@ if (this.isBlockedUrl(url)) {
                                             const currentExtracted = this.extractOriginalUrl(currentEntry || '');
                                             // Also check _navHistoryTarget to avoid pushing the URL
                                             // we just navigated to via back/forward
-                                            if (currentExtracted !== realUrl && tab._navHistoryTarget !== realUrl) {
-                                                // Use raw URL for internal pages, proxy URL for external
-                                                const historyUrl = this.isInternalUrl(realUrl) ? tab.iframe.src : `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                            if (currentExtracted !== realUrl && tab._navHistoryTarget !== realUrl && tab._navHistoryTargetPath !== realUrl) {
+                                                // For internal pages, store the path; for external, store proxy URL
+                                                let historyUrl;
+                                                if (this.isInternalUrl(realUrl)) {
+                                                    try {
+                                                        const u = new URL(realUrl);
+                                                        historyUrl = u.pathname + u.search + u.hash;
+                                                    } catch(e) {
+                                                        historyUrl = realUrl;
+                                                    }
+                                                } else {
+                                                    historyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                                }
                                                 history.splice(currentIndex + 1);
                                                 history.push(historyUrl);
                                                 this.historyIndex[this.activeTabId] = history.length - 1;
                                                 this.updateNavigationButtons();
                                             }
                                         }
-                                    } else if (tab._navHistoryTarget && tab._navHistoryTarget === realUrl) {
+                                    } else if (tab._navHistoryTarget && (tab._navHistoryTarget === realUrl || tab._navHistoryTargetPath === realUrl)) {
                                         // The history navigation has settled — URL matches target
                                         // Clear the flag so future in-iframe navigations are tracked
                                         tab._navigatingHistory = false;
                                         tab._navHistoryTarget = null;
+                                        tab._navHistoryTargetPath = null;
                                     }
                                     
                                     if (this._addToBrowseHistory) {
@@ -5689,6 +5711,13 @@ if (this.isBlockedUrl(url)) {
                 // Store the target URL so the periodic poller knows to skip it
                 tab._navigatingHistory = true;
                 tab._navHistoryTarget = decoded;
+                // For internal full-origin URLs, also set target to path form
+                try {
+                    const u = new URL(decoded);
+                    if (u.origin === window.location.origin) {
+                        tab._navHistoryTargetPath = u.pathname + u.search + u.hash;
+                    }
+                } catch(e) {}
                 tab.iframe.src = url;
                 this.addressBar.value = this.getDisplayUrl(decoded);
                 this.updateFavicon(tab, decoded);
@@ -5700,6 +5729,7 @@ if (this.isBlockedUrl(url)) {
                         if (tab._navHistoryTarget === decoded) {
                             tab._navigatingHistory = false;
                             tab._navHistoryTarget = null;
+                            tab._navHistoryTargetPath = null;
                         }
                     }, 600);
                 }, { once: true });
@@ -5740,10 +5770,25 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
-                    let urlToLoad = tab.iframe.src;
-                    // Only re-proxy if it's an external URL (not internal site page)
-                    if (tab.currentUrl && tab.currentUrl.startsWith('http') && !this.isInternalUrl(tab.currentUrl)) {
+                    let urlToLoad;
+                    if (tab.currentUrl && this.isInternalUrl(tab.currentUrl)) {
+                        // For internal pages, use currentUrl (which tracks actual navigation)
+                        // Extract path if it's a full origin URL
+                        try {
+                            const u = new URL(tab.currentUrl);
+                            if (u.origin === window.location.origin) {
+                                urlToLoad = u.pathname + u.search + u.hash;
+                            } else {
+                                urlToLoad = tab.currentUrl;
+                            }
+                        } catch(e) {
+                            urlToLoad = tab.currentUrl;
+                        }
+                    } else if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
+                        // External URL — re-proxy it
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
+                    } else {
+                        urlToLoad = tab.iframe.src;
                     }
                     tab.iframe.src = 'about:blank';
                     setTimeout(() => {
