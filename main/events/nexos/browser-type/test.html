@@ -5261,15 +5261,35 @@ if (this.isBlockedUrl(url)) {
             isSameOriginUrl(url) {
                 // Check if a URL belongs to this site and shouldn't be proxied
                 if (!url) return false;
-                // Relative paths like /games, /credits.html, welcomer.html
-                if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
-                // No protocol and no dot = local file like welcomer.html
-                if (!url.includes('://') && !url.includes('.') ) return true;
-                // Same origin absolute URL
+                // Relative paths starting with /
+                if (url.startsWith('/')) return true;
+                if (url.startsWith('./') || url.startsWith('../')) return true;
+                // Same origin absolute URL (e.g. https://mysite.com/games)
                 try {
-                    const parsed = new URL(url, window.location.origin);
+                    const parsed = new URL(url);
                     if (parsed.origin === window.location.origin) return true;
-                } catch(e) {}
+                } catch(e) {
+                    // Not a valid absolute URL — if it has no protocol, check if it looks
+                    // like a domain (has dots but no slashes before them) vs a local file
+                    if (!url.includes('://')) {
+                        // If it contains a dot followed by a TLD-like segment with no slash before the dot,
+                        // it's likely a domain like google.com — NOT same origin
+                        // But paths like welcomer.html, /games/cool.html ARE same origin
+                        const firstSlash = url.indexOf('/');
+                        const firstDot = url.indexOf('.');
+                        // If dot comes before any slash, could be a domain like google.com
+                        // But .html, .htm at the end = file extension, not a TLD
+                        if (firstDot >= 0 && (firstSlash < 0 || firstDot < firstSlash)) {
+                            const ext = url.split('.').pop().split(/[?#]/)[0].toLowerCase();
+                            const fileExtensions = ['html','htm','php','asp','aspx','jsp','json','xml','txt','css','js','png','jpg','jpeg','gif','svg','ico','pdf','mp3','mp4','webm','webp','woff','woff2','ttf','eot'];
+                            if (fileExtensions.includes(ext)) return true;
+                            // Looks like a domain (e.g. google.com)
+                            return false;
+                        }
+                        // No dot = local path like "games" or "welcomer"
+                        return true;
+                    }
+                }
                 return false;
             }
 
@@ -5330,13 +5350,7 @@ if (this.isBlockedUrl(url)) {
                     return proxyUrl;
                 }
 
-                // Internal path like /games or /credits.html — resolve to full origin URL
-                if (proxyUrl.startsWith('/') || proxyUrl.startsWith('./') || proxyUrl.startsWith('../')) {
-                    try {
-                        return new URL(proxyUrl, window.location.origin).href;
-                    } catch(e) {}
-                }
-
+                // Internal path — keep as relative path, don't resolve to absolute
                 return proxyUrl;
             }
 
@@ -5485,8 +5499,14 @@ if (this.isBlockedUrl(url)) {
                 try {
                     const iframeHref = tab.iframe.contentWindow.location.href;
                     if (iframeHref && iframeHref !== 'about:blank') {
+                        // If same-origin, return just the path to avoid re-proxying
+                        if (this.isSameOriginUrl(iframeHref)) {
+                            try {
+                                const u = new URL(iframeHref);
+                                return u.pathname + u.search + u.hash;
+                            } catch(e) {}
+                        }
                         const decoded = this.extractOriginalUrl(iframeHref);
-                        // Return decoded proxy URL, absolute URL, or full same-origin URL
                         if (decoded && decoded !== 'about:blank') {
                             return decoded;
                         }
@@ -5637,7 +5657,16 @@ if (this.isBlockedUrl(url)) {
                     this.showLoading();
                     let urlToLoad = tab.iframe.src;
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
-                        urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
+                        // Only proxy external URLs, not same-origin ones
+                        if (this.isSameOriginUrl(tab.currentUrl)) {
+                            try {
+                                urlToLoad = new URL(tab.currentUrl).pathname + new URL(tab.currentUrl).search + new URL(tab.currentUrl).hash;
+                            } catch(e) {
+                                urlToLoad = tab.currentUrl;
+                            }
+                        } else {
+                            urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
+                        }
                     }
                     tab.iframe.src = 'about:blank';
                     setTimeout(() => {
