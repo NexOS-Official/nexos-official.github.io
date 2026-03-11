@@ -868,11 +868,16 @@
             width: 100%;
             height: 100%;
             border: none;
-            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            visibility: hidden;
+            pointer-events: none;
         }
 
         .tab-content.active {
-            display: block;
+            visibility: visible;
+            pointer-events: auto;
         }
 
         .loading-indicator {
@@ -3799,14 +3804,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 });
 
+                // Track whether user is actively typing
+                this._addressBarTyping = false;
+                
                 // Select all text when clicking the address bar (like a real browser)
+                // but NOT if user is actively typing
                 this.addressBar.addEventListener('focus', () => {
-                    setTimeout(() => this.addressBar.select(), 0);
+                    if (!this._addressBarTyping) {
+                        setTimeout(() => this.addressBar.select(), 0);
+                    }
                 });
                 this.addressBar.addEventListener('click', () => {
-                    if (this.addressBar.selectionStart === this.addressBar.selectionEnd) {
+                    if (!this._addressBarTyping && this.addressBar.selectionStart === this.addressBar.selectionEnd) {
                         this.addressBar.select();
                     }
+                });
+                this.addressBar.addEventListener('input', () => {
+                    this._addressBarTyping = true;
+                });
+                this.addressBar.addEventListener('blur', () => {
+                    this._addressBarTyping = false;
                 });
 
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
@@ -3844,9 +3861,10 @@ document.addEventListener("DOMContentLoaded", () => {
                                 const history = this.history[this.activeTabId];
                                 if (history) {
                                     const currentIndex = this.historyIndex[this.activeTabId];
-                                    const proxyUrl = `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
+                                    // Use raw URL for internal pages, proxy URL for external
+                                    const historyUrl = this.isInternalUrl(newUrl) ? newUrl : `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
                                     history.splice(currentIndex + 1);
-                                    history.push(proxyUrl);
+                                    history.push(historyUrl);
                                     this.historyIndex[this.activeTabId] = history.length - 1;
                                     this.updateNavigationButtons();
                                 }
@@ -5130,7 +5148,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const currentTab = this.tabs.get(this.activeTabId);
                     if (currentTab) {
                         currentTab.element.classList.remove('active');
-                        currentTab.iframe.style.display = 'none';
+                        currentTab.iframe.classList.remove('active');
                     }
                 }
 
@@ -5138,7 +5156,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (newTab) {
                     this.activeTabId = tabId;
                     newTab.element.classList.add('active');
-                    newTab.iframe.style.display = 'block';
+                    newTab.iframe.classList.add('active');
 
                     const realUrl = this.getIframeCurrentUrl(newTab);
                     let currentUrl = realUrl || newTab.currentUrl || newTab.iframe.src;
@@ -5622,9 +5640,10 @@ if (this.isBlockedUrl(url)) {
                                             // Also check _navHistoryTarget to avoid pushing the URL
                                             // we just navigated to via back/forward
                                             if (currentExtracted !== realUrl && tab._navHistoryTarget !== realUrl) {
-                                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                                // Use raw URL for internal pages, proxy URL for external
+                                                const historyUrl = this.isInternalUrl(realUrl) ? tab.iframe.src : `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
                                                 history.splice(currentIndex + 1);
-                                                history.push(proxyUrl);
+                                                history.push(historyUrl);
                                                 this.historyIndex[this.activeTabId] = history.length - 1;
                                                 this.updateNavigationButtons();
                                             }
@@ -8938,7 +8957,16 @@ setInterval(async () => {
     function fromGhostUrl(ghostUrl) {
         if (!ghostUrl || !ghostUrl.startsWith('ghost://')) return ghostUrl;
         if (GHOST_REVERSE[ghostUrl]) return GHOST_REVERSE[ghostUrl];
-        return ghostUrl;
+        // Handle sub-paths like ghost://games/somegame -> /games/somegame
+        for (var key in GHOST_REVERSE) {
+            if (ghostUrl.startsWith(key + '/')) {
+                var suffix = ghostUrl.slice(key.length);
+                return GHOST_REVERSE[key] + suffix;
+            }
+        }
+        // Generic ghost://something -> /something
+        var path = ghostUrl.replace('ghost:/', '');
+        return path;
     }
 
     function getBookmarkDisplayUrl(url) {
