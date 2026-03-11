@@ -3700,11 +3700,112 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.siteToastText = document.getElementById('toastText');
             }
 
+            // Map of internal paths to ghost:// URLs
+            INTERNAL_GHOST_MAP = {
+                '/newtab/pages/landing.html': 'ghost://newtab',
+                '/welcomer.html': 'ghost://home',
+                '/games': 'ghost://games',
+                '/credits.html': 'ghost://devs',
+                '/chat.html': 'ghost://chat',
+                '/chat': 'ghost://chat',
+                '/main/events/sidebar/apps/music.html': 'ghost://music',
+                '/main/events/sidebar/apps/movie.html': 'ghost://streaming',
+                '/main/events/sidebar/apps/docs.html': 'ghost://docs',
+                '/main/events/sidebar/apps/announcements.html': 'ghost://notifications',
+                '/main/events/sidebar/apps/tasks/tasks.html': 'ghost://tasks',
+                '/main/events/sidebar/apps/weather.html': 'ghost://weather',
+                '/tos.html': 'ghost://tos',
+                '/search/blocker/profanity/blockedmalware.html': 'ghost://blocked',
+            };
+
+            // Check if a URL is an internal site page (not a proxied external site)
+            isInternalUrl(url) {
+                if (!url) return false;
+                // ghost:// URLs are always internal
+                if (url.toLowerCase().startsWith('ghost://') || url.toLowerCase().startsWith('nexos://') || url.toLowerCase().startsWith('nexapp://')) return true;
+                // Proxy URLs are NOT internal
+                if (url.includes('/active/embed.html?') || url.includes('/active/go/')) return false;
+                // Local paths that start with / and are on our site
+                if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
+                // Relative paths without protocol
+                if (!url.startsWith('http://') && !url.startsWith('https://') && !url.includes('://')) {
+                    // Could be a local file like welcomer.html
+                    if (url.endsWith('.html') || url === 'games' || url === 'chat') return true;
+                }
+                // Full URLs that match our origin
+                try {
+                    const urlObj = new URL(url);
+                    if (urlObj.origin === window.location.origin) {
+                        // But not if it's a proxy path
+                        if (!urlObj.pathname.startsWith('/active/embed.html') && !urlObj.pathname.startsWith('/active/go/')) {
+                            return true;
+                        }
+                    }
+                } catch(e) {}
+                return false;
+            }
+
+            // Get the ghost:// display URL for an internal path
+            getGhostUrl(url) {
+                if (!url) return url;
+                // Already a ghost:// URL
+                if (url.toLowerCase().startsWith('ghost://')) return url;
+                
+                // Strip origin if present
+                let path = url;
+                try {
+                    const urlObj = new URL(url);
+                    if (urlObj.origin === window.location.origin) {
+                        path = urlObj.pathname + urlObj.search + urlObj.hash;
+                    }
+                } catch(e) {}
+                
+                // Remove query params for matching (but keep for special cases)
+                let pathForMatch = path.split('?')[0].split('#')[0];
+                
+                // Check exact match
+                if (this.INTERNAL_GHOST_MAP[pathForMatch]) {
+                    return this.INTERNAL_GHOST_MAP[pathForMatch];
+                }
+                
+                // Check if it starts with a known path (for sub-paths like /games/something)
+                for (const [key, ghostUrl] of Object.entries(this.INTERNAL_GHOST_MAP)) {
+                    if (pathForMatch.startsWith(key + '/') || pathForMatch.startsWith(key + '?')) {
+                        // e.g. /games/somegame -> ghost://games/somegame
+                        const suffix = pathForMatch.slice(key.length);
+                        return ghostUrl + suffix;
+                    }
+                }
+                
+                // Generic internal path -> ghost://page/path
+                return 'ghost:/' + path;
+            }
+
+            // Get the display URL for the address bar (ghost:// for internal, real URL for proxied)
+            getDisplayUrl(url) {
+                if (!url || url === 'about:blank') return '';
+                const originalUrl = this.extractOriginalUrl(url);
+                if (this.isInternalUrl(originalUrl) || this.isInternalUrl(url)) {
+                    return this.getGhostUrl(url.includes('/active/') ? originalUrl : url);
+                }
+                return originalUrl;
+            }
+
             bindEvents() {
                 this.newTabBtn.addEventListener('click', () => this.createNewTab());
                 this.addressBar.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         this.navigate(this.addressBar.value);
+                    }
+                });
+
+                // Select all text when clicking the address bar (like a real browser)
+                this.addressBar.addEventListener('focus', () => {
+                    setTimeout(() => this.addressBar.select(), 0);
+                });
+                this.addressBar.addEventListener('click', () => {
+                    if (this.addressBar.selectionStart === this.addressBar.selectionEnd) {
+                        this.addressBar.select();
                     }
                 });
 
@@ -3724,11 +3825,11 @@ document.addEventListener("DOMContentLoaded", () => {
                             const newUrl = e.data.url;
                             const oldUrl = tab.currentUrl;
                             tab.currentUrl = newUrl;
-                            this.addressBar.value = newUrl;
+                            this.addressBar.value = this.isInternalUrl(newUrl) ? this.getGhostUrl(newUrl) : newUrl;
                             this.updateFavicon(tab, newUrl);
                             this.updateTabTitle(tab, newUrl);
                             
-                            const isSecure = newUrl.startsWith('https://');
+                            const isSecure = newUrl.startsWith('https://') && !this.isInternalUrl(newUrl);
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                             const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
                             if (securityIcon) {
@@ -4987,8 +5088,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         
                         if (this.activeTabId === tabId) {
                             this.updateFavicon(tab, originalUrl);
-                            this.addressBar.value = originalUrl;
-                            const isSecure = originalUrl.startsWith('https://');
+                            this.addressBar.value = this.getDisplayUrl(tab.iframe.src || originalUrl);
+                            const isSecure = originalUrl.startsWith('https://') && !this.isInternalUrl(originalUrl);
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                             
                             const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
@@ -5007,7 +5108,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             this.updateTabInfo(tabId);
                             if (this.activeTabId === tabId) {
                                 this.updateFavicon(tab, originalUrl);
-                                this.addressBar.value = originalUrl;
+                                this.addressBar.value = this.getDisplayUrl(tab.iframe.src || originalUrl);
                                 this.updateNavigationButtons();
                             }
                         }, 100);
@@ -5046,8 +5147,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
                         newTab.currentUrl = originalUrl;
                         this.updateTabTitle(newTab, originalUrl);
-                        this.addressBar.value = originalUrl;
-                        const isSecure = originalUrl.startsWith('https://');
+                        this.addressBar.value = this.getDisplayUrl(currentUrl);
+                        const isSecure = originalUrl.startsWith('https://') && !this.isInternalUrl(originalUrl);
                         this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                         
                         const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
@@ -5266,7 +5367,7 @@ if (this.isBlockedUrl(url)) {
                 this.showLoading();
                 tab.url = url;
                 tab.iframe.src = url;
-                this.addressBar.value = this.extractOriginalUrl(url);
+                this.addressBar.value = this.getDisplayUrl(url);
 
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
@@ -5498,11 +5599,11 @@ if (this.isBlockedUrl(url)) {
                                     }
                                     tab.currentUrl = realUrl;
                                     tab.url = tab.iframe.src;
-                                    this.addressBar.value = realUrl;
+                                    this.addressBar.value = this.isInternalUrl(realUrl) ? this.getGhostUrl(realUrl) : realUrl;
                                     this.updateFavicon(tab, realUrl);
                                     this.updateTabTitle(tab, realUrl);
                                     
-                                    const isSecure = realUrl.startsWith('https://');
+                                    const isSecure = realUrl.startsWith('https://') && !this.isInternalUrl(realUrl);
                                     this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                                     const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
                                     if (securityIcon) {
@@ -5559,7 +5660,7 @@ if (this.isBlockedUrl(url)) {
                 tab._navigatingHistory = true;
                 tab._navHistoryTarget = decoded;
                 tab.iframe.src = url;
-                this.addressBar.value = decoded;
+                this.addressBar.value = this.getDisplayUrl(url);
                 this.updateFavicon(tab, decoded);
                 this.updateTabTitle(tab, decoded);
 
@@ -5612,7 +5713,8 @@ if (this.isBlockedUrl(url)) {
                 if (tab) {
                     this.showLoading();
                     let urlToLoad = tab.iframe.src;
-                    if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
+                    // Only re-proxy if it's an external URL (not internal site page)
+                    if (tab.currentUrl && tab.currentUrl.startsWith('http') && !this.isInternalUrl(tab.currentUrl)) {
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
                     }
                     tab.iframe.src = 'about:blank';
