@@ -3720,8 +3720,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         const tab = this.tabs.get(this.activeTabId);
-                        if (tab) {
+                        if (tab && !tab._navigatingHistory) {
                             const newUrl = e.data.url;
+                            const oldUrl = tab.currentUrl;
                             tab.currentUrl = newUrl;
                             this.addressBar.value = newUrl;
                             this.updateFavicon(tab, newUrl);
@@ -3735,6 +3736,19 @@ document.addEventListener("DOMContentLoaded", () => {
                                     '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
                                     '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
+                            }
+                            
+                            // Push to history if URL actually changed
+                            if (oldUrl !== newUrl) {
+                                const history = this.history[this.activeTabId];
+                                if (history) {
+                                    const currentIndex = this.historyIndex[this.activeTabId];
+                                    const proxyUrl = `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
+                                    history.splice(currentIndex + 1);
+                                    history.push(proxyUrl);
+                                    this.historyIndex[this.activeTabId] = history.length - 1;
+                                    this.updateNavigationButtons();
+                                }
                             }
                         }
                     }
@@ -4418,6 +4432,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 iframe.addEventListener('load', () => {
                     this.updateTabInfo(tabId);
                     this.hideLoading();
+                    this.setupPeriodicUpdates(tabId);
                 });
                 
                 this.setupIframeLoadHandling(tabId);
