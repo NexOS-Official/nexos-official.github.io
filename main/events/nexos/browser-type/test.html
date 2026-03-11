@@ -5223,6 +5223,10 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
 
+                // Clear any history navigation state — this is a fresh user navigation
+                tab._navigatingHistory = false;
+                tab._navHistoryTarget = null;
+
                 this.showLoading();
                 tab.url = url;
                 tab.iframe.src = url;
@@ -5478,7 +5482,9 @@ if (this.isBlockedUrl(url)) {
                                             const currentIndex = this.historyIndex[this.activeTabId];
                                             const currentEntry = history[currentIndex];
                                             const currentExtracted = this.extractOriginalUrl(currentEntry || '');
-                                            if (currentExtracted !== realUrl) {
+                                            // Also check _navHistoryTarget to avoid pushing the URL
+                                            // we just navigated to via back/forward
+                                            if (currentExtracted !== realUrl && tab._navHistoryTarget !== realUrl) {
                                                 const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
                                                 history.splice(currentIndex + 1);
                                                 history.push(proxyUrl);
@@ -5486,6 +5492,11 @@ if (this.isBlockedUrl(url)) {
                                                 this.updateNavigationButtons();
                                             }
                                         }
+                                    } else if (tab._navHistoryTarget && tab._navHistoryTarget === realUrl) {
+                                        // The history navigation has settled — URL matches target
+                                        // Clear the flag so future in-iframe navigations are tracked
+                                        tab._navigatingHistory = false;
+                                        tab._navHistoryTarget = null;
                                     }
                                     
                                     if (this._addToBrowseHistory) {
@@ -5508,16 +5519,25 @@ if (this.isBlockedUrl(url)) {
                 const decoded = this.extractOriginalUrl(url);
                 tab.currentUrl = decoded;
                 tab.url = url;
+                // Store the target URL so the periodic poller knows to skip it
                 tab._navigatingHistory = true;
+                tab._navHistoryTarget = decoded;
                 tab.iframe.src = url;
                 this.addressBar.value = decoded;
                 this.updateFavicon(tab, decoded);
                 this.updateTabTitle(tab, decoded);
 
-                // Clear the flag on actual load (with safety fallback)
-                const clearFlag = () => { tab._navigatingHistory = false; };
-                tab.iframe.addEventListener('load', clearFlag, { once: true });
-                setTimeout(clearFlag, 3000);
+                // Don't clear on load — let the periodic updater clear it
+                // once it confirms the URL has settled
+                tab.iframe.addEventListener('load', () => {
+                    // Give periodic updater 2 cycles to see the settled URL
+                    setTimeout(() => {
+                        if (tab._navHistoryTarget === decoded) {
+                            tab._navigatingHistory = false;
+                            tab._navHistoryTarget = null;
+                        }
+                    }, 1800);
+                }, { once: true });
             }
 
             goBack() {
