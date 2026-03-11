@@ -871,13 +871,15 @@
             position: absolute;
             top: 0;
             left: 0;
-            visibility: hidden;
+            opacity: 0;
             pointer-events: none;
+            z-index: 0;
         }
 
         .tab-content.active {
-            visibility: visible;
+            opacity: 1;
             pointer-events: auto;
+            z-index: 1;
         }
 
         .loading-indicator {
@@ -3806,18 +3808,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // Track whether user is actively typing
                 this._addressBarTyping = false;
+                this._addressBarFocusedViaClick = false;
                 
-                // Select all text when clicking the address bar (like a real browser)
-                // but NOT if user is actively typing
-                this.addressBar.addEventListener('focus', () => {
-                    if (!this._addressBarTyping) {
-                        setTimeout(() => this.addressBar.select(), 0);
+                // Select all text when first focusing the address bar (like a real browser)
+                // but NOT if user is actively typing or repositioning cursor
+                this.addressBar.addEventListener('mousedown', () => {
+                    // If already focused and typing, don't select on click
+                    if (document.activeElement === this.addressBar && this._addressBarTyping) {
+                        this._addressBarFocusedViaClick = false;
+                        return;
                     }
+                    this._addressBarFocusedViaClick = true;
                 });
-                this.addressBar.addEventListener('click', () => {
-                    if (!this._addressBarTyping && this.addressBar.selectionStart === this.addressBar.selectionEnd) {
-                        this.addressBar.select();
+                this.addressBar.addEventListener('focus', () => {
+                    if (!this._addressBarTyping && this._addressBarFocusedViaClick) {
+                        setTimeout(() => {
+                            if (!this._addressBarTyping) {
+                                this.addressBar.select();
+                            }
+                        }, 0);
                     }
+                    this._addressBarFocusedViaClick = false;
                 });
                 this.addressBar.addEventListener('input', () => {
                     this._addressBarTyping = true;
@@ -5106,7 +5117,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         
                         if (this.activeTabId === tabId) {
                             this.updateFavicon(tab, originalUrl);
-                            this.addressBar.value = this.getDisplayUrl(tab.iframe.src || originalUrl);
+                            this.addressBar.value = this.getDisplayUrl(originalUrl);
                             const isSecure = originalUrl.startsWith('https://') && !this.isInternalUrl(originalUrl);
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                             
@@ -5126,7 +5137,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             this.updateTabInfo(tabId);
                             if (this.activeTabId === tabId) {
                                 this.updateFavicon(tab, originalUrl);
-                                this.addressBar.value = this.getDisplayUrl(tab.iframe.src || originalUrl);
+                                this.addressBar.value = this.getDisplayUrl(originalUrl);
                                 this.updateNavigationButtons();
                             }
                         }, 100);
@@ -5165,7 +5176,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
                         newTab.currentUrl = originalUrl;
                         this.updateTabTitle(newTab, originalUrl);
-                        this.addressBar.value = this.getDisplayUrl(currentUrl);
+                        this.addressBar.value = this.getDisplayUrl(originalUrl);
                         const isSecure = originalUrl.startsWith('https://') && !this.isInternalUrl(originalUrl);
                         this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                         
@@ -5679,20 +5690,18 @@ if (this.isBlockedUrl(url)) {
                 tab._navigatingHistory = true;
                 tab._navHistoryTarget = decoded;
                 tab.iframe.src = url;
-                this.addressBar.value = this.getDisplayUrl(url);
+                this.addressBar.value = this.getDisplayUrl(decoded);
                 this.updateFavicon(tab, decoded);
                 this.updateTabTitle(tab, decoded);
 
-                // Don't clear on load — let the periodic updater clear it
-                // once it confirms the URL has settled
+                // Clear navigation flag after load settles
                 tab.iframe.addEventListener('load', () => {
-                    // Give periodic updater 2 cycles to see the settled URL
                     setTimeout(() => {
                         if (tab._navHistoryTarget === decoded) {
                             tab._navigatingHistory = false;
                             tab._navHistoryTarget = null;
                         }
-                    }, 1800);
+                    }, 600);
                 }, { once: true });
             }
 
@@ -8939,16 +8948,44 @@ setInterval(async () => {
     Object.keys(GHOST_MAP).forEach(function(k) { GHOST_REVERSE['ghost://' + GHOST_MAP[k]] = k; });
 
     function isInternalUrl(url) {
-        return url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('ghost://');
+        if (!url) return false;
+        if (url.startsWith('ghost://')) return false;
+        if (!url.startsWith('http://') && !url.startsWith('https://')) return true;
+        // Check if the URL is on our own origin (internal page with full URL)
+        try {
+            var urlObj = new URL(url);
+            if (urlObj.origin === window.location.origin) {
+                // But not proxy paths
+                if (!urlObj.pathname.startsWith('/active/embed.html') && !urlObj.pathname.startsWith('/active/go/')) {
+                    return true;
+                }
+            }
+        } catch(e) {}
+        return false;
     }
 
     function toGhostUrl(url) {
         if (!url) return url;
-        if (GHOST_MAP[url]) return 'ghost://' + GHOST_MAP[url];
-        var base = url.split('?')[0];
+        // Strip origin if present to get path
+        var path = url;
+        try {
+            var urlObj = new URL(url);
+            if (urlObj.origin === window.location.origin) {
+                path = urlObj.pathname + urlObj.search + urlObj.hash;
+            }
+        } catch(e) {}
+        if (GHOST_MAP[path]) return 'ghost://' + GHOST_MAP[path];
+        var base = path.split('?')[0].split('#')[0];
         if (GHOST_MAP[base]) return 'ghost://' + GHOST_MAP[base];
+        // Check sub-paths
+        for (var key in GHOST_MAP) {
+            if (base.startsWith(key + '/') || base.startsWith(key + '?')) {
+                var suffix = base.slice(key.length);
+                return 'ghost://' + GHOST_MAP[key] + suffix;
+            }
+        }
         if (isInternalUrl(url)) {
-            var name = url.replace(/^\//, '').replace(/\.html$/, '').replace(/\//g, '-');
+            var name = path.replace(/^\//, '').replace(/\.html$/, '').replace(/\//g, '-');
             return 'ghost://' + (name || 'page');
         }
         return url;
@@ -9047,8 +9084,10 @@ setInterval(async () => {
                     var b = window.browser;
                     var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
                     if (b) {
-                        if (navUrl && !navUrl.startsWith('http')) {
-                            b.loadUrl(navUrl);
+                        if (isInternalUrl(navUrl)) {
+                            var path = navUrl;
+                            try { var u = new URL(navUrl); if (u.origin === window.location.origin) path = u.pathname + u.search + u.hash; } catch(e) {}
+                            b.loadUrl(path);
                         } else {
                             b.navigate(navUrl);
                         }
@@ -9109,8 +9148,11 @@ setInterval(async () => {
                     var b = window.browser;
                     var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
                     if (b) {
-                        if (navUrl && !navUrl.startsWith('http')) {
-                            b.loadUrl(navUrl);
+                        if (isInternalUrl(navUrl)) {
+                            // Strip origin for internal URLs to get path
+                            var path = navUrl;
+                            try { var u = new URL(navUrl); if (u.origin === window.location.origin) path = u.pathname + u.search + u.hash; } catch(e) {}
+                            b.loadUrl(path);
                         } else {
                             b.navigate(navUrl);
                         }
