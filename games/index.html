@@ -50,7 +50,6 @@
         </div>
 
         <div class="allgames">
-
             <div class="foldarcads" data-tags="racing, action" data-url="/games/g-code/geometrydash/">
                 <img src="/images/games/coverart/geometrydash.png" alt="Geometry Dash" title="Geometry Dash">
             </div>
@@ -193,12 +192,12 @@
 
 <script src="main.js"></script>
 <script>
+const gameGrid = document.querySelector(".allgames");
+const searchInput = document.getElementById("searchforthejstofindwithtitle");
 const COVER_URL = "https://cdn.jsdelivr.net/gh/gn-math/covers@main";
 const HTML_URL = "https://cdn.jsdelivr.net/gh/gn-math/html@main";
 const POP_URL = "https://data.jsdelivr.net/v1/stats/packages/gh/gn-math/html@main/files?period=year";
 
-const gameGrid = document.querySelector(".allgames");
-const searchInput = document.getElementById("searchforthejstofindwithtitle");
 let allGames = [];
 let popularityMap = {};
 
@@ -222,25 +221,21 @@ fetch("zones.json")
       popularity: popularityMap[g.id] || 0
     })).sort((a,b) => b.popularity - a.popularity);
 
-    render(allGames);
+    allGames.forEach(game => {
+      const card = document.createElement("div");
+      card.className = "foldarcads";
+      card.dataset.tags = (game.tags || []).join(", ");
+      card.dataset.url = game.url;
+      card.innerHTML = `<img src="${game.cover}" alt="${game.name}" title="${game.name}">`;
+      card.onclick = () => window.location.href = game.url;
+      gameGrid.appendChild(card);
+    });
   })
-  .catch(err => console.error("Failed to load games: ", err));
-
-function render(games) {
-  games.forEach(game => {
-    const card = document.createElement("div");
-    card.className = "foldarcads";
-    card.dataset.tags = game.tags.join(", ");
-    card.dataset.url = game.url;
-    card.innerHTML = `<img src="${game.cover}" alt="${game.name}" title="${game.name}">`;
-    card.onclick = () => window.location.href = game.url;
-    gameGrid.appendChild(card);
-  });
-}
+  .catch(err => console.error("Failed to load CDN games: ", err));
 
 searchInput.addEventListener("input", e => {
   const q = e.target.value.toLowerCase();
-    const cards = Array.from(gameGrid.querySelectorAll(".foldarcads"));
+  const cards = Array.from(gameGrid.querySelectorAll(".foldarcads"));
   cards.forEach(c => {
     const title = c.querySelector("img")?.alt.toLowerCase() || "";
     c.style.display = title.includes(q) ? "" : "none";
