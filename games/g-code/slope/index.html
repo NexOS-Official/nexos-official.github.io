@@ -10,6 +10,59 @@
   gtag('js', new Date());
 
   gtag('config', 'G-VKK1BVCT2G');
+     <!-- MUST go in <head> BEFORE UnityProgress.js and unityloader41.js -->
+<script>
+(function() {
+    var musicSrc = '1772992502851-9fb8e2a0a90b60a5.mp3'; // <-- your file here
+
+    // Hijack AudioContext BEFORE Unity creates one
+    var OrigAC = window.AudioContext || window.webkitAudioContext;
+    function MutedAudioContext() {
+        var ctx = new OrigAC();
+        // Create a master gain and set to 0
+        var masterGain = ctx.createGain();
+        masterGain.gain.value = 0;
+        masterGain.connect(ctx.destination);
+        // Override connect on all nodes to route through muted gain
+        var origConnect = AudioNode.prototype.connect;
+        AudioNode.prototype.connect = function(dest) {
+            if (dest === ctx.destination) {
+                return origConnect.call(this, masterGain);
+            }
+            return origConnect.apply(this, arguments);
+        };
+        return ctx;
+    }
+    window.AudioContext = MutedAudioContext;
+    window.webkitAudioContext = MutedAudioContext;
+
+    // Also kill any HTML5 <audio> or Audio() elements Unity might use
+    var OrigAudio = window.Audio;
+    window.Audio = function(src) {
+        var a = new OrigAudio(src);
+        Object.defineProperty(a, 'volume', { get: function() { return 0; }, set: function() {} });
+        a.muted = true;
+        return a;
+    };
+    window.Audio.prototype = OrigAudio.prototype;
+
+    // Play YOUR music on first game click
+    var audio = new OrigAudio(musicSrc); // Use original Audio so it's not muted
+    audio.loop = true;
+    audio.volume = 0.5;
+    var started = false;
+
+    document.addEventListener('click', function handler(e) {
+        var canvas = document.querySelector('#gameContainer canvas');
+        if (!started && canvas && canvas.contains(e.target)) {
+            started = true;
+            audio.play().catch(function(err) { console.log('Music error:', err); });
+            document.removeEventListener('click', handler);
+        }
+    }, true);
+})();
+</script>
+
 </script>
     <link rel="stylesheet" href="style.css">
     <script src="UnityProgress.js"></script>
@@ -45,40 +98,7 @@
         }
     </style>
 </head>
-<script>
-(function() {
-    var musicSrc = '1772992502851-9fb8e2a0a90b60a5.mp3';
 
-    var audio = new Audio(musicSrc);
-    audio.loop = true;
-    audio.volume = 0.5;
-    var started = false;
-
-    document.addEventListener('click', function handler(e) {
-        var canvas = document.querySelector('#gameContainer canvas');
-        if (!started && canvas && canvas.contains(e.target)) {
-            started = true;
-            audio.play().catch(function(err) {
-                console.log('Audio play failed:', err);
-            });
-
-            try {
-                var AC = window.AudioContext || window.webkitAudioContext;
-                if (AC) {
-                    var origCreateGain = AC.prototype.createGain;
-                    AC.prototype.createGain = function() {
-                        var gain = origCreateGain.call(this);
-                        gain.gain.value = 0;
-                        return gain;
-                    };
-                }
-            } catch(e) {}
-
-            document.removeEventListener('click', handler);
-        }
-    }, true);
-})();
-</script>
 
 <body style="margin: 0; overflow: hidden;">
     <div class="alert">
