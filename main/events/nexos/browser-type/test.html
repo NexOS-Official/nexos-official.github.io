@@ -868,18 +868,11 @@
             width: 100%;
             height: 100%;
             border: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 0;
+            display: none;
         }
 
         .tab-content.active {
-            opacity: 1;
-            pointer-events: auto;
-            z-index: 1;
+            display: block;
         }
 
         .loading-indicator {
@@ -3233,8 +3226,6 @@ body.reduce-motion *::after {
         filter: blur(6px);
     }
 
-
-
     </style>
 </head>
 <body>
@@ -3709,130 +3700,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.siteToastText = document.getElementById('toastText');
             }
 
-            // Map of internal paths to ghost:// URLs
-            INTERNAL_GHOST_MAP = {
-                '/newtab/pages/landing.html': 'ghost://newtab',
-                '/welcomer.html': 'ghost://home',
-                '/games': 'ghost://games',
-                '/credits.html': 'ghost://devs',
-                '/chat.html': 'ghost://chat',
-                '/chat': 'ghost://chat',
-                '/main/events/sidebar/apps/music.html': 'ghost://music',
-                '/main/events/sidebar/apps/movie.html': 'ghost://streaming',
-                '/main/events/sidebar/apps/docs.html': 'ghost://docs',
-                '/main/events/sidebar/apps/announcements.html': 'ghost://notifications',
-                '/main/events/sidebar/apps/tasks/tasks.html': 'ghost://tasks',
-                '/main/events/sidebar/apps/weather.html': 'ghost://weather',
-                '/tos.html': 'ghost://tos',
-                '/search/blocker/profanity/blockedmalware.html': 'ghost://blocked',
-            };
-
-            // Check if a URL is an internal site page (not a proxied external site)
-            isInternalUrl(url) {
-                if (!url) return false;
-                // ghost:// URLs are always internal
-                if (url.toLowerCase().startsWith('ghost://') || url.toLowerCase().startsWith('nexos://') || url.toLowerCase().startsWith('nexapp://')) return true;
-                // Proxy URLs are NOT internal
-                if (url.includes('/active/embed.html?') || url.includes('/active/go/')) return false;
-                // Local paths that start with / and are on our site
-                if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) return true;
-                // Relative paths without protocol
-                if (!url.startsWith('http://') && !url.startsWith('https://') && !url.includes('://')) {
-                    // Could be a local file like welcomer.html
-                    if (url.endsWith('.html') || url === 'games' || url === 'chat') return true;
-                }
-                // Full URLs that match our origin
-                try {
-                    const urlObj = new URL(url);
-                    if (urlObj.origin === window.location.origin) {
-                        // But not if it's a proxy path
-                        if (!urlObj.pathname.startsWith('/active/embed.html') && !urlObj.pathname.startsWith('/active/go/')) {
-                            return true;
-                        }
-                    }
-                } catch(e) {}
-                return false;
-            }
-
-            // Get the ghost:// display URL for an internal path
-            getGhostUrl(url) {
-                if (!url) return url;
-                // Already a ghost:// URL
-                if (url.toLowerCase().startsWith('ghost://')) return url;
-                
-                // Strip origin if present
-                let path = url;
-                try {
-                    const urlObj = new URL(url);
-                    if (urlObj.origin === window.location.origin) {
-                        path = urlObj.pathname + urlObj.search + urlObj.hash;
-                    }
-                } catch(e) {}
-                
-                // Remove query params for matching (but keep for special cases)
-                let pathForMatch = path.split('?')[0].split('#')[0];
-                
-                // Check exact match
-                if (this.INTERNAL_GHOST_MAP[pathForMatch]) {
-                    return this.INTERNAL_GHOST_MAP[pathForMatch];
-                }
-                
-                // Check if it starts with a known path (for sub-paths like /games/something)
-                for (const [key, ghostUrl] of Object.entries(this.INTERNAL_GHOST_MAP)) {
-                    if (pathForMatch.startsWith(key + '/') || pathForMatch.startsWith(key + '?')) {
-                        // e.g. /games/somegame -> ghost://games/somegame
-                        const suffix = pathForMatch.slice(key.length);
-                        return ghostUrl + suffix;
-                    }
-                }
-                
-                // Generic internal path -> ghost://page/path
-                return 'ghost:/' + path;
-            }
-
-            getDisplayUrl(url) {
-                if (!url || url === 'about:blank') return '';
-                const originalUrl = this.extractOriginalUrl(url);
-                return originalUrl || url;
-            }
-
             bindEvents() {
                 this.newTabBtn.addEventListener('click', () => this.createNewTab());
                 this.addressBar.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
                         this.navigate(this.addressBar.value);
                     }
-                });
-
-                // Track whether user is actively typing
-                this._addressBarTyping = false;
-                this._addressBarFocusedViaClick = false;
-                
-                // Select all text when first focusing the address bar (like a real browser)
-                // but NOT if user is actively typing or repositioning cursor
-                this.addressBar.addEventListener('mousedown', () => {
-                    // If already focused and typing, don't select on click
-                    if (document.activeElement === this.addressBar && this._addressBarTyping) {
-                        this._addressBarFocusedViaClick = false;
-                        return;
-                    }
-                    this._addressBarFocusedViaClick = true;
-                });
-                this.addressBar.addEventListener('focus', () => {
-                    if (!this._addressBarTyping && this._addressBarFocusedViaClick) {
-                        setTimeout(() => {
-                            if (!this._addressBarTyping) {
-                                this.addressBar.select();
-                            }
-                        }, 0);
-                    }
-                    this._addressBarFocusedViaClick = false;
-                });
-                this.addressBar.addEventListener('input', () => {
-                    this._addressBarTyping = true;
-                });
-                this.addressBar.addEventListener('blur', () => {
-                    this._addressBarTyping = false;
                 });
 
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
@@ -3847,15 +3720,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         const tab = this.tabs.get(this.activeTabId);
-                        if (tab && !tab._navigatingHistory) {
+                        if (tab) {
                             const newUrl = e.data.url;
-                            const oldUrl = tab.currentUrl;
                             tab.currentUrl = newUrl;
-                            this.addressBar.value = this.isInternalUrl(newUrl) ? this.getGhostUrl(newUrl) : newUrl;
+                            this.addressBar.value = this.normalizeDisplayUrl(newUrl);
                             this.updateFavicon(tab, newUrl);
                             this.updateTabTitle(tab, newUrl);
                             
-                            const isSecure = newUrl.startsWith('https://') && !this.isInternalUrl(newUrl);
+                            const isSecure = newUrl.startsWith('https://');
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                             const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
                             if (securityIcon) {
@@ -3863,20 +3735,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                     '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
                                     '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
-                            }
-                            
-                            // Push to history if URL actually changed
-                            if (oldUrl !== newUrl) {
-                                const history = this.history[this.activeTabId];
-                                if (history) {
-                                    const currentIndex = this.historyIndex[this.activeTabId];
-                                    // Use raw URL for internal pages, proxy URL for external
-                                    const historyUrl = this.isInternalUrl(newUrl) ? newUrl : `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
-                                    history.splice(currentIndex + 1);
-                                    history.push(historyUrl);
-                                    this.historyIndex[this.activeTabId] = history.length - 1;
-                                    this.updateNavigationButtons();
-                                }
                             }
                         }
                     }
@@ -4536,10 +4394,30 @@ document.addEventListener("DOMContentLoaded", () => {
                     this.closeTab(tabId);
                 });
 
+                let hoverTimeout = null;
+                let previewBox = null;
+
+                tabElement.addEventListener('mouseenter', (e) => {
+                    if (this.dragState.isDragging) return;
+                    
+                    hoverTimeout = setTimeout(() => {
+                        if (!this.dragState.isDragging) {
+                            this.showTabPreview(tabId, tabElement);
+                        }
+                    }, 3000);
+                });
+
+                tabElement.addEventListener('mouseleave', (e) => {
+                    if (hoverTimeout) {
+                        clearTimeout(hoverTimeout);
+                        hoverTimeout = null;
+                    }
+                    this.hideTabPreview(tabId);
+                });
+
                 iframe.addEventListener('load', () => {
                     this.updateTabInfo(tabId);
                     this.hideLoading();
-                    this.setupPeriodicUpdates(tabId);
                 });
                 
                 this.setupIframeLoadHandling(tabId);
@@ -5060,6 +4938,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 tab.loadHandler = () => {
                     this.injectNewTabInterceptor(iframe);
 
+                    // If this load was triggered by goBack/goForward, reset the flag
+                    // and do NOT push a new history entry.
+                    const wasHistoryNav = tab._navigatingHistory;
+                    if (wasHistoryNav) {
+                        tab._navigatingHistory = false;
+                    }
+
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
@@ -5075,38 +4960,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (originalUrl && originalUrl !== 'about:blank') {
                         this.updateTabInfo(tabId);
                         
-                        // Push to history if this is a new navigation (not triggered by back/forward)
-                        if (!tab._navigatingHistory && this.activeTabId === tabId) {
-                            const history = this.history[tabId];
-                            if (history) {
-                                const currentIndex = this.historyIndex[tabId];
-                                const currentEntry = history[currentIndex];
-                                const currentExtracted = this.extractOriginalUrl(currentEntry || '');
-                                if (currentExtracted !== originalUrl) {
-                                    // For internal pages, store the actual current URL path (not stale iframe.src)
-                                    let historyUrl;
-                                    if (this.isInternalUrl(originalUrl)) {
-                                        try {
-                                            const u = new URL(originalUrl);
-                                            historyUrl = u.pathname + u.search + u.hash;
-                                        } catch(e) {
-                                            historyUrl = originalUrl;
-                                        }
-                                    } else {
-                                        historyUrl = tab.iframe.src;
-                                    }
-                                    history.splice(currentIndex + 1);
-                                    history.push(historyUrl);
-                                    this.historyIndex[tabId] = history.length - 1;
-                                    this.updateNavigationButtons();
-                                }
-                            }
-                        }
-                        
                         if (this.activeTabId === tabId) {
                             this.updateFavicon(tab, originalUrl);
-                            this.addressBar.value = this.getDisplayUrl(originalUrl);
-                            const isSecure = originalUrl.startsWith('https://') && !this.isInternalUrl(originalUrl);
+                            this.addressBar.value = this.normalizeDisplayUrl(originalUrl);
+                            const isSecure = originalUrl.startsWith('https://');
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                             
                             const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
@@ -5118,15 +4975,13 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                             
                             this.showSiteToast(tab, originalUrl);
-                            this.updateNavigationButtons();
                         }
                         
                         setTimeout(() => {
                             this.updateTabInfo(tabId);
                             if (this.activeTabId === tabId) {
                                 this.updateFavicon(tab, originalUrl);
-                                this.addressBar.value = this.getDisplayUrl(originalUrl);
-                                this.updateNavigationButtons();
+                                this.addressBar.value = this.normalizeDisplayUrl(originalUrl);
                             }
                         }, 100);
                     }
@@ -5147,7 +5002,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const currentTab = this.tabs.get(this.activeTabId);
                     if (currentTab) {
                         currentTab.element.classList.remove('active');
-                        currentTab.iframe.classList.remove('active');
+                        currentTab.iframe.style.display = 'none';
                     }
                 }
 
@@ -5155,7 +5010,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (newTab) {
                     this.activeTabId = tabId;
                     newTab.element.classList.add('active');
-                    newTab.iframe.classList.add('active');
+                    newTab.iframe.style.display = 'block';
 
                     const realUrl = this.getIframeCurrentUrl(newTab);
                     let currentUrl = realUrl || newTab.currentUrl || newTab.iframe.src;
@@ -5164,8 +5019,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
                         newTab.currentUrl = originalUrl;
                         this.updateTabTitle(newTab, originalUrl);
-                        this.addressBar.value = this.getDisplayUrl(originalUrl);
-                        const isSecure = originalUrl.startsWith('https://') && !this.isInternalUrl(originalUrl);
+                        this.addressBar.value = this.normalizeDisplayUrl(originalUrl);
+                        const isSecure = originalUrl.startsWith('https://');
                         this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                         
                         const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
@@ -5176,7 +5031,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             lucide.createIcons();
                         }
                     }
-                    
                     this.updateNavigationButtons();
                 }
             }
@@ -5377,18 +5231,18 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (!tab) return;
 
-                // Clear any history navigation state — this is a fresh user navigation
-                tab._navigatingHistory = false;
-                tab._navHistoryTarget = null;
-
                 this.showLoading();
                 tab.url = url;
+                tab._navigatingHistory = false;
                 tab.iframe.src = url;
-                this.addressBar.value = this.getDisplayUrl(url);
+                
+                const displayUrl = this.extractOriginalUrl(url);
+                this.addressBar.value = this.normalizeDisplayUrl(displayUrl);
 
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
                 
+                // Prune forward history (like a real browser)
                 history.splice(currentIndex + 1);
                 history.push(url);
                 this.historyIndex[this.activeTabId] = history.length - 1;
@@ -5396,16 +5250,41 @@ if (this.isBlockedUrl(url)) {
                 this.updateNavigationButtons();
             }
 
-            extractOriginalUrl(proxyUrl) {
-                if (!proxyUrl) return proxyUrl;
+            /**
+             * Normalize a URL for clean display in the address bar.
+             * Handles directory paths, trailing slashes, and protocol display.
+             */
+            normalizeDisplayUrl(url) {
+                if (!url || url === 'about:blank') return '';
+                // Don't normalize internal pages
+                if (url.startsWith('/') && !url.startsWith('//')) {
+                    // Clean up directory-style internal paths
+                    let clean = url.replace(/\/index\.html$/i, '');
+                    if (clean.length > 1 && clean.endsWith('/')) {
+                        clean = clean.slice(0, -1);
+                    }
+                    return clean || '/';
+                }
+                try {
+                    const urlObj = new URL(url);
+                    // Remove trailing slash from path if it's just a directory
+                    if (urlObj.pathname.length > 1 && urlObj.pathname.endsWith('/')) {
+                        urlObj.pathname = urlObj.pathname.slice(0, -1);
+                    }
+                    // Remove /index.html from the end
+                    urlObj.pathname = urlObj.pathname.replace(/\/index\.html$/i, '');
+                    return urlObj.toString();
+                } catch(e) {
+                    return url;
+                }
+            }
 
-                // ?url= style proxy
-                const match = proxyUrl.match(/[?&]url=([^&]+)/);
+            extractOriginalUrl(proxyUrl) {
+                const match = proxyUrl.match(/url=([^&]+)/);
                 if (match) {
                     return decodeURIComponent(match[1]);
                 }
                 
-                // /active/go/ encoded style proxy
                 const uvMatch = proxyUrl.match(/\/active\/go\/(.+)/);
                 if (uvMatch) {
                     try {
@@ -5418,19 +5297,7 @@ if (this.isBlockedUrl(url)) {
                         }
                     } catch(e) {}
                 }
-
-                // Already an absolute URL — return as-is
-                if (proxyUrl.startsWith('http://') || proxyUrl.startsWith('https://')) {
-                    return proxyUrl;
-                }
-
-                // Internal path like /games or /credits.html — resolve to full origin URL
-                if (proxyUrl.startsWith('/') || proxyUrl.startsWith('./') || proxyUrl.startsWith('../')) {
-                    try {
-                        return new URL(proxyUrl, window.location.origin).href;
-                    } catch(e) {}
-                }
-
+                
                 return proxyUrl;
             }
 
@@ -5508,18 +5375,18 @@ if (this.isBlockedUrl(url)) {
                     }
                 }
                 
-                    const titleElement = tab.element.querySelector('.tab-title');
-                    if (titleElement) {
-                        titleElement.textContent = tab.title;
-                        titleElement.title = tab.title;
-                    }
-                    
-                    if (previousTitle && previousTitle !== tab.title && this.activeTabId && this.tabs.get(this.activeTabId) === tab) {
-                        this.showSiteToast(tab, url);
-                    }
+                const titleElement = tab.element.querySelector('.tab-title');
+                if (titleElement) {
+                    titleElement.textContent = tab.title;
+                    titleElement.title = tab.title;
                 }
+                
+                if (previousTitle && previousTitle !== tab.title && this.activeTabId && this.tabs.get(this.activeTabId) === tab) {
+                    this.showSiteToast(tab, url);
+                }
+            }
 
-                formatDomainTitle(domain) {
+            formatDomainTitle(domain) {
                 let title = domain.replace(/^www\./, '');
                 
                 const domainMap = {
@@ -5580,17 +5447,11 @@ if (this.isBlockedUrl(url)) {
                     const iframeHref = tab.iframe.contentWindow.location.href;
                     if (iframeHref && iframeHref !== 'about:blank') {
                         const decoded = this.extractOriginalUrl(iframeHref);
-                        // Return decoded proxy URL, absolute URL, or full same-origin URL
-                        if (decoded && decoded !== 'about:blank') {
+                        if (decoded !== iframeHref && decoded.startsWith('http')) {
                             return decoded;
                         }
                     }
                 } catch(e) {
-                    // Cross-origin blocked — fall back to resolving iframe.src
-                    const src = tab.iframe.src;
-                    if (src && src !== 'about:blank') {
-                        return this.extractOriginalUrl(src);
-                    }
                 }
                 return null;
             }
@@ -5603,7 +5464,10 @@ if (this.isBlockedUrl(url)) {
                 const interval = setInterval(() => {
                     if (this.activeTabId === tabId) {
                         const tab = this.tabs.get(tabId);
-                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
+                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank') {
+                            // Skip polling while a back/forward navigation is in flight
+                            if (tab._navigatingHistory) return;
+                            
                             const realUrl = this.getIframeCurrentUrl(tab);
                             if (realUrl && realUrl !== 'about:blank') {
                                 const oldUrl = tab.currentUrl;
@@ -5616,11 +5480,11 @@ if (this.isBlockedUrl(url)) {
                                     }
                                     tab.currentUrl = realUrl;
                                     tab.url = tab.iframe.src;
-                                    this.addressBar.value = this.isInternalUrl(realUrl) ? this.getGhostUrl(realUrl) : realUrl;
+                                    this.addressBar.value = this.normalizeDisplayUrl(realUrl);
                                     this.updateFavicon(tab, realUrl);
                                     this.updateTabTitle(tab, realUrl);
                                     
-                                    const isSecure = realUrl.startsWith('https://') && !this.isInternalUrl(realUrl);
+                                    const isSecure = realUrl.startsWith('https://');
                                     this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                                     const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
                                     if (securityIcon) {
@@ -5630,39 +5494,21 @@ if (this.isBlockedUrl(url)) {
                                         lucide.createIcons();
                                     }
                                     
-                                    if (!tab._navigatingHistory) {
-                                        const history = this.history[this.activeTabId];
-                                        if (history) {
-                                            const currentIndex = this.historyIndex[this.activeTabId];
-                                            const currentEntry = history[currentIndex];
-                                            const currentExtracted = this.extractOriginalUrl(currentEntry || '');
-                                            // Also check _navHistoryTarget to avoid pushing the URL
-                                            // we just navigated to via back/forward
-                                            if (currentExtracted !== realUrl && tab._navHistoryTarget !== realUrl && tab._navHistoryTargetPath !== realUrl) {
-                                                // For internal pages, store the path; for external, store proxy URL
-                                                let historyUrl;
-                                                if (this.isInternalUrl(realUrl)) {
-                                                    try {
-                                                        const u = new URL(realUrl);
-                                                        historyUrl = u.pathname + u.search + u.hash;
-                                                    } catch(e) {
-                                                        historyUrl = realUrl;
-                                                    }
-                                                } else {
-                                                    historyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
-                                                }
-                                                history.splice(currentIndex + 1);
-                                                history.push(historyUrl);
-                                                this.historyIndex[this.activeTabId] = history.length - 1;
-                                                this.updateNavigationButtons();
-                                            }
+                                    // This is a true in-page navigation (link clicked inside iframe).
+                                    // Push it to history and prune forward entries.
+                                    const history = this.history[this.activeTabId];
+                                    if (history) {
+                                        const currentIndex = this.historyIndex[this.activeTabId];
+                                        const currentEntry = history[currentIndex];
+                                        const currentExtracted = this.extractOriginalUrl(currentEntry || '');
+                                        if (currentExtracted !== realUrl) {
+                                            const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                            // Prune forward history
+                                            history.splice(currentIndex + 1);
+                                            history.push(proxyUrl);
+                                            this.historyIndex[this.activeTabId] = history.length - 1;
+                                            this.updateNavigationButtons();
                                         }
-                                    } else if (tab._navHistoryTarget && (tab._navHistoryTarget === realUrl || tab._navHistoryTargetPath === realUrl)) {
-                                        // The history navigation has settled — URL matches target
-                                        // Clear the flag so future in-iframe navigations are tracked
-                                        tab._navigatingHistory = false;
-                                        tab._navHistoryTarget = null;
-                                        tab._navHistoryTargetPath = null;
                                     }
                                     
                                     if (this._addToBrowseHistory) {
@@ -5679,39 +5525,6 @@ if (this.isBlockedUrl(url)) {
                 this.updateIntervals.set(tabId, interval);
             }
 
-            _navToHistoryEntry(url) {
-                const tab = this.tabs.get(this.activeTabId);
-                if (!tab) return;
-                const decoded = this.extractOriginalUrl(url);
-                tab.currentUrl = decoded;
-                tab.url = url;
-                // Store the target URL so the periodic poller knows to skip it
-                tab._navigatingHistory = true;
-                tab._navHistoryTarget = decoded;
-                // For internal full-origin URLs, also set target to path form
-                try {
-                    const u = new URL(decoded);
-                    if (u.origin === window.location.origin) {
-                        tab._navHistoryTargetPath = u.pathname + u.search + u.hash;
-                    }
-                } catch(e) {}
-                tab.iframe.src = url;
-                this.addressBar.value = this.getDisplayUrl(decoded);
-                this.updateFavicon(tab, decoded);
-                this.updateTabTitle(tab, decoded);
-
-                // Clear navigation flag after load settles
-                tab.iframe.addEventListener('load', () => {
-                    setTimeout(() => {
-                        if (tab._navHistoryTarget === decoded) {
-                            tab._navigatingHistory = false;
-                            tab._navHistoryTarget = null;
-                            tab._navHistoryTargetPath = null;
-                        }
-                    }, 600);
-                }, { once: true });
-            }
-
             goBack() {
                 if (!this.activeTabId) return;
                 
@@ -5721,7 +5534,21 @@ if (this.isBlockedUrl(url)) {
                 if (currentIndex > 0) {
                     this.historyIndex[this.activeTabId]--;
                     const previousUrl = history[this.historyIndex[this.activeTabId]];
-                    this._navToHistoryEntry(previousUrl);
+                    
+                    const tab = this.tabs.get(this.activeTabId);
+                    if (tab) {
+                        const decoded = this.extractOriginalUrl(previousUrl);
+                        tab.currentUrl = decoded;
+                        tab.url = previousUrl;
+                        // Set flag BEFORE setting src to prevent the load handler
+                        // from creating a new history entry
+                        tab._navigatingHistory = true;
+                        tab.iframe.src = previousUrl;
+                        this.addressBar.value = this.normalizeDisplayUrl(decoded);
+                        this.updateFavicon(tab, decoded);
+                        this.updateTabTitle(tab, decoded);
+                    }
+                    
                     this.updateNavigationButtons();
                 }
             }
@@ -5735,11 +5562,23 @@ if (this.isBlockedUrl(url)) {
                 if (currentIndex < history.length - 1) {
                     this.historyIndex[this.activeTabId]++;
                     const nextUrl = history[this.historyIndex[this.activeTabId]];
-                    this._navToHistoryEntry(nextUrl);
+                    
+                    const tab = this.tabs.get(this.activeTabId);
+                    if (tab) {
+                        const decoded = this.extractOriginalUrl(nextUrl);
+                        tab.currentUrl = decoded;
+                        tab.url = nextUrl;
+                        // Set flag BEFORE setting src
+                        tab._navigatingHistory = true;
+                        tab.iframe.src = nextUrl;
+                        this.addressBar.value = this.normalizeDisplayUrl(decoded);
+                        this.updateFavicon(tab, decoded);
+                        this.updateTabTitle(tab, decoded);
+                    }
+                    
                     this.updateNavigationButtons();
                 }
             }
-
 
             refresh() {
                 if (!this.activeTabId) return;
@@ -5747,25 +5586,9 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
-                    let urlToLoad;
-                    if (tab.currentUrl && this.isInternalUrl(tab.currentUrl)) {
-                        // For internal pages, use currentUrl (which tracks actual navigation)
-                        // Extract path if it's a full origin URL
-                        try {
-                            const u = new URL(tab.currentUrl);
-                            if (u.origin === window.location.origin) {
-                                urlToLoad = u.pathname + u.search + u.hash;
-                            } else {
-                                urlToLoad = tab.currentUrl;
-                            }
-                        } catch(e) {
-                            urlToLoad = tab.currentUrl;
-                        }
-                    } else if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
-                        // External URL — re-proxy it
+                    let urlToLoad = tab.iframe.src;
+                    if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
-                    } else {
-                        urlToLoad = tab.iframe.src;
                     }
                     tab.iframe.src = 'about:blank';
                     setTimeout(() => {
@@ -5967,7 +5790,7 @@ if (this.isBlockedUrl(url)) {
                             tab.iframe.src = proxyUrl;
                             tab.url = proxyUrl;
                             tab.currentUrl = url;
-                            this.addressBar.value = url;
+                            this.addressBar.value = this.normalizeDisplayUrl(url);
                             this.updateFavicon(tab, url);
                             this.updateTabTitle(tab, url);
                         }
@@ -8970,44 +8793,16 @@ setInterval(async () => {
     Object.keys(GHOST_MAP).forEach(function(k) { GHOST_REVERSE['ghost://' + GHOST_MAP[k]] = k; });
 
     function isInternalUrl(url) {
-        if (!url) return false;
-        if (url.startsWith('ghost://')) return false;
-        if (!url.startsWith('http://') && !url.startsWith('https://')) return true;
-        // Check if the URL is on our own origin (internal page with full URL)
-        try {
-            var urlObj = new URL(url);
-            if (urlObj.origin === window.location.origin) {
-                // But not proxy paths
-                if (!urlObj.pathname.startsWith('/active/embed.html') && !urlObj.pathname.startsWith('/active/go/')) {
-                    return true;
-                }
-            }
-        } catch(e) {}
-        return false;
+        return url && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('ghost://');
     }
 
     function toGhostUrl(url) {
         if (!url) return url;
-        // Strip origin if present to get path
-        var path = url;
-        try {
-            var urlObj = new URL(url);
-            if (urlObj.origin === window.location.origin) {
-                path = urlObj.pathname + urlObj.search + urlObj.hash;
-            }
-        } catch(e) {}
-        if (GHOST_MAP[path]) return 'ghost://' + GHOST_MAP[path];
-        var base = path.split('?')[0].split('#')[0];
+        if (GHOST_MAP[url]) return 'ghost://' + GHOST_MAP[url];
+        var base = url.split('?')[0];
         if (GHOST_MAP[base]) return 'ghost://' + GHOST_MAP[base];
-        // Check sub-paths
-        for (var key in GHOST_MAP) {
-            if (base.startsWith(key + '/') || base.startsWith(key + '?')) {
-                var suffix = base.slice(key.length);
-                return 'ghost://' + GHOST_MAP[key] + suffix;
-            }
-        }
         if (isInternalUrl(url)) {
-            var name = path.replace(/^\//, '').replace(/\.html$/, '').replace(/\//g, '-');
+            var name = url.replace(/^\//, '').replace(/\.html$/, '').replace(/\//g, '-');
             return 'ghost://' + (name || 'page');
         }
         return url;
@@ -9016,16 +8811,7 @@ setInterval(async () => {
     function fromGhostUrl(ghostUrl) {
         if (!ghostUrl || !ghostUrl.startsWith('ghost://')) return ghostUrl;
         if (GHOST_REVERSE[ghostUrl]) return GHOST_REVERSE[ghostUrl];
-        // Handle sub-paths like ghost://games/somegame -> /games/somegame
-        for (var key in GHOST_REVERSE) {
-            if (ghostUrl.startsWith(key + '/')) {
-                var suffix = ghostUrl.slice(key.length);
-                return GHOST_REVERSE[key] + suffix;
-            }
-        }
-        // Generic ghost://something -> /something
-        var path = ghostUrl.replace('ghost:/', '');
-        return path;
+        return ghostUrl;
     }
 
     function getBookmarkDisplayUrl(url) {
@@ -9106,10 +8892,8 @@ setInterval(async () => {
                     var b = window.browser;
                     var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
                     if (b) {
-                        if (isInternalUrl(navUrl)) {
-                            var path = navUrl;
-                            try { var u = new URL(navUrl); if (u.origin === window.location.origin) path = u.pathname + u.search + u.hash; } catch(e) {}
-                            b.loadUrl(path);
+                        if (navUrl && !navUrl.startsWith('http')) {
+                            b.loadUrl(navUrl);
                         } else {
                             b.navigate(navUrl);
                         }
@@ -9170,11 +8954,8 @@ setInterval(async () => {
                     var b = window.browser;
                     var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
                     if (b) {
-                        if (isInternalUrl(navUrl)) {
-                            // Strip origin for internal URLs to get path
-                            var path = navUrl;
-                            try { var u = new URL(navUrl); if (u.origin === window.location.origin) path = u.pathname + u.search + u.hash; } catch(e) {}
-                            b.loadUrl(path);
+                        if (navUrl && !navUrl.startsWith('http')) {
+                            b.loadUrl(navUrl);
                         } else {
                             b.navigate(navUrl);
                         }
