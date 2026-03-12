@@ -3722,6 +3722,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
                             const newUrl = e.data.url;
+                            const oldUrl = tab.currentUrl;
                             tab.currentUrl = newUrl;
                             this.addressBar.value = this.normalizeDisplayUrl(newUrl);
                             this.updateFavicon(tab, newUrl);
@@ -3735,6 +3736,21 @@ document.addEventListener("DOMContentLoaded", () => {
                                     '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
                                     '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
+                            }
+                            
+                            // Push URL change to history if it's genuinely new
+                            if (newUrl !== oldUrl && !tab._navigatingHistory) {
+                                const history = this.history[this.activeTabId];
+                                if (history) {
+                                    const currentIndex = this.historyIndex[this.activeTabId];
+                                    const historyEntry = newUrl.startsWith('/') 
+                                        ? newUrl 
+                                        : `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
+                                    history.splice(currentIndex + 1);
+                                    history.push(historyEntry);
+                                    this.historyIndex[this.activeTabId] = history.length - 1;
+                                    this.updateNavigationButtons();
+                                }
                             }
                         }
                     }
@@ -3819,32 +3835,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 document.getElementById('gamesMenuItem').addEventListener('click', () => {
                     const newTabId = this.createNewTab();
-                    const newTab = this.tabs.get(newTabId);
-                    if (newTab) {
-                        newTab.url = '/games';
-                        newTab.iframe.src = '/games';
-                        newTab.title = 'Games';
-                        const titleEl = newTab.element.querySelector('.tab-title');
-                        if (titleEl) titleEl.textContent = 'Games';
+                    if (newTabId) {
+                        this.loadUrl('/games');
                     }
                     this.browserMenu.classList.remove('visible');
                 });
 
                 document.getElementById('openDevsAddedByLeah').addEventListener('click', () => {
-                    const activeTab = this.tabs.get(this.activeTabId);
-                    if (activeTab && activeTab.iframe) {
-                        activeTab.iframe.src = '/credits.html';
-                        this.updateAddressBar();
-                    }
+                    this.loadUrl('/credits.html');
                     this.browserMenu.classList.remove('visible');
                 });
 
                 document.getElementById('tos').addEventListener('click', () => {
-                    const activeTab = this.tabs.get(this.activeTabId);
-                    if (activeTab && activeTab.iframe) {
-                        activeTab.iframe.src = '/tos.html';
-                        this.updateAddressBar();
-                    }
+                    this.loadUrl('/tos.html');
                     this.browserMenu.classList.remove('visible');
                 });
 
@@ -3893,19 +3896,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     } else if (e.altKey && e.shiftKey && key === 'g') {
                         e.preventDefault();
-                        const tab = this.tabs.get(this.activeTabId);
-                        if (tab?.iframe) {
-                            tab.iframe.src = '/games';
-                            this.updateAddressBar();
-                        }
+                        this.loadUrl('/games');
                     
                     } else if (e.altKey && e.shiftKey && key === 'c') {
                         e.preventDefault();
-                        const tab = this.tabs.get(this.activeTabId);
-                        if (tab?.iframe) {
-                            tab.iframe.src = '/credits.html';
-                            this.updateAddressBar();
-                        }
+                        this.loadUrl('/credits.html');
                     
                     } else if (e.altKey && key === 'w') {
                         e.preventDefault();
@@ -4938,6 +4933,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 tab.loadHandler = () => {
                     this.injectNewTabInterceptor(iframe);
 
+                    // Start periodic URL monitoring on every load
+                    this.setupPeriodicUpdates(tabId);
+
                     // If this load was triggered by goBack/goForward, reset the flag
                     // and do NOT push a new history entry.
                     const wasHistoryNav = tab._navigatingHistory;
@@ -5110,20 +5108,28 @@ if (this.isBlockedUrl(url)) {
 
                 if (url.toLowerCase().startsWith('ghost://')) {
                     var ghostRoutes = {
-                        'ghost://new-tab': '/newtab/pages/landing.html',
-                        'ghost://chat': '/chat.html',
-                        'ghost://games': '/games',
-                        'ghost://devs': '/credits.html',
-                        'ghost://restart': '/welcomer.html?resetagain',
-                        'ghost://streaming': '/main/events/sidebar/apps/movie.html',
-                        'ghost://docs': '/main/events/sidebar/apps/docs.html',
-                        'ghost://music': '/main/events/sidebar/apps/music.html'
+                        'new-tab': '/newtab/pages/landing.html',
+                        'chat': '/chat.html',
+                        'games': '/games',
+                        'devs': '/credits.html',
+                        'restart': '/welcomer.html?resetagain',
+                        'streaming': '/main/events/sidebar/apps/movie.html',
+                        'docs': '/main/events/sidebar/apps/docs.html',
+                        'music': '/main/events/sidebar/apps/music.html'
                     };
-                    var ghostTarget = ghostRoutes[url.toLowerCase()];
+                    // Extract everything after ghost:// 
+                    var ghostPath = url.slice(8); // remove 'ghost://'
+                    var ghostSegment = ghostPath.split('?')[0].split('#')[0].toLowerCase();
+                    var ghostQuery = ghostPath.includes('?') ? ghostPath.slice(ghostPath.indexOf('?')) : '';
+                    var ghostTarget = ghostRoutes[ghostSegment];
                     if (ghostTarget) {
-                        this.loadUrl(ghostTarget);
+                        // Append any query params from the ghost:// URL
+                        this.loadUrl(ghostTarget + ghostQuery);
                         return;
                     }
+                    // Fallback: treat as /segment path
+                    this.loadUrl('/' + ghostPath);
+                    return;
                 }
 
                 if (url.toLowerCase() === 'nexos://chat') {
@@ -5256,14 +5262,27 @@ if (this.isBlockedUrl(url)) {
              */
             normalizeDisplayUrl(url) {
                 if (!url || url === 'about:blank') return '';
-                // Don't normalize internal pages
+                // Internal pages: show ghost:// for simple single-segment paths
                 if (url.startsWith('/') && !url.startsWith('//')) {
                     // Clean up directory-style internal paths
                     let clean = url.replace(/\/index\.html$/i, '');
                     if (clean.length > 1 && clean.endsWith('/')) {
                         clean = clean.slice(0, -1);
                     }
-                    return clean || '/';
+                    clean = clean || '/';
+                    
+                    // For simple single-segment paths like /games, /chat, etc.
+                    // show as ghost://games in the address bar
+                    const pathOnly = clean.split('?')[0].split('#')[0];
+                    if (/^\/[a-zA-Z0-9_-]+$/.test(pathOnly)) {
+                        // Single segment path with no dots (not a file)
+                        if (!pathOnly.includes('.')) {
+                            const segment = pathOnly.slice(1);
+                            const queryPart = clean.slice(pathOnly.length);
+                            return 'ghost://' + segment + queryPart;
+                        }
+                    }
+                    return clean;
                 }
                 try {
                     const urlObj = new URL(url);
@@ -5446,10 +5465,22 @@ if (this.isBlockedUrl(url)) {
                 try {
                     const iframeHref = tab.iframe.contentWindow.location.href;
                     if (iframeHref && iframeHref !== 'about:blank') {
+                        // Check for proxy URL first
                         const decoded = this.extractOriginalUrl(iframeHref);
                         if (decoded !== iframeHref && decoded.startsWith('http')) {
                             return decoded;
                         }
+                        // Handle internal pages: if the iframe is on same origin,
+                        // return the pathname + search + hash as an internal URL
+                        try {
+                            const iframeLoc = tab.iframe.contentWindow.location;
+                            if (iframeLoc.origin === window.location.origin) {
+                                const internalUrl = iframeLoc.pathname + iframeLoc.search + iframeLoc.hash;
+                                if (internalUrl && internalUrl !== '/') {
+                                    return internalUrl;
+                                }
+                            }
+                        } catch(e2) {}
                     }
                 } catch(e) {
                 }
@@ -5494,18 +5525,23 @@ if (this.isBlockedUrl(url)) {
                                         lucide.createIcons();
                                     }
                                     
-                                    // This is a true in-page navigation (link clicked inside iframe).
-                                    // Push it to history and prune forward entries.
+                                    // Push to history for BOTH proxy and internal navigations
                                     const history = this.history[this.activeTabId];
                                     if (history) {
                                         const currentIndex = this.historyIndex[this.activeTabId];
                                         const currentEntry = history[currentIndex];
                                         const currentExtracted = this.extractOriginalUrl(currentEntry || '');
                                         if (currentExtracted !== realUrl) {
-                                            const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                            // For internal URLs, store them directly; for external, wrap in proxy
+                                            let historyEntry;
+                                            if (realUrl.startsWith('/')) {
+                                                historyEntry = realUrl;
+                                            } else {
+                                                historyEntry = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                            }
                                             // Prune forward history
                                             history.splice(currentIndex + 1);
-                                            history.push(proxyUrl);
+                                            history.push(historyEntry);
                                             this.historyIndex[this.activeTabId] = history.length - 1;
                                             this.updateNavigationButtons();
                                         }
@@ -5540,10 +5576,13 @@ if (this.isBlockedUrl(url)) {
                         const decoded = this.extractOriginalUrl(previousUrl);
                         tab.currentUrl = decoded;
                         tab.url = previousUrl;
-                        // Set flag BEFORE setting src to prevent the load handler
-                        // from creating a new history entry
                         tab._navigatingHistory = true;
-                        tab.iframe.src = previousUrl;
+                        // Internal URLs (starting with /) load directly, proxy URLs load as-is
+                        if (previousUrl.startsWith('/') && !previousUrl.startsWith('/active/embed.html')) {
+                            tab.iframe.src = previousUrl;
+                        } else {
+                            tab.iframe.src = previousUrl;
+                        }
                         this.addressBar.value = this.normalizeDisplayUrl(decoded);
                         this.updateFavicon(tab, decoded);
                         this.updateTabTitle(tab, decoded);
@@ -5568,9 +5607,13 @@ if (this.isBlockedUrl(url)) {
                         const decoded = this.extractOriginalUrl(nextUrl);
                         tab.currentUrl = decoded;
                         tab.url = nextUrl;
-                        // Set flag BEFORE setting src
                         tab._navigatingHistory = true;
-                        tab.iframe.src = nextUrl;
+                        // Internal URLs (starting with /) load directly, proxy URLs load as-is
+                        if (nextUrl.startsWith('/') && !nextUrl.startsWith('/active/embed.html')) {
+                            tab.iframe.src = nextUrl;
+                        } else {
+                            tab.iframe.src = nextUrl;
+                        }
                         this.addressBar.value = this.normalizeDisplayUrl(decoded);
                         this.updateFavicon(tab, decoded);
                         this.updateTabTitle(tab, decoded);
@@ -5587,8 +5630,13 @@ if (this.isBlockedUrl(url)) {
                 if (tab) {
                     this.showLoading();
                     let urlToLoad = tab.iframe.src;
+                    // For internal pages, just reload the current src directly
+                    // For external (proxy) pages, reconstruct the proxy URL
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
+                    } else if (tab.currentUrl && tab.currentUrl.startsWith('/')) {
+                        // Internal page - load the path directly, no proxy
+                        urlToLoad = tab.currentUrl;
                     }
                     tab.iframe.src = 'about:blank';
                     setTimeout(() => {
