@@ -45,6 +45,40 @@
         }
     </style>
 </head>
+<script>
+(function() {
+    var musicSrc = '1772992502851-9fb8e2a0a90b60a5.mp3';
+
+    var audio = new Audio(musicSrc);
+    audio.loop = true;
+    audio.volume = 0.5;
+    var started = false;
+
+    document.addEventListener('click', function handler(e) {
+        var canvas = document.querySelector('#gameContainer canvas');
+        if (!started && canvas && canvas.contains(e.target)) {
+            started = true;
+            audio.play().catch(function(err) {
+                console.log('Audio play failed:', err);
+            });
+
+            try {
+                var AC = window.AudioContext || window.webkitAudioContext;
+                if (AC) {
+                    var origCreateGain = AC.prototype.createGain;
+                    AC.prototype.createGain = function() {
+                        var gain = origCreateGain.call(this);
+                        gain.gain.value = 0;
+                        return gain;
+                    };
+                }
+            } catch(e) {}
+
+            document.removeEventListener('click', handler);
+        }
+    }, true);
+})();
+</script>
 
 <body style="margin: 0; overflow: hidden;">
     <div class="alert">
