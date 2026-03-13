@@ -2024,12 +2024,11 @@ function timingForWords(rawWords, lineMs, nextMs) {
       scaledFill     = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
       scaledPause    = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
     } else {
-      // Can't absorb with fast words alone — scale everything but protect pauses more
+      // Can't absorb with fast words alone — uniform scale but preserve pause shape
       const scale    = gapMs / rawTotal;
-      // Pauses scale less aggressively (floor at 40% of original)
       scaledFill     = fillDurs.map(d  => d * scale);
-      scaledPause    = pauseDurs.map(d => Math.max(d * 0.4, d * scale));
-      // Re-check total
+      scaledPause    = pauseDurs.map(d => Math.max(d * 0.35, d * scale));
+      // Re-check
       const newTotal = scaledFill.reduce((a,b)=>a+b,0) + scaledPause.reduce((a,b)=>a+b,0);
       if (newTotal > gapMs) {
         const s2   = gapMs / newTotal;
@@ -2037,6 +2036,11 @@ function timingForWords(rawWords, lineMs, nextMs) {
         scaledPause = scaledPause.map(d => d * s2);
       }
     }
+    // Floor: ensure no real content word is shorter than 40ms (avoids invisible flashes)
+    scaledFill = scaledFill.map((d, wi) => {
+      const c = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
+      return FAST_WORDS.has(c) ? Math.max(d, 35) : Math.max(d, 60);
+    });
   }
 
   // Build word list with pause sentinels after punctuated words
@@ -2108,9 +2112,11 @@ function buildWordTimings(lrc) {
     // but without the overflow scale — this gives us the "natural" duration.
     // We use a neutral msPerSyl (the line's own gap / mainSyls, unclamped).
     const naturalMsPerSyl = Math.max(95, gap / mainSyls);
-    const estSingMs = mainRawWords.reduce((acc, w, wi) => {
+    // estSingMs: natural singing duration WITHOUT last-word hold (that's silence, not singing)
+    // Use isLast=false for all words so we get just the "moving through words" time
+    const estSingMs = mainRawWords.reduce((acc, w) => {
       const s   = syllableCount(w);
-      const mul = wordDurMul(w, s, wi === mainRawWords.length - 1, naturalMsPerSyl);
+      const mul = wordDurMul(w, s, false, naturalMsPerSyl);
       return acc + s * naturalMsPerSyl * mul;
     }, 0);
 
@@ -2138,7 +2144,7 @@ function buildWordTimings(lrc) {
     // Mid-line parens → injected inline into the word array in pass 2 (see _inlineParens)
 
     // Inject instrumental gap marker if singing ends well before next line
-    if (nextMs !== null && gap > estSingMs + 3000) {
+    if (nextMs !== null && gap > estSingMs + 2000) {
       const instrStart = line.ms + Math.min(estSingMs + 200, gap * 0.45);
       expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
     }
@@ -2163,7 +2169,22 @@ function buildWordTimings(lrc) {
   // Pass 2 — assign word timings
   return expanded.map((line, i) => {
     const lineMs   = line.ms;
-    const nextMs   = expanded[i+1]?.ms ?? (lineMs + 3500);
+    // For sub-lines (parens), use the next REAL line's ms as the timing boundary
+    // so their words get the same amount of time as if they were a standalone line.
+    // For normal lines, use the immediate next entry (could be synthetic/paren — handled in tickLrc).
+    let nextMs;
+    if (line._isParen || line._synthetic) {
+      // find next real line ms
+      nextMs = lineMs + 3500;
+      for (let j = i + 1; j < expanded.length; j++) {
+        if (!expanded[j]._isParen && !expanded[j]._synthetic) {
+          nextMs = expanded[j].ms;
+          break;
+        }
+      }
+    } else {
+      nextMs = expanded[i+1]?.ms ?? (lineMs + 3500);
+    }
     const rawWords = (line.text || '').split(/\s+/).filter(Boolean);
 
     if (!rawWords.length) {
@@ -2359,7 +2380,15 @@ function _tickWords(lineIdx, t, nextBound) {
     if (w._isPause) continue;
 
     const wStart = w.ms;
-    const wEnd   = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
+    // Skip sentinel entries when finding wEnd (pause markers, inline parens don't count)
+    let wEnd = lastWordEnd;
+    if (wi < words.length - 1) {
+      for (let ni = wi + 1; ni < words.length; ni++) {
+        const nw = words[ni];
+        if (!nw._isPause && !nw._isInlineParen) { wEnd = nw.ms; break; }
+        if (nw._isPause) { wEnd = nw.ms; break; } // pause sentinel IS the boundary
+      }
+    }
     const id     = 'lw' + lineIdx + '_' + wi;
 
     if (t < wStart) {
@@ -2367,9 +2396,13 @@ function _tickWords(lineIdx, t, nextBound) {
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
     } else {
-      const raw   = (t - wStart) / Math.max(1, wEnd - wStart);
-      const eased = raw < 0.5 ? 2*raw*raw : -1 + (4-2*raw)*raw;
-      _setLwState(id, 'now-word', (eased * 100).toFixed(1) + '%');
+      const raw = (t - wStart) / Math.max(1, wEnd - wStart);
+      // Slight ease-in then linear: starts just a touch late (consonant onset)
+      // then sweeps through the vowel body at near-linear pace
+      const eased = raw < 0.25
+        ? raw * raw * 4          // gentle ease-in for first 25%
+        : 0.25 + (raw - 0.25) * (1 / 0.75) * 0.75; // linear rest
+      _setLwState(id, 'now-word', (Math.min(1, eased) * 100).toFixed(1) + '%');
     }
   }
 }
@@ -2392,27 +2425,38 @@ function _resetUpcoming(lineIdx) {
   });
 }
 
+// Reset words to upcoming — but skip any whose start time has already passed at time t.
+// This prevents the first-word glitch where word 0 flashes upcoming→done in one tick.
+function _resetUpcomingSelective(lineIdx, t) {
+  const words = ST.lrc[lineIdx]?.words;
+  if (!words) return;
+  words.forEach((w, wi) => {
+    if (w._isPause) return;
+    const id = 'lw'+lineIdx+'_'+wi;
+    delete _lwState[id];
+    if (w.ms <= t) {
+      // Already started — don't reset to upcoming, let _tickWords handle it this frame
+    } else {
+      _setLwState(id, 'upcoming', '-20%');
+    }
+  });
+}
+
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  // Adaptive lookahead: slower songs need a bigger window so words light up on time.
-  // Derive current pace from the active line if available.
+  // Adaptive lookahead based on current line pace
   let AHEAD = 80;
-  if (ST.lrc.length > 0) {
-    const aIdx = (() => {
-      let lo=0,hi=ST.lrc.length-1,a=0;
-      while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
-      return a;
-    })();
-    const aLine = ST.lrc[aIdx];
+  {
+    let lo=0,hi=ST.lrc.length-1,a=0;
+    while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
+    const aLine = ST.lrc[a];
     if (aLine?.words?.length > 1) {
       const realW = aLine.words.filter(w=>!w._isPause&&!w._isInlineParen);
       if (realW.length > 1) {
         const span = realW[realW.length-1].ms - realW[0].ms;
-        const totalSyls = realW.reduce((a,w)=>a+syllableCount(w.word),0)||1;
-        const mps = span / totalSyls;
-        // Scale: 80ms at fast pace, up to 160ms at very slow pace
-        AHEAD = Math.round(Math.max(60, Math.min(160, mps * 0.35)));
+        const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
+        AHEAD = Math.round(Math.max(50, Math.min(150, mps * 0.30)));
       }
     }
   }
@@ -2429,67 +2473,56 @@ function tickLrc(posMs) {
   const activeEntry = ST.lrc[active];
 
   // ── Resolve focus & parenActive ─────────────────────────────────────────
-  // focus      = the line index that is visually .now and scrolled to
-  // parenActive = a sub-line ticking silently BELOW focus at the same time (-1 if none)
   let focus = active;
   let parenActive = -1;
 
   if (activeEntry._synthetic) {
-    // Instrumental marker — walk back to last real line
     while (focus > 0 && (ST.lrc[focus]._isParen || ST.lrc[focus]._synthetic)) focus--;
 
   } else if (activeEntry._isParen && !activeEntry._wholeLine) {
-    // Find the nearest preceding real (non-paren, non-synthetic) line
+    // Walk back to nearest preceding real line
     let prevReal = active - 1;
     while (prevReal >= 0 && (ST.lrc[prevReal]._isParen || ST.lrc[prevReal]._synthetic)) prevReal--;
 
     if (prevReal < 0) {
-      // Nothing before — paren becomes focus
-      focus = active;
+      focus = active; // nothing before, paren is focus
     } else {
-      const parentMs = ST.lrc[prevReal].ms;
-      const parenMs  = activeEntry.ms;
-
-      // Was this paren repositioned AFTER the next real line (i.e. it now lives
-      // below a different line than its original parent)?
+      // A paren is an independent focus ONLY if it was repositioned AFTER the next
+      // real line (the sort pass moved it). If it still belongs to prevReal, it ticks alongside.
       const nextRealMs = _nextRealLineMs(active, Infinity);
-      const parenBelongsToNext = (parenMs >= nextRealMs || activeEntry._parenParentMs !== parentMs);
+      const wasRepositioned = activeEntry._parenParentMs !== ST.lrc[prevReal].ms;
 
-      if (parenBelongsToNext || parenMs > parentMs) {
-        // Paren is truly after its parent: paren IS the focus, parent is past
+      if (wasRepositioned) {
+        // Repositioned paren: it lives below a different line — it IS the focus
         focus = active;
       } else {
-        // Paren overlaps parent: parent stays focus, paren ticks alongside
+        // Paren belongs to prevReal — tick alongside, prevReal stays focus
         focus = prevReal;
         parenActive = active;
       }
     }
 
   } else {
-    // Normal line — focus is active
+    // Normal line (or _wholeLine paren)
     focus = active;
-    // Look immediately forward: any paren that belongs to this line and has started?
-    // Only if paren's _parenParentMs matches this line's ms
+    // Check if a sub-line paren that belongs to THIS line has started
     const focusMs = activeEntry.ms;
     for (let j = focus + 1; j < ST.lrc.length; j++) {
       const e = ST.lrc[j];
-      if (!e._isParen || e._wholeLine) break; // hit next real line or whole-line paren
-      if (e._parenParentMs !== focusMs) break; // belongs to a different line
-      if (e.ms <= t) parenActive = j; // take last started one
+      if (!e._isParen || e._wholeLine) break;
+      if (e._parenParentMs !== focusMs) break;
+      if (e.ms <= t) parenActive = j;
     }
   }
 
-  // ── DOM class update — only when focus changes ───────────────────────────
+  // ── DOM class update — only when focus changes ──────────────────────────
   if (focus !== ST.lrcActive) {
     const prev = ST.lrcActive;
     ST.lrcActive = focus;
 
-    // Clear & reassign classes to every DOM line
     const domLines = document.querySelectorAll('#lscroll .ll');
     domLines.forEach((el, i) => {
       el.classList.remove('now','past','near','near2');
-
-      // Parens/synthetics inherit distance from their nearest preceding real line
       const entry = ST.lrc[i];
       let di = i;
       if (entry?._isParen || entry?._synthetic) {
@@ -2497,33 +2530,28 @@ function tickLrc(posMs) {
           if (!ST.lrc[k]._isParen && !ST.lrc[k]._synthetic) { di = k; break; }
         }
       }
-
-      const dist    = di - focus;
+      const dist = di - focus;
       const absDist = Math.abs(dist);
       if      (dist < 0)      el.classList.add('past');
       else if (absDist === 1) el.classList.add('near');
       else if (absDist === 2) el.classList.add('near2');
-      // Past lines blur harder than upcoming lines.
-      // Upcoming lines stay mostly readable so the bottom of the list doesn't look broken.
       if (absDist >= 3) {
         const blurAmt = dist < 0
-          ? Math.min(5, (absDist - 2) * 1.5)   // past: up to 5px
-          : Math.min(3, (absDist - 2) * 0.7);   // upcoming: max 3px, gentle
+          ? Math.min(5, (absDist-2)*1.5)
+          : Math.min(3, (absDist-2)*0.7);
         el.style.filter = `blur(${blurAmt.toFixed(1)}px)`;
       } else {
         el.style.filter = '';
       }
     });
 
-    // Mark focus as .now
     document.getElementById('ll'+focus)?.classList.add('now');
     document.getElementById('ll'+focus)?.scrollIntoView({ block:'center', behavior:'smooth' });
 
-    // Snap previous line words to done; reset new focus to upcoming
     if (prev >= 0 && prev !== focus) _snapDone(prev);
-    _resetUpcoming(focus);
+    // Reset words — but don't reset any word whose start time has already passed
+    _resetUpcomingSelective(focus, t);
 
-    // Also snap any old parenActive that no longer belongs
     if (ST._parenActive >= 0 && ST._parenActive !== parenActive) {
       document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
       _snapDone(ST._parenActive);
@@ -2531,7 +2559,7 @@ function tickLrc(posMs) {
     }
   }
 
-  // ── Paren .now tracking (independent of focus change) ────────────────────
+  // ── Paren .now tracking ──────────────────────────────────────────────────
   if (parenActive !== ST._parenActive) {
     if (ST._parenActive >= 0) {
       document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
@@ -2539,34 +2567,27 @@ function tickLrc(posMs) {
     }
     ST._parenActive = parenActive;
     if (parenActive >= 0) {
-      // Remove .now from focus main line when paren takes over highlighting
-      // (they should NOT both be .now at once)
       document.getElementById('ll'+focus)?.classList.remove('now');
       document.getElementById('ll'+parenActive)?.classList.add('now');
-      _resetUpcoming(parenActive);
+      _resetUpcomingSelective(parenActive, t);
     } else {
-      // Paren ended — restore .now to focus
       document.getElementById('ll'+focus)?.classList.add('now');
     }
   }
 
   // ── Word ticking ─────────────────────────────────────────────────────────
-  // nextEntryMs: the very next line in the array regardless of type.
-  // This is what the focus line's words must finish by —
-  // if there's a sub-line or dots right after, words must not stretch into them.
-  const nextEntryMs = ST.lrc[focus + 1]?.ms ?? (t + 4000);
+  // For the focus line, bound = next REAL line ms (not synthetic/paren).
+  // This prevents dots or sub-lines from artificially shrinking the main line's window.
+  const focusBound = _nextRealLineMs(focus, t + 6000);
 
   if (parenActive >= 0) {
-    // Paren is active alongside: main stops at paren start
     _tickWords(focus, t, ST.lrc[parenActive].ms);
-    // Paren stops at its own next entry
-    const parenNextEntry = ST.lrc[parenActive + 1]?.ms ?? (t + 4000);
-    _tickWords(parenActive, t, parenNextEntry);
+    // Sub-line bound = next real line after it
+    _tickWords(parenActive, t, _nextRealLineMs(parenActive, t + 6000));
   } else {
-    _tickWords(focus, t, nextEntryMs);
+    _tickWords(focus, t, focusBound);
   }
 }
-
 
 // ── SMART REPEAT ───────────────────────────────────────────────────────────
 const _smartRepeatCache = {};
@@ -2602,14 +2623,19 @@ async function _askAIRepeatPoint(title, artist, lrc) {
 
   const prompt = `Song: "${title}" by ${artist}
 
-You are choosing a smart loop re-entry point — like Apple Music's Dolby Atmos gapless repeat.
-The goal: skip the intro and loop back to a natural musical start (first verse or post-intro hook).
-Avoid: intros, outros, fade-outs, "end" sections.
+You are a music producer choosing the perfect gapless loop re-entry point for seamless repeat playback (like Apple Music Dolby Atmos).
 
-LRC lines (ms text):
+Rules:
+- Pick the first line of Verse 1 (after any intro/instrumental opening)
+- If there's no clear verse 1 start, pick the first line where the main vocal melody begins
+- NEVER pick the first line (index 0) unless there is truly no intro
+- NEVER pick an outro, bridge, or "fade out" section
+- The loop should feel natural — listener shouldn't notice the restart
+
+LRC lines available (ms timestamp then lyric snippet):
 ${map}
 
-Reply with ONLY a single integer: the ms timestamp of the best re-entry line. No explanation.`;
+Reply with ONLY the ms integer of your chosen line. Nothing else.`;
 
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -2639,29 +2665,51 @@ Reply with ONLY a single integer: the ms timestamp of the best re-entry line. No
   } catch { return null; }
 }
 
-// Volume dip → seek → fade up for gapless-feel blend
+// Smooth blend seek — fade out, seek, wait for playback, fade in
 async function _blendSeek(seekSec) {
-  const startVol = ST.muted ? 0 : ST.vol * 100;
-  const steps = 18;
-  const stepMs = 35;
+  if (!ytReady) { YT_player.seekTo(seekSec); YT_player.playVideo(); return; }
+  const targetVol = ST.muted ? 0 : ST.vol * 100;
 
-  // Fade out
-  for (let i = steps; i >= 0; i--) {
-    YT_player.setVolume(startVol * (i / steps));
-    await new Promise(r => setTimeout(r, stepMs));
+  // ── Fade out over 600ms ──
+  const fadeOutSteps = 24;
+  for (let i = fadeOutSteps; i >= 0; i--) {
+    YT_player.setVolume(targetVol * Math.pow(i / fadeOutSteps, 2)); // ease-in curve
+    await new Promise(r => setTimeout(r, 25));
   }
+  YT_player.setVolume(0);
 
+  // ── Seek and start playback ──
   YT_player.seekTo(seekSec);
   YT_player.playVideo();
 
-  // Brief pause for seek to settle
-  await new Promise(r => setTimeout(r, 120));
+  // ── Wait until the player is actually playing at the right spot ──
+  await new Promise(resolve => {
+    let tries = 0;
+    const check = setInterval(() => {
+      tries++;
+      const pos = YT_player.getCurrentTime?.() ?? 0;
+      const state = YT_player.getPlayerState?.() ?? -1;
+      // YT.PlayerState.PLAYING = 1
+      if (state === 1 && Math.abs(pos - seekSec) < 3) {
+        clearInterval(check);
+        resolve();
+      } else if (tries > 40) { // 2s timeout fallback
+        clearInterval(check);
+        resolve();
+      }
+    }, 50);
+  });
 
-  // Fade in
-  for (let i = 0; i <= steps; i++) {
-    YT_player.setVolume(startVol * (i / steps));
-    await new Promise(r => setTimeout(r, stepMs));
+  // ── Fade in over 800ms ──
+  const fadeInSteps = 32;
+  for (let i = 0; i <= fadeInSteps; i++) {
+    // ease-out curve so it feels like audio swells in
+    const t = i / fadeInSteps;
+    const vol = targetVol * (1 - Math.pow(1 - t, 2));
+    YT_player.setVolume(vol);
+    await new Promise(r => setTimeout(r, 25));
   }
+  YT_player.setVolume(targetVol);
 }
 // ── END SMART REPEAT ────────────────────────────────────────────────────────
 
