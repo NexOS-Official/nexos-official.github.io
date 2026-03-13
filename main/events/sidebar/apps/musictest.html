@@ -273,6 +273,25 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.ll-sub.near2{
   font-size:16px;
 }
+/* inline mid-line parens: sit above the following word, smaller */
+.lw-inline-paren{
+  display:inline-flex;
+  flex-direction:column;
+  align-items:flex-start;
+  vertical-align:bottom;
+  gap:0;
+}
+.lw-inline-paren .lw-ip-text{
+  font-size:0.50em;
+  line-height:1.1;
+  opacity:0.55;
+  margin-bottom:1px;
+  display:block;
+  font-weight:700;
+}
+.ll.now .lw-inline-paren .lw-ip-text{
+  opacity:0.85;
+}
 
 .ll.now .lw{
   display:inline-block;
@@ -980,7 +999,7 @@ function proxyImgFallback(img) {
 
 const ST = {
   queue:[], idx:-1,
-  playing:false, shuffle:false, repeat:false, muted:false,
+  playing:false, shuffle:false, repeat:false, smartRepeat:false, muted:false,
   vol:0.8, pos:0, dur:0,
   lrc:[], lrcType:'none', lrcActive:-1, _parenActive:-1,
 };
@@ -1060,7 +1079,7 @@ window.onYouTubeIframeAPIReady = function() {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
-          if (ST.repeat) { YT_player.seekTo(0); YT_player.playVideo(); }
+          if (ST.repeat || ST.smartRepeat) doSmartRepeat();
           else nextTrack();
         }
       },
@@ -1552,7 +1571,25 @@ G('btn-vol').addEventListener('click', () => {
     :'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>';
 });
 G('btn-sf').addEventListener('click',()=>{ST.shuffle=!ST.shuffle;G('btn-sf').classList.toggle('on',ST.shuffle);});
-G('btn-rp').addEventListener('click',()=>{ST.repeat=!ST.repeat;G('btn-rp').classList.toggle('on',ST.repeat);});
+G('btn-rp').addEventListener('click',()=>{
+  // Cycle: off → repeat-one → smart-repeat → off
+  if (!ST.repeat && !ST.smartRepeat) {
+    ST.repeat = true; ST.smartRepeat = false;
+    G('btn-rp').classList.add('on');
+    G('btn-rp').title = 'Repeat One';
+    G('btn-rp-ico').innerHTML = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><text x="10" y="14" font-size="7" font-weight="bold" fill="currentColor">1</text>';
+  } else if (ST.repeat && !ST.smartRepeat) {
+    ST.repeat = false; ST.smartRepeat = true;
+    G('btn-rp').classList.add('on');
+    G('btn-rp').title = 'Smart Repeat (AI blend)';
+    G('btn-rp-ico').innerHTML = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><circle cx="12" cy="12" r="2" fill="currentColor"/>';
+  } else {
+    ST.repeat = false; ST.smartRepeat = false;
+    G('btn-rp').classList.remove('on');
+    G('btn-rp').title = 'Repeat (R)';
+    G('btn-rp-ico').innerHTML = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>';
+  }
+});
 G('btn-pv').addEventListener('click',prevTrack);
 G('btn-nx').addEventListener('click',nextTrack);
 G('btn-pp').addEventListener('click',togglePlay);
@@ -1869,7 +1906,8 @@ function _lerp(x, lo, hi) { return lo + x * (hi - lo); }
 // Smooth pace factor: given msPerSyl, returns a 0–1 "slowness" value
 // 0 = very fast (rap ~80ms/syl), 1 = very slow (ballad ~500ms/syl)
 function _paceFactor(msPerSyl) {
-  return Math.max(0, Math.min(1, (msPerSyl - 80) / 420));
+  // 80ms/syl = fast rap (0), 700ms/syl = ultra-slow ballad (1)
+  return Math.max(0, Math.min(1, (msPerSyl - 80) / 620));
 }
 
 // Returns fill-time multiplier for a word
@@ -2076,10 +2114,13 @@ function buildWordTimings(lrc) {
       return acc + s * naturalMsPerSyl * mul;
     }, 0);
 
-    expanded.push({ ...line, text: mainText, _parensSource: parens.length > 0 ? parens : null });
+    expanded.push({ ...line, text: mainText,
+      _parensSource: parens.length > 0 ? parens : null,
+      _inlineParens: parens.filter(p => p.isMidLine)   // stored for pass-2 injection
+    });
 
-    // Inline parens: estimate start time from position within the main line
-    for (const paren of parens) {
+    // End-of-line parens → sub-line entries below main line
+    for (const paren of parens.filter(p => !p.isMidLine)) {
       const frac    = mainRawWords.length > 0
         ? Math.min(0.92, paren.afterWordIdx / mainRawWords.length)
         : 0.5;
@@ -2094,6 +2135,7 @@ function buildWordTimings(lrc) {
         _parenParentMs: line.ms,
       });
     }
+    // Mid-line parens → injected inline into the word array in pass 2 (see _inlineParens)
 
     // Inject instrumental gap marker if singing ends well before next line
     if (nextMs !== null && gap > estSingMs + 3000) {
@@ -2120,13 +2162,11 @@ function buildWordTimings(lrc) {
 
   // Pass 2 — assign word timings
   return expanded.map((line, i) => {
-    const lineMs  = line.ms;
-    const nextMs  = expanded[i+1]?.ms ?? (lineMs + 3500);
+    const lineMs   = line.ms;
+    const nextMs   = expanded[i+1]?.ms ?? (lineMs + 3500);
     const rawWords = (line.text || '').split(/\s+/).filter(Boolean);
 
     if (!rawWords.length) {
-      // Instrumental beat-dots — but NOT if next entry is a whole-line paren
-      // (whole-line parens handle their own timing, no dots needed before them)
       const nextIsWholeParen = expanded[i+1]?._wholeLine;
       const gapMs   = Math.max(400, nextMs - lineMs);
       const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
@@ -2137,29 +2177,67 @@ function buildWordTimings(lrc) {
       return { ...line, words: line._wordTimed };
     }
 
-    return { ...line, words: timingForWords(rawWords, lineMs, nextMs) };
+    const baseWords = timingForWords(rawWords, lineMs, nextMs);
+
+    // Inject mid-line paren markers into the word array.
+    // Each _inlineParen sits at the word position it appeared after —
+    // it carries the paren text and the ms of the word it precedes.
+    if (line._inlineParens?.length) {
+      const result = [];
+      let realWordIdx = 0; // counts only non-pause, non-inline entries
+      for (let wi = 0; wi < baseWords.length; wi++) {
+        const w = baseWords[wi];
+        // Before pushing this real word, check if any inline paren fires here
+        if (!w._isPause) {
+          for (const ip of line._inlineParens) {
+            // afterWordIdx is the number of main words BEFORE the paren
+            // so when realWordIdx === afterWordIdx, we're about to push that word
+            if (ip.afterWordIdx === realWordIdx) {
+              // The paren fills from its ms (= this word's ms) until next word
+              result.push({ ms: w.ms, word: ip.text, _isInlineParen: true });
+            }
+          }
+          realWordIdx++;
+        }
+        result.push(w);
+      }
+      return { ...line, words: result };
+    }
+
+    return { ...line, words: baseWords };
   });
 }
 
-// Extract ALL paren groups from a line: returns { mainWords, parens: [{text, afterWordIdx}] }
+// Extract paren groups from a line.
+// Returns:
+//   mainText  — the line with all (...) removed
+//   parens    — [{text, afterWordIdx, isMidLine}]
+//     isMidLine=true  → words exist AFTER this paren  → render inline above next word
+//     isMidLine=false → nothing after this paren      → render as sub-line below
 function extractParens(text) {
   const parens = [];
-  // Find each (...) and record roughly where in the word stream it sits
-  const wordsBefore = [];
-  let remaining = text;
   let wordCount = 0;
-  // Walk through the text tracking word positions
-  const re = /([^(]*)\(([^)]+)\)/g;
-  let m, lastIdx = 0;
-  while ((m = re.exec(text)) !== null) {
-    const before = m[1];
-    const inner = m[2];
+  const re = /([^(]*)\(([^)]+)\)(.*)/s;  // one paren at a time, recursive
+  let remaining = text;
+
+  while (true) {
+    const m = remaining.match(/^(.*?)\(([^)]+)\)([\s\S]*)$/);
+    if (!m) break;
+    const before     = m[1];
+    const inner      = m[2];
+    const after      = m[3];
     const beforeWords = before.trim().split(/\s+/).filter(Boolean);
     wordCount += beforeWords.length;
-    parens.push({ text: inner, afterWordIdx: wordCount });
-    lastIdx = m.index + m[0].length;
+    const afterWords  = after.trim().split(/\s+/).filter(Boolean);
+    parens.push({
+      text: inner,
+      afterWordIdx: wordCount,
+      isMidLine: afterWords.length > 0,   // true if words follow this paren
+    });
+    remaining = before + ' ' + after;     // collapse paren out, continue scanning
+    if (!remaining.includes('(')) break;
   }
-  // Whatever's left after all parens = trailing main text
+
   const mainText = text.replace(/\([^)]+\)/g, '').replace(/\s+/g, ' ').trim();
   return { mainText, parens };
 }
@@ -2177,12 +2255,31 @@ function renderLineHTML(line, i) {
     mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
   } else {
     if (line.words?.length) {
-      // Skip _isPause sentinels — they are timing-only, no DOM span
-      let spanIdx = 0;
-      mainHTML = line.words.map((w, wi) => {
-        if (w._isPause) return '';
-        return `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`;
-      }).join(' ').replace(/  +/g, ' ').trim();
+      // _isPause sentinels = invisible timing markers, skip
+      // _isInlineParen = small text above the following word, wrapped together
+      const parts = [];
+      for (let wi = 0; wi < line.words.length; wi++) {
+        const w = line.words[wi];
+        if (w._isPause) continue;
+        if (w._isInlineParen) {
+          // Peek at next real word to wrap them together
+          let nextWi = wi + 1;
+          while (nextWi < line.words.length && (line.words[nextWi]._isPause || line.words[nextWi]._isInlineParen)) nextWi++;
+          const nextW = line.words[nextWi];
+          const ipSpan = `<span class="lw-ip-text lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`;
+          if (nextW && !nextW._isPause && !nextW._isInlineParen) {
+            // wrap inline paren + next word in a column flex container
+            const wordSpan = `<span class="lw upcoming" id="lw${i}_${nextWi}" style="--pct:-20%">${x(nextW.word)}</span>`;
+            parts.push(`<span class="lw-inline-paren">${ipSpan}${wordSpan}</span>`);
+            wi = nextWi; // skip the next word since we just rendered it
+          } else {
+            parts.push(ipSpan);
+          }
+          continue;
+        }
+        parts.push(`<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`);
+      }
+      mainHTML = parts.join(' ');
     } else {
       mainHTML = x(line.text || '');
     }
@@ -2226,39 +2323,45 @@ function _nextRealLineMs(fromIdx, fallback) {
 }
 
 // Tick word highlights for a single line index.
-// nextBound: ms at which this line's last real word must be fully done.
+// nextBound: absolute ceiling — last word must complete by this ms.
 function _tickWords(lineIdx, t, nextBound) {
   const words = ST.lrc[lineIdx]?.words;
   if (!words?.length) return;
 
-  // Find last real word index
+  // Find last real (non-pause) word
   let lastRealIdx = words.length - 1;
   while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
 
-  const lastW = words[lastRealIdx];
+  const lastW    = words[lastRealIdx];
+  const lastSyls = syllableCount(lastW.word);
 
-  // lastWordEnd: use nextBound as ceiling, but the word's natural end
-  // is derived from the pace that timingForWords used.
-  // Best proxy: distance from lastW.ms to nextBound, scaled by its syllable weight.
-  const lastSyls   = syllableCount(lastW.word);
-  const pace       = _paceFactor(Math.max(95, (nextBound - words[0].ms) /
-    Math.max(1, words.filter(w=>!w._isPause).reduce((a,w)=>a+syllableCount(w.word),0))));
+  // Reconstruct the pace timingForWords used for this line
+  const realWords  = words.filter(w => !w._isPause);
+  const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+  const lineSpanMs = realWords.length > 1
+    ? realWords[realWords.length-1].ms - realWords[0].ms
+    : Math.max(300, nextBound - words[0].ms - 80);
+  // msPerSyl = average spacing between real words, then add last-word hold back
+  const spacingMs  = realWords.length > 1
+    ? lineSpanMs / (totalSyls - lastSyls)
+    : Math.max(95, (nextBound - words[0].ms) / totalSyls);
+  const msPerSyl   = Math.max(95, spacingMs);
+  const pace       = _paceFactor(msPerSyl);
   const holdMul    = _lerp(pace, 1.20, 1.90);
-  // Duration: syls * baseline * holdMul, capped to nextBound
-  const baselineMs = Math.max(95, (nextBound - lastW.ms - 40) / holdMul);
-  const lastWordEnd = Math.min(nextBound - 30, lastW.ms + lastSyls * baselineMs * holdMul);
+  // Last word natural end: its ms + hold duration, capped to nextBound
+  const lastWordEnd = Math.min(
+    nextBound - 20,
+    lastW.ms + lastSyls * msPerSyl * holdMul
+  );
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
-    if (w._isPause) continue;  // sentinels have no DOM span
+    if (w._isPause) continue;
 
     const wStart = w.ms;
-    // wEnd = next entry's ms (pause sentinel or next word), or lastWordEnd for final word
-    const wEnd = wi < words.length - 1
-      ? words[wi + 1].ms
-      : lastWordEnd;
+    const wEnd   = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
+    const id     = 'lw' + lineIdx + '_' + wi;
 
-    const id = 'lw' + lineIdx + '_' + wi;
     if (t < wStart) {
       _setLwState(id, 'upcoming', '-20%');
     } else if (t >= wEnd) {
@@ -2292,7 +2395,27 @@ function _resetUpcoming(lineIdx) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  const AHEAD = 80;
+  // Adaptive lookahead: slower songs need a bigger window so words light up on time.
+  // Derive current pace from the active line if available.
+  let AHEAD = 80;
+  if (ST.lrc.length > 0) {
+    const aIdx = (() => {
+      let lo=0,hi=ST.lrc.length-1,a=0;
+      while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
+      return a;
+    })();
+    const aLine = ST.lrc[aIdx];
+    if (aLine?.words?.length > 1) {
+      const realW = aLine.words.filter(w=>!w._isPause&&!w._isInlineParen);
+      if (realW.length > 1) {
+        const span = realW[realW.length-1].ms - realW[0].ms;
+        const totalSyls = realW.reduce((a,w)=>a+syllableCount(w.word),0)||1;
+        const mps = span / totalSyls;
+        // Scale: 80ms at fast pace, up to 160ms at very slow pace
+        AHEAD = Math.round(Math.max(60, Math.min(160, mps * 0.35)));
+      }
+    }
+  }
   const t = posMs + AHEAD;
 
   // Binary search — highest index whose ms <= t
@@ -2380,8 +2503,16 @@ function tickLrc(posMs) {
       if      (dist < 0)      el.classList.add('past');
       else if (absDist === 1) el.classList.add('near');
       else if (absDist === 2) el.classList.add('near2');
-      el.style.filter = absDist >= 3
-        ? `blur(${Math.min(5,(absDist-2)*1.5).toFixed(1)}px)` : '';
+      // Past lines blur harder than upcoming lines.
+      // Upcoming lines stay mostly readable so the bottom of the list doesn't look broken.
+      if (absDist >= 3) {
+        const blurAmt = dist < 0
+          ? Math.min(5, (absDist - 2) * 1.5)   // past: up to 5px
+          : Math.min(3, (absDist - 2) * 0.7);   // upcoming: max 3px, gentle
+        el.style.filter = `blur(${blurAmt.toFixed(1)}px)`;
+      } else {
+        el.style.filter = '';
+      }
     });
 
     // Mark focus as .now
@@ -2435,6 +2566,104 @@ function tickLrc(posMs) {
     _tickWords(focus, t, nextEntryMs);
   }
 }
+
+
+// ── SMART REPEAT ───────────────────────────────────────────────────────────
+const _smartRepeatCache = {};
+
+async function doSmartRepeat() {
+  const track = ST.queue[ST.idx];
+  if (!track) { YT_player.seekTo(0); YT_player.playVideo(); return; }
+
+  // Plain repeat if no lyrics
+  if (ST.lrcType !== 'synced' || !ST.lrc.length) {
+    await _blendSeek(0);
+    return;
+  }
+
+  const ck = (track.title + '||' + track.artist).toLowerCase();
+  let seekMs = _smartRepeatCache[ck];
+
+  if (seekMs === undefined) {
+    seekMs = await _askAIRepeatPoint(track.title, track.artist, ST.lrc);
+    _smartRepeatCache[ck] = seekMs ?? 0;
+  }
+
+  await _blendSeek((seekMs || 0) / 1000);
+}
+
+async function _askAIRepeatPoint(title, artist, lrc) {
+  // Build a compact lyric map: index → [ms, first 4 words]
+  const map = lrc
+    .filter(l => l.text && !l._isParen && !l._synthetic)
+    .slice(0, 60)
+    .map(l => `${l.ms} ${l.text.split(/\s+/).slice(0,5).join(' ')}`)
+    .join('\n');
+
+  const prompt = `Song: "${title}" by ${artist}
+
+You are choosing a smart loop re-entry point — like Apple Music's Dolby Atmos gapless repeat.
+The goal: skip the intro and loop back to a natural musical start (first verse or post-intro hook).
+Avoid: intros, outros, fade-outs, "end" sections.
+
+LRC lines (ms text):
+${map}
+
+Reply with ONLY a single integer: the ms timestamp of the best re-entry line. No explanation.`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AI_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': location.href,
+        'X-Title': 'Ghost Music'
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        max_tokens: 20,
+        temperature: 0.1,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const raw  = data.choices?.[0]?.message?.content?.trim();
+    const ms   = parseInt(raw);
+    if (isNaN(ms) || ms < 0) return null;
+    // Validate: must correspond to a real line
+    const valid = lrc.some(l => Math.abs(l.ms - ms) < 2000);
+    return valid ? ms : null;
+  } catch { return null; }
+}
+
+// Volume dip → seek → fade up for gapless-feel blend
+async function _blendSeek(seekSec) {
+  const startVol = ST.muted ? 0 : ST.vol * 100;
+  const steps = 18;
+  const stepMs = 35;
+
+  // Fade out
+  for (let i = steps; i >= 0; i--) {
+    YT_player.setVolume(startVol * (i / steps));
+    await new Promise(r => setTimeout(r, stepMs));
+  }
+
+  YT_player.seekTo(seekSec);
+  YT_player.playVideo();
+
+  // Brief pause for seek to settle
+  await new Promise(r => setTimeout(r, 120));
+
+  // Fade in
+  for (let i = 0; i <= steps; i++) {
+    YT_player.setVolume(startVol * (i / steps));
+    await new Promise(r => setTimeout(r, stepMs));
+  }
+}
+// ── END SMART REPEAT ────────────────────────────────────────────────────────
 
 // ── ARTIST PROFILE ─────────────────────────────────────────────────────────
 const _artistCache = {};
