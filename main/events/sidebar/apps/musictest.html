@@ -1833,10 +1833,14 @@ function buildWordTimings(lrc) {
     const gap = nextMs - line.ms;
     // Estimate how long this line actually takes to sing: ~180ms per syllable, min 800ms
     const rawWords = line.text.split(/\s+/).filter(Boolean);
-    const estSingMs = Math.max(800, rawWords.reduce((acc, w) => acc + syllableCount(w) * 180, 0));
-    // If gap is > singTime + 3.5s, the silence after is instrumental — inject a ♪ marker
-    if (gap > estSingMs + 3500) {
-      const instrStart = line.ms + Math.min(estSingMs + 300, gap * 0.45);
+    const totalSylCount = rawWords.reduce((acc, w) => acc + syllableCount(w), 0);
+    // Use same pace logic as word timing: clamp to 130-280ms/syl
+    const rawMsPS = gap / Math.max(1, totalSylCount);
+    const msPS = Math.max(130, Math.min(280, rawMsPS));
+    const estSingMs = Math.max(600, msPS * totalSylCount);
+    // If gap is > singTime + 3s, the trailing silence is instrumental — inject a ♪ marker
+    if (gap > estSingMs + 3000) {
+      const instrStart = line.ms + Math.min(estSingMs + 200, gap * 0.45);
       expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
     }
   }
@@ -1858,19 +1862,24 @@ function buildWordTimings(lrc) {
       return { ...line, words: line._wordTimed };
     }
 
-    // Syllable-weighted distribution, capped to a realistic sing time
+    // Syllable-weighted distribution
     const syls = rawWords.map(syllableCount);
     const totalSyls = syls.reduce((a,b) => a+b, 0);
-    // Cap: ~220ms per syllable max, never more than 70% of gap to next line
-    const maxSingMs = Math.min(totalSyls * 220, (nextMs - lineMs) * 0.70);
-    const usable = Math.max(400, maxSingMs);
-    // Total weight for normalisation
-    const totalWeight = syls.reduce((a,b,j) => a + b * (rawWords[j].replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1), 0);
+
+    // Gap to next line (with 150ms tail buffer so last word doesn't drag)
+    const gapMs = Math.max(400, nextMs - lineMs - 150);
+    // Natural singing pace: 130-280ms per syllable.
+    // Clamp so slow songs don't crawl and fast songs don't blur.
+    const rawMsPerSyl = gapMs / totalSyls;
+    const msPerSyl = Math.max(130, Math.min(280, rawMsPerSyl));
+    const usable = msPerSyl * totalSyls;
+
+    const totalWeight = syls.reduce((a,b,j) => a + b * (rawWords[j].replace(/[^a-z]/gi,'').length <= 3 ? 0.75 : 1.0), 0);
     let cursor = lineMs;
     const words = rawWords.map((word, wi) => {
       const wordMs = cursor;
-      const weight = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
-      cursor += (weight / totalWeight) * usable;
+      const w = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.75 : 1.0);
+      cursor += (w / totalWeight) * usable;
       return { ms: wordMs, word };
     });
     return { ...line, words };
