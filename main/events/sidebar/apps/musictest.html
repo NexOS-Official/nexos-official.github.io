@@ -256,11 +256,23 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   filter:blur(0px);
   opacity:1;
 }
-.ll-paren{
-  display:block;font-size:.58em;font-weight:600;
-  color:rgba(255,255,255,0.45);margin-top:3px;
+/* paren sub-lines: same .ll behaviour but smaller and indented */
+.ll.ll-sub{
+  font-size:18px;
+  padding-left:16px;
+  margin-top:-4px;
+  opacity:.55;
 }
-.ll.now .ll-paren{color:rgba(255,255,255,0.7)}
+.ll.ll-sub.now{
+  font-size:20px;
+  opacity:1;
+}
+.ll.ll-sub.near{
+  font-size:17px;
+}
+.ll.ll-sub.near2{
+  font-size:16px;
+}
 
 .ll.now .lw{
   display:inline-block;
@@ -1820,84 +1832,122 @@ function syllableCount(word) {
   return Math.max(1, count);
 }
 
+function timingForWords(rawWords, lineMs, nextMs) {
+  // For lines with embedded word timestamps, skip
+  const syls = rawWords.map(syllableCount);
+  const totalSyls = syls.reduce((a,b) => a+b, 0);
+  // Gap to next event (150ms tail buffer)
+  const gapMs = Math.max(300, nextMs - lineMs - 150);
+  // Singing pace: 130–380ms/syl — wider range to handle slow ballads properly
+  const rawMsPerSyl = gapMs / Math.max(1, totalSyls);
+  const msPerSyl = Math.max(130, Math.min(380, rawMsPerSyl));
+  const usable = msPerSyl * totalSyls;
+  const totalWeight = syls.reduce((a,b,j) =>
+    a + b * (rawWords[j].replace(/[^a-z]/gi,'').length <= 3 ? 0.75 : 1.0), 0);
+  let cursor = lineMs;
+  return rawWords.map((word, wi) => {
+    const wordMs = cursor;
+    const w = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.75 : 1.0);
+    cursor += (w / totalWeight) * usable;
+    return { ms: wordMs, word };
+  });
+}
+
 function buildWordTimings(lrc) {
-  // First pass: detect long gaps after lyric lines and inject implicit instrumental markers
+  // Pass 1 — split paren groups out of each line into separate sub-lines,
+  // and detect long instrumental gaps → inject ♪ markers
   const expanded = [];
+
   for (let i = 0; i < lrc.length; i++) {
     const line = lrc[i];
-    expanded.push(line);
     const nextMs = lrc[i+1]?.ms ?? null;
-    if (nextMs === null) continue;
-    const hasWords = line.text?.trim().length > 0;
-    if (!hasWords) continue;
-    const gap = nextMs - line.ms;
-    // Estimate how long this line actually takes to sing: ~180ms per syllable, min 800ms
-    const rawWords = line.text.split(/\s+/).filter(Boolean);
-    const totalSylCount = rawWords.reduce((acc, w) => acc + syllableCount(w), 0);
-    // Use same pace logic as word timing: clamp to 130-280ms/syl
+    const rawText = line.text?.trim() ?? '';
+
+    if (!rawText) {
+      expanded.push(line);
+      continue;
+    }
+
+    const { mainText, parens } = extractParens(rawText);
+
+    // Estimate sing time for instrumental gap detection (use main words only)
+    const mainRawWords = mainText.split(/\s+/).filter(Boolean);
+    const totalSylCount = mainRawWords.reduce((acc, w) => acc + syllableCount(w), 0);
+    const gap = nextMs !== null ? nextMs - line.ms : 3500;
     const rawMsPS = gap / Math.max(1, totalSylCount);
-    const msPS = Math.max(130, Math.min(280, rawMsPS));
-    const estSingMs = Math.max(600, msPS * totalSylCount);
-    // If gap is > singTime + 3s, the trailing silence is instrumental — inject a ♪ marker
-    if (gap > estSingMs + 3000) {
+    const msPS = Math.max(130, Math.min(380, rawMsPS));
+    const estSingMs = Math.max(500, msPS * totalSylCount);
+
+    // Push main line with cleaned text
+    expanded.push({ ...line, text: mainText, _parensSource: parens.length > 0 ? parens : null });
+
+    // For each paren group, estimate its start as: lineMs + fraction-of-sing-time
+    // based on how many main words precede it
+    const mainWordCount = mainRawWords.length;
+    for (const paren of parens) {
+      const frac = mainWordCount > 0 ? Math.min(1, paren.afterWordIdx / mainWordCount) : 0.5;
+      const parenMs = Math.round(line.ms + estSingMs * frac);
+      expanded.push({
+        ms: parenMs,
+        text: paren.text,
+        _wordTimed: null,
+        _synthetic: false,
+        _isParen: true
+      });
+    }
+
+    // Inject instrumental gap marker if needed
+    if (nextMs !== null && gap > estSingMs + 3000) {
       const instrStart = line.ms + Math.min(estSingMs + 200, gap * 0.45);
       expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
     }
   }
 
+  // Pass 2 — assign word timings to each expanded line
   return expanded.map((line, i) => {
     const lineMs = line.ms;
     const nextMs = expanded[i+1]?.ms ?? (lineMs + 3500);
-    const rawWords = line.text.split(/\s+/).filter(Boolean);
+    const rawWords = (line.text || '').split(/\s+/).filter(Boolean);
 
     if (!rawWords.length) {
-      // ♪ instrumental — compute beat duration from gap, aim for ~4 beats
       const gapMs = Math.max(400, nextMs - lineMs);
       const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
       return { ...line, words: [], beatDur };
     }
 
-    // If the LRC had per-word timestamps embedded, use those — they are exact
     if (line._wordTimed?.length) {
       return { ...line, words: line._wordTimed };
     }
 
-    // Syllable-weighted distribution
-    const syls = rawWords.map(syllableCount);
-    const totalSyls = syls.reduce((a,b) => a+b, 0);
-
-    // Gap to next line (with 150ms tail buffer so last word doesn't drag)
-    const gapMs = Math.max(400, nextMs - lineMs - 150);
-    // Natural singing pace: 130-280ms per syllable.
-    // Clamp so slow songs don't crawl and fast songs don't blur.
-    const rawMsPerSyl = gapMs / totalSyls;
-    const msPerSyl = Math.max(130, Math.min(280, rawMsPerSyl));
-    const usable = msPerSyl * totalSyls;
-
-    const totalWeight = syls.reduce((a,b,j) => a + b * (rawWords[j].replace(/[^a-z]/gi,'').length <= 3 ? 0.75 : 1.0), 0);
-    let cursor = lineMs;
-    const words = rawWords.map((word, wi) => {
-      const wordMs = cursor;
-      const w = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.75 : 1.0);
-      cursor += (w / totalWeight) * usable;
-      return { ms: wordMs, word };
-    });
+    const words = timingForWords(rawWords, lineMs, nextMs);
     return { ...line, words };
   });
 }
 
-function splitParen(text) {
-  const pm = text.match(/^(.*?)\s*\(([^)]+)\)\s*(.*)$/);
-  if (pm) {
-    const main = (pm[1] + (pm[3] ? ' ' + pm[3] : '')).trim();
-    return { main: main || text, paren: pm[2] };
+// Extract ALL paren groups from a line: returns { mainWords, parens: [{text, afterWordIdx}] }
+function extractParens(text) {
+  const parens = [];
+  // Find each (...) and record roughly where in the word stream it sits
+  const wordsBefore = [];
+  let remaining = text;
+  let wordCount = 0;
+  // Walk through the text tracking word positions
+  const re = /([^(]*)\(([^)]+)\)/g;
+  let m, lastIdx = 0;
+  while ((m = re.exec(text)) !== null) {
+    const before = m[1];
+    const inner = m[2];
+    const beforeWords = before.trim().split(/\s+/).filter(Boolean);
+    wordCount += beforeWords.length;
+    parens.push({ text: inner, afterWordIdx: wordCount });
+    lastIdx = m.index + m[0].length;
   }
-  return { main: text, paren: null };
+  // Whatever's left after all parens = trailing main text
+  const mainText = text.replace(/\([^)]+\)/g, '').replace(/\s+/g, ' ').trim();
+  return { mainText, parens };
 }
 
 function renderLineHTML(line, i) {
-  const { main, paren } = splitParen(line.text || '♪');
-  const parenHTML = paren ? `<span class="ll-paren">(${x(paren)})</span>` : '';
   const isNote = !line.words?.length && (!line.text || line.text.trim() === '♪' || line.text.trim() === '');
   let mainHTML;
   if (isNote) {
@@ -1908,9 +1958,14 @@ function renderLineHTML(line, i) {
       ? line.words.map((w, wi) =>
           `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`
         ).join(' ')
-      : x(main);
+      : x(line.text || '');
   }
-  return `<div class="ll" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}${parenHTML}</div>`;
+  // Paren sub-line: smaller, no brackets, own word spans
+  const parenHTML = line._isParen
+    ? ''  // paren lines render as normal ll but with paren class — handled below
+    : '';
+  const cls = 'll' + (line._isParen ? ' ll-sub' : '');
+  return `<div class="${cls}" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}</div>`;
 }
 
 function renderSynced() {
@@ -1990,8 +2045,11 @@ function tickLrc(posMs) {
   if (!words?.length) return;
 
   const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
-  // Last word ends when next line starts, capped to avoid runaway stretch
-  const lastWordEnd = Math.min(nextLineMs - 50, words[words.length-1].ms + 2200);
+  // Last word ends: use the word's own timing + a per-syllable budget rather than a hard 2200ms cap.
+  // This lets slow ballads breathe while fast songs still snap.
+  const lastWordSyls = syllableCount(words[words.length-1].word);
+  const lastWordBudget = Math.max(400, Math.min(nextLineMs - words[words.length-1].ms - 80, lastWordSyls * 340));
+  const lastWordEnd = words[words.length-1].ms + lastWordBudget;
 
   for (let wi = 0; wi < words.length; wi++) {
     const wStart = words[wi].ms;
