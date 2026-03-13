@@ -1832,23 +1832,54 @@ function syllableCount(word) {
   return Math.max(1, count);
 }
 
+// Words that are typically rushed/unstressed in singing
+const FAST_WORDS = new Set(['a','an','the','and','or','but','in','on','at','to','for',
+  'of','by','up','so','my','me','we','he','she','it','i','is','as','be','do','go','no',
+  'if','oh','ah','ooh','mm','mmm','yeah','yea']);
+
+function wordSpeedWeight(word, syls, isLast) {
+  const clean = word.replace(/[^a-z]/gi,'').toLowerCase();
+  const len = clean.length;
+  let w = syls; // base = syllable count
+
+  // Short connector/function words — sung quickly
+  if (FAST_WORDS.has(clean)) w *= 0.55;
+  else if (len <= 2) w *= 0.65;
+  else if (len <= 3) w *= 0.80;
+
+  // Last word of line — singer holds it longer
+  if (isLast) w *= 1.55;
+
+  // Words with repeated vowels likely held (e.g. "looove", "staaay")
+  if (/(.){1,}/.test(clean)) w *= 1.3;
+
+  // Punctuation at end = slight hold
+  if (/[,;!?…]$/.test(word)) w *= 1.2;
+
+  return w;
+}
+
 function timingForWords(rawWords, lineMs, nextMs) {
-  // For lines with embedded word timestamps, skip
   const syls = rawWords.map(syllableCount);
   const totalSyls = syls.reduce((a,b) => a+b, 0);
-  // Gap to next event (150ms tail buffer)
-  const gapMs = Math.max(300, nextMs - lineMs - 150);
-  // Singing pace: 130–380ms/syl — wider range to handle slow ballads properly
+
+  // Gap to next event (120ms tail buffer)
+  const gapMs = Math.max(300, nextMs - lineMs - 120);
+  // Singing pace: 120–400ms/syl — wide range for ballads vs rap
   const rawMsPerSyl = gapMs / Math.max(1, totalSyls);
-  const msPerSyl = Math.max(130, Math.min(380, rawMsPerSyl));
+  const msPerSyl = Math.max(120, Math.min(400, rawMsPerSyl));
   const usable = msPerSyl * totalSyls;
-  const totalWeight = syls.reduce((a,b,j) =>
-    a + b * (rawWords[j].replace(/[^a-z]/gi,'').length <= 3 ? 0.75 : 1.0), 0);
+
+  // Per-word weights with speed variation
+  const weights = rawWords.map((word, wi) =>
+    wordSpeedWeight(word, syls[wi], wi === rawWords.length - 1)
+  );
+  const totalWeight = weights.reduce((a,b) => a+b, 0);
+
   let cursor = lineMs;
   return rawWords.map((word, wi) => {
     const wordMs = cursor;
-    const w = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.75 : 1.0);
-    cursor += (w / totalWeight) * usable;
+    cursor += (weights[wi] / totalWeight) * usable;
     return { ms: wordMs, word };
   });
 }
@@ -1875,24 +1906,31 @@ function buildWordTimings(lrc) {
     const totalSylCount = mainRawWords.reduce((acc, w) => acc + syllableCount(w), 0);
     const gap = nextMs !== null ? nextMs - line.ms : 3500;
     const rawMsPS = gap / Math.max(1, totalSylCount);
-    const msPS = Math.max(130, Math.min(380, rawMsPS));
-    const estSingMs = Math.max(500, msPS * totalSylCount);
+    const msPS = Math.max(120, Math.min(400, rawMsPS));
+    // Use speed weights for a more accurate estimate of actual sing duration
+    const weightedSyls = mainRawWords.reduce((acc, w, wi) =>
+      acc + wordSpeedWeight(w, syllableCount(w), wi === mainRawWords.length - 1), 0);
+    const totalWeightBase = mainRawWords.reduce((acc, w) =>
+      acc + wordSpeedWeight(w, syllableCount(w), false), 0) || 1;
+    const estSingMs = Math.max(400, msPS * (weightedSyls / totalWeightBase) * totalSylCount);
 
-    // Push main line with cleaned text
+    const mainLineIdx = expanded.length; // index this main line will occupy
     expanded.push({ ...line, text: mainText, _parensSource: parens.length > 0 ? parens : null });
 
-    // For each paren group, estimate its start as: lineMs + fraction-of-sing-time
-    // based on how many main words precede it
+    // Parens: estimate ms based on position within the main line's sing time.
+    // Store them separately — we'll splice them in after the full loop so we can
+    // check if any paren overlaps the *next* main line and reattach it there.
     const mainWordCount = mainRawWords.length;
     for (const paren of parens) {
-      const frac = mainWordCount > 0 ? Math.min(1, paren.afterWordIdx / mainWordCount) : 0.5;
+      const frac = mainWordCount > 0 ? Math.min(0.98, paren.afterWordIdx / mainWordCount) : 0.5;
       const parenMs = Math.round(line.ms + estSingMs * frac);
       expanded.push({
         ms: parenMs,
         text: paren.text,
         _wordTimed: null,
         _synthetic: false,
-        _isParen: true
+        _isParen: true,
+        _parenParentMs: line.ms   // remember which main line spawned this
       });
     }
 
@@ -1900,6 +1938,24 @@ function buildWordTimings(lrc) {
     if (nextMs !== null && gap > estSingMs + 3000) {
       const instrStart = line.ms + Math.min(estSingMs + 200, gap * 0.45);
       expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
+    }
+  }
+
+  // Re-sort: parens whose ms falls after the next non-paren line should move after it.
+  // Walk forward; whenever a paren entry is out-of-order relative to the next main line, sink it.
+  for (let i = 0; i < expanded.length - 1; i++) {
+    if (!expanded[i]._isParen) continue;
+    // Find the next non-paren line after i
+    let nextMain = -1;
+    for (let j = i + 1; j < expanded.length; j++) {
+      if (!expanded[j]._isParen && !expanded[j]._synthetic) { nextMain = j; break; }
+    }
+    if (nextMain === -1) continue;
+    if (expanded[i].ms >= expanded[nextMain].ms) {
+      // Splice: remove from i, insert right after nextMain
+      const [paren] = expanded.splice(i, 1);
+      expanded.splice(nextMain, 0, paren); // nextMain-1 now because we removed one before it
+      i--; // recheck this position
     }
   }
 
@@ -2045,11 +2101,16 @@ function tickLrc(posMs) {
   if (!words?.length) return;
 
   const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
-  // Last word ends: use the word's own timing + a per-syllable budget rather than a hard 2200ms cap.
-  // This lets slow ballads breathe while fast songs still snap.
-  const lastWordSyls = syllableCount(words[words.length-1].word);
-  const lastWordBudget = Math.max(400, Math.min(nextLineMs - words[words.length-1].ms - 80, lastWordSyls * 340));
-  const lastWordEnd = words[words.length-1].ms + lastWordBudget;
+  // Last word duration — use same speed-weight logic as timingForWords so it feels consistent.
+  // The last word is always weighted as "isLast=true", so it naturally holds longer.
+  const lastW = words[words.length-1];
+  const lastSyls = syllableCount(lastW.word);
+  const lastWeight = wordSpeedWeight(lastW.word, lastSyls, true);
+  // Derive a per-line pace from total usable time / total weight of this line
+  const lineTotalWeight = words.reduce((a, w) => a + wordSpeedWeight(w.word, syllableCount(w.word), false), 0) || 1;
+  const lineUsable = nextLineMs - words[0].ms - 120;
+  const msPerWeight = Math.max(60, Math.min(lineUsable / lineTotalWeight, 500));
+  const lastWordEnd = Math.min(nextLineMs - 60, lastW.ms + lastWeight * msPerWeight);
 
   for (let wi = 0; wi < words.length; wi++) {
     const wStart = words[wi].ms;
