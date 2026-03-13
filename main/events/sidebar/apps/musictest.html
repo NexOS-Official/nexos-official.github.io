@@ -277,24 +277,25 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
-    #ffffff calc(var(--pct, 0%) - 6%),
-    rgba(255,255,255,0.55) var(--pct, 0%),
-    rgba(255,255,255,0.28) calc(var(--pct, 0%) + 4%)
+    #ffffff calc(var(--pct, -20%) - 8%),
+    rgba(255,255,255,0.60) var(--pct, -20%),
+    rgba(255,255,255,0.22) calc(var(--pct, -20%) + 6%),
+    rgba(255,255,255,0.08) calc(var(--pct, -20%) + 12%)
   );
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
 }
 .ll.now .lw.done{
-  --pct:100%;
+  --pct:110%;
   filter:drop-shadow(0 0 5px rgba(255,255,255,0.26));
 }
 .ll.now .lw.upcoming{
-  --pct:0%;
+  --pct:-20%;
   filter:none;
 }
 .ll.now .lw.now-word{
-  filter:drop-shadow(0 0 6px rgba(255,255,255,0.32));
+  filter:drop-shadow(0 0 7px rgba(255,255,255,0.30));
 }
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
@@ -1824,126 +1825,189 @@ function parseLRC(rawStr) {
 }
 
 function syllableCount(word) {
-  word = word.toLowerCase().replace(/[^a-z]/g,'');
+  // Strip punctuation, lowercase
+  word = word.toLowerCase().replace(/[^a-z']/g, '').replace(/'/g, '');
   if (!word) return 1;
+  // Common suffixes that are one syllable despite vowel count
+  word = word
+    .replace(/tion$/,  'shun')   // -tion = 1 syl
+    .replace(/sion$/,  'shun')
+    .replace(/cious$/, 'shus')
+    .replace(/tious$/, 'shus')
+    .replace(/eous$/,  'us')
+    .replace(/geous$/, 'jus')
+    .replace(/ious$/,  'yus')
+    .replace(/ued$/,   'ude')    // "continued" etc
+    .replace(/ves$/,   've');    // "lives", "gives"
+  // Remove silent trailing e (but not: "be", "he", "she", "the", "me", "we")
+  if (word.length > 2 && word.endsWith('e') && !/[aeiou]e$/.test(word)) {
+    word = word.slice(0, -1);
+  }
+  // Remove -ed when it doesn't add a syllable (not after d/t)
+  if (word.endsWith('ed') && !/[dt]ed$/.test(word)) {
+    word = word.slice(0, -1);
+  }
+  // Count vowel groups (y is a vowel except word-start)
   const vowels = word.match(/[aeiouy]+/g);
   let count = vowels ? vowels.length : 1;
-  if (word.endsWith('e') && word.length > 2) count = Math.max(1, count - 1);
+  // y at word start is consonant
+  if (word[0] === 'y') count = Math.max(1, count - 1);
   return Math.max(1, count);
 }
 
 // Words that are typically rushed/unstressed in singing
-const FAST_WORDS = new Set(['a','an','the','and','or','but','in','on','at','to','for',
-  'of','by','up','so','my','me','we','he','she','it','i','is','as','be','do','go','no',
-  'if','oh','ah','ooh','mm','mmm','yeah','yea']);
-// Returns an absolute duration multiplier for a single word's FILL time.
-// msPerSyl = baseline pace for this line (ms per syllable).
+const FAST_WORDS = new Set([
+  'a','an','the','and','or','but','in','on','at','to','for','of','by','up',
+  'so','my','me','we','he','she','it','i','is','as','be','do','go','no','if',
+  'oh','ah','mm','mmm','its','im','ive','ill','id','our','are','was','were',
+  'had','has','have','that','this','with','from','not','can','will','just','your',
+]);
+
+// Smooth interpolation helper — maps x in [0,1] range between lo and hi values
+function _lerp(x, lo, hi) { return lo + x * (hi - lo); }
+
+// Smooth pace factor: given msPerSyl, returns a 0–1 "slowness" value
+// 0 = very fast (rap ~80ms/syl), 1 = very slow (ballad ~500ms/syl)
+function _paceFactor(msPerSyl) {
+  return Math.max(0, Math.min(1, (msPerSyl - 80) / 420));
+}
+
+// Returns fill-time multiplier for a word
 function wordDurMul(word, syls, isLast, msPerSyl) {
-  const clean = word.replace(/[^a-z]/gi,'').toLowerCase();
+  const clean = word.replace(/[^a-z']/gi,'').replace(/'/g,'').toLowerCase();
   const len   = clean.length;
+  const pace  = _paceFactor(msPerSyl);  // 0=fast, 1=slow
+
   let mul = 1.0;
 
-  // Function/connector words — clipped short
-  if (FAST_WORDS.has(clean))       mul = 0.45;
-  else if (len <= 2)               mul = 0.60;
-  else if (len <= 3)               mul = 0.78;
+  // Function/connector words — always short, but slightly longer on slow songs
+  if (FAST_WORDS.has(clean)) {
+    mul = _lerp(pace, 0.40, 0.58);
+  } else if (len <= 2) {
+    mul = _lerp(pace, 0.52, 0.68);
+  } else if (len <= 3) {
+    mul = _lerp(pace, 0.72, 0.84);
+  }
+  // Content words: longer at slow pace
+  else {
+    mul = _lerp(pace, 0.90, 1.10);
+  }
 
   // Elongated vowel spelling e.g. "looove", "staaay", "ohhh"
-  if (/([aeiou])\1+/.test(clean))  mul *= 1.45;
+  if (/([aeiou])\1{1,}/.test(clean)) mul *= _lerp(pace, 1.25, 1.65);
 
-  // Last word of line — singer holds the note
-  if (isLast) {
-    mul *= msPerSyl > 280 ? 1.80
-         : msPerSyl > 180 ? 1.50
-         :                  1.28;
-  }
+  // Words that end in a long vowel sound tend to be held
+  if (/[aeio]$/.test(clean) && len > 2) mul *= _lerp(pace, 1.05, 1.20);
+
+  // Last word of line — singer holds the note; more hold on slower songs
+  if (isLast) mul *= _lerp(pace, 1.20, 1.90);
 
   return mul;
 }
 
-// Returns how many ms of SILENCE to insert AFTER a word (breath/pause).
-// This is separate from the word's own fill duration so the fill ends cleanly
-// and the pause is dead time before the next word lights up.
+// Returns ms of SILENCE to insert AFTER a word (breath/pause).
+// Uses smooth interpolation so no hard threshold jumps.
 function wordPauseAfter(word, msPerSyl) {
-  // Comma / semicolon — singer takes a short breath
-  // Scale with pace: slow song = longer breath, fast song = barely any
+  const pace = _paceFactor(msPerSyl);
+
+  // Comma / semicolon — short breath, scales strongly with pace
   if (/[,;]$/.test(word)) {
-    return msPerSyl > 300 ? msPerSyl * 0.55   // ballad: ~165ms at 300, ~220ms at 400
-         : msPerSyl > 180 ? msPerSyl * 0.38   // mid-tempo: ~68–114ms
-         :                  msPerSyl * 0.20;  // fast: ~19–36ms
+    // fast song: ~0.18×, slow ballad: ~0.65×
+    return msPerSyl * _lerp(pace, 0.18, 0.65);
   }
-  // Em-dash or ellipsis — a longer dramatic pause
+  // Colon — slightly longer than comma (list pause or intro)
+  if (/:$/.test(word)) {
+    return msPerSyl * _lerp(pace, 0.25, 0.75);
+  }
+  // Em-dash or ellipsis — dramatic suspension
   if (/[—…]$/.test(word)) {
-    return msPerSyl > 300 ? msPerSyl * 0.90
-         : msPerSyl > 180 ? msPerSyl * 0.65
-         :                  msPerSyl * 0.40;
+    return msPerSyl * _lerp(pace, 0.40, 1.10);
   }
-  // Exclamation / question — emphasis lands ON the word, then a breath after
-  if (/[!?]$/.test(word)) {
-    return msPerSyl > 300 ? msPerSyl * 0.70
-         : msPerSyl > 180 ? msPerSyl * 0.50
-         :                  msPerSyl * 0.28;
+  // Exclamation — emphasis on word, then release breath
+  if (/!$/.test(word)) {
+    return msPerSyl * _lerp(pace, 0.22, 0.72);
+  }
+  // Question — slight upward linger, then pause
+  if (/\?$/.test(word)) {
+    return msPerSyl * _lerp(pace, 0.28, 0.82);
+  }
+  // Period at mid-line (not end of line — end is handled by isLast hold)
+  if (/\.$/.test(word)) {
+    return msPerSyl * _lerp(pace, 0.15, 0.55);
   }
   return 0;
 }
 
-// Also export a weight version for estSingMs (isLast=false baseline)
+// Weight version used by estSingMs (neutral pace ~200ms/syl)
 function wordSpeedWeight(word, syls, isLast) {
   return wordDurMul(word, syls, isLast, 200) * syls;
 }
 
 function timingForWords(rawWords, lineMs, nextMs) {
-  const n   = rawWords.length;
+  const n    = rawWords.length;
   const syls = rawWords.map(syllableCount);
   const totalSyls = syls.reduce((a,b) => a+b, 0) || 1;
 
-  const gapMs    = Math.max(300, nextMs - lineMs - 80);
-  const msPerSyl = Math.max(95, gapMs / totalSyls);
+  const gapMs = Math.max(300, nextMs - lineMs - 80);
 
-  // Per-word durations: fill time + pause after
+  // Estimate pause budget so msPerSyl reflects only singing time
+  // Use a neutral msPerSyl for the estimate to avoid circular dependency
+  const neutralMsPerSyl = Math.max(95, gapMs / totalSyls);
+  const estimatedPauseMs = rawWords.reduce((acc, w) => {
+    const p = wordPauseAfter(w, neutralMsPerSyl);
+    return acc + p;
+  }, 0);
+  // Singing time = gap minus estimated pauses
+  const singMs   = Math.max(200, gapMs - estimatedPauseMs);
+  const msPerSyl = Math.max(95, singMs / totalSyls);
+
+  // Per-word durations with final msPerSyl
   const fillDurs  = rawWords.map((word, wi) =>
     syls[wi] * msPerSyl * wordDurMul(word, syls[wi], wi === n - 1, msPerSyl)
   );
   const pauseDurs = rawWords.map(word => wordPauseAfter(word, msPerSyl));
   const totalDurs = fillDurs.map((f, wi) => f + pauseDurs[wi]);
+  const rawTotal  = totalDurs.reduce((a,b) => a+b, 0);
 
-  const rawTotal = totalDurs.reduce((a,b) => a+b, 0);
-
-  // Overflow: shrink fast words first, preserve slow/held words
+  // Overflow: shrink fast words first, then uniform fallback
   let scaledFill  = fillDurs.slice();
   let scaledPause = pauseDurs.slice();
 
   if (rawTotal > gapMs) {
-    const overflow  = rawTotal - gapMs;
-    const isFastArr = rawWords.map(w => {
+    const overflow   = rawTotal - gapMs;
+    const isFastArr  = rawWords.map(w => {
       const c = w.replace(/[^a-z]/gi,'').toLowerCase();
       return FAST_WORDS.has(c) || c.length <= 3;
     });
-    // Fast-word budget (fill + pause combined)
     const fastBudget = totalDurs.reduce((s,d,wi) => s + (isFastArr[wi] ? d : 0), 0);
 
-    if (fastBudget >= overflow) {
-      // Shrink fast words proportionally
-      const ratio = (fastBudget - overflow) / fastBudget;
-      scaledFill  = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
-      scaledPause = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
+    if (fastBudget >= overflow * 0.8) {
+      const ratio    = Math.max(0.1, (fastBudget - overflow) / fastBudget);
+      scaledFill     = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
+      scaledPause    = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
     } else {
-      // Fast words can't absorb all overflow — uniform fallback
-      const scale = gapMs / rawTotal;
-      scaledFill  = fillDurs.map(d  => d * scale);
-      scaledPause = pauseDurs.map(d => d * scale);
+      // Can't absorb with fast words alone — scale everything but protect pauses more
+      const scale    = gapMs / rawTotal;
+      // Pauses scale less aggressively (floor at 40% of original)
+      scaledFill     = fillDurs.map(d  => d * scale);
+      scaledPause    = pauseDurs.map(d => Math.max(d * 0.4, d * scale));
+      // Re-check total
+      const newTotal = scaledFill.reduce((a,b)=>a+b,0) + scaledPause.reduce((a,b)=>a+b,0);
+      if (newTotal > gapMs) {
+        const s2   = gapMs / newTotal;
+        scaledFill  = scaledFill.map(d  => d * s2);
+        scaledPause = scaledPause.map(d => d * s2);
+      }
     }
   }
 
-  // Build word list — inject a _pause sentinel entry after punctuated words
-  // so _tickWords sees the gap as dead time between words
+  // Build word list with pause sentinels after punctuated words
   const result = [];
   let cursor = lineMs;
   for (let wi = 0; wi < n; wi++) {
     result.push({ ms: cursor, word: rawWords[wi] });
     cursor += scaledFill[wi];
-    if (scaledPause[wi] > 8) {
-      // Sentinel: zero-width pause — _tickWords will see it as wEnd for the prior word
+    if (scaledPause[wi] > 12) {
       result.push({ ms: cursor, word: '', _isPause: true });
       cursor += scaledPause[wi];
     }
@@ -2117,7 +2181,7 @@ function renderLineHTML(line, i) {
       let spanIdx = 0;
       mainHTML = line.words.map((w, wi) => {
         if (w._isPause) return '';
-        return `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`;
+        return `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`;
       }).join(' ').replace(/  +/g, ' ').trim();
     } else {
       mainHTML = x(line.text || '');
@@ -2162,44 +2226,45 @@ function _nextRealLineMs(fromIdx, fallback) {
 }
 
 // Tick word highlights for a single line index.
-// nextBound: the ms at which this line's last real word must be fully done.
+// nextBound: ms at which this line's last real word must be fully done.
 function _tickWords(lineIdx, t, nextBound) {
   const words = ST.lrc[lineIdx]?.words;
   if (!words?.length) return;
 
-  // Find the last real (non-pause) word for lastWordEnd calculation
+  // Find last real word index
   let lastRealIdx = words.length - 1;
   while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
 
-  const lastW    = words[lastRealIdx];
-  const lastSyls = syllableCount(lastW.word);
-  // Reconstruct msPerSyl from what timingForWords would have used
-  const lineMs    = words[0].ms;
-  const gapMs     = Math.max(200, nextBound - lineMs - 80);
-  const totalSyls = words.filter(w => !w._isPause).reduce((a,w) => a + syllableCount(w.word), 0) || 1;
-  const msPerSyl  = Math.max(95, gapMs / totalSyls);
-  const lastDur   = lastSyls * msPerSyl * wordDurMul(lastW.word, lastSyls, true, msPerSyl);
-  const lastWordEnd = Math.min(nextBound - 40, lastW.ms + lastDur);
+  const lastW = words[lastRealIdx];
+
+  // lastWordEnd: use nextBound as ceiling, but the word's natural end
+  // is derived from the pace that timingForWords used.
+  // Best proxy: distance from lastW.ms to nextBound, scaled by its syllable weight.
+  const lastSyls   = syllableCount(lastW.word);
+  const pace       = _paceFactor(Math.max(95, (nextBound - words[0].ms) /
+    Math.max(1, words.filter(w=>!w._isPause).reduce((a,w)=>a+syllableCount(w.word),0))));
+  const holdMul    = _lerp(pace, 1.20, 1.90);
+  // Duration: syls * baseline * holdMul, capped to nextBound
+  const baselineMs = Math.max(95, (nextBound - lastW.ms - 40) / holdMul);
+  const lastWordEnd = Math.min(nextBound - 30, lastW.ms + lastSyls * baselineMs * holdMul);
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
-
-    // Pause sentinels: no DOM span — just use them as boundary markers, skip setState
-    if (w._isPause) continue;
+    if (w._isPause) continue;  // sentinels have no DOM span
 
     const wStart = w.ms;
-    // wEnd: look ahead to next entry's ms (could be a pause sentinel or next word)
-    const wEnd = wi < words.length - 1 ? words[wi+1].ms
-               : wi === lastRealIdx    ? lastWordEnd
-               :                        nextBound - 40;
-    const id = 'lw' + lineIdx + '_' + wi;
+    // wEnd = next entry's ms (pause sentinel or next word), or lastWordEnd for final word
+    const wEnd = wi < words.length - 1
+      ? words[wi + 1].ms
+      : lastWordEnd;
 
+    const id = 'lw' + lineIdx + '_' + wi;
     if (t < wStart) {
-      _setLwState(id, 'upcoming', '0%');
+      _setLwState(id, 'upcoming', '-20%');
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
     } else {
-      const raw   = (t - wStart) / (wEnd - wStart);
+      const raw   = (t - wStart) / Math.max(1, wEnd - wStart);
       const eased = raw < 0.5 ? 2*raw*raw : -1 + (4-2*raw)*raw;
       _setLwState(id, 'now-word', (eased * 100).toFixed(1) + '%');
     }
@@ -2220,7 +2285,7 @@ function _resetUpcoming(lineIdx) {
     if (w._isPause) return;
     const id = 'lw'+lineIdx+'_'+wi;
     delete _lwState[id];
-    _setLwState(id, 'upcoming', '0%');
+    _setLwState(id, 'upcoming', '-20%');
   });
 }
 
@@ -2355,14 +2420,19 @@ function tickLrc(posMs) {
   }
 
   // ── Word ticking ─────────────────────────────────────────────────────────
+  // nextEntryMs: the very next line in the array regardless of type.
+  // This is what the focus line's words must finish by —
+  // if there's a sub-line or dots right after, words must not stretch into them.
+  const nextEntryMs = ST.lrc[focus + 1]?.ms ?? (t + 4000);
+
   if (parenActive >= 0) {
-    // Paren is ticking: main line words stop at paren start, paren words tick freely
+    // Paren is active alongside: main stops at paren start
     _tickWords(focus, t, ST.lrc[parenActive].ms);
-    _tickWords(parenActive, t, _nextRealLineMs(parenActive, t + 4000));
+    // Paren stops at its own next entry
+    const parenNextEntry = ST.lrc[parenActive + 1]?.ms ?? (t + 4000);
+    _tickWords(parenActive, t, parenNextEntry);
   } else {
-    // Normal: tick focus line up to next real line
-    const bound = _nextRealLineMs(focus, t + 4000);
-    _tickWords(focus, t, bound);
+    _tickWords(focus, t, nextEntryMs);
   }
 }
 
