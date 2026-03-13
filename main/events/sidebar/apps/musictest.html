@@ -170,7 +170,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .lyrics-panel.active{opacity:1;pointer-events:auto}
 .lrc-scroll-outer{
   position:absolute;inset:0;overflow-y:auto;
-  padding:30px 24px 80px;
+  padding:30px 24px 140px;
   z-index:1;
 }
 .lrc-bg{
@@ -220,18 +220,19 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
 .ll{
-  font-size:28px;line-height:1.35;font-weight:800;
-  padding:4px 0;border-radius:8px;cursor:pointer;
+  font-size:28px;line-height:1.45;font-weight:800;
+  padding:6px 0;border-radius:8px;cursor:pointer;
   color:rgba(255,255,255,0.22);
   filter:blur(3px);
   opacity:.7;
   transform-origin:left center;
   transition:
-    color .55s cubic-bezier(.4,0,.2,1),
-    filter .55s cubic-bezier(.4,0,.2,1),
-    opacity .55s cubic-bezier(.4,0,.2,1),
-    font-size .4s cubic-bezier(.34,1.56,.64,1);
-  will-change:color,filter,opacity;
+    color .5s cubic-bezier(.4,0,.2,1),
+    filter .5s cubic-bezier(.4,0,.2,1),
+    opacity .5s cubic-bezier(.4,0,.2,1),
+    font-size .38s cubic-bezier(.34,1.56,.64,1),
+    transform .38s cubic-bezier(.34,1.56,.64,1);
+  will-change:color,filter,opacity,transform;
 }
 .ll.past{
   color:rgba(255,255,255,0.12);
@@ -255,6 +256,30 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   font-size:32px;
   filter:blur(0px);
   opacity:1;
+  animation: ll-bounce 0.32s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes ll-bounce {
+  0%   { transform: scale(0.95); }
+  60%  { transform: scale(1.03); }
+  100% { transform: scale(1.0);  }
+}
+/* Tap ripple on lyric lines */
+.ll{
+  position: relative;
+  overflow: hidden;
+}
+.ll-ripple {
+  position: absolute;
+  border-radius: 50%;
+  width: 12px; height: 12px;
+  margin: -6px 0 0 -6px;
+  background: rgba(255,255,255,0.22);
+  transform: scale(0);
+  animation: ll-ripple-anim 0.5s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes ll-ripple-anim {
+  to { transform: scale(18); opacity: 0; }
 }
 /* paren sub-lines: same .ll behaviour but smaller and indented */
 .ll.ll-sub{
@@ -293,6 +318,13 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   opacity:0.85;
 }
 
+/* Register --pct as animatable for browsers that support @property */
+@property --pct {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: -20%;
+}
+
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
@@ -304,17 +336,37 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
+  /* Smooth the glow filter and the custom property where supported */
+  transition:
+    filter 180ms ease-out,
+    --pct 0ms linear,
+    opacity 120ms ease-out;
+  opacity: 1;
 }
 .ll.now .lw.done{
   --pct:110%;
-  filter:drop-shadow(0 0 5px rgba(255,255,255,0.26));
+  filter:drop-shadow(0 0 6px rgba(255,255,255,0.28));
+  opacity:1;
 }
 .ll.now .lw.upcoming{
   --pct:-20%;
   filter:none;
+  /* Upcoming words inside the active line: unlit, matches line body color */
+  opacity:0.75;
 }
 .ll.now .lw.now-word{
-  filter:drop-shadow(0 0 7px rgba(255,255,255,0.30));
+  /* Glow fades in over 180ms — no instant blaze */
+  filter:drop-shadow(0 0 8px rgba(255,255,255,0.35));
+  opacity:1;
+}
+/* Entry shimmer: a very brief brightening at word start */
+.ll.now .lw.now-word.word-enter{
+  animation: word-entry-glow 220ms ease-out forwards;
+}
+@keyframes word-entry-glow {
+  0%   { filter: drop-shadow(0 0 0px rgba(255,255,255,0)); }
+  40%  { filter: drop-shadow(0 0 14px rgba(255,255,255,0.50)); }
+  100% { filter: drop-shadow(0 0 8px rgba(255,255,255,0.35)); }
 }
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
@@ -1597,7 +1649,7 @@ G('btn-pp').addEventListener('click',togglePlay);
 const wordSyncOn = true;
 
 // ── AI LYRICS ENGINE (OpenRouter) ──────────────────────────────────────────
-const AI_KEY = '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';
+const AI_KEY = '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';
 const AI_MODEL = 'google/gemini-flash-1.5-8b';
 const _aiTimingCache = {};
 
@@ -2309,7 +2361,7 @@ function renderLineHTML(line, i) {
   // _wholeLine parens are full-size lines (the whole original line was in parens)
   // _isParen without _wholeLine = inline sub-line (smaller, indented)
   const cls = 'll' + (line._isParen && !line._wholeLine ? ' ll-sub' : '');
-  return `<div class="${cls}" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}</div>`;
+  return `<div class="${cls}" id="ll${i}" onclick="seekLrc(${i},event)">${mainHTML}</div>`;
 }
 
 function renderSynced() {
@@ -2320,7 +2372,21 @@ function renderSynced() {
 
 
 
-function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
+function seekLrc(i, evt) {
+  if (ST.lrcType !== 'synced' || !ST.lrc[i]) return;
+  // Ripple effect on tap
+  const el = document.getElementById('ll'+i);
+  if (el && evt) {
+    const r = document.createElement('span');
+    r.className = 'll-ripple';
+    const rect = el.getBoundingClientRect();
+    r.style.left = (evt.clientX - rect.left) + 'px';
+    r.style.top  = (evt.clientY - rect.top)  + 'px';
+    el.appendChild(r);
+    setTimeout(() => r.remove(), 600);
+  }
+  YT_player.seekTo(ST.lrc[i].ms / 1000);
+}
 
 // Per-word state cache to skip redundant DOM writes
 const _lwState = {};
@@ -2328,11 +2394,31 @@ const _lwState = {};
 function _setLwState(id, cls, pct) {
   const prev = _lwState[id];
   if (prev && prev.cls === cls && (cls !== 'now-word' || prev.pct === pct)) return;
+
+  const wasUpcoming = prev?.cls === 'upcoming' || !prev;
   _lwState[id] = { cls, pct };
+
   const el = document.getElementById(id);
   if (!el) return;
-  el.className = 'lw ' + cls;
-  el.style.setProperty('--pct', pct);
+
+  // Detect word entry: transitioning from upcoming → now-word for the first time
+  const isEntry = wasUpcoming && cls === 'now-word';
+
+  if (isEntry) {
+    // Set class but keep --pct at -20% for this frame so the glow enters from dim
+    el.className = 'lw ' + cls + ' word-enter';
+    // Don't write pct yet — let the glow animation start from zero brightness
+    // Next rAF will write the real pct via normal _tickWords
+    requestAnimationFrame(() => {
+      el.style.setProperty('--pct', pct);
+      setTimeout(() => {
+        if (el.classList.contains('word-enter')) el.classList.remove('word-enter');
+      }, 230);
+    });
+  } else {
+    el.className = 'lw ' + cls;
+    el.style.setProperty('--pct', pct);
+  }
 }
 
 // Helpers for tickLrc
@@ -2369,11 +2455,10 @@ function _tickWords(lineIdx, t, nextBound) {
   const msPerSyl   = Math.max(95, spacingMs);
   const pace       = _paceFactor(msPerSyl);
   const holdMul    = _lerp(pace, 1.20, 1.90);
-  // Last word natural end: its ms + hold duration, capped to nextBound
-  const lastWordEnd = Math.min(
-    nextBound - 20,
-    lastW.ms + lastSyls * msPerSyl * holdMul
-  );
+  // Natural hold: last word keeps filling for its full hold duration.
+  // Only cap if it would bleed more than 200ms past the next real line.
+  const naturalEnd = lastW.ms + lastSyls * msPerSyl * holdMul;
+  const lastWordEnd = naturalEnd <= nextBound + 200 ? naturalEnd : nextBound - 30;
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
@@ -2545,8 +2630,15 @@ function tickLrc(posMs) {
       }
     });
 
-    document.getElementById('ll'+focus)?.classList.add('now');
-    document.getElementById('ll'+focus)?.scrollIntoView({ block:'center', behavior:'smooth' });
+    const focusEl = document.getElementById('ll'+focus);
+    if (focusEl) {
+      focusEl.classList.add('now');
+      // Force bounce animation restart each time a new line becomes active
+      focusEl.style.animation = 'none';
+      focusEl.offsetHeight; // reflow
+      focusEl.style.animation = '';
+      focusEl.scrollIntoView({ block:'center', behavior:'smooth' });
+    }
 
     if (prev >= 0 && prev !== focus) _snapDone(prev);
     // Reset words — but don't reset any word whose start time has already passed
@@ -2665,51 +2757,51 @@ Reply with ONLY the ms integer of your chosen line. Nothing else.`;
   } catch { return null; }
 }
 
-// Smooth blend seek — fade out, seek, wait for playback, fade in
+// Smooth blend seek — Apple Music style: fade out → seek → fade in
 async function _blendSeek(seekSec) {
   if (!ytReady) { YT_player.seekTo(seekSec); YT_player.playVideo(); return; }
   const targetVol = ST.muted ? 0 : ST.vol * 100;
+  ST._blending = true;
 
-  // ── Fade out over 600ms ──
-  const fadeOutSteps = 24;
-  for (let i = fadeOutSteps; i >= 0; i--) {
-    YT_player.setVolume(targetVol * Math.pow(i / fadeOutSteps, 2)); // ease-in curve
-    await new Promise(r => setTimeout(r, 25));
+  // ── Fade out: 500ms, ease-in² (starts gentle, ends sharp for clean cut) ──
+  const OUT_STEPS = 20, OUT_MS = 25;
+  for (let i = OUT_STEPS; i >= 0; i--) {
+    const frac = i / OUT_STEPS;
+    YT_player.setVolume(targetVol * frac * frac);
+    await new Promise(r => setTimeout(r, OUT_MS));
   }
   YT_player.setVolume(0);
 
-  // ── Seek and start playback ──
-  YT_player.seekTo(seekSec);
+  // ── Seek then immediately play ──
+  YT_player.seekTo(seekSec, true);
   YT_player.playVideo();
 
-  // ── Wait until the player is actually playing at the right spot ──
+  // ── Wait for confirmed playback (state=1) with 3s max timeout ──
+  // Use onStateChange-style polling — more reliable than getCurrentTime check
   await new Promise(resolve => {
-    let tries = 0;
-    const check = setInterval(() => {
-      tries++;
-      const pos = YT_player.getCurrentTime?.() ?? 0;
-      const state = YT_player.getPlayerState?.() ?? -1;
-      // YT.PlayerState.PLAYING = 1
-      if (state === 1 && Math.abs(pos - seekSec) < 3) {
-        clearInterval(check);
-        resolve();
-      } else if (tries > 40) { // 2s timeout fallback
-        clearInterval(check);
+    const deadline = Date.now() + 3000;
+    const poll = setInterval(() => {
+      const state = YT_player.getPlayerState?.();
+      if (state === 1 || Date.now() > deadline) {
+        clearInterval(poll);
         resolve();
       }
-    }, 50);
+    }, 40);
   });
 
-  // ── Fade in over 800ms ──
-  const fadeInSteps = 32;
-  for (let i = 0; i <= fadeInSteps; i++) {
-    // ease-out curve so it feels like audio swells in
-    const t = i / fadeInSteps;
-    const vol = targetVol * (1 - Math.pow(1 - t, 2));
+  // Brief settle buffer so audio doesn't crackle at fade-in start
+  await new Promise(r => setTimeout(r, 80));
+
+  // ── Fade in: 700ms, ease-out² (swells naturally) ──
+  const IN_STEPS = 28, IN_MS = 25;
+  for (let i = 0; i <= IN_STEPS; i++) {
+    const frac = i / IN_STEPS;
+    const vol  = targetVol * (1 - Math.pow(1 - frac, 2));
     YT_player.setVolume(vol);
-    await new Promise(r => setTimeout(r, 25));
+    await new Promise(r => setTimeout(r, IN_MS));
   }
   YT_player.setVolume(targetVol);
+  ST._blending = false;
 }
 // ── END SMART REPEAT ────────────────────────────────────────────────────────
 
