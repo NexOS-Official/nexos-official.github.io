@@ -981,7 +981,7 @@ const ST = {
   queue:[], idx:-1,
   playing:false, shuffle:false, repeat:false, muted:false,
   vol:0.8, pos:0, dur:0,
-  lrc:[], lrcType:'none', lrcActive:-1,
+  lrc:[], lrcType:'none', lrcActive:-1, _parenActive:-1,
 };
 
 function G(id){ return document.getElementById(id); }
@@ -1704,7 +1704,7 @@ async function applyAIRefinements(lines, title, artist) {
 // ── END AI LYRICS ENGINE ───────────────────────────────────────────────────
 
 async function fetchLyrics(title, artist) {
-  ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
+  ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1; ST._parenActive=-1;
   const scroll=G('lscroll');
   G('lrc-empty-state').style.display='none';
   scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
@@ -1837,49 +1837,89 @@ const FAST_WORDS = new Set(['a','an','the','and','or','but','in','on','at','to',
   'of','by','up','so','my','me','we','he','she','it','i','is','as','be','do','go','no',
   'if','oh','ah','ooh','mm','mmm','yeah','yea']);
 
-function wordSpeedWeight(word, syls, isLast) {
+// Returns an absolute duration multiplier for a single word.
+// msPerSyl = the baseline pace for this line (ms per syllable).
+function wordDurMul(word, syls, isLast, msPerSyl) {
   const clean = word.replace(/[^a-z]/gi,'').toLowerCase();
   const len = clean.length;
-  let w = syls; // base = syllable count
+  let mul = 1.0;
 
-  // Short connector/function words — sung quickly
-  if (FAST_WORDS.has(clean)) w *= 0.55;
-  else if (len <= 2) w *= 0.65;
-  else if (len <= 3) w *= 0.80;
+  // Function/connector words — clipped short
+  if (FAST_WORDS.has(clean))      mul = 0.45;
+  else if (len <= 2)              mul = 0.60;
+  else if (len <= 3)              mul = 0.78;
 
-  // Last word of line — singer holds it longer
-  if (isLast) w *= 1.55;
+  // Elongated vowel spelling e.g. "looove", "staaay", "ohhh"
+  if (/([aeiou])\1+/.test(clean)) mul *= 1.45;
 
-  // Words with repeated vowels likely held (e.g. "looove", "staaay")
-  if (/(.){1,}/.test(clean)) w *= 1.3;
+  // Last word — held proportionally to overall pace
+  if (isLast) {
+    mul *= msPerSyl > 250 ? 1.70
+         : msPerSyl > 170 ? 1.45
+         :                  1.25;
+  }
 
-  // Punctuation at end = slight hold
-  if (/[,;!?…]$/.test(word)) w *= 1.2;
+  // Breath/pause after comma or semicolon
+  if (/[,;]$/.test(word))  mul *= 1.15;
+  // Strong emphasis after ! ? …
+  if (/[!?…]$/.test(word)) mul *= 1.30;
 
-  return w;
+  return mul;
+}
+
+// Also export a weight version for the estSingMs calculation (isLast=false baseline)
+function wordSpeedWeight(word, syls, isLast) {
+  return wordDurMul(word, syls, isLast, 200) * syls;
 }
 
 function timingForWords(rawWords, lineMs, nextMs) {
+  const n = rawWords.length;
   const syls = rawWords.map(syllableCount);
-  const totalSyls = syls.reduce((a,b) => a+b, 0);
+  const totalSyls = syls.reduce((a,b) => a+b, 0) || 1;
 
-  // Gap to next event (120ms tail buffer)
-  const gapMs = Math.max(300, nextMs - lineMs - 120);
-  // Singing pace: 120–400ms/syl — wide range for ballads vs rap
-  const rawMsPerSyl = gapMs / Math.max(1, totalSyls);
-  const msPerSyl = Math.max(120, Math.min(400, rawMsPerSyl));
-  const usable = msPerSyl * totalSyls;
+  const gapMs = Math.max(300, nextMs - lineMs - 80);
 
-  // Per-word weights with speed variation
-  const weights = rawWords.map((word, wi) =>
-    wordSpeedWeight(word, syls[wi], wi === rawWords.length - 1)
+  // Baseline pace from gap — no upper clamp here, let ballads be slow
+  const rawMsPerSyl = gapMs / totalSyls;
+  // Lower clamp: 95ms/syl (very fast rap). Upper: unclamped — let the line set the pace.
+  const msPerSyl = Math.max(95, rawMsPerSyl);
+
+  // Per-word raw durations
+  const durs = rawWords.map((word, wi) =>
+    syls[wi] * msPerSyl * wordDurMul(word, syls[wi], wi === n - 1, msPerSyl)
   );
-  const totalWeight = weights.reduce((a,b) => a+b, 0);
+
+  const rawTotal = durs.reduce((a,b) => a+b, 0);
+
+  // If the raw total overshoots the gap, shrink ONLY the fast words proportionally
+  // so slow/held words keep their feel. Fast words absorb the overflow.
+  let scaledDurs = durs;
+  if (rawTotal > gapMs) {
+    const overflow = rawTotal - gapMs;
+    // Total "fast budget" = sum of fast-word durations
+    const fastTotal = durs.reduce((sum, d, wi) => {
+      const clean = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
+      const isFast = FAST_WORDS.has(clean) || clean.length <= 3;
+      return sum + (isFast ? d : 0);
+    }, 0);
+    const shrinkRatio = fastTotal > overflow ? (fastTotal - overflow) / fastTotal : 0.05;
+    scaledDurs = durs.map((d, wi) => {
+      const clean = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
+      const isFast = FAST_WORDS.has(clean) || clean.length <= 3;
+      return isFast ? d * shrinkRatio : d;
+    });
+    // If still over (edge case: all slow words), apply uniform scale as fallback
+    const scaledTotal = scaledDurs.reduce((a,b) => a+b, 0);
+    if (scaledTotal > gapMs) {
+      const fallback = gapMs / scaledTotal;
+      scaledDurs = scaledDurs.map(d => d * fallback);
+    }
+  }
 
   let cursor = lineMs;
   return rawWords.map((word, wi) => {
     const wordMs = cursor;
-    cursor += (weights[wi] / totalWeight) * usable;
+    cursor += scaledDurs[wi];
     return { ms: wordMs, word };
   });
 }
@@ -1914,23 +1954,24 @@ function buildWordTimings(lrc) {
       acc + wordSpeedWeight(w, syllableCount(w), false), 0) || 1;
     const estSingMs = Math.max(400, msPS * (weightedSyls / totalWeightBase) * totalSylCount);
 
-    const mainLineIdx = expanded.length; // index this main line will occupy
     expanded.push({ ...line, text: mainText, _parensSource: parens.length > 0 ? parens : null });
 
-    // Parens: estimate ms based on position within the main line's sing time.
-    // Store them separately — we'll splice them in after the full loop so we can
-    // check if any paren overlaps the *next* main line and reattach it there.
     const mainWordCount = mainRawWords.length;
     for (const paren of parens) {
-      const frac = mainWordCount > 0 ? Math.min(0.98, paren.afterWordIdx / mainWordCount) : 0.5;
-      const parenMs = Math.round(line.ms + estSingMs * frac);
+      const frac = mainWordCount > 0 ? Math.min(0.92, paren.afterWordIdx / mainWordCount) : 0.5;
+      // Raw estimate: where in the main line's sing time this paren begins
+      let parenMs = Math.round(line.ms + estSingMs * frac);
+      // Hard cap: paren must start before the next real LRC line
+      // (the sort pass later will move it after the next main line if needed,
+      //  but never let it share a timestamp with the next main line itself)
+      if (nextMs !== null) parenMs = Math.min(parenMs, nextMs - 80);
       expanded.push({
         ms: parenMs,
         text: paren.text,
         _wordTimed: null,
         _synthetic: false,
         _isParen: true,
-        _parenParentMs: line.ms   // remember which main line spawned this
+        _parenParentMs: line.ms
       });
     }
 
@@ -1941,21 +1982,22 @@ function buildWordTimings(lrc) {
     }
   }
 
-  // Re-sort: parens whose ms falls after the next non-paren line should move after it.
-  // Walk forward; whenever a paren entry is out-of-order relative to the next main line, sink it.
+  // Re-sort: parens whose ms falls at/after the next non-paren line move to sit below it.
   for (let i = 0; i < expanded.length - 1; i++) {
     if (!expanded[i]._isParen) continue;
-    // Find the next non-paren line after i
     let nextMain = -1;
     for (let j = i + 1; j < expanded.length; j++) {
       if (!expanded[j]._isParen && !expanded[j]._synthetic) { nextMain = j; break; }
     }
     if (nextMain === -1) continue;
     if (expanded[i].ms >= expanded[nextMain].ms) {
-      // Splice: remove from i, insert right after nextMain
       const [paren] = expanded.splice(i, 1);
-      expanded.splice(nextMain, 0, paren); // nextMain-1 now because we removed one before it
-      i--; // recheck this position
+      // Place it right after nextMain (which is now at nextMain-1 after splice)
+      const insertAt = nextMain; // was nextMain, now one less due to removal
+      // Give it a ms just after nextMain so its word timing boundary is correct
+      paren.ms = Math.max(paren.ms, expanded[insertAt - 1].ms + 50);
+      expanded.splice(insertAt, 0, paren);
+      i--;
     }
   }
 
@@ -2047,14 +2089,70 @@ function _setLwState(id, cls, pct) {
   el.style.setProperty('--pct', pct);
 }
 
+// Helpers for tickLrc
+function _nextRealLineMs(fromIdx, fallback) {
+  for (let j = fromIdx + 1; j < ST.lrc.length; j++) {
+    if (!ST.lrc[j]._isParen && !ST.lrc[j]._synthetic) return ST.lrc[j].ms;
+  }
+  return fallback;
+}
+
+// Tick word highlights for a single line index.
+// nextBound: the ms at which this line's last word must be fully done.
+function _tickWords(lineIdx, t, nextBound) {
+  const words = ST.lrc[lineIdx]?.words;
+  if (!words?.length) return;
+
+  // Derive the per-line pace so lastWordEnd is consistent with timingForWords
+  const lineMs   = words[0].ms;
+  const gapMs    = Math.max(200, nextBound - lineMs - 80);
+  const totalSyls = words.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+  const msPerSyl  = Math.max(110, Math.min(440, gapMs / totalSyls));
+
+  const lastW     = words[words.length - 1];
+  const lastDur   = syllableCount(lastW.word) * msPerSyl *
+                    wordDurMul(lastW.word, syllableCount(lastW.word), true, msPerSyl);
+  const lastWordEnd = Math.min(nextBound - 50, lastW.ms + lastDur);
+
+  for (let wi = 0; wi < words.length; wi++) {
+    const wStart = words[wi].ms;
+    const wEnd   = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
+    const id     = 'lw' + lineIdx + '_' + wi;
+    if (t < wStart) {
+      _setLwState(id, 'upcoming', '0%');
+    } else if (t >= wEnd) {
+      _setLwState(id, 'done', '100%');
+    } else {
+      const raw   = (t - wStart) / (wEnd - wStart);
+      const eased = raw < 0.5 ? 2*raw*raw : -1 + (4-2*raw)*raw;
+      _setLwState(id, 'now-word', (eased * 100).toFixed(1) + '%');
+    }
+  }
+}
+
+// Snap all word spans for a line to "done"
+function _snapDone(lineIdx) {
+  (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
+    _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
+  });
+}
+
+// Reset all word spans for a line to "upcoming"
+function _resetUpcoming(lineIdx) {
+  (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
+    const id = 'lw'+lineIdx+'_'+wi;
+    delete _lwState[id];
+    _setLwState(id, 'upcoming', '0%');
+  });
+}
+
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  // Lookahead: compensate for rendering lag — words light up exactly as sung
   const AHEAD = 80;
   const t = posMs + AHEAD;
 
-  // Binary search for active line
+  // Binary search — highest index whose ms <= t
   let lo = 0, hi = ST.lrc.length - 1, active = 0;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
@@ -2062,74 +2160,133 @@ function tickLrc(posMs) {
     else hi = mid - 1;
   }
 
-  if (active !== ST.lrcActive) {
-    const prev = ST.lrcActive;
-    ST.lrcActive = active;
+  const activeEntry = ST.lrc[active];
 
-    // Batch DOM updates — collect all lines once, update in one pass
-    const lines = document.querySelectorAll('#lscroll .ll');
-    lines.forEach((el, i) => {
+  // ── Resolve focus & parenActive ─────────────────────────────────────────
+  // focus      = the line index that is visually .now and scrolled to
+  // parenActive = a sub-line ticking silently BELOW focus at the same time (-1 if none)
+  let focus = active;
+  let parenActive = -1;
+
+  if (activeEntry._synthetic) {
+    // Instrumental marker — walk back to last real line
+    while (focus > 0 && (ST.lrc[focus]._isParen || ST.lrc[focus]._synthetic)) focus--;
+
+  } else if (activeEntry._isParen) {
+    // Find the nearest preceding real (non-paren, non-synthetic) line
+    let prevReal = active - 1;
+    while (prevReal >= 0 && (ST.lrc[prevReal]._isParen || ST.lrc[prevReal]._synthetic)) prevReal--;
+
+    if (prevReal < 0) {
+      // Nothing before — paren becomes focus
+      focus = active;
+    } else {
+      const parentMs = ST.lrc[prevReal].ms;
+      const parenMs  = activeEntry.ms;
+
+      // Was this paren repositioned AFTER the next real line (i.e. it now lives
+      // below a different line than its original parent)?
+      const nextRealMs = _nextRealLineMs(active, Infinity);
+      const parenBelongsToNext = (parenMs >= nextRealMs || activeEntry._parenParentMs !== parentMs);
+
+      if (parenBelongsToNext || parenMs > parentMs) {
+        // Paren is truly after its parent: paren IS the focus, parent is past
+        focus = active;
+      } else {
+        // Paren overlaps parent: parent stays focus, paren ticks alongside
+        focus = prevReal;
+        parenActive = active;
+      }
+    }
+
+  } else {
+    // Normal line — focus is active
+    focus = active;
+    // Look immediately forward: any paren that belongs to this line and has started?
+    // Only if paren's _parenParentMs matches this line's ms
+    const focusMs = activeEntry.ms;
+    for (let j = focus + 1; j < ST.lrc.length; j++) {
+      const e = ST.lrc[j];
+      if (!e._isParen) break; // hit next real line
+      if (e._parenParentMs !== focusMs) break; // belongs to a different line
+      if (e.ms <= t) parenActive = j; // take last started one
+    }
+  }
+
+  // ── DOM class update — only when focus changes ───────────────────────────
+  if (focus !== ST.lrcActive) {
+    const prev = ST.lrcActive;
+    ST.lrcActive = focus;
+
+    // Clear & reassign classes to every DOM line
+    const domLines = document.querySelectorAll('#lscroll .ll');
+    domLines.forEach((el, i) => {
       el.classList.remove('now','past','near','near2');
-      const dist = i - active;
+
+      // Parens/synthetics inherit distance from their nearest preceding real line
+      const entry = ST.lrc[i];
+      let di = i;
+      if (entry?._isParen || entry?._synthetic) {
+        for (let k = i - 1; k >= 0; k--) {
+          if (!ST.lrc[k]._isParen && !ST.lrc[k]._synthetic) { di = k; break; }
+        }
+      }
+
+      const dist    = di - focus;
       const absDist = Math.abs(dist);
-      if (dist < 0) el.classList.add('past');
+      if      (dist < 0)      el.classList.add('past');
       else if (absDist === 1) el.classList.add('near');
       else if (absDist === 2) el.classList.add('near2');
-      if (i === active) el.classList.add('now');
-      // Progressive blur: lines farther away blur more
-      el.style.filter = absDist >= 3 ? `blur(${Math.min(5, (absDist - 2) * 1.5).toFixed(1)}px)` : '';
+      el.style.filter = absDist >= 3
+        ? `blur(${Math.min(5,(absDist-2)*1.5).toFixed(1)}px)` : '';
     });
 
-    document.getElementById('ll'+active)
-      ?.scrollIntoView({ block:'center', behavior:'smooth' });
+    // Mark focus as .now
+    document.getElementById('ll'+focus)?.classList.add('now');
+    document.getElementById('ll'+focus)?.scrollIntoView({ block:'center', behavior:'smooth' });
 
-    // Snap previous line's words to fully done
-    if (prev >= 0) {
-      (ST.lrc[prev]?.words || []).forEach((w, wi) => {
-        _setLwState('lw'+prev+'_'+wi, 'done', '100%');
-      });
+    // Snap previous line words to done; reset new focus to upcoming
+    if (prev >= 0 && prev !== focus) _snapDone(prev);
+    _resetUpcoming(focus);
+
+    // Also snap any old parenActive that no longer belongs
+    if (ST._parenActive >= 0 && ST._parenActive !== parenActive) {
+      document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
+      _snapDone(ST._parenActive);
+      ST._parenActive = -1;
     }
-    // Reset new active line's words to upcoming
-    (ST.lrc[active]?.words || []).forEach((w, wi) => {
-      const id = 'lw'+active+'_'+wi;
-      delete _lwState[id]; // force re-render
-      _setLwState(id, 'upcoming', '0%');
-    });
   }
 
-  const words = ST.lrc[active]?.words;
-  if (!words?.length) return;
-
-  const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
-  // Last word duration — use same speed-weight logic as timingForWords so it feels consistent.
-  // The last word is always weighted as "isLast=true", so it naturally holds longer.
-  const lastW = words[words.length-1];
-  const lastSyls = syllableCount(lastW.word);
-  const lastWeight = wordSpeedWeight(lastW.word, lastSyls, true);
-  // Derive a per-line pace from total usable time / total weight of this line
-  const lineTotalWeight = words.reduce((a, w) => a + wordSpeedWeight(w.word, syllableCount(w.word), false), 0) || 1;
-  const lineUsable = nextLineMs - words[0].ms - 120;
-  const msPerWeight = Math.max(60, Math.min(lineUsable / lineTotalWeight, 500));
-  const lastWordEnd = Math.min(nextLineMs - 60, lastW.ms + lastWeight * msPerWeight);
-
-  for (let wi = 0; wi < words.length; wi++) {
-    const wStart = words[wi].ms;
-    const wEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
-    const id = 'lw'+active+'_'+wi;
-
-    if (t < wStart) {
-      _setLwState(id, 'upcoming', '0%');
-    } else if (t >= wEnd) {
-      _setLwState(id, 'done', '100%');
-    } else {
-      // Ease-in-out the fill so it feels natural, not robotic
-      const raw = (t - wStart) / (wEnd - wStart);
-      const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
-      _setLwState(id, 'now-word', (eased * 100).toFixed(1)+'%');
+  // ── Paren .now tracking (independent of focus change) ────────────────────
+  if (parenActive !== ST._parenActive) {
+    if (ST._parenActive >= 0) {
+      document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
+      _snapDone(ST._parenActive);
     }
+    ST._parenActive = parenActive;
+    if (parenActive >= 0) {
+      // Remove .now from focus main line when paren takes over highlighting
+      // (they should NOT both be .now at once)
+      document.getElementById('ll'+focus)?.classList.remove('now');
+      document.getElementById('ll'+parenActive)?.classList.add('now');
+      _resetUpcoming(parenActive);
+    } else {
+      // Paren ended — restore .now to focus
+      document.getElementById('ll'+focus)?.classList.add('now');
+    }
+  }
+
+  // ── Word ticking ─────────────────────────────────────────────────────────
+  if (parenActive >= 0) {
+    // Paren is ticking: main line words stop at paren start, paren words tick freely
+    _tickWords(focus, t, ST.lrc[parenActive].ms);
+    _tickWords(parenActive, t, _nextRealLineMs(parenActive, t + 4000));
+  } else {
+    // Normal: tick focus line up to next real line
+    const bound = _nextRealLineMs(focus, t + 4000);
+    _tickWords(focus, t, bound);
   }
 }
-
 
 // ── ARTIST PROFILE ─────────────────────────────────────────────────────────
 const _artistCache = {};
