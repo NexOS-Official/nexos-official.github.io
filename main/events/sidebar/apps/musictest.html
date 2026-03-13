@@ -1836,104 +1836,130 @@ function syllableCount(word) {
 const FAST_WORDS = new Set(['a','an','the','and','or','but','in','on','at','to','for',
   'of','by','up','so','my','me','we','he','she','it','i','is','as','be','do','go','no',
   'if','oh','ah','ooh','mm','mmm','yeah','yea']);
-
-// Returns an absolute duration multiplier for a single word.
-// msPerSyl = the baseline pace for this line (ms per syllable).
+// Returns an absolute duration multiplier for a single word's FILL time.
+// msPerSyl = baseline pace for this line (ms per syllable).
 function wordDurMul(word, syls, isLast, msPerSyl) {
   const clean = word.replace(/[^a-z]/gi,'').toLowerCase();
-  const len = clean.length;
+  const len   = clean.length;
   let mul = 1.0;
 
   // Function/connector words — clipped short
-  if (FAST_WORDS.has(clean))      mul = 0.45;
-  else if (len <= 2)              mul = 0.60;
-  else if (len <= 3)              mul = 0.78;
+  if (FAST_WORDS.has(clean))       mul = 0.45;
+  else if (len <= 2)               mul = 0.60;
+  else if (len <= 3)               mul = 0.78;
 
   // Elongated vowel spelling e.g. "looove", "staaay", "ohhh"
-  if (/([aeiou])\1+/.test(clean)) mul *= 1.45;
+  if (/([aeiou])\1+/.test(clean))  mul *= 1.45;
 
-  // Last word — held proportionally to overall pace
+  // Last word of line — singer holds the note
   if (isLast) {
-    mul *= msPerSyl > 250 ? 1.70
-         : msPerSyl > 170 ? 1.45
-         :                  1.25;
+    mul *= msPerSyl > 280 ? 1.80
+         : msPerSyl > 180 ? 1.50
+         :                  1.28;
   }
-
-  // Breath/pause after comma or semicolon
-  if (/[,;]$/.test(word))  mul *= 1.15;
-  // Strong emphasis after ! ? …
-  if (/[!?…]$/.test(word)) mul *= 1.30;
 
   return mul;
 }
 
-// Also export a weight version for the estSingMs calculation (isLast=false baseline)
+// Returns how many ms of SILENCE to insert AFTER a word (breath/pause).
+// This is separate from the word's own fill duration so the fill ends cleanly
+// and the pause is dead time before the next word lights up.
+function wordPauseAfter(word, msPerSyl) {
+  // Comma / semicolon — singer takes a short breath
+  // Scale with pace: slow song = longer breath, fast song = barely any
+  if (/[,;]$/.test(word)) {
+    return msPerSyl > 300 ? msPerSyl * 0.55   // ballad: ~165ms at 300, ~220ms at 400
+         : msPerSyl > 180 ? msPerSyl * 0.38   // mid-tempo: ~68–114ms
+         :                  msPerSyl * 0.20;  // fast: ~19–36ms
+  }
+  // Em-dash or ellipsis — a longer dramatic pause
+  if (/[—…]$/.test(word)) {
+    return msPerSyl > 300 ? msPerSyl * 0.90
+         : msPerSyl > 180 ? msPerSyl * 0.65
+         :                  msPerSyl * 0.40;
+  }
+  // Exclamation / question — emphasis lands ON the word, then a breath after
+  if (/[!?]$/.test(word)) {
+    return msPerSyl > 300 ? msPerSyl * 0.70
+         : msPerSyl > 180 ? msPerSyl * 0.50
+         :                  msPerSyl * 0.28;
+  }
+  return 0;
+}
+
+// Also export a weight version for estSingMs (isLast=false baseline)
 function wordSpeedWeight(word, syls, isLast) {
   return wordDurMul(word, syls, isLast, 200) * syls;
 }
 
 function timingForWords(rawWords, lineMs, nextMs) {
-  const n = rawWords.length;
+  const n   = rawWords.length;
   const syls = rawWords.map(syllableCount);
   const totalSyls = syls.reduce((a,b) => a+b, 0) || 1;
 
-  const gapMs = Math.max(300, nextMs - lineMs - 80);
+  const gapMs    = Math.max(300, nextMs - lineMs - 80);
+  const msPerSyl = Math.max(95, gapMs / totalSyls);
 
-  // Baseline pace from gap — no upper clamp here, let ballads be slow
-  const rawMsPerSyl = gapMs / totalSyls;
-  // Lower clamp: 95ms/syl (very fast rap). Upper: unclamped — let the line set the pace.
-  const msPerSyl = Math.max(95, rawMsPerSyl);
-
-  // Per-word raw durations
-  const durs = rawWords.map((word, wi) =>
+  // Per-word durations: fill time + pause after
+  const fillDurs  = rawWords.map((word, wi) =>
     syls[wi] * msPerSyl * wordDurMul(word, syls[wi], wi === n - 1, msPerSyl)
   );
+  const pauseDurs = rawWords.map(word => wordPauseAfter(word, msPerSyl));
+  const totalDurs = fillDurs.map((f, wi) => f + pauseDurs[wi]);
 
-  const rawTotal = durs.reduce((a,b) => a+b, 0);
+  const rawTotal = totalDurs.reduce((a,b) => a+b, 0);
 
-  // If the raw total overshoots the gap, shrink ONLY the fast words proportionally
-  // so slow/held words keep their feel. Fast words absorb the overflow.
-  let scaledDurs = durs;
+  // Overflow: shrink fast words first, preserve slow/held words
+  let scaledFill  = fillDurs.slice();
+  let scaledPause = pauseDurs.slice();
+
   if (rawTotal > gapMs) {
-    const overflow = rawTotal - gapMs;
-    // Total "fast budget" = sum of fast-word durations
-    const fastTotal = durs.reduce((sum, d, wi) => {
-      const clean = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
-      const isFast = FAST_WORDS.has(clean) || clean.length <= 3;
-      return sum + (isFast ? d : 0);
-    }, 0);
-    const shrinkRatio = fastTotal > overflow ? (fastTotal - overflow) / fastTotal : 0.05;
-    scaledDurs = durs.map((d, wi) => {
-      const clean = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
-      const isFast = FAST_WORDS.has(clean) || clean.length <= 3;
-      return isFast ? d * shrinkRatio : d;
+    const overflow  = rawTotal - gapMs;
+    const isFastArr = rawWords.map(w => {
+      const c = w.replace(/[^a-z]/gi,'').toLowerCase();
+      return FAST_WORDS.has(c) || c.length <= 3;
     });
-    // If still over (edge case: all slow words), apply uniform scale as fallback
-    const scaledTotal = scaledDurs.reduce((a,b) => a+b, 0);
-    if (scaledTotal > gapMs) {
-      const fallback = gapMs / scaledTotal;
-      scaledDurs = scaledDurs.map(d => d * fallback);
+    // Fast-word budget (fill + pause combined)
+    const fastBudget = totalDurs.reduce((s,d,wi) => s + (isFastArr[wi] ? d : 0), 0);
+
+    if (fastBudget >= overflow) {
+      // Shrink fast words proportionally
+      const ratio = (fastBudget - overflow) / fastBudget;
+      scaledFill  = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
+      scaledPause = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
+    } else {
+      // Fast words can't absorb all overflow — uniform fallback
+      const scale = gapMs / rawTotal;
+      scaledFill  = fillDurs.map(d  => d * scale);
+      scaledPause = pauseDurs.map(d => d * scale);
     }
   }
 
+  // Build word list — inject a _pause sentinel entry after punctuated words
+  // so _tickWords sees the gap as dead time between words
+  const result = [];
   let cursor = lineMs;
-  return rawWords.map((word, wi) => {
-    const wordMs = cursor;
-    cursor += scaledDurs[wi];
-    return { ms: wordMs, word };
-  });
+  for (let wi = 0; wi < n; wi++) {
+    result.push({ ms: cursor, word: rawWords[wi] });
+    cursor += scaledFill[wi];
+    if (scaledPause[wi] > 8) {
+      // Sentinel: zero-width pause — _tickWords will see it as wEnd for the prior word
+      result.push({ ms: cursor, word: '', _isPause: true });
+      cursor += scaledPause[wi];
+    }
+  }
+  return result;
 }
 
 function buildWordTimings(lrc) {
-  // Pass 1 — split paren groups out of each line into separate sub-lines,
-  // and detect long instrumental gaps → inject ♪ markers
   const expanded = [];
 
   for (let i = 0; i < lrc.length; i++) {
-    const line = lrc[i];
-    const nextMs = lrc[i+1]?.ms ?? null;
+    const line    = lrc[i];
+    const nextMs  = lrc[i+1]?.ms ?? null;
     const rawText = line.text?.trim() ?? '';
 
+    // Existing explicit instrumental lines (empty text from LRC)
     if (!rawText) {
       expanded.push(line);
       continue;
@@ -1941,29 +1967,59 @@ function buildWordTimings(lrc) {
 
     const { mainText, parens } = extractParens(rawText);
 
-    // Estimate sing time for instrumental gap detection (use main words only)
-    const mainRawWords = mainText.split(/\s+/).filter(Boolean);
-    const totalSylCount = mainRawWords.reduce((acc, w) => acc + syllableCount(w), 0);
-    const gap = nextMs !== null ? nextMs - line.ms : 3500;
-    const rawMsPS = gap / Math.max(1, totalSylCount);
-    const msPS = Math.max(120, Math.min(400, rawMsPS));
-    // Use speed weights for a more accurate estimate of actual sing duration
-    const weightedSyls = mainRawWords.reduce((acc, w, wi) =>
-      acc + wordSpeedWeight(w, syllableCount(w), wi === mainRawWords.length - 1), 0);
-    const totalWeightBase = mainRawWords.reduce((acc, w) =>
-      acc + wordSpeedWeight(w, syllableCount(w), false), 0) || 1;
-    const estSingMs = Math.max(400, msPS * (weightedSyls / totalWeightBase) * totalSylCount);
+    // ── Whole-line paren: e.g. "(oh yeah)" with nothing outside ──
+    // Don't create an empty main line — use the original ms directly for the paren.
+    if (!mainText && parens.length > 0) {
+      for (const paren of parens) {
+        expanded.push({
+          ms: line.ms,
+          text: paren.text,
+          _wordTimed: null,
+          _synthetic: false,
+          _isParen: true,
+          _parenParentMs: line.ms,  // parent is itself — it IS the line
+          _wholeLine: true,         // flag: no main line exists for this
+        });
+      }
+      // Still check for a gap after this "line" and inject instrumental if needed
+      if (nextMs !== null) {
+        const parenWords = parens[parens.length-1].text.split(/\s+/).filter(Boolean);
+        const parenSyls  = parenWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
+        const gap        = nextMs - line.ms;
+        const msPSraw    = gap / parenSyls;
+        const msPS       = Math.max(95, msPSraw);
+        const estMs      = parenSyls * msPS * 0.85; // rough sing est for the paren
+        if (gap > estMs + 3000) {
+          const instrStart = line.ms + Math.min(estMs + 200, gap * 0.45);
+          expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
+        }
+      }
+      continue;
+    }
+
+    // ── Normal line (may have inline parens) ──
+    const mainRawWords  = mainText.split(/\s+/).filter(Boolean);
+    const mainSyls      = mainRawWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
+    const gap           = nextMs !== null ? nextMs - line.ms : 3500;
+
+    // Estimate actual sing time using the same per-word logic as timingForWords,
+    // but without the overflow scale — this gives us the "natural" duration.
+    // We use a neutral msPerSyl (the line's own gap / mainSyls, unclamped).
+    const naturalMsPerSyl = Math.max(95, gap / mainSyls);
+    const estSingMs = mainRawWords.reduce((acc, w, wi) => {
+      const s   = syllableCount(w);
+      const mul = wordDurMul(w, s, wi === mainRawWords.length - 1, naturalMsPerSyl);
+      return acc + s * naturalMsPerSyl * mul;
+    }, 0);
 
     expanded.push({ ...line, text: mainText, _parensSource: parens.length > 0 ? parens : null });
 
-    const mainWordCount = mainRawWords.length;
+    // Inline parens: estimate start time from position within the main line
     for (const paren of parens) {
-      const frac = mainWordCount > 0 ? Math.min(0.92, paren.afterWordIdx / mainWordCount) : 0.5;
-      // Raw estimate: where in the main line's sing time this paren begins
-      let parenMs = Math.round(line.ms + estSingMs * frac);
-      // Hard cap: paren must start before the next real LRC line
-      // (the sort pass later will move it after the next main line if needed,
-      //  but never let it share a timestamp with the next main line itself)
+      const frac    = mainRawWords.length > 0
+        ? Math.min(0.92, paren.afterWordIdx / mainRawWords.length)
+        : 0.5;
+      let parenMs   = Math.round(line.ms + estSingMs * frac);
       if (nextMs !== null) parenMs = Math.min(parenMs, nextMs - 80);
       expanded.push({
         ms: parenMs,
@@ -1971,18 +2027,18 @@ function buildWordTimings(lrc) {
         _wordTimed: null,
         _synthetic: false,
         _isParen: true,
-        _parenParentMs: line.ms
+        _parenParentMs: line.ms,
       });
     }
 
-    // Inject instrumental gap marker if needed
+    // Inject instrumental gap marker if singing ends well before next line
     if (nextMs !== null && gap > estSingMs + 3000) {
       const instrStart = line.ms + Math.min(estSingMs + 200, gap * 0.45);
       expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
     }
   }
 
-  // Re-sort: parens whose ms falls at/after the next non-paren line move to sit below it.
+  // Re-sort: parens whose ms >= next real line move to sit below that next line
   for (let i = 0; i < expanded.length - 1; i++) {
     if (!expanded[i]._isParen) continue;
     let nextMain = -1;
@@ -1992,33 +2048,32 @@ function buildWordTimings(lrc) {
     if (nextMain === -1) continue;
     if (expanded[i].ms >= expanded[nextMain].ms) {
       const [paren] = expanded.splice(i, 1);
-      // Place it right after nextMain (which is now at nextMain-1 after splice)
-      const insertAt = nextMain; // was nextMain, now one less due to removal
-      // Give it a ms just after nextMain so its word timing boundary is correct
-      paren.ms = Math.max(paren.ms, expanded[insertAt - 1].ms + 50);
-      expanded.splice(insertAt, 0, paren);
+      paren.ms = Math.max(paren.ms, expanded[nextMain - 1].ms + 50);
+      expanded.splice(nextMain, 0, paren);
       i--;
     }
   }
 
-  // Pass 2 — assign word timings to each expanded line
+  // Pass 2 — assign word timings
   return expanded.map((line, i) => {
-    const lineMs = line.ms;
-    const nextMs = expanded[i+1]?.ms ?? (lineMs + 3500);
+    const lineMs  = line.ms;
+    const nextMs  = expanded[i+1]?.ms ?? (lineMs + 3500);
     const rawWords = (line.text || '').split(/\s+/).filter(Boolean);
 
     if (!rawWords.length) {
-      const gapMs = Math.max(400, nextMs - lineMs);
+      // Instrumental beat-dots — but NOT if next entry is a whole-line paren
+      // (whole-line parens handle their own timing, no dots needed before them)
+      const nextIsWholeParen = expanded[i+1]?._wholeLine;
+      const gapMs   = Math.max(400, nextMs - lineMs);
       const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
-      return { ...line, words: [], beatDur };
+      return { ...line, words: [], beatDur, _skipDots: !!nextIsWholeParen };
     }
 
     if (line._wordTimed?.length) {
       return { ...line, words: line._wordTimed };
     }
 
-    const words = timingForWords(rawWords, lineMs, nextMs);
-    return { ...line, words };
+    return { ...line, words: timingForWords(rawWords, lineMs, nextMs) };
   });
 }
 
@@ -2046,23 +2101,32 @@ function extractParens(text) {
 }
 
 function renderLineHTML(line, i) {
-  const isNote = !line.words?.length && (!line.text || line.text.trim() === '♪' || line.text.trim() === '');
+  // Invisible placeholder — synthetic gap after a whole-line paren, skip rendering dots
+  if (line._skipDots) return '';
+
+  const isNote = !line.words?.length &&
+    (!line.text || line.text.trim() === '♪' || line.text.trim() === '');
+
   let mainHTML;
   if (isNote) {
     const beatDur = line.beatDur ?? 600;
     mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
   } else {
-    mainHTML = line.words?.length
-      ? line.words.map((w, wi) =>
-          `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`
-        ).join(' ')
-      : x(line.text || '');
+    if (line.words?.length) {
+      // Skip _isPause sentinels — they are timing-only, no DOM span
+      let spanIdx = 0;
+      mainHTML = line.words.map((w, wi) => {
+        if (w._isPause) return '';
+        return `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`;
+      }).join(' ').replace(/  +/g, ' ').trim();
+    } else {
+      mainHTML = x(line.text || '');
+    }
   }
-  // Paren sub-line: smaller, no brackets, own word spans
-  const parenHTML = line._isParen
-    ? ''  // paren lines render as normal ll but with paren class — handled below
-    : '';
-  const cls = 'll' + (line._isParen ? ' ll-sub' : '');
+
+  // _wholeLine parens are full-size lines (the whole original line was in parens)
+  // _isParen without _wholeLine = inline sub-line (smaller, indented)
+  const cls = 'll' + (line._isParen && !line._wholeLine ? ' ll-sub' : '');
   return `<div class="${cls}" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}</div>`;
 }
 
@@ -2098,26 +2162,38 @@ function _nextRealLineMs(fromIdx, fallback) {
 }
 
 // Tick word highlights for a single line index.
-// nextBound: the ms at which this line's last word must be fully done.
+// nextBound: the ms at which this line's last real word must be fully done.
 function _tickWords(lineIdx, t, nextBound) {
   const words = ST.lrc[lineIdx]?.words;
   if (!words?.length) return;
 
-  // Derive the per-line pace so lastWordEnd is consistent with timingForWords
-  const lineMs   = words[0].ms;
-  const gapMs    = Math.max(200, nextBound - lineMs - 80);
-  const totalSyls = words.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
-  const msPerSyl  = Math.max(110, Math.min(440, gapMs / totalSyls));
+  // Find the last real (non-pause) word for lastWordEnd calculation
+  let lastRealIdx = words.length - 1;
+  while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
 
-  const lastW     = words[words.length - 1];
-  const lastDur   = syllableCount(lastW.word) * msPerSyl *
-                    wordDurMul(lastW.word, syllableCount(lastW.word), true, msPerSyl);
-  const lastWordEnd = Math.min(nextBound - 50, lastW.ms + lastDur);
+  const lastW    = words[lastRealIdx];
+  const lastSyls = syllableCount(lastW.word);
+  // Reconstruct msPerSyl from what timingForWords would have used
+  const lineMs    = words[0].ms;
+  const gapMs     = Math.max(200, nextBound - lineMs - 80);
+  const totalSyls = words.filter(w => !w._isPause).reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+  const msPerSyl  = Math.max(95, gapMs / totalSyls);
+  const lastDur   = lastSyls * msPerSyl * wordDurMul(lastW.word, lastSyls, true, msPerSyl);
+  const lastWordEnd = Math.min(nextBound - 40, lastW.ms + lastDur);
 
   for (let wi = 0; wi < words.length; wi++) {
-    const wStart = words[wi].ms;
-    const wEnd   = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
-    const id     = 'lw' + lineIdx + '_' + wi;
+    const w = words[wi];
+
+    // Pause sentinels: no DOM span — just use them as boundary markers, skip setState
+    if (w._isPause) continue;
+
+    const wStart = w.ms;
+    // wEnd: look ahead to next entry's ms (could be a pause sentinel or next word)
+    const wEnd = wi < words.length - 1 ? words[wi+1].ms
+               : wi === lastRealIdx    ? lastWordEnd
+               :                        nextBound - 40;
+    const id = 'lw' + lineIdx + '_' + wi;
+
     if (t < wStart) {
       _setLwState(id, 'upcoming', '0%');
     } else if (t >= wEnd) {
@@ -2133,6 +2209,7 @@ function _tickWords(lineIdx, t, nextBound) {
 // Snap all word spans for a line to "done"
 function _snapDone(lineIdx) {
   (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
+    if (w._isPause) return;
     _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
   });
 }
@@ -2140,6 +2217,7 @@ function _snapDone(lineIdx) {
 // Reset all word spans for a line to "upcoming"
 function _resetUpcoming(lineIdx) {
   (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
+    if (w._isPause) return;
     const id = 'lw'+lineIdx+'_'+wi;
     delete _lwState[id];
     _setLwState(id, 'upcoming', '0%');
@@ -2172,7 +2250,7 @@ function tickLrc(posMs) {
     // Instrumental marker — walk back to last real line
     while (focus > 0 && (ST.lrc[focus]._isParen || ST.lrc[focus]._synthetic)) focus--;
 
-  } else if (activeEntry._isParen) {
+  } else if (activeEntry._isParen && !activeEntry._wholeLine) {
     // Find the nearest preceding real (non-paren, non-synthetic) line
     let prevReal = active - 1;
     while (prevReal >= 0 && (ST.lrc[prevReal]._isParen || ST.lrc[prevReal]._synthetic)) prevReal--;
@@ -2207,7 +2285,7 @@ function tickLrc(posMs) {
     const focusMs = activeEntry.ms;
     for (let j = focus + 1; j < ST.lrc.length; j++) {
       const e = ST.lrc[j];
-      if (!e._isParen) break; // hit next real line
+      if (!e._isParen || e._wholeLine) break; // hit next real line or whole-line paren
       if (e._parenParentMs !== focusMs) break; // belongs to a different line
       if (e.ms <= t) parenActive = j; // take last started one
     }
