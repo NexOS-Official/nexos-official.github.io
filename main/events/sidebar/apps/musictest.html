@@ -70,20 +70,30 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .cover-bg{
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  filter:blur(60px) saturate(1.8) brightness(.4);opacity:0;
-  transition:opacity .6s;pointer-events:none;
+  filter:blur(0px) saturate(1.5) brightness(.55);opacity:0;
+  transition:opacity .8s;pointer-events:none;
 }
 .cover-bg.on{opacity:1}
+/* Gradient overlay so controls remain readable */
+.cover-wrap::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(to bottom,
+    rgba(0,0,0,0.08) 0%,
+    rgba(0,0,0,0.18) 60%,
+    rgba(0,0,0,0.62) 100%
+  );
+  pointer-events:none;z-index:1;border-radius:var(--rl);
+}
 .cover-art{
-  width:75%;aspect-ratio:1;border-radius:var(--rl);overflow:hidden;
-  position:relative;z-index:1;
-  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  width:62%;aspect-ratio:1;border-radius:var(--r);overflow:hidden;
+  position:relative;z-index:2;
+  box-shadow:0 12px 48px rgba(0,0,0,.7);
   display:none;
 }
 .cover-art img{width:100%;height:100%;object-fit:cover;display:block}
 .cover-art.playing{}
 .cover-info{
-  position:absolute;bottom:20px;left:20px;right:20px;z-index:2;
+  position:absolute;bottom:20px;left:20px;right:20px;z-index:3;
   display:none;
 }
 .cover-title{font-size:18px;font-weight:700;letter-spacing:-.3px;text-shadow:0 2px 10px rgba(0,0,0,.6)}
@@ -182,6 +192,23 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   pointer-events:none;z-index:0;
 }
 .lrc-bg.on{opacity:1}
+
+/* Smart repeat lyric blend states */
+#lscroll.blend-out {
+  animation: lrc-blend-out 1.8s ease-in-out forwards;
+}
+#lscroll.blend-in {
+  animation: lrc-blend-in 1.2s ease-out forwards;
+}
+@keyframes lrc-blend-out {
+  0%   { filter: blur(0px);  opacity: 1; }
+  60%  { filter: blur(6px);  opacity: 0.4; }
+  100% { filter: blur(12px); opacity: 0; }
+}
+@keyframes lrc-blend-in {
+  0%   { filter: blur(12px); opacity: 0; }
+  100% { filter: blur(0px);  opacity: 1; }
+}
 #lscroll{position:relative;z-index:1;}
 .lrc-empty-state-wrap{position:relative;z-index:1;}
 
@@ -300,24 +327,29 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.ll-sub.near2{
   font-size:16px;
 }
-/* inline mid-line parens: sit above the following word, smaller */
+/* inline mid-line parens: small italic text sitting above the word below */
 .lw-inline-paren{
   display:inline-flex;
   flex-direction:column;
   align-items:flex-start;
-  vertical-align:bottom;
+  vertical-align:baseline;
+  line-height:1;
   gap:0;
+  position:relative;
+  top:0;
 }
 .lw-inline-paren .lw-ip-text{
-  font-size:0.50em;
-  line-height:1.1;
-  opacity:0.55;
-  margin-bottom:1px;
+  font-size:0.42em;
+  line-height:1.2;
+  opacity:0.50;
+  margin-bottom:0;
   display:block;
-  font-weight:700;
+  font-weight:600;
+  font-style:italic;
+  white-space:nowrap;
 }
 .ll.now .lw-inline-paren .lw-ip-text{
-  opacity:0.85;
+  opacity:0.80;
 }
 
 /* Register --pct as animatable for browsers that support @property */
@@ -330,10 +362,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
-    #ffffff calc(var(--pct, -20%) - 8%),
-    rgba(255,255,255,0.60) var(--pct, -20%),
-    rgba(255,255,255,0.22) calc(var(--pct, -20%) + 6%),
-    rgba(255,255,255,0.08) calc(var(--pct, -20%) + 12%)
+    #ffffff calc(var(--pct, -20%) - 10%),
+    rgba(255,255,255,0.85) calc(var(--pct, -20%) - 2%),
+    rgba(255,255,255,0.30) calc(var(--pct, -20%) + 8%),
+    rgba(255,255,255,0.06) calc(var(--pct, -20%) + 18%)
   );
   -webkit-background-clip:text;
   background-clip:text;
@@ -347,18 +379,18 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .ll.now .lw.done{
   --pct:110%;
-  filter:drop-shadow(0 0 6px rgba(255,255,255,0.28));
+  filter:none;
   opacity:1;
 }
 .ll.now .lw.upcoming{
   --pct:-20%;
   filter:none;
-  /* Upcoming words inside the active line: unlit, matches line body color */
-  opacity:0.75;
+  /* Upcoming words: dim but present so comma pauses don't flash black */
+  opacity:0.55;
+  transition: opacity 200ms ease-in;
 }
 .ll.now .lw.now-word{
-  /* Glow fades in over 180ms — no instant blaze */
-  filter:drop-shadow(0 0 8px rgba(255,255,255,0.35));
+  filter:none;
   opacity:1;
 }
 /* Entry shimmer: a very brief brightening at word start */
@@ -366,9 +398,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   animation: word-entry-glow 220ms ease-out forwards;
 }
 @keyframes word-entry-glow {
-  0%   { filter: drop-shadow(0 0 0px rgba(255,255,255,0)); }
-  40%  { filter: drop-shadow(0 0 14px rgba(255,255,255,0.50)); }
-  100% { filter: drop-shadow(0 0 8px rgba(255,255,255,0.35)); }
+  0%   { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
@@ -392,9 +423,14 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) / 3)}
 .ll.now .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) / 3 * 2)}
 @keyframes beatbounce{
-  0%,100%{transform:translateY(0)}
-  40%{transform:translateY(-10px)}
-  60%{transform:translateY(-8px)}
+  0%,100%{transform:translateY(0) scale(1)}
+  35%{transform:translateY(-11px) scale(1.15)}
+  55%{transform:translateY(-7px) scale(1.05)}
+  75%{transform:translateY(-3px) scale(1.02)}
+}
+/* Waveform-style beat dots for active instrumental lines */
+.ll.now .beat-dots span{
+  transition: none;
 }
 .lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
 .lrc-empty svg{width:38px;height:38px;opacity:.22}
@@ -1800,7 +1836,7 @@ async function fetchLyrics(title, artist) {
   const scroll=G('lscroll');
   G('lrc-empty-state').style.display='none';
   scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
-  const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
+  const clean=s=>s.replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
   const ct=clean(title), ca=clean(artist);
 
   // Run both GET attempts in parallel for speed
@@ -1974,15 +2010,15 @@ function wordDurMul(word, syls, isLast, msPerSyl) {
 
   // Function/connector words — always short, but slightly longer on slow songs
   if (FAST_WORDS.has(clean)) {
-    mul = _lerp(pace, 0.40, 0.58);
+    mul = _lerp(pace, 0.52, 0.65);  // raised floor so they're visible even at fast pace
   } else if (len <= 2) {
-    mul = _lerp(pace, 0.52, 0.68);
+    mul = _lerp(pace, 0.62, 0.75);
   } else if (len <= 3) {
-    mul = _lerp(pace, 0.72, 0.84);
+    mul = _lerp(pace, 0.76, 0.88);
   }
-  // Content words: longer at slow pace
+  // Content words: fill more of their allocated time
   else {
-    mul = _lerp(pace, 0.90, 1.10);
+    mul = _lerp(pace, 0.92, 1.08);
   }
 
   // Elongated vowel spelling e.g. "looove", "staaay", "ohhh"
@@ -2050,8 +2086,15 @@ function timingForWords(rawWords, lineMs, nextMs) {
     return acc + p;
   }, 0);
   // Singing time = gap minus estimated pauses
-  const singMs   = Math.max(200, gapMs - estimatedPauseMs);
-  const msPerSyl = Math.max(95, singMs / totalSyls);
+  const singMs       = Math.max(200, gapMs - estimatedPauseMs);
+  const rawMsPerSyl  = singMs / totalSyls;
+  // Clamp: fast rap floor 90ms, but cap at 420ms unless very few syllables
+  // (prevents "talking" paced songs from being treated as ultra-slow ballads)
+  const sylDensity   = totalSyls / Math.max(1, gapMs / 1000); // syls per second
+  const maxMsPerSyl  = sylDensity > 2.5 ? 280   // fast/dense: cap at 280
+                     : sylDensity > 1.2 ? 360   // normal: cap at 360
+                     :                    480;   // genuinely slow: allow up to 480
+  const msPerSyl = Math.max(90, Math.min(maxMsPerSyl, rawMsPerSyl));
 
   // Per-word durations with final msPerSyl
   const fillDurs  = rawWords.map((word, wi) =>
@@ -2103,9 +2146,11 @@ function timingForWords(rawWords, lineMs, nextMs) {
   for (let wi = 0; wi < n; wi++) {
     result.push({ ms: cursor, word: rawWords[wi] });
     cursor += scaledFill[wi];
-    if (scaledPause[wi] > 12) {
+    if (scaledPause[wi] > 50) {  // only inject pause sentinel for meaningful gaps
       result.push({ ms: cursor, word: '', _isPause: true });
       cursor += scaledPause[wi];
+    } else {
+      cursor += scaledPause[wi]; // absorb tiny pauses into word spacing silently
     }
   }
   return result;
@@ -2146,10 +2191,11 @@ function buildWordTimings(lrc) {
         const parenWords = parens[parens.length-1].text.split(/\s+/).filter(Boolean);
         const parenSyls  = parenWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
         const gap        = nextMs - line.ms;
-        const msPSraw    = gap / parenSyls;
-        const msPS       = Math.max(95, msPSraw);
-        const estMs      = parenSyls * msPS * 0.85; // rough sing est for the paren
-        if (gap > estMs + 3000) {
+        const rawMPS     = Math.max(90, gap / parenSyls);
+        const estMs      = parenWords.reduce((acc, w) => {
+          const s = syllableCount(w); return acc + s * rawMPS * wordDurMul(w, s, false, rawMPS);
+        }, 0);
+        if (gap > estMs + 2000) {
           const instrStart = line.ms + Math.min(estMs + 200, gap * 0.45);
           expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
         }
@@ -2243,8 +2289,22 @@ function buildWordTimings(lrc) {
 
     if (!rawWords.length) {
       const nextIsWholeParen = expanded[i+1]?._wholeLine;
-      const gapMs   = Math.max(400, nextMs - lineMs);
-      const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
+      const gapMs = Math.max(400, nextMs - lineMs);
+      // Estimate BPM from surrounding lyric lines to get musically accurate beat timing
+      // Look at nearby real lines to get their pace
+      let nearbyMsPerSyl = 200; // fallback ~120bpm
+      for (let k = Math.max(0,i-3); k <= Math.min(expanded.length-1, i+3); k++) {
+        const kl = expanded[k];
+        if (!kl.text?.trim() || kl._isParen || kl._synthetic) continue;
+        const kNext = expanded[k+1]?.ms ?? (kl.ms + 2000);
+        const kWords = kl.text.split(/\s+/).filter(Boolean);
+        const kSyls  = kWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
+        nearbyMsPerSyl = (kNext - kl.ms) / kSyls;
+        break;
+      }
+      // Convert ms/syl to beat duration: assume ~2 syls per beat
+      const bpm       = Math.round(60000 / Math.max(100, nearbyMsPerSyl * 2));
+      const beatDur   = Math.round(Math.min(800, Math.max(280, 60000 / Math.max(60, bpm))));
       return { ...line, words: [], beatDur, _skipDots: !!nextIsWholeParen };
     }
 
@@ -2259,22 +2319,28 @@ function buildWordTimings(lrc) {
     // it carries the paren text and the ms of the word it precedes.
     if (line._inlineParens?.length) {
       const result = [];
-      let realWordIdx = 0; // counts only non-pause, non-inline entries
+      let realWordIdx = 0;
       for (let wi = 0; wi < baseWords.length; wi++) {
         const w = baseWords[wi];
-        // Before pushing this real word, check if any inline paren fires here
-        if (!w._isPause) {
+        if (!w._isPause && !w._isInlineParen) {
+          // Insert any inline parens that appear BEFORE this real word
           for (const ip of line._inlineParens) {
-            // afterWordIdx is the number of main words BEFORE the paren
-            // so when realWordIdx === afterWordIdx, we're about to push that word
             if (ip.afterWordIdx === realWordIdx) {
-              // The paren fills from its ms (= this word's ms) until next word
+              // isMidLine paren: sits above the word at this position
+              // Use same ms as this word so it highlights right before/with it
               result.push({ ms: w.ms, word: ip.text, _isInlineParen: true });
             }
           }
           realWordIdx++;
         }
         result.push(w);
+      }
+      // Handle parens at end of line (afterWordIdx === total word count)
+      for (const ip of line._inlineParens) {
+        if (ip.afterWordIdx >= realWordIdx) {
+          const lastReal = result.filter(w => !w._isPause && !w._isInlineParen).pop();
+          result.push({ ms: lastReal?.ms ?? lineMs, word: ip.text, _isInlineParen: true });
+        }
       }
       return { ...line, words: result };
     }
@@ -2291,26 +2357,28 @@ function buildWordTimings(lrc) {
 //     isMidLine=false → nothing after this paren      → render as sub-line below
 function extractParens(text) {
   const parens = [];
-  let wordCount = 0;
-  const re = /([^(]*)\(([^)]+)\)(.*)/s;  // one paren at a time, recursive
+  // Single-pass: walk the string tracking real word count before each paren
   let remaining = text;
+  let wordCount = 0;
+  const re = /^(.*?)\(([^)]+)\)([\s\S]*)$/;
 
-  while (true) {
-    const m = remaining.match(/^(.*?)\(([^)]+)\)([\s\S]*)$/);
+  while (remaining.includes('(')) {
+    const m = remaining.match(re);
     if (!m) break;
-    const before     = m[1];
-    const inner      = m[2];
-    const after      = m[3];
-    const beforeWords = before.trim().split(/\s+/).filter(Boolean);
+    const before      = m[1];
+    const inner       = m[2];
+    const after       = m[3];
+    const beforeWords = before.trim().split(/\s+/).filter(w => w.length > 0);
     wordCount += beforeWords.length;
-    const afterWords  = after.trim().split(/\s+/).filter(Boolean);
+    const afterWords  = after.trim().split(/\s+/).filter(w => w.length > 0);
     parens.push({
       text: inner,
-      afterWordIdx: wordCount,
-      isMidLine: afterWords.length > 0,   // true if words follow this paren
+      afterWordIdx: wordCount,   // number of main words BEFORE this paren
+      isMidLine: afterWords.length > 0,
     });
-    remaining = before + ' ' + after;     // collapse paren out, continue scanning
-    if (!remaining.includes('(')) break;
+    // Continue scanning the rest, counting words we've already seen
+    remaining = after;
+    // afterWordIdx continues accumulating from after this point
   }
 
   const mainText = text.replace(/\([^)]+\)/g, '').replace(/\s+/g, ' ').trim();
@@ -2450,11 +2518,12 @@ function _tickWords(lineIdx, t, nextBound) {
   const lineSpanMs = realWords.length > 1
     ? realWords[realWords.length-1].ms - realWords[0].ms
     : Math.max(300, nextBound - words[0].ms - 80);
-  // msPerSyl = average spacing between real words, then add last-word hold back
-  const spacingMs  = realWords.length > 1
-    ? lineSpanMs / (totalSyls - lastSyls)
+  // Infer pace from word spacing — guard against single-word lines
+  const nonLastSyls = Math.max(1, totalSyls - lastSyls);
+  const spacingMs   = realWords.length > 1
+    ? lineSpanMs / nonLastSyls
     : Math.max(95, (nextBound - words[0].ms) / totalSyls);
-  const msPerSyl   = Math.max(95, spacingMs);
+  const msPerSyl    = Math.max(90, spacingMs);
   const pace       = _paceFactor(msPerSyl);
   const holdMul    = _lerp(pace, 1.20, 1.90);
   // Natural hold: last word fills for its full hold duration.
@@ -2703,17 +2772,13 @@ async function doSmartRepeat() {
   const track = ST.queue[ST.idx];
   if (!track) { YT_player.seekTo(0); YT_player.playVideo(); return; }
 
-  // Plain repeat if no lyrics
-  if (ST.lrcType !== 'synced' || !ST.lrc.length) {
-    await _blendSeek(0);
-    return;
-  }
-
   const ck = (track.title + '||' + track.artist).toLowerCase();
   let seekMs = _smartRepeatCache[ck];
 
   if (seekMs === undefined) {
-    seekMs = await _askAIRepeatPoint(track.title, track.artist, ST.lrc);
+    if (ST.lrcType === 'synced' && ST.lrc.length) {
+      seekMs = await _askAIRepeatPoint(track.title, track.artist, ST.lrc);
+    }
     _smartRepeatCache[ck] = seekMs ?? 0;
   }
 
@@ -2772,14 +2837,22 @@ Reply with ONLY the ms integer of your chosen line. Nothing else.`;
   } catch { return null; }
 }
 
-// Smooth blend seek — Apple Music style: fade out → seek → fade in
+// Apple Music-style blend seek:
+// lyrics blur out → audio fades → seek → audio fades in → lyrics blur in
 async function _blendSeek(seekSec) {
   if (!ytReady) { YT_player.seekTo(seekSec); YT_player.playVideo(); return; }
-  const targetVol = ST.muted ? 0 : ST.vol * 100;
   ST._blending = true;
+  const targetVol = ST.muted ? 0 : ST.vol * 100;
+  const lscroll   = G('lscroll');
 
-  // ── Fade out: 500ms, ease-in² (starts gentle, ends sharp for clean cut) ──
-  const OUT_STEPS = 20, OUT_MS = 25;
+  // ── Phase 1: blur lyrics out (1.8s) while audio fades out (1.2s) in parallel ──
+  if (lscroll) {
+    lscroll.classList.remove('blend-in');
+    lscroll.classList.add('blend-out');
+  }
+
+  // Audio fade-out over 1200ms (ease-in² — starts gentle, cuts sharp)
+  const OUT_STEPS = 48, OUT_MS = 25;
   for (let i = OUT_STEPS; i >= 0; i--) {
     const frac = i / OUT_STEPS;
     YT_player.setVolume(targetVol * frac * frac);
@@ -2787,32 +2860,35 @@ async function _blendSeek(seekSec) {
   }
   YT_player.setVolume(0);
 
-  // ── Seek then immediately play ──
+  // Wait for blur animation to reach near-complete (total 1.8s, audio took 1.2s)
+  await new Promise(r => setTimeout(r, 600));
+
+  // ── Phase 2: seek and start playback silently ──
   YT_player.seekTo(seekSec, true);
   YT_player.playVideo();
 
-  // ── Wait for confirmed playback (state=1) with 3s max timeout ──
-  // Use onStateChange-style polling — more reliable than getCurrentTime check
+  // Poll until playing or 3s timeout
   await new Promise(resolve => {
     const deadline = Date.now() + 3000;
     const poll = setInterval(() => {
-      const state = YT_player.getPlayerState?.();
-      if (state === 1 || Date.now() > deadline) {
-        clearInterval(poll);
-        resolve();
+      if (YT_player.getPlayerState?.() === 1 || Date.now() > deadline) {
+        clearInterval(poll); resolve();
       }
     }, 40);
   });
 
-  // Brief settle buffer so audio doesn't crackle at fade-in start
-  await new Promise(r => setTimeout(r, 80));
+  // ── Phase 3: blur lyrics back in while audio fades in ──
+  if (lscroll) {
+    lscroll.classList.remove('blend-out');
+    lscroll.classList.add('blend-in');
+    setTimeout(() => lscroll.classList.remove('blend-in'), 1300);
+  }
 
-  // ── Fade in: 700ms, ease-out² (swells naturally) ──
-  const IN_STEPS = 28, IN_MS = 25;
+  // Audio fade-in over 1000ms (ease-out² — swells in naturally)
+  const IN_STEPS = 40, IN_MS = 25;
   for (let i = 0; i <= IN_STEPS; i++) {
     const frac = i / IN_STEPS;
-    const vol  = targetVol * (1 - Math.pow(1 - frac, 2));
-    YT_player.setVolume(vol);
+    YT_player.setVolume(targetVol * (1 - Math.pow(1 - frac, 2.2)));
     await new Promise(r => setTimeout(r, IN_MS));
   }
   YT_player.setVolume(targetVol);
