@@ -5,6 +5,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -68,20 +70,29 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .cover-bg{
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  filter:blur(60px) saturate(1.8) brightness(.4);opacity:0;
-  transition:opacity .6s;pointer-events:none;
+  filter:blur(0px) saturate(1.5) brightness(.55);opacity:0;
+  transition:opacity .8s;pointer-events:none;
 }
 .cover-bg.on{opacity:1}
+.cover-wrap::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(to bottom,
+    rgba(0,0,0,0.08) 0%,
+    rgba(0,0,0,0.18) 60%,
+    rgba(0,0,0,0.62) 100%
+  );
+  pointer-events:none;z-index:1;border-radius:var(--rl);
+}
 .cover-art{
-  width:75%;aspect-ratio:1;border-radius:var(--rl);overflow:hidden;
-  position:relative;z-index:1;
-  box-shadow:0 20px 60px rgba(0,0,0,.6);
+  width:62%;aspect-ratio:1;border-radius:var(--r);overflow:hidden;
+  position:relative;z-index:2;
+  box-shadow:0 12px 48px rgba(0,0,0,.7);
   display:none;
 }
 .cover-art img{width:100%;height:100%;object-fit:cover;display:block}
 .cover-art.playing{}
 .cover-info{
-  position:absolute;bottom:20px;left:20px;right:20px;z-index:2;
+  position:absolute;bottom:20px;left:20px;right:20px;z-index:3;
   display:none;
 }
 .cover-title{font-size:18px;font-weight:700;letter-spacing:-.3px;text-shadow:0 2px 10px rgba(0,0,0,.6)}
@@ -167,8 +178,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .lyrics-panel.active{opacity:1;pointer-events:auto}
 .lrc-scroll-outer{
-  position:absolute;inset:0;overflow-y:auto;
-  padding:30px 24px 80px;
+  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  padding:30px 24px 140px;
   z-index:1;
 }
 .lrc-bg{
@@ -180,6 +191,22 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   pointer-events:none;z-index:0;
 }
 .lrc-bg.on{opacity:1}
+
+#lscroll.blend-out {
+  animation: lrc-blend-out 1.8s ease-in-out forwards;
+}
+#lscroll.blend-in {
+  animation: lrc-blend-in 1.2s ease-out forwards;
+}
+@keyframes lrc-blend-out {
+  0%   { filter: blur(0px);  opacity: 1; }
+  60%  { filter: blur(6px);  opacity: 0.4; }
+  100% { filter: blur(12px); opacity: 0; }
+}
+@keyframes lrc-blend-in {
+  0%   { filter: blur(12px); opacity: 0; }
+  100% { filter: blur(0px);  opacity: 1; }
+}
 #lscroll{position:relative;z-index:1;}
 .lrc-empty-state-wrap{position:relative;z-index:1;}
 
@@ -218,34 +245,37 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
 .ll{
-  font-size:28px;line-height:1.35;font-weight:800;
-  padding:4px 0;border-radius:8px;cursor:pointer;
+  font-size:28px;line-height:1.5;font-weight:800;
+  padding:5px 0;border-radius:8px;cursor:pointer;
   color:rgba(255,255,255,0.22);
   filter:blur(3px);
   opacity:.7;
   transform-origin:left center;
   transition:
-    color .55s cubic-bezier(.4,0,.2,1),
-    filter .55s cubic-bezier(.4,0,.2,1),
-    opacity .55s cubic-bezier(.4,0,.2,1),
-    font-size .4s cubic-bezier(.34,1.56,.64,1);
+    color .5s cubic-bezier(.4,0,.2,1),
+    filter .5s cubic-bezier(.4,0,.2,1),
+    opacity .5s cubic-bezier(.4,0,.2,1),
+    font-size .38s cubic-bezier(.34,1.56,.64,1);
   will-change:color,filter,opacity;
+  position:relative;
+
+  clip-path: inset(0 round 8px);
 }
 .ll.past{
-  color:rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.10);
   filter:blur(4px);
-  opacity:.45;
+  opacity:.4;
 }
 .ll.near{
-  color:rgba(255,255,255,0.5);
-  filter:blur(1.5px);
-  opacity:.85;
+  color:rgba(255,255,255,0.52);
+  filter:blur(1.2px);
+  opacity:.88;
   font-size:26px;
 }
 .ll.near2{
-  color:rgba(255,255,255,0.32);
-  filter:blur(2.5px);
-  opacity:.6;
+  color:rgba(255,255,255,0.30);
+  filter:blur(2.2px);
+  opacity:.58;
   font-size:24px;
 }
 .ll.now{
@@ -253,39 +283,116 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   font-size:32px;
   filter:blur(0px);
   opacity:1;
+  animation: ll-bounce 0.35s cubic-bezier(.34,1.56,.64,1) both;
 }
-.ll-paren{
-  display:block;font-size:.58em;font-weight:600;
-  color:rgba(255,255,255,0.45);margin-top:3px;
+@keyframes ll-bounce {
+  0%   { transform: scale(0.94) translateX(0); }
+  55%  { transform: scale(1.04) translateX(0); }
+  100% { transform: scale(1.00) translateX(0); }
 }
-.ll.now .ll-paren{color:rgba(255,255,255,0.7)}
+
+.ll-ripple {
+  position:absolute;
+  border-radius:50%;
+  width:14px;height:14px;
+  margin:-7px 0 0 -7px;
+  background:rgba(255,255,255,0.18);
+  transform:scale(0);
+  animation:ll-ripple-anim 0.55s ease-out forwards;
+  pointer-events:none;
+  z-index:10;
+}
+@keyframes ll-ripple-anim {
+  to { transform:scale(20); opacity:0; }
+}
+.ll.ll-sub{
+  font-size:18px;
+  padding-left:16px;
+  margin-top:-4px;
+  opacity:.55;
+}
+.ll.ll-sub.now{
+  font-size:20px;
+  opacity:1;
+}
+.ll.ll-sub.near{
+  font-size:17px;
+}
+.ll.ll-sub.near2{
+  font-size:16px;
+}
+.lw-inline-paren{
+  display:inline-flex;
+  flex-direction:column;
+  align-items:flex-start;
+  vertical-align:baseline;
+  line-height:1;
+  gap:0;
+  position:relative;
+  top:0;
+}
+.lw-inline-paren .lw-ip-text{
+  font-size:0.42em;
+  line-height:1.2;
+  opacity:0.50;
+  margin-bottom:0;
+  display:block;
+  font-weight:600;
+  font-style:italic;
+  white-space:nowrap;
+}
+.ll.now .lw-inline-paren .lw-ip-text{
+  opacity:0.80;
+}
+
+@property --pct {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: -20%;
+}
 
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
-    #ffffff calc(var(--pct, 0%) - 6%),
-    rgba(255,255,255,0.55) var(--pct, 0%),
-    rgba(255,255,255,0.28) calc(var(--pct, 0%) + 4%)
+    #ffffff calc(var(--pct, -20%) - 10%),
+    rgba(255,255,255,0.85) calc(var(--pct, -20%) - 2%),
+    rgba(255,255,255,0.30) calc(var(--pct, -20%) + 8%),
+    rgba(255,255,255,0.06) calc(var(--pct, -20%) + 18%)
   );
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
+  transition:
+    filter 180ms ease-out,
+    --pct 0ms linear,
+    opacity 120ms ease-out;
+  opacity: 1;
 }
 .ll.now .lw.done{
-  --pct:100%;
-  filter:drop-shadow(0 0 5px rgba(255,255,255,0.26));
+  --pct:110%;
+  filter:none;
+  opacity:1;
 }
 .ll.now .lw.upcoming{
-  --pct:0%;
+  --pct:-20%;
   filter:none;
+  opacity:0.55;
+  transition: opacity 200ms ease-in;
 }
 .ll.now .lw.now-word{
-  filter:drop-shadow(0 0 6px rgba(255,255,255,0.32));
+  filter:none;
+  opacity:1;
+}
+.ll.now .lw.now-word.word-enter{
+  animation: word-entry-glow 220ms ease-out forwards;
+}
+@keyframes word-entry-glow {
+  0%   { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
 
-/* ♪ beat dots */
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
   height:1em;vertical-align:middle;
@@ -304,9 +411,14 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) / 3)}
 .ll.now .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) / 3 * 2)}
 @keyframes beatbounce{
-  0%,100%{transform:translateY(0)}
-  40%{transform:translateY(-10px)}
-  60%{transform:translateY(-8px)}
+  0%,100%{transform:translateY(0) scale(1)}
+  35%{transform:translateY(-11px) scale(1.15)}
+  55%{transform:translateY(-7px) scale(1.05)}
+  75%{transform:translateY(-3px) scale(1.02)}
+}
+
+.ll.now .beat-dots span{
+  transition: none;
 }
 .lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
 .lrc-empty svg{width:38px;height:38px;opacity:.22}
@@ -731,10 +843,9 @@ function showPanel(name) {
 
   if (name === 'lyrics' && ST.lrcType === 'synced') {
     renderSynced();
-    // Snap immediately to current playback position so lyrics aren't "off"
+    
     requestAnimationFrame(() => tickLrc(getPrecisePos()));
   }
-
 
   G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
   G('pnb-likes').classList.toggle('active', name === 'likes');
@@ -947,16 +1058,14 @@ function createPlaylistFromModal() {
   openNewPlaylistModal();
 }
 
-// Image proxy: images.weserv.nl is a free image CDN proxy that works on most networks
-// Try direct first; if it fails (school blocks mzstatic.com), fall back to weserv
 function proxyImg(url) {
   if (!url) return '';
-  // Already a proxy or data URL
+  
   if (url.startsWith('data:') || url.includes('weserv.nl') || url.includes('fanart.tv')) return url;
-  return url; // Return direct — mzstatic is almost never blocked. weserv fallback on onerror.
+  return url; 
 }
 function proxyImgFallback(img) {
-  // Called via onerror — try weserv.nl as fallback
+  
   if (!img.src.includes('wsrv.nl')) {
     const orig = img.getAttribute('data-src') || img.src;
     img.src = 'https://wsrv.nl/?url=' + encodeURIComponent(orig) + '&w=300';
@@ -965,9 +1074,9 @@ function proxyImgFallback(img) {
 
 const ST = {
   queue:[], idx:-1,
-  playing:false, shuffle:false, repeat:false, muted:false,
+  playing:false, shuffle:false, repeat:false, smartRepeat:false, muted:false,
   vol:0.8, pos:0, dur:0,
-  lrc:[], lrcType:'none', lrcActive:-1,
+  lrc:[], lrcType:'none', lrcActive:-1, _parenActive:-1,
 };
 
 function G(id){ return document.getElementById(id); }
@@ -977,10 +1086,8 @@ let toastTmr=null;
 function toast(msg){ const el=G('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('show'),2800); }
 function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-status-txt').textContent=msg; }
 
-// Universal proxy-aware fetch — tries direct first, then multiple CORS proxies
-// Works even when school blocks the target domain directly
 const PROXIES = [
-  u => u, // direct
+  u => u, 
   u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
   u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
   u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
@@ -994,7 +1101,7 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
       if (r.ok) res(r); else rej(r.status);
     } catch(e) { rej(e); }
   });
-  // Fire all in parallel, return first success
+  
   return Promise.any(PROXIES.map(tryOne));
 }
 
@@ -1045,7 +1152,7 @@ window.onYouTubeIframeAPIReady = function() {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
           clearInterval(ticker); ST._rafRunning = false;
-          if (ST.repeat) { YT_player.seekTo(0); YT_player.playVideo(); }
+          if (ST.repeat || ST.smartRepeat) doSmartRepeat();
           else nextTrack();
         }
       },
@@ -1063,7 +1170,6 @@ window.onYouTubeIframeAPIReady = function() {
   });
 };
 
-// Load IFrame API — try youtube.com then youtube-nocookie.com
 (function loadYTAPI() {
   setStatus('loading', 'Connecting…');
   function tryScript(src, cb) {
@@ -1073,8 +1179,8 @@ window.onYouTubeIframeAPIReady = function() {
     document.head.appendChild(s);
   }
   tryScript('https://www.youtube.com/iframe_api', function(err) {
-    if (!err) return; // success — onYouTubeIframeAPIReady will fire
-    // youtube.com blocked, try nocookie
+    if (!err) return; 
+    
     tryScript('https://www.youtube-nocookie.com/iframe_api', function(err2) {
       if (err2) {
         setStatus('err', 'YouTube blocked');
@@ -1098,7 +1204,7 @@ async function findVideoIds(artist, title) {
     return [...new Set(matches.map(m => m[1]))].slice(0, 6);
   }
 
-  // Method 1: scrape YouTube search via proxyFetch (races all proxies)
+  
   try {
     const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(searchQ);
     const r = await proxyFetch(ytUrl, {}, 6000);
@@ -1107,7 +1213,7 @@ async function findVideoIds(artist, title) {
     if (ids.length) { ytCache[ck] = ids; return ids; }
   } catch {}
 
-  // Method 2: Invidious JSON API (different servers, different block lists)
+  
   const invidious = [
     'https://inv.nadeko.net',
     'https://invidious.privacyredirect.com',
@@ -1144,14 +1250,13 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
-// iTunes fetch — direct first, then CORS proxies in parallel as fallback
 async function itunesFetch(url) {
-  // Try direct fetch first (works on personal devices)
+  
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (r.ok) return await r.json();
   } catch {}
-  // Fallback: race all proxies simultaneously
+  
   const enc = encodeURIComponent(url);
   const proxied = [
     'https://corsproxy.io/?url=' + enc,
@@ -1174,15 +1279,15 @@ async function doSearch(q) {
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
 
-  // iTunes ALWAYS first and always on top — never show MB until iTunes resolves
+  
   const itunesTracks = await searchItunes(q);
   qSpn.style.display='none';
 
   if (itunesTracks.length) {
-    // iTunes found results — show them immediately
+    
     renderDrop(itunesTracks, []);
 
-    // Then append MB-only results below as supplemental
+    
     searchMusicBrainz(q).then(mbTracks => {
       const newMb = mbTracks.filter(mb =>
         !itunesTracks.some(it =>
@@ -1194,8 +1299,8 @@ async function doSearch(q) {
     }).catch(() => {});
 
   } else {
-    // iTunes completely failed — show a clear error, no MB fallback
-    // (MB showing as primary results is confusing and low quality)
+    
+    
     qDrp.innerHTML = '<div class="drop-msg">⚠ Search unavailable — check your connection and try again</div>';
   }
 }
@@ -1204,19 +1309,19 @@ function scoreTrack(t, ql, words) {
   const tl = (t.trackName || '').toLowerCase();
   const al = (t.artistName || '').toLowerCase();
   let s = 0;
-  // Title scoring
+  
   if (tl === ql) s += 100;
   else if (tl.startsWith(ql)) s += 70;
   else if (words.every(w => tl.includes(w))) s += 45;
   else s += words.filter(w => tl.includes(w)).length * 10;
-  // Artist name exact match — huge boost (handles "NF" the rapper vs song titled "NF")
+  
   if (al === ql) s += 80;
   else if (al.startsWith(ql)) s += 50;
   else if (words.every(w => al.includes(w))) s += 30;
-  // Quality signals
+  
   if (t.artworkUrl100) s += 5;
   if (t.trackTimeMillis > 60000) s += 5;
-  if ((t.trackCount || 0) > 5) s += 3; // album with multiple tracks = real release
+  if ((t.trackCount || 0) > 5) s += 3; 
   return s;
 }
 
@@ -1293,7 +1398,7 @@ async function fetchCoverArt(track) {
     return;
   }
 
-  // Always try iTunes first — works everywhere including school Chromebooks
+  
   try {
     const term = encodeURIComponent((track.artistName||'').trim() + ' ' + (track.trackName||'').trim());
     const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
@@ -1316,7 +1421,7 @@ async function fetchCoverArt(track) {
     }
   } catch {}
 
-  // Secondary: Cover Art Archive (may be blocked on school networks)
+  
   if (track._releaseMbid) {
     const mbid = track._releaseMbid;
     if (_artCache[mbid] !== undefined) {
@@ -1452,7 +1557,7 @@ async function loadTrack(idx) {
   YT_player.loadVideoById(track.ytIds[track.ytTry]);
   fetchLyrics(track.title, track.artist);
 
-  // If no art yet (e.g. MusicBrainz source), fetch it now and update cover immediately when resolved
+  
   if (!track.artSm && !track.artLg) {
     const _refTrack = {
       artworkUrl100: null, _artLgOverride: null,
@@ -1461,11 +1566,11 @@ async function loadTrack(idx) {
     };
     fetchCoverArt(_refTrack).then(() => {
       if (!_refTrack.artworkUrl100) return;
-      // Only update if this track is still the active one
+      
       if (ST.queue[ST.idx] !== track) return;
       track.artSm = _refTrack.artworkUrl100;
       track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
-      // Directly update every cover surface so nothing is stale
+      
       const artUrl = track.artLg || track.artSm;
       G('cv-img').src = artUrl;
       G('cv-img').setAttribute('data-src', artUrl);
@@ -1475,7 +1580,7 @@ async function loadTrack(idx) {
       const lrcBg = G('lrc-bg');
       lrcBg.style.backgroundImage = `url('${artUrl}')`;
       lrcBg.classList.add('on');
-      // Patch queue thumbnail
+      
       const th = document.getElementById('qt' + idx);
       if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
     });
@@ -1537,32 +1642,251 @@ G('btn-vol').addEventListener('click', () => {
     :'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>';
 });
 G('btn-sf').addEventListener('click',()=>{ST.shuffle=!ST.shuffle;G('btn-sf').classList.toggle('on',ST.shuffle);});
-G('btn-rp').addEventListener('click',()=>{ST.repeat=!ST.repeat;G('btn-rp').classList.toggle('on',ST.repeat);});
+G('btn-rp').addEventListener('click',()=>{
+  
+  if (!ST.repeat && !ST.smartRepeat) {
+    ST.repeat = true; ST.smartRepeat = false;
+    G('btn-rp').classList.add('on');
+    G('btn-rp').title = 'Repeat One';
+    G('btn-rp-ico').innerHTML = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><text x="10" y="14" font-size="7" font-weight="bold" fill="currentColor">1</text>';
+  } else if (ST.repeat && !ST.smartRepeat) {
+    ST.repeat = false; ST.smartRepeat = true;
+    G('btn-rp').classList.add('on');
+    G('btn-rp').title = 'Smart Repeat (AI blend)';
+    G('btn-rp-ico').innerHTML = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><circle cx="12" cy="12" r="2" fill="currentColor"/>';
+  } else {
+    ST.repeat = false; ST.smartRepeat = false;
+    G('btn-rp').classList.remove('on');
+    G('btn-rp').title = 'Repeat (R)';
+    G('btn-rp-ico').innerHTML = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>';
+  }
+});
 G('btn-pv').addEventListener('click',prevTrack);
 G('btn-nx').addEventListener('click',nextTrack);
 G('btn-pp').addEventListener('click',togglePlay);
 
 const wordSyncOn = true;
 
+const AI_KEY = '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';
+const AI_MODEL = 'google/gemini-flash-1.5-8b';
+const _aiTimingCache = {};
+
+async function aiRefineWordTimings(lines, title, artist) {
+  
+  
+  const ck = (title + '||' + artist).toLowerCase();
+  if (_aiTimingCache[ck]) return _aiTimingCache[ck];
+
+  
+  const payload = lines.map((line, i) => ({
+    i,
+    ms: line.ms,
+    nextMs: lines[i+1]?.ms ?? (line.ms + 3500),
+    words: line.words?.map(w => w.word) ?? [],
+    hasEmbedded: !!line._wordTimed
+  })).filter(l => l.words.length > 0 && !l.hasEmbedded);
+
+  if (!payload.length) return null;
+
+  
+  const sample = payload.slice(0, 40);
+
+  const prompt = `You are a music lyrics timing expert. Given LRC line timestamps and their words, redistribute the word start times (in ms) to feel more natural and musical — matching how a real singer would stress syllables and pace delivery.
+
+Song: "${title}" by ${artist}
+
+For each line, you receive: line start ms, line end ms, and the words.
+Return ONLY a JSON array matching the same order as input, each element being an array of ms offsets for each word (absolute ms from song start). Words should fill naturally within [lineMs, nextMs-100ms]. Consider natural speech rhythm, stressed syllables, and musical phrasing.
+
+Lines to time:
+${JSON.stringify(sample)}
+
+Respond ONLY with a raw JSON array like: [[ms1,ms2,...],[ms1,ms2,...],...]
+No explanation, no markdown.`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AI_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': location.href,
+        'X-Title': 'Ghost Music'
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        max_tokens: 2000,
+        temperature: 0.2,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) return null;
+    
+    const clean = raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
+    const timings = JSON.parse(clean);
+    if (!Array.isArray(timings)) return null;
+
+    
+    const refined = new Map();
+    sample.forEach((linePayload, si) => {
+      const aiTimes = timings[si];
+      if (!Array.isArray(aiTimes) || aiTimes.length !== linePayload.words.length) return;
+      
+      if (!aiTimes.every(t => typeof t === 'number' && t >= 0 && t < 36000000)) return;
+      refined.set(linePayload.i, aiTimes);
+    });
+
+    _aiTimingCache[ck] = refined;
+    return refined;
+  } catch { return null; }
+}
+
+async function aiGenerateSyncedLyrics(plainLyrics, title, artist, durMs) {
+  
+  const ck = ('plain||' + title + '||' + artist).toLowerCase();
+  if (_aiTimingCache[ck]) return _aiTimingCache[ck];
+
+  const durSec = Math.round((durMs || 240000) / 1000);
+  const lines = plainLyrics.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 80);
+
+  const prompt = `You are a music lyrics sync expert. Generate realistic LRC timestamps for the following song lyrics.
+
+Song: "${title}" by ${artist}
+Duration: ${durSec} seconds
+
+Rules:
+- Timestamps must be in LRC format: [mm:ss.xx]
+- Distribute lines naturally across the song duration
+- Account for typical song structure: intro (~10-15s), verses, chorus, bridge, outro
+- Instrumental gaps should have a [mm:ss.xx] entry with just a space or ♪
+- Don't go past ${durSec} seconds
+
+Lyrics lines:
+${lines.map((l, i) => `${i+1}. ${l}`).join('\n')}
+
+Respond ONLY with raw LRC text, no explanation:`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AI_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': location.href,
+        'X-Title': 'Ghost Music'
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        max_tokens: 2500,
+        temperature: 0.25,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const lrcText = data.choices?.[0]?.message?.content?.trim();
+    if (!lrcText) return null;
+    _aiTimingCache[ck] = lrcText;
+    return lrcText;
+  } catch { return null; }
+}
+
+async function applyAIRefinements(lines, title, artist) {
+  const refined = await aiRefineWordTimings(lines, title, artist);
+  if (!refined || !refined.size) return lines;
+  return lines.map((line, i) => {
+    const aiTimes = refined.get(i);
+    if (!aiTimes || !line.words?.length) return line;
+    const newWords = line.words.map((w, wi) => ({
+      ...w,
+      ms: aiTimes[wi] ?? w.ms
+    }));
+    return { ...line, words: newWords };
+  });
+}
+
 async function fetchLyrics(title, artist) {
-  ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1;
+  ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1; ST._parenActive=-1;
   const scroll=G('lscroll');
   G('lrc-empty-state').style.display='none';
   scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
-  const clean=s=>s.replace(/\(.*?\)/g,'').replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
+  const clean=s=>s.replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
   const ct=clean(title), ca=clean(artist);
 
-  // Run both GET attempts in parallel for speed
+  
   const [r1, r2] = await Promise.all([lrclibGET(ct, ca), ct!==title||ca!==artist ? lrclibGET(title, artist) : Promise.resolve(null)]);
   for (const d of [r1, r2]) {
-    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+    if(d?.syncedLyrics){
+      let lines = buildWordTimings(parseLRC(d.syncedLyrics));
+      if(lines.length){
+        ST.lrc=lines; ST.lrcType='synced'; renderSynced();
+        
+        applyAIRefinements(lines, title, artist).then(refined => {
+          if (refined !== lines && ST.queue[ST.idx]?.title === title) {
+            ST.lrc = refined;
+            renderSynced();
+          }
+        });
+        return;
+      }
+    }
   }
-  // Search fallback — also parallel
+  
   const [s1, s2] = await Promise.all([lrclibSEARCH(ct, ca), ct!==title||ca!==artist ? lrclibSEARCH(title, artist) : Promise.resolve(null)]);
+
+  
   for (const d of [s1, s2]) {
-    if(d?.syncedLyrics){const lines=buildWordTimings(parseLRC(d.syncedLyrics));if(lines.length){ST.lrc=lines;ST.lrcType='synced';renderSynced();return;}}
+    if(d?.syncedLyrics){
+      let lines = buildWordTimings(parseLRC(d.syncedLyrics));
+      if(lines.length){
+        ST.lrc=lines; ST.lrcType='synced'; renderSynced();
+        applyAIRefinements(lines, title, artist).then(refined => {
+          if (refined !== lines && ST.queue[ST.idx]?.title === title) {
+            ST.lrc = refined;
+            renderSynced();
+          }
+        });
+        return;
+      }
+    }
   }
-  scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No synced lyrics found</p></div>';
+
+  
+  const plainData = [r1,r2,s1,s2].find(d => d?.plainLyrics);
+  if (plainData?.plainLyrics) {
+    scroll.innerHTML='<div class="lrc-empty"><p>Syncing lyrics with AI…</p></div>';
+    const dur = ST.queue[ST.idx]?.durMs || (ytReady && ST.dur ? ST.dur : 0);
+    const lrcText = await aiGenerateSyncedLyrics(plainData.plainLyrics, title, artist, dur);
+    if (lrcText) {
+      const parsed = parseLRC(lrcText);
+      if (parsed.length) {
+        const lines = buildWordTimings(parsed);
+        if (lines.length) {
+          ST.lrc=lines; ST.lrcType='synced'; renderSynced();
+          applyAIRefinements(lines, title, artist).then(refined => {
+            if (refined !== lines && ST.queue[ST.idx]?.title === title) {
+              ST.lrc = refined;
+              renderSynced();
+            }
+          });
+          return;
+        }
+      }
+    }
+    
+    const fallbackLines = buildWordTimings(plainData.plainLyrics.split('\n')
+      .map(l => l.trim()).filter(Boolean)
+      .map((text, i) => ({ ms: i * 4000, text, _wordTimed: null })));
+    ST.lrc=fallbackLines; ST.lrcType='synced'; renderSynced();
+    return;
+  }
+
+  scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No lyrics found</p></div>';
 }
 
 async function lrclibGET(track, artist) {
@@ -1592,7 +1916,7 @@ function parseLRC(rawStr) {
     const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
     const raw = m[3];
 
-    // Try to extract enhanced word-level timestamps: <mm:ss.xx>word
+    
     const wTagRe = /<(\d{1,3}):(\d{2}\.\d+)>([^<]*)/g;
     let wm; const wTimed = [];
     while ((wm = wTagRe.exec(raw)) !== null) {
@@ -1607,108 +1931,651 @@ function parseLRC(rawStr) {
 }
 
 function syllableCount(word) {
-  word = word.toLowerCase().replace(/[^a-z]/g,'');
+  
+  word = word.toLowerCase().replace(/[^a-z']/g, '').replace(/'/g, '');
   if (!word) return 1;
+  
+  word = word
+    .replace(/tion$/,  'shun')   
+    .replace(/sion$/,  'shun')
+    .replace(/cious$/, 'shus')
+    .replace(/tious$/, 'shus')
+    .replace(/eous$/,  'us')
+    .replace(/geous$/, 'jus')
+    .replace(/ious$/,  'yus')
+    .replace(/ued$/,   'ude')    
+    .replace(/ves$/,   've');    
+  
+  if (word.length > 2 && word.endsWith('e') && !/[aeiou]e$/.test(word)) {
+    word = word.slice(0, -1);
+  }
+  
+  if (word.endsWith('ed') && !/[dt]ed$/.test(word)) {
+    word = word.slice(0, -1);
+  }
+  
   const vowels = word.match(/[aeiouy]+/g);
   let count = vowels ? vowels.length : 1;
-  if (word.endsWith('e') && word.length > 2) count = Math.max(1, count - 1);
+  
+  if (word[0] === 'y') count = Math.max(1, count - 1);
   return Math.max(1, count);
 }
 
-function buildWordTimings(lrc) {
-  return lrc.map((line, i) => {
-    const lineMs = line.ms;
-    const nextMs = lrc[i+1]?.ms ?? (lineMs + 3500);
-    const duration = Math.max(400, nextMs - lineMs - 80);
-    const rawWords = line.text.split(/\s+/).filter(Boolean);
+const FAST_WORDS = new Set([
+  'a','an','the','and','or','but','in','on','at','to','for','of','by','up',
+  'so','my','me','we','he','she','it','i','is','as','be','do','go','no','if',
+  'oh','ah','mm','mmm','its','im','ive','ill','id','our','are','was','were',
+  'had','has','have','that','this','with','from','not','can','will','just','your',
+]);
 
-    if (!rawWords.length) {
-      // ♪ instrumental — compute beat duration from gap, aim for ~4 beats
-      const gapMs = Math.max(400, nextMs - lineMs);
-      const beatDur = Math.round(Math.min(900, Math.max(300, gapMs / 4)));
-      return { ...line, words: [], beatDur };
+function _lerp(x, lo, hi) { return lo + x * (hi - lo); }
+
+function _paceFactor(msPerSyl) {
+  
+  return Math.max(0, Math.min(1, (msPerSyl - 80) / 620));
+}
+
+function wordDurMul(word, syls, isLast, msPerSyl) {
+  const clean = word.replace(/[^a-z']/gi,'').replace(/'/g,'').toLowerCase();
+  const len   = clean.length;
+  const pace  = _paceFactor(msPerSyl);  
+
+  let mul = 1.0;
+
+  
+  if (FAST_WORDS.has(clean)) {
+    mul = _lerp(pace, 0.52, 0.65);  
+  } else if (len <= 2) {
+    mul = _lerp(pace, 0.62, 0.75);
+  } else if (len <= 3) {
+    mul = _lerp(pace, 0.76, 0.88);
+  }
+  
+  else {
+    mul = _lerp(pace, 0.92, 1.08);
+  }
+
+  
+  if (/([aeiou])\1{1,}/.test(clean)) mul *= _lerp(pace, 1.25, 1.65);
+
+  
+  if (/[aeio]$/.test(clean) && len > 2) mul *= _lerp(pace, 1.05, 1.20);
+
+  
+  if (isLast) mul *= _lerp(pace, 1.20, 1.90);
+
+  return mul;
+}
+
+function wordPauseAfter(word, msPerSyl) {
+  const pace = _paceFactor(msPerSyl);
+
+  
+  if (/[,;]$/.test(word)) {
+    
+    return msPerSyl * _lerp(pace, 0.18, 0.65);
+  }
+  
+  if (/:$/.test(word)) {
+    return msPerSyl * _lerp(pace, 0.25, 0.75);
+  }
+  
+  if (/[—…]$/.test(word)) {
+    return msPerSyl * _lerp(pace, 0.40, 1.10);
+  }
+  
+  if (/!$/.test(word)) {
+    return msPerSyl * _lerp(pace, 0.22, 0.72);
+  }
+  
+  if (/\?$/.test(word)) {
+    return msPerSyl * _lerp(pace, 0.28, 0.82);
+  }
+  
+  if (/\.$/.test(word)) {
+    return msPerSyl * _lerp(pace, 0.15, 0.55);
+  }
+  return 0;
+}
+
+function wordSpeedWeight(word, syls, isLast) {
+  return wordDurMul(word, syls, isLast, 200) * syls;
+}
+
+function timingForWords(rawWords, lineMs, nextMs) {
+  const n    = rawWords.length;
+  const syls = rawWords.map(syllableCount);
+  const totalSyls = syls.reduce((a,b) => a+b, 0) || 1;
+
+  const gapMs = Math.max(300, nextMs - lineMs - 80);
+
+  
+  
+  const neutralMsPerSyl = Math.max(95, gapMs / totalSyls);
+  const estimatedPauseMs = rawWords.reduce((acc, w) => {
+    const p = wordPauseAfter(w, neutralMsPerSyl);
+    return acc + p;
+  }, 0);
+  
+  const singMs       = Math.max(200, gapMs - estimatedPauseMs);
+  const rawMsPerSyl  = singMs / totalSyls;
+  
+  
+  const sylDensity   = totalSyls / Math.max(1, gapMs / 1000); 
+  const maxMsPerSyl  = sylDensity > 2.5 ? 280   
+                     : sylDensity > 1.2 ? 360   
+                     :                    480;   
+  const msPerSyl = Math.max(90, Math.min(maxMsPerSyl, rawMsPerSyl));
+
+  
+  const fillDurs  = rawWords.map((word, wi) =>
+    syls[wi] * msPerSyl * wordDurMul(word, syls[wi], wi === n - 1, msPerSyl)
+  );
+  const pauseDurs = rawWords.map(word => wordPauseAfter(word, msPerSyl));
+  const totalDurs = fillDurs.map((f, wi) => f + pauseDurs[wi]);
+  const rawTotal  = totalDurs.reduce((a,b) => a+b, 0);
+
+  
+  let scaledFill  = fillDurs.slice();
+  let scaledPause = pauseDurs.slice();
+
+  if (rawTotal > gapMs) {
+    const overflow   = rawTotal - gapMs;
+    const isFastArr  = rawWords.map(w => {
+      const c = w.replace(/[^a-z]/gi,'').toLowerCase();
+      return FAST_WORDS.has(c) || c.length <= 3;
+    });
+    const fastBudget = totalDurs.reduce((s,d,wi) => s + (isFastArr[wi] ? d : 0), 0);
+
+    if (fastBudget >= overflow * 0.8) {
+      const ratio    = Math.max(0.1, (fastBudget - overflow) / fastBudget);
+      scaledFill     = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
+      scaledPause    = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
+    } else {
+      
+      const scale    = gapMs / rawTotal;
+      scaledFill     = fillDurs.map(d  => d * scale);
+      scaledPause    = pauseDurs.map(d => Math.max(d * 0.35, d * scale));
+      
+      const newTotal = scaledFill.reduce((a,b)=>a+b,0) + scaledPause.reduce((a,b)=>a+b,0);
+      if (newTotal > gapMs) {
+        const s2   = gapMs / newTotal;
+        scaledFill  = scaledFill.map(d  => d * s2);
+        scaledPause = scaledPause.map(d => d * s2);
+      }
+    }
+    
+    scaledFill = scaledFill.map((d, wi) => {
+      const c = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
+      return FAST_WORDS.has(c) ? Math.max(d, 35) : Math.max(d, 60);
+    });
+  }
+
+  
+  const result = [];
+  let cursor = lineMs;
+  for (let wi = 0; wi < n; wi++) {
+    result.push({ ms: cursor, word: rawWords[wi] });
+    cursor += scaledFill[wi];
+    if (scaledPause[wi] > 50) {  
+      result.push({ ms: cursor, word: '', _isPause: true });
+      cursor += scaledPause[wi];
+    } else {
+      cursor += scaledPause[wi]; 
+    }
+  }
+  return result;
+}
+
+function buildWordTimings(lrc) {
+  const expanded = [];
+
+  for (let i = 0; i < lrc.length; i++) {
+    const line    = lrc[i];
+    const nextMs  = lrc[i+1]?.ms ?? null;
+    const rawText = line.text?.trim() ?? '';
+
+    
+    if (!rawText) {
+      expanded.push(line);
+      continue;
     }
 
-    // If the LRC had per-word timestamps embedded, use those — they are exact
+    const { mainText, parens } = extractParens(rawText);
+
+    
+    
+    if (!mainText && parens.length > 0) {
+      for (const paren of parens) {
+        expanded.push({
+          ms: line.ms,
+          text: paren.text,
+          _wordTimed: null,
+          _synthetic: false,
+          _isParen: true,
+          _parenParentMs: line.ms,  
+          _wholeLine: true,         
+        });
+      }
+      
+      if (nextMs !== null) {
+        const parenWords = parens[parens.length-1].text.split(/\s+/).filter(Boolean);
+        const parenSyls  = parenWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
+        const gap        = nextMs - line.ms;
+        const rawMPS     = Math.max(90, gap / parenSyls);
+        const estMs      = parenWords.reduce((acc, w) => {
+          const s = syllableCount(w); return acc + s * rawMPS * wordDurMul(w, s, false, rawMPS);
+        }, 0);
+        if (gap > estMs + 2000) {
+          const instrStart = line.ms + Math.min(estMs + 200, gap * 0.45);
+          expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
+        }
+      }
+      continue;
+    }
+
+    
+    const mainRawWords  = mainText.split(/\s+/).filter(Boolean);
+    const mainSyls      = mainRawWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
+    const gap           = nextMs !== null ? nextMs - line.ms : 3500;
+
+    
+    
+    
+    const naturalMsPerSyl = Math.max(95, gap / mainSyls);
+    
+    
+    const estSingMs = mainRawWords.reduce((acc, w) => {
+      const s   = syllableCount(w);
+      const mul = wordDurMul(w, s, false, naturalMsPerSyl);
+      return acc + s * naturalMsPerSyl * mul;
+    }, 0);
+
+    expanded.push({ ...line, text: mainText,
+      _parensSource: parens.length > 0 ? parens : null,
+      _inlineParens: parens.filter(p => p.isMidLine)   
+    });
+
+    
+    for (const paren of parens.filter(p => !p.isMidLine)) {
+      const frac    = mainRawWords.length > 0
+        ? Math.min(0.92, paren.afterWordIdx / mainRawWords.length)
+        : 0.5;
+      let parenMs   = Math.round(line.ms + estSingMs * frac);
+      if (nextMs !== null) parenMs = Math.min(parenMs, nextMs - 80);
+      expanded.push({
+        ms: parenMs,
+        text: paren.text,
+        _wordTimed: null,
+        _synthetic: false,
+        _isParen: true,
+        _parenParentMs: line.ms,
+      });
+    }
+    
+
+    
+    if (nextMs !== null && gap > estSingMs + 2000) {
+      const instrStart = line.ms + Math.min(estSingMs + 200, gap * 0.45);
+      expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
+    }
+  }
+
+  
+  for (let i = 0; i < expanded.length - 1; i++) {
+    if (!expanded[i]._isParen) continue;
+    let nextMain = -1;
+    for (let j = i + 1; j < expanded.length; j++) {
+      if (!expanded[j]._isParen && !expanded[j]._synthetic) { nextMain = j; break; }
+    }
+    if (nextMain === -1) continue;
+    if (expanded[i].ms >= expanded[nextMain].ms) {
+      const [paren] = expanded.splice(i, 1);
+      paren.ms = Math.max(paren.ms, expanded[nextMain - 1].ms + 50);
+      expanded.splice(nextMain, 0, paren);
+      i--;
+    }
+  }
+
+  
+  return expanded.map((line, i) => {
+    const lineMs   = line.ms;
+    
+    
+    
+    let nextMs;
+    if (line._isParen || line._synthetic) {
+      
+      nextMs = lineMs + 3500;
+      for (let j = i + 1; j < expanded.length; j++) {
+        if (!expanded[j]._isParen && !expanded[j]._synthetic) {
+          nextMs = expanded[j].ms;
+          break;
+        }
+      }
+    } else {
+      nextMs = expanded[i+1]?.ms ?? (lineMs + 3500);
+    }
+    const rawWords = (line.text || '').split(/\s+/).filter(Boolean);
+
+    if (!rawWords.length) {
+      const nextIsWholeParen = expanded[i+1]?._wholeLine;
+      const gapMs = Math.max(400, nextMs - lineMs);
+      
+      
+      let nearbyMsPerSyl = 200; 
+      for (let k = Math.max(0,i-3); k <= Math.min(expanded.length-1, i+3); k++) {
+        const kl = expanded[k];
+        if (!kl.text?.trim() || kl._isParen || kl._synthetic) continue;
+        const kNext = expanded[k+1]?.ms ?? (kl.ms + 2000);
+        const kWords = kl.text.split(/\s+/).filter(Boolean);
+        const kSyls  = kWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
+        nearbyMsPerSyl = (kNext - kl.ms) / kSyls;
+        break;
+      }
+      
+      const bpm       = Math.round(60000 / Math.max(100, nearbyMsPerSyl * 2));
+      const beatDur   = Math.round(Math.min(800, Math.max(280, 60000 / Math.max(60, bpm))));
+      return { ...line, words: [], beatDur, _skipDots: !!nextIsWholeParen };
+    }
+
     if (line._wordTimed?.length) {
       return { ...line, words: line._wordTimed };
     }
 
-    // Syllable-weighted distribution fallback
-    const syls = rawWords.map(syllableCount);
-    const totalSyls = syls.reduce((a,b)=>a+b, 0);
-    // Use 90% of available time — leave natural tail before next line
-    const usable = duration * 0.90;
-    let cursor = lineMs;
-    const words = rawWords.map((word, wi) => {
-      const wordMs = cursor;
-      // Weight short words (≤3 chars) slightly less — they're usually unstressed
-      const weight = syls[wi] * (word.replace(/[^a-z]/gi,'').length <= 3 ? 0.7 : 1);
-      cursor += (weight / syls.reduce((a,b,j)=>a+(b*(rawWords[j].replace(/[^a-z]/gi,'').length<=3?0.7:1)),0)) * usable;
-      return { ms: wordMs, word };
-    });
-    return { ...line, words };
+    const baseWords = timingForWords(rawWords, lineMs, nextMs);
+
+    
+    
+    
+    if (line._inlineParens?.length) {
+      const result = [];
+      let realWordIdx = 0;
+      for (let wi = 0; wi < baseWords.length; wi++) {
+        const w = baseWords[wi];
+        if (!w._isPause && !w._isInlineParen) {
+          
+          for (const ip of line._inlineParens) {
+            if (ip.afterWordIdx === realWordIdx) {
+              
+              
+              result.push({ ms: w.ms, word: ip.text, _isInlineParen: true });
+            }
+          }
+          realWordIdx++;
+        }
+        result.push(w);
+      }
+      
+      for (const ip of line._inlineParens) {
+        if (ip.afterWordIdx >= realWordIdx) {
+          const lastReal = result.filter(w => !w._isPause && !w._isInlineParen).pop();
+          result.push({ ms: lastReal?.ms ?? lineMs, word: ip.text, _isInlineParen: true });
+        }
+      }
+      return { ...line, words: result };
+    }
+
+    return { ...line, words: baseWords };
   });
 }
 
-function splitParen(text) {
-  const pm = text.match(/^(.*?)\s*\(([^)]+)\)\s*(.*)$/);
-  if (pm) {
-    const main = (pm[1] + (pm[3] ? ' ' + pm[3] : '')).trim();
-    return { main: main || text, paren: pm[2] };
+function extractParens(text) {
+  const parens = [];
+  
+  let remaining = text;
+  let wordCount = 0;
+  const re = /^(.*?)\(([^)]+)\)([\s\S]*)$/;
+
+  while (remaining.includes('(')) {
+    const m = remaining.match(re);
+    if (!m) break;
+    const before      = m[1];
+    const inner       = m[2];
+    const after       = m[3];
+    const beforeWords = before.trim().split(/\s+/).filter(w => w.length > 0);
+    wordCount += beforeWords.length;
+    const afterWords  = after.trim().split(/\s+/).filter(w => w.length > 0);
+    parens.push({
+      text: inner,
+      afterWordIdx: wordCount,   
+      isMidLine: afterWords.length > 0,
+    });
+    
+    remaining = after;
+    
   }
-  return { main: text, paren: null };
+
+  const mainText = text.replace(/\([^)]+\)/g, '').replace(/\s+/g, ' ').trim();
+  return { mainText, parens };
 }
 
 function renderLineHTML(line, i) {
-  const { main, paren } = splitParen(line.text || '♪');
-  const parenHTML = paren ? `<span class="ll-paren">(${x(paren)})</span>` : '';
-  const isNote = !line.words?.length && (!line.text || line.text.trim() === '♪' || line.text.trim() === '');
+  
+  if (line._skipDots) return '';
+
+  const isNote = !line.words?.length &&
+    (!line.text || line.text.trim() === '♪' || line.text.trim() === '');
+
   let mainHTML;
   if (isNote) {
     const beatDur = line.beatDur ?? 600;
     mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
   } else {
-    mainHTML = line.words?.length
-      ? line.words.map((w, wi) =>
-          `<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:0%">${x(w.word)}</span>`
-        ).join(' ')
-      : x(main);
+    if (line.words?.length) {
+      
+      
+      const parts = [];
+      for (let wi = 0; wi < line.words.length; wi++) {
+        const w = line.words[wi];
+        if (w._isPause) continue;
+        if (w._isInlineParen) {
+          
+          let nextWi = wi + 1;
+          while (nextWi < line.words.length && (line.words[nextWi]._isPause || line.words[nextWi]._isInlineParen)) nextWi++;
+          const nextW = line.words[nextWi];
+          const ipSpan = `<span class="lw-ip-text lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`;
+          if (nextW && !nextW._isPause && !nextW._isInlineParen) {
+            
+            const wordSpan = `<span class="lw upcoming" id="lw${i}_${nextWi}" style="--pct:-20%">${x(nextW.word)}</span>`;
+            parts.push(`<span class="lw-inline-paren">${ipSpan}${wordSpan}</span>`);
+            wi = nextWi; 
+          } else {
+            parts.push(ipSpan);
+          }
+          continue;
+        }
+        parts.push(`<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`);
+      }
+      mainHTML = parts.join(' ');
+    } else {
+      mainHTML = x(line.text || '');
+    }
   }
-  return `<div class="ll" id="ll${i}" onclick="seekLrc(${i})">${mainHTML}${parenHTML}</div>`;
+
+  
+  
+  const cls = 'll' + (line._isParen && !line._wholeLine ? ' ll-sub' : '');
+  return `<div class="${cls}" id="ll${i}" onclick="seekLrc(${i},event)">${mainHTML}</div>`;
 }
 
 function renderSynced() {
-  // Clear word state cache so new song starts fresh
+  
   Object.keys(_lwState).forEach(k => delete _lwState[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
 
+function seekLrc(i, evt) {
+  if (ST.lrcType !== 'synced' || !ST.lrc[i]) return;
+  
+  const el = document.getElementById('ll'+i);
+  if (el && evt) {
+    const r = document.createElement('span');
+    r.className = 'll-ripple';
+    const rect = el.getBoundingClientRect();
+    r.style.left = (evt.clientX - rect.left) + 'px';
+    r.style.top  = (evt.clientY - rect.top)  + 'px';
+    el.appendChild(r);
+    setTimeout(() => r.remove(), 600);
+  }
+  YT_player.seekTo(ST.lrc[i].ms / 1000);
+}
 
-
-function seekLrc(i) { if(ST.lrcType==='synced'&&ST.lrc[i]) YT_player.seekTo(ST.lrc[i].ms/1000); }
-
-// Per-word state cache to skip redundant DOM writes
 const _lwState = {};
 
 function _setLwState(id, cls, pct) {
   const prev = _lwState[id];
   if (prev && prev.cls === cls && (cls !== 'now-word' || prev.pct === pct)) return;
+
+  const wasUpcoming = prev?.cls === 'upcoming' || !prev;
   _lwState[id] = { cls, pct };
+
   const el = document.getElementById(id);
   if (!el) return;
-  el.className = 'lw ' + cls;
-  el.style.setProperty('--pct', pct);
+
+  
+  const isEntry = wasUpcoming && cls === 'now-word';
+
+  if (isEntry) {
+    
+    el.className = 'lw ' + cls + ' word-enter';
+    
+    
+    requestAnimationFrame(() => {
+      el.style.setProperty('--pct', pct);
+      setTimeout(() => {
+        if (el.classList.contains('word-enter')) el.classList.remove('word-enter');
+      }, 230);
+    });
+  } else {
+    el.className = 'lw ' + cls;
+    el.style.setProperty('--pct', pct);
+  }
+}
+
+function _nextRealLineMs(fromIdx, fallback) {
+  for (let j = fromIdx + 1; j < ST.lrc.length; j++) {
+    if (!ST.lrc[j]._isParen && !ST.lrc[j]._synthetic) return ST.lrc[j].ms;
+  }
+  return fallback;
+}
+
+function _tickWords(lineIdx, t, nextBound) {
+  const words = ST.lrc[lineIdx]?.words;
+  if (!words?.length) return;
+
+  
+  let lastRealIdx = words.length - 1;
+  while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
+
+  const lastW    = words[lastRealIdx];
+  const lastSyls = syllableCount(lastW.word);
+
+  
+  const realWords  = words.filter(w => !w._isPause);
+  const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+  const lineSpanMs = realWords.length > 1
+    ? realWords[realWords.length-1].ms - realWords[0].ms
+    : Math.max(300, nextBound - words[0].ms - 80);
+  
+  const nonLastSyls = Math.max(1, totalSyls - lastSyls);
+  const spacingMs   = realWords.length > 1
+    ? lineSpanMs / nonLastSyls
+    : Math.max(95, (nextBound - words[0].ms) / totalSyls);
+  const msPerSyl    = Math.max(90, spacingMs);
+  const pace       = _paceFactor(msPerSyl);
+  const holdMul    = _lerp(pace, 1.20, 1.90);
+  
+  
+  const naturalEnd = lastW.ms + lastSyls * msPerSyl * holdMul;
+  
+  const bleedAllowance = msPerSyl * 1.2;
+  const lastWordEnd = naturalEnd <= nextBound + bleedAllowance ? naturalEnd : nextBound + bleedAllowance * 0.3;
+
+  for (let wi = 0; wi < words.length; wi++) {
+    const w = words[wi];
+    if (w._isPause) continue;
+
+    const wStart = w.ms;
+    
+    let wEnd = lastWordEnd;
+    if (wi < words.length - 1) {
+      for (let ni = wi + 1; ni < words.length; ni++) {
+        const nw = words[ni];
+        if (!nw._isPause && !nw._isInlineParen) { wEnd = nw.ms; break; }
+        if (nw._isPause) { wEnd = nw.ms; break; } 
+      }
+    }
+    const id     = 'lw' + lineIdx + '_' + wi;
+
+    if (t < wStart) {
+      _setLwState(id, 'upcoming', '-20%');
+    } else if (t >= wEnd) {
+      _setLwState(id, 'done', '100%');
+    } else {
+      const raw = (t - wStart) / Math.max(1, wEnd - wStart);
+      
+      
+      const eased = raw < 0.25
+        ? raw * raw * 4          
+        : 0.25 + (raw - 0.25) * (1 / 0.75) * 0.75; 
+      _setLwState(id, 'now-word', (Math.min(1, eased) * 100).toFixed(1) + '%');
+    }
+  }
+}
+
+function _snapDone(lineIdx) {
+  (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
+    if (w._isPause) return;
+    _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
+  });
+}
+
+function _resetUpcoming(lineIdx) {
+  (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
+    if (w._isPause) return;
+    const id = 'lw'+lineIdx+'_'+wi;
+    delete _lwState[id];
+    _setLwState(id, 'upcoming', '-20%');
+  });
+}
+
+function _resetUpcomingSelective(lineIdx, t) {
+  const words = ST.lrc[lineIdx]?.words;
+  if (!words) return;
+  words.forEach((w, wi) => {
+    if (w._isPause) return;
+    const id = 'lw'+lineIdx+'_'+wi;
+    delete _lwState[id];
+    if (w.ms <= t) {
+      
+    } else {
+      _setLwState(id, 'upcoming', '-20%');
+    }
+  });
 }
 
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  // Lookahead: compensate for rendering lag — words light up exactly as sung
-  const AHEAD = 80;
+  
+  let AHEAD = 80;
+  {
+    let lo=0,hi=ST.lrc.length-1,a=0;
+    while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
+    const aLine = ST.lrc[a];
+    if (aLine?.words?.length > 1) {
+      const realW = aLine.words.filter(w=>!w._isPause&&!w._isInlineParen);
+      if (realW.length > 1) {
+        const span = realW[realW.length-1].ms - realW[0].ms;
+        const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
+        AHEAD = Math.round(Math.max(50, Math.min(150, mps * 0.30)));
+      }
+    }
+  }
   const t = posMs + AHEAD;
 
-  // Binary search for active line
+  
   let lo = 0, hi = ST.lrc.length - 1, active = 0;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
@@ -1716,68 +2583,270 @@ function tickLrc(posMs) {
     else hi = mid - 1;
   }
 
-  if (active !== ST.lrcActive) {
-    const prev = ST.lrcActive;
-    ST.lrcActive = active;
+  const activeEntry = ST.lrc[active];
 
-    // Batch DOM updates — collect all lines once, update in one pass
-    const lines = document.querySelectorAll('#lscroll .ll');
-    lines.forEach((el, i) => {
-      el.classList.remove('now','past','near','near2');
-      const dist = i - active;
-      const absDist = Math.abs(dist);
-      if (dist < 0) el.classList.add('past');
-      else if (absDist === 1) el.classList.add('near');
-      else if (absDist === 2) el.classList.add('near2');
-      if (i === active) el.classList.add('now');
-      // Progressive blur: lines farther away blur more
-      el.style.filter = absDist >= 3 ? `blur(${Math.min(5, (absDist - 2) * 1.5).toFixed(1)}px)` : '';
-    });
+  
+  let focus = active;
+  let parenActive = -1;
 
-    document.getElementById('ll'+active)
-      ?.scrollIntoView({ block:'center', behavior:'smooth' });
+  if (activeEntry._synthetic) {
+    while (focus > 0 && (ST.lrc[focus]._isParen || ST.lrc[focus]._synthetic)) focus--;
 
-    // Snap previous line's words to fully done
-    if (prev >= 0) {
-      (ST.lrc[prev]?.words || []).forEach((w, wi) => {
-        _setLwState('lw'+prev+'_'+wi, 'done', '100%');
-      });
+  } else if (activeEntry._isParen && !activeEntry._wholeLine) {
+    
+    let prevReal = active - 1;
+    while (prevReal >= 0 && (ST.lrc[prevReal]._isParen || ST.lrc[prevReal]._synthetic)) prevReal--;
+
+    if (prevReal < 0) {
+      focus = active; 
+    } else {
+      
+      
+      const nextRealMs = _nextRealLineMs(active, Infinity);
+      const wasRepositioned = activeEntry._parenParentMs !== ST.lrc[prevReal].ms;
+
+      if (wasRepositioned) {
+        
+        focus = active;
+      } else {
+        
+        focus = prevReal;
+        parenActive = active;
+      }
     }
-    // Reset new active line's words to upcoming
-    (ST.lrc[active]?.words || []).forEach((w, wi) => {
-      const id = 'lw'+active+'_'+wi;
-      delete _lwState[id]; // force re-render
-      _setLwState(id, 'upcoming', '0%');
-    });
+
+  } else {
+    
+    focus = active;
+    
+    const focusMs = activeEntry.ms;
+    for (let j = focus + 1; j < ST.lrc.length; j++) {
+      const e = ST.lrc[j];
+      if (!e._isParen || e._wholeLine) break;
+      if (e._parenParentMs !== focusMs) break;
+      if (e.ms <= t) parenActive = j;
+    }
   }
 
-  const words = ST.lrc[active]?.words;
-  if (!words?.length) return;
+  
+  if (focus !== ST.lrcActive) {
+    const prev = ST.lrcActive;
+    ST.lrcActive = focus;
 
-  const nextLineMs = ST.lrc[active+1]?.ms ?? (t + 4000);
-  // Last word ends when next line starts, capped to avoid runaway stretch
-  const lastWordEnd = Math.min(nextLineMs - 50, words[words.length-1].ms + 2200);
+    const domLines = document.querySelectorAll('#lscroll .ll');
+    domLines.forEach((el, i) => {
+      el.classList.remove('now','past','near','near2');
+      const entry = ST.lrc[i];
+      let di = i;
+      if (entry?._isParen || entry?._synthetic) {
+        for (let k = i - 1; k >= 0; k--) {
+          if (!ST.lrc[k]._isParen && !ST.lrc[k]._synthetic) { di = k; break; }
+        }
+      }
+      const dist = di - focus;
+      const absDist = Math.abs(dist);
+      if      (dist < 0)      el.classList.add('past');
+      else if (absDist === 1) el.classList.add('near');
+      else if (absDist === 2) el.classList.add('near2');
+      if (absDist >= 3) {
+        const blurAmt = dist < 0
+          ? Math.min(5, (absDist-2)*1.5)
+          : Math.min(3, (absDist-2)*0.7);
+        el.style.filter = `blur(${blurAmt.toFixed(1)}px)`;
+      } else {
+        el.style.filter = '';
+      }
+    });
 
-  for (let wi = 0; wi < words.length; wi++) {
-    const wStart = words[wi].ms;
-    const wEnd = wi < words.length - 1 ? words[wi+1].ms : lastWordEnd;
-    const id = 'lw'+active+'_'+wi;
-
-    if (t < wStart) {
-      _setLwState(id, 'upcoming', '0%');
-    } else if (t >= wEnd) {
-      _setLwState(id, 'done', '100%');
-    } else {
-      // Ease-in-out the fill so it feels natural, not robotic
-      const raw = (t - wStart) / (wEnd - wStart);
-      const eased = raw < 0.5 ? 2*raw*raw : -1+(4-2*raw)*raw;
-      _setLwState(id, 'now-word', (eased * 100).toFixed(1)+'%');
+    const focusEl = document.getElementById('ll'+focus);
+    if (focusEl) {
+      
+      focusEl.classList.remove('now');
+      focusEl.offsetWidth; 
+      focusEl.classList.add('now');
+      focusEl.scrollIntoView({ block:'center', behavior:'smooth' });
     }
+
+    if (prev >= 0 && prev !== focus) _snapDone(prev);
+    
+    _resetUpcomingSelective(focus, t);
+
+    if (ST._parenActive >= 0 && ST._parenActive !== parenActive) {
+      document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
+      _snapDone(ST._parenActive);
+      ST._parenActive = -1;
+    }
+  }
+
+  
+  if (parenActive !== ST._parenActive) {
+    if (ST._parenActive >= 0) {
+      document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
+      _snapDone(ST._parenActive);
+    }
+    ST._parenActive = parenActive;
+    if (parenActive >= 0) {
+      document.getElementById('ll'+focus)?.classList.remove('now');
+      document.getElementById('ll'+parenActive)?.classList.add('now');
+      _resetUpcomingSelective(parenActive, t);
+    } else {
+      document.getElementById('ll'+focus)?.classList.add('now');
+    }
+  }
+
+  
+  
+  
+  
+  let focusBound = t + 6000;
+  for (let j = focus + 1; j < ST.lrc.length; j++) {
+    const e = ST.lrc[j];
+    
+    if (e._isParen && !e._wholeLine && e._parenParentMs === ST.lrc[focus]?.ms) continue;
+    focusBound = e.ms;
+    break;
+  }
+
+  if (parenActive >= 0) {
+    _tickWords(focus, t, ST.lrc[parenActive].ms);
+    
+    let parenBound = t + 6000;
+    for (let j = parenActive + 1; j < ST.lrc.length; j++) {
+      parenBound = ST.lrc[j].ms; break;
+    }
+    _tickWords(parenActive, t, parenBound);
+  } else {
+    _tickWords(focus, t, focusBound);
   }
 }
 
+const _smartRepeatCache = {};
 
-// ── ARTIST PROFILE ─────────────────────────────────────────────────────────
+async function doSmartRepeat() {
+  const track = ST.queue[ST.idx];
+  if (!track) { YT_player.seekTo(0); YT_player.playVideo(); return; }
+
+  const ck = (track.title + '||' + track.artist).toLowerCase();
+  let seekMs = _smartRepeatCache[ck];
+
+  if (seekMs === undefined) {
+    if (ST.lrcType === 'synced' && ST.lrc.length) {
+      seekMs = await _askAIRepeatPoint(track.title, track.artist, ST.lrc);
+    }
+    _smartRepeatCache[ck] = seekMs ?? 0;
+  }
+
+  await _blendSeek((seekMs || 0) / 1000);
+}
+
+async function _askAIRepeatPoint(title, artist, lrc) {
+  
+  const map = lrc
+    .filter(l => l.text && !l._isParen && !l._synthetic)
+    .slice(0, 60)
+    .map(l => `${l.ms} ${l.text.split(/\s+/).slice(0,5).join(' ')}`)
+    .join('\n');
+
+  const prompt = `Song: "${title}" by ${artist}
+
+You are a music producer choosing the perfect gapless loop re-entry point for seamless repeat playback (like Apple Music Dolby Atmos).
+
+Rules:
+- Pick the first line of Verse 1 (after any intro/instrumental opening)
+- If there's no clear verse 1 start, pick the first line where the main vocal melody begins
+- NEVER pick the first line (index 0) unless there is truly no intro
+- NEVER pick an outro, bridge, or "fade out" section
+- The loop should feel natural — listener shouldn't notice the restart
+
+LRC lines available (ms timestamp then lyric snippet):
+${map}
+
+Reply with ONLY the ms integer of your chosen line. Nothing else.`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${AI_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': location.href,
+        'X-Title': 'Ghost Music'
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        max_tokens: 20,
+        temperature: 0.1,
+        messages: [{ role: 'user', content: prompt }]
+      }),
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const raw  = data.choices?.[0]?.message?.content?.trim();
+    const ms   = parseInt(raw);
+    if (isNaN(ms) || ms < 0) return null;
+    
+    const valid = lrc.some(l => Math.abs(l.ms - ms) < 2000);
+    return valid ? ms : null;
+  } catch { return null; }
+}
+
+async function _blendSeek(seekSec) {
+  if (!ytReady) { YT_player.seekTo(seekSec); YT_player.playVideo(); return; }
+  ST._blending = true;
+  const targetVol = ST.muted ? 0 : ST.vol * 100;
+  const lscroll   = G('lscroll');
+
+  
+  if (lscroll) {
+    lscroll.classList.remove('blend-in');
+    lscroll.classList.add('blend-out');
+  }
+
+  
+  const OUT_STEPS = 48, OUT_MS = 25;
+  for (let i = OUT_STEPS; i >= 0; i--) {
+    const frac = i / OUT_STEPS;
+    YT_player.setVolume(targetVol * frac * frac);
+    await new Promise(r => setTimeout(r, OUT_MS));
+  }
+  YT_player.setVolume(0);
+
+  
+  await new Promise(r => setTimeout(r, 600));
+
+  
+  YT_player.seekTo(seekSec, true);
+  YT_player.playVideo();
+
+  
+  await new Promise(resolve => {
+    const deadline = Date.now() + 3000;
+    const poll = setInterval(() => {
+      if (YT_player.getPlayerState?.() === 1 || Date.now() > deadline) {
+        clearInterval(poll); resolve();
+      }
+    }, 40);
+  });
+
+  
+  if (lscroll) {
+    lscroll.classList.remove('blend-out');
+    lscroll.classList.add('blend-in');
+    setTimeout(() => lscroll.classList.remove('blend-in'), 1300);
+  }
+
+  
+  const IN_STEPS = 40, IN_MS = 25;
+  for (let i = 0; i <= IN_STEPS; i++) {
+    const frac = i / IN_STEPS;
+    YT_player.setVolume(targetVol * (1 - Math.pow(1 - frac, 2.2)));
+    await new Promise(r => setTimeout(r, IN_MS));
+  }
+  YT_player.setVolume(targetVol);
+  ST._blending = false;
+}
+
 const _artistCache = {};
 
 async function openArtistProfile(artistName, hintArt) {
@@ -1807,7 +2876,7 @@ async function fetchArtistData(artistName) {
   let artistId = null;
   const al = artistName.toLowerCase();
 
-  // Step 1: Find iTunes artistId via entity search
+  
   const artistData = await itunesFetch(
     `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
   );
@@ -1821,7 +2890,7 @@ async function fetchArtistData(artistName) {
 
   let tracks = [];
 
-  // Step 2: Lookup by artistId — gets full discography reliably
+  
   if (artistId) {
     const ld = await itunesFetch(
       `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`
@@ -1829,7 +2898,7 @@ async function fetchArtistData(artistName) {
     tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
   }
 
-  // Step 3: Fallback — direct search filtered to artist name
+  
   if (tracks.length < 3) {
     const ld = await itunesFetch(
       `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`
@@ -1838,15 +2907,15 @@ async function fetchArtistData(artistName) {
       t.wrapperType === 'track' && t.kind === 'song' &&
       t.artistName?.toLowerCase().includes(al.split(' ')[0])
     );
-    // Merge, dedupe by trackId
+    
     const seen = new Set(tracks.map(t => t.trackId));
     for (const t of extra) if (!seen.has(t.trackId)) { tracks.push(t); seen.add(t.trackId); }
   }
 
-  // Sort by popularity (playCount not available, use trackNumber + collectionName as proxy)
-  // iTunes returns them roughly in popularity order already, keep that order.
+  
+  
 
-  // Artist hero image: use highest-res album art available — skip fanart.tv (unreliable)
+  
   const artTrack = tracks.find(t => t.artworkUrl100);
   if (artTrack) artistImg = artTrack.artworkUrl100.replace('100x100bb', '600x600bb');
 
