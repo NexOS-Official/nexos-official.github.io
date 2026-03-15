@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -180,7 +171,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .lyrics-panel.active{opacity:1;pointer-events:auto}
 .lrc-scroll-outer{
   position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
-  padding:30px 24px 140px;
+  padding:48px 28px 180px;
   z-index:1;
 }
 .lrc-bg{
@@ -247,53 +238,54 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
 .ll{
-  font-size:28px;line-height:1.5;font-weight:800;
-  padding:5px 0;border-radius:8px;cursor:pointer;
-  color:rgba(255,255,255,0.22);
-  filter:blur(3px);
-  opacity:.7;
+  font-size:27px;line-height:1.65;font-weight:700;
+  padding:5px 0 5px 4px;
+  margin-bottom:1px;
+  border-radius:12px;cursor:pointer;
+  color:rgba(255,255,255,0.12);
+  filter:blur(0px);
+  opacity:.32;
   transform-origin:left center;
-  /* No transform transition — bounce uses animation, not transition */
+  letter-spacing:-0.015em;
   transition:
     color .5s cubic-bezier(.4,0,.2,1),
-    filter .5s cubic-bezier(.4,0,.2,1),
     opacity .5s cubic-bezier(.4,0,.2,1),
-    font-size .38s cubic-bezier(.34,1.56,.64,1);
-  will-change:color,filter,opacity;
+    font-size .38s cubic-bezier(.34,1.56,.64,1),
+    letter-spacing .38s cubic-bezier(.4,0,.2,1);
+  will-change:color,opacity;
   position:relative;
-  /* Clip ripples but don't clip text — use clip-path instead of overflow:hidden
-     to avoid the horizontal scrollbar when bounce scales slightly over */
-  clip-path: inset(0 round 8px);
+  clip-path:inset(-6px -10px round 12px);
 }
 .ll.past{
-  color:rgba(255,255,255,0.10);
-  filter:blur(4px);
-  opacity:.4;
+  color:rgba(255,255,255,0.06);
+  opacity:.18;
 }
 .ll.near{
-  color:rgba(255,255,255,0.52);
-  filter:blur(1.2px);
-  opacity:.88;
+  color:rgba(255,255,255,0.46);
+  opacity:.76;
   font-size:26px;
 }
 .ll.near2{
-  color:rgba(255,255,255,0.30);
-  filter:blur(2.2px);
-  opacity:.58;
-  font-size:24px;
+  color:rgba(255,255,255,0.24);
+  opacity:.46;
+  font-size:24.5px;
 }
 .ll.now{
   color:#ffffff;
-  font-size:32px;
-  filter:blur(0px);
+  font-size:36px;
   opacity:1;
-  /* Bounce: scale up slightly without affecting layout */
-  animation: ll-bounce 0.35s cubic-bezier(.34,1.56,.64,1) both;
+  letter-spacing:-0.025em;
+  animation:ll-bounce 0.30s cubic-bezier(.34,1.56,.64,1) both;
+}
+.ll.now.ll-sung{
+  opacity:0.50;
+  color:rgba(255,255,255,0.50);
+  transition:opacity 1.2s ease-out, color 1.2s ease-out !important;
 }
 @keyframes ll-bounce {
-  0%   { transform: scale(0.94) translateX(0); }
-  55%  { transform: scale(1.04) translateX(0); }
-  100% { transform: scale(1.00) translateX(0); }
+  0%   { transform:scale(0.93); }
+  52%  { transform:scale(1.05); }
+  100% { transform:scale(1.00); }
 }
 /* Tap ripple */
 .ll-ripple {
@@ -359,25 +351,28 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   initial-value: -20%;
 }
 
+
+
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
     #ffffff calc(var(--pct, -20%) - 10%),
-    rgba(255,255,255,0.85) calc(var(--pct, -20%) - 2%),
-    rgba(255,255,255,0.30) calc(var(--pct, -20%) + 8%),
-    rgba(255,255,255,0.06) calc(var(--pct, -20%) + 18%)
+    rgba(255,255,255,0.92) calc(var(--pct, -20%) - 2%),
+    rgba(255,255,255,0.25) calc(var(--pct, -20%) + 8%),
+    rgba(255,255,255,0.05) calc(var(--pct, -20%) + 18%)
   );
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
-  /* Smooth the glow filter and the custom property where supported */
   transition:
-    filter 180ms ease-out,
-    --pct 0ms linear,
-    opacity 120ms ease-out;
-  opacity: 1;
+    filter 120ms ease-out,
+    opacity 80ms ease-out;
+  opacity:1;
 }
-.ll.now .lw.done{
+.ll.now .lw.done,
+.ll.past .lw,
+.ll.near .lw,
+.ll.near2 .lw{
   --pct:110%;
   filter:none;
   opacity:1;
@@ -385,9 +380,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now .lw.upcoming{
   --pct:-20%;
   filter:none;
-  /* Upcoming words: dim but present so comma pauses don't flash black */
   opacity:0.55;
-  transition: opacity 200ms ease-in;
 }
 .ll.now .lw.now-word{
   filter:none;
@@ -855,10 +848,9 @@ function showPanel(name) {
 
   if (name === 'lyrics' && ST.lrcType === 'synced') {
     renderSynced();
-    // Snap immediately to current playback position so lyrics aren't "off"
+    
     requestAnimationFrame(() => tickLrc(getPrecisePos()));
   }
-
 
   G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
   G('pnb-likes').classList.toggle('active', name === 'likes');
@@ -1071,16 +1063,14 @@ function createPlaylistFromModal() {
   openNewPlaylistModal();
 }
 
-// Image proxy: images.weserv.nl is a free image CDN proxy that works on most networks
-// Try direct first; if it fails (school blocks mzstatic.com), fall back to weserv
 function proxyImg(url) {
   if (!url) return '';
-  // Already a proxy or data URL
+  
   if (url.startsWith('data:') || url.includes('weserv.nl') || url.includes('fanart.tv')) return url;
-  return url; // Return direct — mzstatic is almost never blocked. weserv fallback on onerror.
+  return url; 
 }
 function proxyImgFallback(img) {
-  // Called via onerror — try weserv.nl as fallback
+  
   if (!img.src.includes('wsrv.nl')) {
     const orig = img.getAttribute('data-src') || img.src;
     img.src = 'https://wsrv.nl/?url=' + encodeURIComponent(orig) + '&w=300';
@@ -1091,7 +1081,7 @@ const ST = {
   queue:[], idx:-1,
   playing:false, shuffle:false, repeat:false, smartRepeat:false, muted:false,
   vol:0.8, pos:0, dur:0,
-  lrc:[], lrcType:'none', lrcActive:-1, _parenActive:-1,
+  lrc:[], lrcType:'none', lrcActive:-1, _parenActive:-1, _lineWordsDone:false,
 };
 
 function G(id){ return document.getElementById(id); }
@@ -1101,10 +1091,8 @@ let toastTmr=null;
 function toast(msg){ const el=G('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('show'),2800); }
 function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-status-txt').textContent=msg; }
 
-// Universal proxy-aware fetch — tries direct first, then multiple CORS proxies
-// Works even when school blocks the target domain directly
 const PROXIES = [
-  u => u, // direct
+  u => u, 
   u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
   u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
   u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
@@ -1118,7 +1106,7 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
       if (r.ok) res(r); else rej(r.status);
     } catch(e) { rej(e); }
   });
-  // Fire all in parallel, return first success
+  
   return Promise.any(PROXIES.map(tryOne));
 }
 
@@ -1126,6 +1114,10 @@ let YT_player = null, ytReady = false, ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
 
 function getPrecisePos() {
+  if (ytReady && ST.playing) {
+    const direct = YT_player.getCurrentTime?.() * 1000;
+    if (direct > 0) { _lastYtPosMs = direct; _lastYtPollMs = performance.now(); return direct; }
+  }
   const elapsed = performance.now() - _lastYtPollMs;
   return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
 }
@@ -1151,11 +1143,10 @@ window.onYouTubeIframeAPIReady = function() {
             _lastYtPosMs = ST.pos;
             _lastYtPollMs = performance.now();
             syncBar();
-          }, 250);
+          }, 100);
           if (!ST._rafRunning) {
             ST._rafRunning = true;
             const rafLoop = () => {
-              if (!ST._rafRunning) return;
               if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
               requestAnimationFrame(rafLoop);
             };
@@ -1164,7 +1155,7 @@ window.onYouTubeIframeAPIReady = function() {
         } else if (e.data === YT.PlayerState.PAUSED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
-          clearInterval(ticker); ST._rafRunning = false;
+          clearInterval(ticker);
         } else if (e.data === YT.PlayerState.ENDED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
@@ -1187,7 +1178,6 @@ window.onYouTubeIframeAPIReady = function() {
   });
 };
 
-// Load IFrame API — try youtube.com then youtube-nocookie.com
 (function loadYTAPI() {
   setStatus('loading', 'Connecting…');
   function tryScript(src, cb) {
@@ -1197,8 +1187,8 @@ window.onYouTubeIframeAPIReady = function() {
     document.head.appendChild(s);
   }
   tryScript('https://www.youtube.com/iframe_api', function(err) {
-    if (!err) return; // success — onYouTubeIframeAPIReady will fire
-    // youtube.com blocked, try nocookie
+    if (!err) return; 
+    
     tryScript('https://www.youtube-nocookie.com/iframe_api', function(err2) {
       if (err2) {
         setStatus('err', 'YouTube blocked');
@@ -1222,7 +1212,7 @@ async function findVideoIds(artist, title) {
     return [...new Set(matches.map(m => m[1]))].slice(0, 6);
   }
 
-  // Method 1: scrape YouTube search via proxyFetch (races all proxies)
+  
   try {
     const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(searchQ);
     const r = await proxyFetch(ytUrl, {}, 6000);
@@ -1231,7 +1221,7 @@ async function findVideoIds(artist, title) {
     if (ids.length) { ytCache[ck] = ids; return ids; }
   } catch {}
 
-  // Method 2: Invidious JSON API (different servers, different block lists)
+  
   const invidious = [
     'https://inv.nadeko.net',
     'https://invidious.privacyredirect.com',
@@ -1268,14 +1258,13 @@ qIn.addEventListener('input', e => {
 qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
 document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
 
-// iTunes fetch — direct first, then CORS proxies in parallel as fallback
 async function itunesFetch(url) {
-  // Try direct fetch first (works on personal devices)
+  
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (r.ok) return await r.json();
   } catch {}
-  // Fallback: race all proxies simultaneously
+  
   const enc = encodeURIComponent(url);
   const proxied = [
     'https://corsproxy.io/?url=' + enc,
@@ -1298,15 +1287,15 @@ async function doSearch(q) {
   qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
   qDrp.style.display='block';
 
-  // iTunes ALWAYS first and always on top — never show MB until iTunes resolves
+  
   const itunesTracks = await searchItunes(q);
   qSpn.style.display='none';
 
   if (itunesTracks.length) {
-    // iTunes found results — show them immediately
+    
     renderDrop(itunesTracks, []);
 
-    // Then append MB-only results below as supplemental
+    
     searchMusicBrainz(q).then(mbTracks => {
       const newMb = mbTracks.filter(mb =>
         !itunesTracks.some(it =>
@@ -1318,8 +1307,8 @@ async function doSearch(q) {
     }).catch(() => {});
 
   } else {
-    // iTunes completely failed — show a clear error, no MB fallback
-    // (MB showing as primary results is confusing and low quality)
+    
+    
     qDrp.innerHTML = '<div class="drop-msg">⚠ Search unavailable — check your connection and try again</div>';
   }
 }
@@ -1328,19 +1317,19 @@ function scoreTrack(t, ql, words) {
   const tl = (t.trackName || '').toLowerCase();
   const al = (t.artistName || '').toLowerCase();
   let s = 0;
-  // Title scoring
+  
   if (tl === ql) s += 100;
   else if (tl.startsWith(ql)) s += 70;
   else if (words.every(w => tl.includes(w))) s += 45;
   else s += words.filter(w => tl.includes(w)).length * 10;
-  // Artist name exact match — huge boost (handles "NF" the rapper vs song titled "NF")
+  
   if (al === ql) s += 80;
   else if (al.startsWith(ql)) s += 50;
   else if (words.every(w => al.includes(w))) s += 30;
-  // Quality signals
+  
   if (t.artworkUrl100) s += 5;
   if (t.trackTimeMillis > 60000) s += 5;
-  if ((t.trackCount || 0) > 5) s += 3; // album with multiple tracks = real release
+  if ((t.trackCount || 0) > 5) s += 3; 
   return s;
 }
 
@@ -1417,7 +1406,7 @@ async function fetchCoverArt(track) {
     return;
   }
 
-  // Always try iTunes first — works everywhere including school Chromebooks
+  
   try {
     const term = encodeURIComponent((track.artistName||'').trim() + ' ' + (track.trackName||'').trim());
     const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
@@ -1440,7 +1429,7 @@ async function fetchCoverArt(track) {
     }
   } catch {}
 
-  // Secondary: Cover Art Archive (may be blocked on school networks)
+  
   if (track._releaseMbid) {
     const mbid = track._releaseMbid;
     if (_artCache[mbid] !== undefined) {
@@ -1576,7 +1565,7 @@ async function loadTrack(idx) {
   YT_player.loadVideoById(track.ytIds[track.ytTry]);
   fetchLyrics(track.title, track.artist);
 
-  // If no art yet (e.g. MusicBrainz source), fetch it now and update cover immediately when resolved
+  
   if (!track.artSm && !track.artLg) {
     const _refTrack = {
       artworkUrl100: null, _artLgOverride: null,
@@ -1585,11 +1574,11 @@ async function loadTrack(idx) {
     };
     fetchCoverArt(_refTrack).then(() => {
       if (!_refTrack.artworkUrl100) return;
-      // Only update if this track is still the active one
+      
       if (ST.queue[ST.idx] !== track) return;
       track.artSm = _refTrack.artworkUrl100;
       track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
-      // Directly update every cover surface so nothing is stale
+      
       const artUrl = track.artLg || track.artSm;
       G('cv-img').src = artUrl;
       G('cv-img').setAttribute('data-src', artUrl);
@@ -1599,7 +1588,7 @@ async function loadTrack(idx) {
       const lrcBg = G('lrc-bg');
       lrcBg.style.backgroundImage = `url('${artUrl}')`;
       lrcBg.classList.add('on');
-      // Patch queue thumbnail
+      
       const th = document.getElementById('qt' + idx);
       if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
     });
@@ -1662,7 +1651,7 @@ G('btn-vol').addEventListener('click', () => {
 });
 G('btn-sf').addEventListener('click',()=>{ST.shuffle=!ST.shuffle;G('btn-sf').classList.toggle('on',ST.shuffle);});
 G('btn-rp').addEventListener('click',()=>{
-  // Cycle: off → repeat-one → smart-repeat → off
+  
   if (!ST.repeat && !ST.smartRepeat) {
     ST.repeat = true; ST.smartRepeat = false;
     G('btn-rp').classList.add('on');
@@ -1686,46 +1675,81 @@ G('btn-pp').addEventListener('click',togglePlay);
 
 const wordSyncOn = true;
 
-// ── AI LYRICS ENGINE (OpenRouter) ──────────────────────────────────────────
-const AI_KEY = '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';
-const AI_MODEL = 'google/gemini-flash-1.5-8b';
+// API key removed; handled by server
+const AI_MODEL = 'google/gemini-2.5-flash-preview';
 const _aiTimingCache = {};
 
-async function aiRefineWordTimings(lines, title, artist) {
-  // Only refine lines that used the syllable fallback (no embedded word timestamps)
-  // We send batches to AI asking it to redistribute word timing weights more musically
+async function aiRefineWordTimings(lrcLines, title, artist) {
   const ck = (title + '||' + artist).toLowerCase();
   if (_aiTimingCache[ck]) return _aiTimingCache[ck];
 
-  // Build a compact representation for the AI
-  const payload = lines.map((line, i) => ({
-    i,
-    ms: line.ms,
-    nextMs: lines[i+1]?.ms ?? (line.ms + 3500),
-    words: line.words?.map(w => w.word) ?? [],
-    hasEmbedded: !!line._wordTimed
-  })).filter(l => l.words.length > 0 && !l.hasEmbedded);
+  const realLines = lrcLines.filter(l =>
+    !l._synthetic &&
+    l.words?.some(w => !w._isPause && !w._isInlineParen && w.word?.trim())
+  );
+  if (!realLines.length) return null;
 
-  if (!payload.length) return null;
+  function buildPayload(batch) {
+    return batch.map((line, li) => {
+      const globalLi = realLines.indexOf(line);
+      const nextReal  = realLines[globalLi + 1];
+      const rw        = line.words.filter(w => !w._isPause && !w._isInlineParen && w.word?.trim());
+      const lineEnd   = nextReal?.ms ?? (line.ms + 5000);
+      const singMs    = lineEnd - line.ms;
+      const syls      = rw.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+      const prevReal  = realLines[globalLi - 1];
+      const prevSyls  = prevReal
+        ? prevReal.words.filter(w=>!w._isPause&&!w._isInlineParen&&w.word?.trim()).reduce((a,w)=>a+syllableCount(w.word),0)||1
+        : null;
+      const prevMsps  = prevReal ? Math.round((line.ms - prevReal.ms) / prevSyls) : null;
+      return {
+        i:       lrcLines.indexOf(line),
+        ms:      line.ms,
+        end:     lineEnd,
+        singMs,
+        mspsy:   Math.round(singMs / syls),
+        prevMsps,
+        words:   rw.map(w => w.word),
+      };
+    });
+  }
 
-  // Only send a sample (first 40 lines max) to keep tokens low
-  const sample = payload.slice(0, 40);
+  async function callAI(payload) {
+    const prompt = `Lyrics sync engine for "${title}" by ${artist}.
 
-  const prompt = `You are a music lyrics timing expert. Given LRC line timestamps and their words, redistribute the word start times (in ms) to feel more natural and musical — matching how a real singer would stress syllables and pace delivery.
+You receive LRC lines. Each has exact timestamps from the LRC file.
+Your job: distribute word start times within each line's window, AND decide when the singing ends.
 
-Song: "${title}" by ${artist}
+Fields:
+- ms: line start
+- end: next line start (NO word may reach or exceed this)
+- singMs: end - ms (total window in ms)
+- mspsy: ms-per-syllable tempo reference
+- prevMsps: previous line's tempo
+- words: the words to time
 
-For each line, you receive: line start ms, line end ms, and the words.
-Return ONLY a JSON array matching the same order as input, each element being an array of ms offsets for each word (absolute ms from song start). Words should fill naturally within [lineMs, nextMs-100ms]. Consider natural speech rhythm, stressed syllables, and musical phrasing.
+TIMING RULES:
+1. First word starts at ms (or up to 80ms after for breath)
+2. Connector words (a, the, and, to, of, in, I, my, you, it, was, is, be, do): duration = 0.4 × mspsy
+3. Content words: duration = 0.9 × mspsy × syllables
+4. Emotionally stressed words (death, love, hate, never, always, etc): 1.2 × mspsy × syllables
+5. Last word gets a natural hold — singer holds the note
+6. Punctuation pause: comma=+0.25×mspsy, period/!/?=+0.5×mspsy — shift NEXT word later
+7. If mspsy < prevMsps: speeding up — shrink connectors to 0.3×
+8. If mspsy > prevMsps: slowing down — stretch last word hold more
+9. All word times strictly increasing
+10. All word times within [ms, end-60]
 
-Lines to time:
-${JSON.stringify(sample)}
+SING_END: After placing all words, output singEnd = the ms when the LAST word finishes being sung (last word start + its natural hold duration). The line will sit highlighted at 100% from singEnd until end. singEnd must be <= end - 50.
 
-Respond ONLY with a raw JSON array like: [[ms1,ms2,...],[ms1,ms2,...],...]
-No explanation, no markdown.`;
+Return ONLY: [{"w":[ms,ms,...],"se":singEndMs},...]
+"w" array length MUST equal words array length.
+"se" = singEnd ms (when last word finishes, line sits done until "end")
+Raw JSON only. No markdown.
 
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+${JSON.stringify(payload)}`;
+
+    const res = await fetch('/ai-lyrics', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${AI_KEY}`,
@@ -1735,38 +1759,78 @@ No explanation, no markdown.`;
       },
       body: JSON.stringify({
         model: AI_MODEL,
-        max_tokens: 2000,
-        temperature: 0.2,
+        max_tokens: 3000,
+        temperature: 0.05,
         messages: [{ role: 'user', content: prompt }]
       }),
-      signal: AbortSignal.timeout(12000)
+      signal: AbortSignal.timeout(20000)
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const raw = data.choices?.[0]?.message?.content?.trim();
+    const raw  = data.choices?.[0]?.message?.content?.trim();
     if (!raw) return null;
-    // Strip any accidental markdown fences
     const clean = raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
-    const timings = JSON.parse(clean);
-    if (!Array.isArray(timings)) return null;
+    const parsed = JSON.parse(clean);
+    if (!Array.isArray(parsed)) return null;
+    return parsed;
+  }
 
-    // Apply AI timings back to the matching lines
-    const refined = new Map();
-    sample.forEach((linePayload, si) => {
-      const aiTimes = timings[si];
-      if (!Array.isArray(aiTimes) || aiTimes.length !== linePayload.words.length) return;
-      // Validate: all values must be numbers within a sane range
-      if (!aiTimes.every(t => typeof t === 'number' && t >= 0 && t < 36000000)) return;
-      refined.set(linePayload.i, aiTimes);
+  const BATCH = 30;
+  const batches = [];
+  for (let i = 0; i < Math.min(realLines.length, 90); i += BATCH) {
+    batches.push(realLines.slice(i, i + BATCH));
+  }
+
+  const refined = new Map();
+
+  function applyBatch(payload, results) {
+    payload.forEach((lp, si) => {
+      const ai = results[si];
+      if (!ai?.w || ai.w.length !== lp.words.length) return;
+      if (!ai.w.every(t => typeof t==='number' && t >= lp.ms - 100 && t < lp.end)) return;
+      for (let j = 1; j < ai.w.length; j++) if (ai.w[j] <= ai.w[j-1]) return;
+      const singEnd = (typeof ai.se === 'number' && ai.se > lp.ms && ai.se <= lp.end)
+        ? ai.se : null;
+      refined.set(lp.i, { words: ai.w, singEnd });
     });
+  }
+
+  try {
+    const p1 = buildPayload(batches[0]);
+    const r1 = await callAI(p1);
+    if (r1) applyBatch(p1, r1);
 
     _aiTimingCache[ck] = refined;
-    return refined;
-  } catch { return null; }
+
+    const remaining = batches.slice(1).map(batch => {
+      const p = buildPayload(batch);
+      return callAI(p).then(r => { if (r) applyBatch(p, r); });
+    });
+
+    if (remaining.length > 0) {
+      Promise.all(remaining).then(() => {
+        const track = ST.queue[ST.idx];
+        if (!track) return;
+        const curCk = (track.title + '||' + track.artist).toLowerCase();
+        if (curCk !== ck) return;
+        applyAIRefinements(ST.lrc, track.title, track.artist, refined).then(reRefined => {
+          if (reRefined !== ST.lrc) {
+            ST.lrc = reRefined;
+            ST.lrcActive = -1;
+            ST._parenActive = -1;
+            Object.keys(_lwState).forEach(k => delete _lwState[k]);
+            renderSynced();
+          }
+        });
+      });
+    }
+  } catch { return refined.size ? refined : null; }
+
+  return refined.size ? refined : null;
 }
 
 async function aiGenerateSyncedLyrics(plainLyrics, title, artist, durMs) {
-  // Use AI to turn plain lyrics into a timed LRC structure
+  
   const ck = ('plain||' + title + '||' + artist).toLowerCase();
   if (_aiTimingCache[ck]) return _aiTimingCache[ck];
 
@@ -1791,7 +1855,7 @@ ${lines.map((l, i) => `${i+1}. ${l}`).join('\n')}
 Respond ONLY with raw LRC text, no explanation:`;
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetch('/ai-lyrics', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${AI_KEY}`,
@@ -1816,20 +1880,39 @@ Respond ONLY with raw LRC text, no explanation:`;
   } catch { return null; }
 }
 
-async function applyAIRefinements(lines, title, artist) {
-  const refined = await aiRefineWordTimings(lines, title, artist);
+async function applyAIRefinements(lines, title, artist, preRefined) {
+  const refined = preRefined ?? await aiRefineWordTimings(lines, title, artist);
   if (!refined || !refined.size) return lines;
   return lines.map((line, i) => {
-    const aiTimes = refined.get(i);
-    if (!aiTimes || !line.words?.length) return line;
-    const newWords = line.words.map((w, wi) => ({
-      ...w,
-      ms: aiTimes[wi] ?? w.ms
-    }));
-    return { ...line, words: newWords };
+    const ai = refined.get(i);
+    if (!ai || !line.words?.length) return line;
+
+    const singEnd  = ai.singEnd ?? null;
+    const rawTimes = ai.words ?? [];
+
+    // If singEnd provided, scale all word times into [line.ms, singEnd-60]
+    // so every word fills within the singing window, not the full LRC gap.
+    let wordTimes = rawTimes;
+    if (singEnd && rawTimes.length > 0) {
+      const origFirst = rawTimes[0];
+      const origLast  = rawTimes[rawTimes.length - 1];
+      const origSpan  = Math.max(1, origLast - origFirst);
+      const targetEnd = singEnd - 60;
+      const targetSpan = Math.max(1, targetEnd - line.ms);
+      const scale = Math.min(1, targetSpan / origSpan);
+      wordTimes = rawTimes.map(ms => Math.round(line.ms + (ms - origFirst) * scale));
+    }
+
+    let realWordIdx = 0;
+    const newWords = line.words.map((w) => {
+      if (w._isPause || w._isInlineParen) return w;
+      const newMs = wordTimes[realWordIdx] ?? w.ms;
+      realWordIdx++;
+      return { ...w, ms: newMs };
+    });
+    return { ...line, words: newWords, _singEnd: singEnd };
   });
 }
-// ── END AI LYRICS ENGINE ───────────────────────────────────────────────────
 
 async function fetchLyrics(title, artist) {
   ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1; ST._parenActive=-1;
@@ -1839,17 +1922,20 @@ async function fetchLyrics(title, artist) {
   const clean=s=>s.replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
   const ct=clean(title), ca=clean(artist);
 
-  // Run both GET attempts in parallel for speed
+  
   const [r1, r2] = await Promise.all([lrclibGET(ct, ca), ct!==title||ca!==artist ? lrclibGET(title, artist) : Promise.resolve(null)]);
   for (const d of [r1, r2]) {
     if(d?.syncedLyrics){
       let lines = buildWordTimings(parseLRC(d.syncedLyrics));
       if(lines.length){
         ST.lrc=lines; ST.lrcType='synced'; renderSynced();
-        // Refine in background — updates word timings without interrupting playback
+        
         applyAIRefinements(lines, title, artist).then(refined => {
           if (refined !== lines && ST.queue[ST.idx]?.title === title) {
             ST.lrc = refined;
+            ST.lrcActive = -1;
+            ST._parenActive = -1;
+            Object.keys(_lwState).forEach(k => delete _lwState[k]);
             renderSynced();
           }
         });
@@ -1857,10 +1943,10 @@ async function fetchLyrics(title, artist) {
       }
     }
   }
-  // Search fallback — also parallel
+  
   const [s1, s2] = await Promise.all([lrclibSEARCH(ct, ca), ct!==title||ca!==artist ? lrclibSEARCH(title, artist) : Promise.resolve(null)]);
 
-  // Check for synced first
+  
   for (const d of [s1, s2]) {
     if(d?.syncedLyrics){
       let lines = buildWordTimings(parseLRC(d.syncedLyrics));
@@ -1869,6 +1955,9 @@ async function fetchLyrics(title, artist) {
         applyAIRefinements(lines, title, artist).then(refined => {
           if (refined !== lines && ST.queue[ST.idx]?.title === title) {
             ST.lrc = refined;
+            ST.lrcActive = -1;
+            ST._parenActive = -1;
+            Object.keys(_lwState).forEach(k => delete _lwState[k]);
             renderSynced();
           }
         });
@@ -1877,7 +1966,7 @@ async function fetchLyrics(title, artist) {
     }
   }
 
-  // Plain lyrics fallback — use AI to generate timestamps
+  
   const plainData = [r1,r2,s1,s2].find(d => d?.plainLyrics);
   if (plainData?.plainLyrics) {
     scroll.innerHTML='<div class="lrc-empty"><p>Syncing lyrics with AI…</p></div>';
@@ -1892,6 +1981,9 @@ async function fetchLyrics(title, artist) {
           applyAIRefinements(lines, title, artist).then(refined => {
             if (refined !== lines && ST.queue[ST.idx]?.title === title) {
               ST.lrc = refined;
+              ST.lrcActive = -1;
+              ST._parenActive = -1;
+              Object.keys(_lwState).forEach(k => delete _lwState[k]);
               renderSynced();
             }
           });
@@ -1899,7 +1991,7 @@ async function fetchLyrics(title, artist) {
         }
       }
     }
-    // AI failed — show plain lyrics as static lines with estimated timestamps
+    
     const fallbackLines = buildWordTimings(plainData.plainLyrics.split('\n')
       .map(l => l.trim()).filter(Boolean)
       .map((text, i) => ({ ms: i * 4000, text, _wordTimed: null })));
@@ -1937,7 +2029,7 @@ function parseLRC(rawStr) {
     const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
     const raw = m[3];
 
-    // Try to extract enhanced word-level timestamps: <mm:ss.xx>word
+    
     const wTagRe = /<(\d{1,3}):(\d{2}\.\d+)>([^<]*)/g;
     let wm; const wTimed = [];
     while ((wm = wTagRe.exec(raw)) !== null) {
@@ -1946,43 +2038,29 @@ function parseLRC(rawStr) {
       if (word) wTimed.push({ ms: wMs, word });
     }
 
-    const text = raw.replace(/<[^>]+>/g,'').trim();
+    let text = raw.replace(/<[^>]+>/g,'').trim();
+    // Treat ♪ / instrumental markers as empty (renders as dots)
+    if (/^[♪♫\s\-_]+$/.test(text)) text = '';
     return { ms, text, _wordTimed: wTimed.length > 0 ? wTimed : null };
   }).filter(Boolean);
 }
 
 function syllableCount(word) {
-  // Strip punctuation, lowercase
-  word = word.toLowerCase().replace(/[^a-z']/g, '').replace(/'/g, '');
+  word = word.toLowerCase().replace(/[^a-z']/g,'').replace(/'/g,'');
   if (!word) return 1;
-  // Common suffixes that are one syllable despite vowel count
   word = word
-    .replace(/tion$/,  'shun')   // -tion = 1 syl
-    .replace(/sion$/,  'shun')
-    .replace(/cious$/, 'shus')
-    .replace(/tious$/, 'shus')
-    .replace(/eous$/,  'us')
-    .replace(/geous$/, 'jus')
-    .replace(/ious$/,  'yus')
-    .replace(/ued$/,   'ude')    // "continued" etc
-    .replace(/ves$/,   've');    // "lives", "gives"
-  // Remove silent trailing e (but not: "be", "he", "she", "the", "me", "we")
-  if (word.length > 2 && word.endsWith('e') && !/[aeiou]e$/.test(word)) {
-    word = word.slice(0, -1);
-  }
-  // Remove -ed when it doesn't add a syllable (not after d/t)
-  if (word.endsWith('ed') && !/[dt]ed$/.test(word)) {
-    word = word.slice(0, -1);
-  }
-  // Count vowel groups (y is a vowel except word-start)
+    .replace(/tion$/,'shun').replace(/sion$/,'shun')
+    .replace(/cious$/,'shus').replace(/tious$/,'shus')
+    .replace(/eous$/,'us').replace(/geous$/,'jus').replace(/ious$/,'yus')
+    .replace(/ued$/,'ude').replace(/ves$/,'ve');
+  if (word.length > 2 && word.endsWith('e') && !/[aeiou]e$/.test(word)) word = word.slice(0,-1);
+  if (word.endsWith('ed') && !/[dt]ed$/.test(word)) word = word.slice(0,-1);
   const vowels = word.match(/[aeiouy]+/g);
   let count = vowels ? vowels.length : 1;
-  // y at word start is consonant
   if (word[0] === 'y') count = Math.max(1, count - 1);
   return Math.max(1, count);
 }
 
-// Words that are typically rushed/unstressed in singing
 const FAST_WORDS = new Set([
   'a','an','the','and','or','but','in','on','at','to','for','of','by','up',
   'so','my','me','we','he','she','it','i','is','as','be','do','go','no','if',
@@ -1990,83 +2068,41 @@ const FAST_WORDS = new Set([
   'had','has','have','that','this','with','from','not','can','will','just','your',
 ]);
 
-// Smooth interpolation helper — maps x in [0,1] range between lo and hi values
+const VOWELS = new Set(['a','e','i','o','u']);
+
 function _lerp(x, lo, hi) { return lo + x * (hi - lo); }
 
-// Smooth pace factor: given msPerSyl, returns a 0–1 "slowness" value
-// 0 = very fast (rap ~80ms/syl), 1 = very slow (ballad ~500ms/syl)
 function _paceFactor(msPerSyl) {
-  // 80ms/syl = fast rap (0), 700ms/syl = ultra-slow ballad (1)
   return Math.max(0, Math.min(1, (msPerSyl - 80) / 620));
 }
 
-// Returns fill-time multiplier for a word
+
 function wordDurMul(word, syls, isLast, msPerSyl) {
   const clean = word.replace(/[^a-z']/gi,'').replace(/'/g,'').toLowerCase();
   const len   = clean.length;
-  const pace  = _paceFactor(msPerSyl);  // 0=fast, 1=slow
-
+  const pace  = _paceFactor(msPerSyl);
   let mul = 1.0;
-
-  // Function/connector words — always short, but slightly longer on slow songs
-  if (FAST_WORDS.has(clean)) {
-    mul = _lerp(pace, 0.52, 0.65);  // raised floor so they're visible even at fast pace
-  } else if (len <= 2) {
-    mul = _lerp(pace, 0.62, 0.75);
-  } else if (len <= 3) {
-    mul = _lerp(pace, 0.76, 0.88);
-  }
-  // Content words: fill more of their allocated time
-  else {
-    mul = _lerp(pace, 0.92, 1.08);
-  }
-
-  // Elongated vowel spelling e.g. "looove", "staaay", "ohhh"
+  if (FAST_WORDS.has(clean))      mul = _lerp(pace, 0.52, 0.65);
+  else if (len <= 2)              mul = _lerp(pace, 0.62, 0.75);
+  else if (len <= 3)              mul = _lerp(pace, 0.76, 0.88);
+  else                            mul = _lerp(pace, 0.92, 1.08);
   if (/([aeiou])\1{1,}/.test(clean)) mul *= _lerp(pace, 1.25, 1.65);
-
-  // Words that end in a long vowel sound tend to be held
   if (/[aeio]$/.test(clean) && len > 2) mul *= _lerp(pace, 1.05, 1.20);
-
-  // Last word of line — singer holds the note; more hold on slower songs
   if (isLast) mul *= _lerp(pace, 1.20, 1.90);
-
   return mul;
 }
 
-// Returns ms of SILENCE to insert AFTER a word (breath/pause).
-// Uses smooth interpolation so no hard threshold jumps.
 function wordPauseAfter(word, msPerSyl) {
   const pace = _paceFactor(msPerSyl);
-
-  // Comma / semicolon — short breath, scales strongly with pace
-  if (/[,;]$/.test(word)) {
-    // fast song: ~0.18×, slow ballad: ~0.65×
-    return msPerSyl * _lerp(pace, 0.18, 0.65);
-  }
-  // Colon — slightly longer than comma (list pause or intro)
-  if (/:$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.25, 0.75);
-  }
-  // Em-dash or ellipsis — dramatic suspension
-  if (/[—…]$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.40, 1.10);
-  }
-  // Exclamation — emphasis on word, then release breath
-  if (/!$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.22, 0.72);
-  }
-  // Question — slight upward linger, then pause
-  if (/\?$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.28, 0.82);
-  }
-  // Period at mid-line (not end of line — end is handled by isLast hold)
-  if (/\.$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.15, 0.55);
-  }
+  if (/[,;]$/.test(word))  return msPerSyl * _lerp(pace, 0.20, 0.70);
+  if (/:$/.test(word))     return msPerSyl * _lerp(pace, 0.28, 0.80);
+  if (/[—…]$/.test(word))  return msPerSyl * _lerp(pace, 0.45, 1.20);
+  if (/!$/.test(word))     return msPerSyl * _lerp(pace, 0.25, 0.78);
+  if (/\?$/.test(word))    return msPerSyl * _lerp(pace, 0.30, 0.88);
+  if (/\.$/.test(word))    return msPerSyl * _lerp(pace, 0.18, 0.60);
   return 0;
 }
 
-// Weight version used by estSingMs (neutral pace ~200ms/syl)
 function wordSpeedWeight(word, syls, isLast) {
   return wordDurMul(word, syls, isLast, 200) * syls;
 }
@@ -2075,82 +2111,61 @@ function timingForWords(rawWords, lineMs, nextMs) {
   const n    = rawWords.length;
   const syls = rawWords.map(syllableCount);
   const totalSyls = syls.reduce((a,b) => a+b, 0) || 1;
-
   const gapMs = Math.max(300, nextMs - lineMs - 80);
 
-  // Estimate pause budget so msPerSyl reflects only singing time
-  // Use a neutral msPerSyl for the estimate to avoid circular dependency
   const neutralMsPerSyl = Math.max(95, gapMs / totalSyls);
-  const estimatedPauseMs = rawWords.reduce((acc, w) => {
-    const p = wordPauseAfter(w, neutralMsPerSyl);
-    return acc + p;
-  }, 0);
-  // Singing time = gap minus estimated pauses
-  const singMs       = Math.max(200, gapMs - estimatedPauseMs);
-  const rawMsPerSyl  = singMs / totalSyls;
-  // Clamp: fast rap floor 90ms, but cap at 420ms unless very few syllables
-  // (prevents "talking" paced songs from being treated as ultra-slow ballads)
-  const sylDensity   = totalSyls / Math.max(1, gapMs / 1000); // syls per second
-  const maxMsPerSyl  = sylDensity > 2.5 ? 280   // fast/dense: cap at 280
-                     : sylDensity > 1.2 ? 360   // normal: cap at 360
-                     :                    480;   // genuinely slow: allow up to 480
-  const msPerSyl = Math.max(90, Math.min(maxMsPerSyl, rawMsPerSyl));
+  const estimatedPauseMs = rawWords.reduce((acc, w) =>
+    acc + wordPauseAfter(w, neutralMsPerSyl), 0);
+  const singMs   = Math.max(200, gapMs - estimatedPauseMs);
+  const msPerSyl = Math.max(90, singMs / totalSyls);
 
-  // Per-word durations with final msPerSyl
-  const fillDurs  = rawWords.map((word, wi) =>
-    syls[wi] * msPerSyl * wordDurMul(word, syls[wi], wi === n - 1, msPerSyl)
-  );
-  const pauseDurs = rawWords.map(word => wordPauseAfter(word, msPerSyl));
+  const fillDurs  = rawWords.map((w, wi) =>
+    syls[wi] * msPerSyl * wordDurMul(w, syls[wi], false, msPerSyl));
+  const pauseDurs = rawWords.map(w => wordPauseAfter(w, msPerSyl));
   const totalDurs = fillDurs.map((f, wi) => f + pauseDurs[wi]);
   const rawTotal  = totalDurs.reduce((a,b) => a+b, 0);
 
-  // Overflow: shrink fast words first, then uniform fallback
   let scaledFill  = fillDurs.slice();
   let scaledPause = pauseDurs.slice();
 
   if (rawTotal > gapMs) {
-    const overflow   = rawTotal - gapMs;
-    const isFastArr  = rawWords.map(w => {
+    const overflow  = rawTotal - gapMs;
+    const isFastArr = rawWords.map(w => {
       const c = w.replace(/[^a-z]/gi,'').toLowerCase();
       return FAST_WORDS.has(c) || c.length <= 3;
     });
     const fastBudget = totalDurs.reduce((s,d,wi) => s + (isFastArr[wi] ? d : 0), 0);
-
     if (fastBudget >= overflow * 0.8) {
-      const ratio    = Math.max(0.1, (fastBudget - overflow) / fastBudget);
-      scaledFill     = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
-      scaledPause    = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
+      const ratio = Math.max(0.1, (fastBudget - overflow) / fastBudget);
+      scaledFill  = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
+      scaledPause = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
     } else {
-      // Can't absorb with fast words alone — uniform scale but preserve pause shape
-      const scale    = gapMs / rawTotal;
-      scaledFill     = fillDurs.map(d  => d * scale);
-      scaledPause    = pauseDurs.map(d => Math.max(d * 0.35, d * scale));
-      // Re-check
-      const newTotal = scaledFill.reduce((a,b)=>a+b,0) + scaledPause.reduce((a,b)=>a+b,0);
-      if (newTotal > gapMs) {
-        const s2   = gapMs / newTotal;
-        scaledFill  = scaledFill.map(d  => d * s2);
+      const scale  = gapMs / rawTotal;
+      scaledFill   = fillDurs.map(d => d * scale);
+      scaledPause  = pauseDurs.map(d => Math.max(d * 0.35, d * scale));
+      const newTot = scaledFill.reduce((a,b)=>a+b,0) + scaledPause.reduce((a,b)=>a+b,0);
+      if (newTot > gapMs) {
+        const s2 = gapMs / newTot;
+        scaledFill  = scaledFill.map(d => d * s2);
         scaledPause = scaledPause.map(d => d * s2);
       }
     }
-    // Floor: ensure no real content word is shorter than 40ms (avoids invisible flashes)
-    scaledFill = scaledFill.map((d, wi) => {
+    scaledFill = scaledFill.map((d,wi) => {
       const c = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
-      return FAST_WORDS.has(c) ? Math.max(d, 35) : Math.max(d, 60);
+      return FAST_WORDS.has(c) ? Math.max(d,35) : Math.max(d,60);
     });
   }
 
-  // Build word list with pause sentinels after punctuated words
   const result = [];
   let cursor = lineMs;
   for (let wi = 0; wi < n; wi++) {
     result.push({ ms: cursor, word: rawWords[wi] });
     cursor += scaledFill[wi];
-    if (scaledPause[wi] > 50) {  // only inject pause sentinel for meaningful gaps
+    if (scaledPause[wi] > 50) {
       result.push({ ms: cursor, word: '', _isPause: true });
       cursor += scaledPause[wi];
     } else {
-      cursor += scaledPause[wi]; // absorb tiny pauses into word spacing silently
+      cursor += scaledPause[wi];
     }
   }
   return result;
@@ -2164,7 +2179,7 @@ function buildWordTimings(lrc) {
     const nextMs  = lrc[i+1]?.ms ?? null;
     const rawText = line.text?.trim() ?? '';
 
-    // Existing explicit instrumental lines (empty text from LRC)
+    
     if (!rawText) {
       expanded.push(line);
       continue;
@@ -2172,8 +2187,8 @@ function buildWordTimings(lrc) {
 
     const { mainText, parens } = extractParens(rawText);
 
-    // ── Whole-line paren: e.g. "(oh yeah)" with nothing outside ──
-    // Don't create an empty main line — use the original ms directly for the paren.
+    
+    
     if (!mainText && parens.length > 0) {
       for (const paren of parens) {
         expanded.push({
@@ -2182,75 +2197,42 @@ function buildWordTimings(lrc) {
           _wordTimed: null,
           _synthetic: false,
           _isParen: true,
-          _parenParentMs: line.ms,  // parent is itself — it IS the line
-          _wholeLine: true,         // flag: no main line exists for this
+          _parenParentMs: line.ms,  
+          _wholeLine: true,         
         });
       }
-      // Still check for a gap after this "line" and inject instrumental if needed
-      if (nextMs !== null) {
-        const parenWords = parens[parens.length-1].text.split(/\s+/).filter(Boolean);
-        const parenSyls  = parenWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
-        const gap        = nextMs - line.ms;
-        const rawMPS     = Math.max(90, gap / parenSyls);
-        const estMs      = parenWords.reduce((acc, w) => {
-          const s = syllableCount(w); return acc + s * rawMPS * wordDurMul(w, s, false, rawMPS);
-        }, 0);
-        if (gap > estMs + 2000) {
-          const instrStart = line.ms + Math.min(estMs + 200, gap * 0.45);
-          expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
-        }
-      }
+      
+
       continue;
     }
 
-    // ── Normal line (may have inline parens) ──
-    const mainRawWords  = mainText.split(/\s+/).filter(Boolean);
-    const mainSyls      = mainRawWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
-    const gap           = nextMs !== null ? nextMs - line.ms : 3500;
+    const mainRawWords = mainText.split(/\s+/).filter(Boolean);
+    const mainSyls     = mainRawWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
+    const gap          = nextMs !== null ? nextMs - line.ms : 3500;
 
-    // Estimate actual sing time using the same per-word logic as timingForWords,
-    // but without the overflow scale — this gives us the "natural" duration.
-    // We use a neutral msPerSyl (the line's own gap / mainSyls, unclamped).
-    const naturalMsPerSyl = Math.max(95, gap / mainSyls);
-    // estSingMs: natural singing duration WITHOUT last-word hold (that's silence, not singing)
-    // Use isLast=false for all words so we get just the "moving through words" time
-    const estSingMs = mainRawWords.reduce((acc, w) => {
-      const s   = syllableCount(w);
-      const mul = wordDurMul(w, s, false, naturalMsPerSyl);
-      return acc + s * naturalMsPerSyl * mul;
-    }, 0);
+    const estSingMs = gap * 0.65;
 
     expanded.push({ ...line, text: mainText,
       _parensSource: parens.length > 0 ? parens : null,
-      _inlineParens: parens.filter(p => p.isMidLine)   // stored for pass-2 injection
+      _inlineParens: parens.filter(p => p.isMidLine)
     });
 
-    // End-of-line parens → sub-line entries below main line
     for (const paren of parens.filter(p => !p.isMidLine)) {
-      const frac    = mainRawWords.length > 0
-        ? Math.min(0.92, paren.afterWordIdx / mainRawWords.length)
-        : 0.5;
-      let parenMs   = Math.round(line.ms + estSingMs * frac);
+      const frac  = mainRawWords.length > 0
+        ? Math.min(0.92, paren.afterWordIdx / mainRawWords.length) : 0.5;
+      let parenMs = Math.round(line.ms + estSingMs * frac);
       if (nextMs !== null) parenMs = Math.min(parenMs, nextMs - 80);
       expanded.push({
-        ms: parenMs,
-        text: paren.text,
-        _wordTimed: null,
-        _synthetic: false,
-        _isParen: true,
-        _parenParentMs: line.ms,
+        ms: parenMs, text: paren.text,
+        _wordTimed: null, _synthetic: false,
+        _isParen: true, _parenParentMs: line.ms,
       });
     }
-    // Mid-line parens → injected inline into the word array in pass 2 (see _inlineParens)
 
-    // Inject instrumental gap marker if singing ends well before next line
-    if (nextMs !== null && gap > estSingMs + 2000) {
-      const instrStart = line.ms + Math.min(estSingMs + 200, gap * 0.45);
-      expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
-    }
+
   }
 
-  // Re-sort: parens whose ms >= next real line move to sit below that next line
+  
   for (let i = 0; i < expanded.length - 1; i++) {
     if (!expanded[i]._isParen) continue;
     let nextMain = -1;
@@ -2266,15 +2248,15 @@ function buildWordTimings(lrc) {
     }
   }
 
-  // Pass 2 — assign word timings
+  
   return expanded.map((line, i) => {
     const lineMs   = line.ms;
-    // For sub-lines (parens), use the next REAL line's ms as the timing boundary
-    // so their words get the same amount of time as if they were a standalone line.
-    // For normal lines, use the immediate next entry (could be synthetic/paren — handled in tickLrc).
+    
+    
+    
     let nextMs;
     if (line._isParen || line._synthetic) {
-      // find next real line ms
+      
       nextMs = lineMs + 3500;
       for (let j = i + 1; j < expanded.length; j++) {
         if (!expanded[j]._isParen && !expanded[j]._synthetic) {
@@ -2290,9 +2272,9 @@ function buildWordTimings(lrc) {
     if (!rawWords.length) {
       const nextIsWholeParen = expanded[i+1]?._wholeLine;
       const gapMs = Math.max(400, nextMs - lineMs);
-      // Estimate BPM from surrounding lyric lines to get musically accurate beat timing
-      // Look at nearby real lines to get their pace
-      let nearbyMsPerSyl = 200; // fallback ~120bpm
+      
+      
+      let nearbyMsPerSyl = 200; 
       for (let k = Math.max(0,i-3); k <= Math.min(expanded.length-1, i+3); k++) {
         const kl = expanded[k];
         if (!kl.text?.trim() || kl._isParen || kl._synthetic) continue;
@@ -2302,7 +2284,7 @@ function buildWordTimings(lrc) {
         nearbyMsPerSyl = (kNext - kl.ms) / kSyls;
         break;
       }
-      // Convert ms/syl to beat duration: assume ~2 syls per beat
+      
       const bpm       = Math.round(60000 / Math.max(100, nearbyMsPerSyl * 2));
       const beatDur   = Math.round(Math.min(800, Math.max(280, 60000 / Math.max(60, bpm))));
       return { ...line, words: [], beatDur, _skipDots: !!nextIsWholeParen };
@@ -2314,20 +2296,20 @@ function buildWordTimings(lrc) {
 
     const baseWords = timingForWords(rawWords, lineMs, nextMs);
 
-    // Inject mid-line paren markers into the word array.
-    // Each _inlineParen sits at the word position it appeared after —
-    // it carries the paren text and the ms of the word it precedes.
+    
+    
+    
     if (line._inlineParens?.length) {
       const result = [];
       let realWordIdx = 0;
       for (let wi = 0; wi < baseWords.length; wi++) {
         const w = baseWords[wi];
         if (!w._isPause && !w._isInlineParen) {
-          // Insert any inline parens that appear BEFORE this real word
+          
           for (const ip of line._inlineParens) {
             if (ip.afterWordIdx === realWordIdx) {
-              // isMidLine paren: sits above the word at this position
-              // Use same ms as this word so it highlights right before/with it
+              
+              
               result.push({ ms: w.ms, word: ip.text, _isInlineParen: true });
             }
           }
@@ -2335,7 +2317,7 @@ function buildWordTimings(lrc) {
         }
         result.push(w);
       }
-      // Handle parens at end of line (afterWordIdx === total word count)
+      
       for (const ip of line._inlineParens) {
         if (ip.afterWordIdx >= realWordIdx) {
           const lastReal = result.filter(w => !w._isPause && !w._isInlineParen).pop();
@@ -2349,15 +2331,9 @@ function buildWordTimings(lrc) {
   });
 }
 
-// Extract paren groups from a line.
-// Returns:
-//   mainText  — the line with all (...) removed
-//   parens    — [{text, afterWordIdx, isMidLine}]
-//     isMidLine=true  → words exist AFTER this paren  → render inline above next word
-//     isMidLine=false → nothing after this paren      → render as sub-line below
 function extractParens(text) {
   const parens = [];
-  // Single-pass: walk the string tracking real word count before each paren
+  
   let remaining = text;
   let wordCount = 0;
   const re = /^(.*?)\(([^)]+)\)([\s\S]*)$/;
@@ -2373,12 +2349,12 @@ function extractParens(text) {
     const afterWords  = after.trim().split(/\s+/).filter(w => w.length > 0);
     parens.push({
       text: inner,
-      afterWordIdx: wordCount,   // number of main words BEFORE this paren
+      afterWordIdx: wordCount,   
       isMidLine: afterWords.length > 0,
     });
-    // Continue scanning the rest, counting words we've already seen
+    
     remaining = after;
-    // afterWordIdx continues accumulating from after this point
+    
   }
 
   const mainText = text.replace(/\([^)]+\)/g, '').replace(/\s+/g, ' ').trim();
@@ -2386,7 +2362,7 @@ function extractParens(text) {
 }
 
 function renderLineHTML(line, i) {
-  // Invisible placeholder — synthetic gap after a whole-line paren, skip rendering dots
+  
   if (line._skipDots) return '';
 
   const isNote = !line.words?.length &&
@@ -2398,23 +2374,23 @@ function renderLineHTML(line, i) {
     mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
   } else {
     if (line.words?.length) {
-      // _isPause sentinels = invisible timing markers, skip
-      // _isInlineParen = small text above the following word, wrapped together
+      
+      
       const parts = [];
       for (let wi = 0; wi < line.words.length; wi++) {
         const w = line.words[wi];
         if (w._isPause) continue;
         if (w._isInlineParen) {
-          // Peek at next real word to wrap them together
+          
           let nextWi = wi + 1;
           while (nextWi < line.words.length && (line.words[nextWi]._isPause || line.words[nextWi]._isInlineParen)) nextWi++;
           const nextW = line.words[nextWi];
           const ipSpan = `<span class="lw-ip-text lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`;
           if (nextW && !nextW._isPause && !nextW._isInlineParen) {
-            // wrap inline paren + next word in a column flex container
+            
             const wordSpan = `<span class="lw upcoming" id="lw${i}_${nextWi}" style="--pct:-20%">${x(nextW.word)}</span>`;
             parts.push(`<span class="lw-inline-paren">${ipSpan}${wordSpan}</span>`);
-            wi = nextWi; // skip the next word since we just rendered it
+            wi = nextWi; 
           } else {
             parts.push(ipSpan);
           }
@@ -2428,23 +2404,21 @@ function renderLineHTML(line, i) {
     }
   }
 
-  // _wholeLine parens are full-size lines (the whole original line was in parens)
-  // _isParen without _wholeLine = inline sub-line (smaller, indented)
+  
+  
   const cls = 'll' + (line._isParen && !line._wholeLine ? ' ll-sub' : '');
   return `<div class="${cls}" id="ll${i}" onclick="seekLrc(${i},event)">${mainHTML}</div>`;
 }
 
 function renderSynced() {
-  // Clear word state cache so new song starts fresh
+  
   Object.keys(_lwState).forEach(k => delete _lwState[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
 
-
-
 function seekLrc(i, evt) {
   if (ST.lrcType !== 'synced' || !ST.lrc[i]) return;
-  // Ripple effect on tap
+  
   const el = document.getElementById('ll'+i);
   if (el && evt) {
     const r = document.createElement('span');
@@ -2458,7 +2432,6 @@ function seekLrc(i, evt) {
   YT_player.seekTo(ST.lrc[i].ms / 1000);
 }
 
-// Per-word state cache to skip redundant DOM writes
 const _lwState = {};
 
 function _setLwState(id, cls, pct) {
@@ -2471,14 +2444,14 @@ function _setLwState(id, cls, pct) {
   const el = document.getElementById(id);
   if (!el) return;
 
-  // Detect word entry: transitioning from upcoming → now-word for the first time
+  
   const isEntry = wasUpcoming && cls === 'now-word';
 
   if (isEntry) {
-    // Set class but keep --pct at -20% for this frame so the glow enters from dim
+    
     el.className = 'lw ' + cls + ' word-enter';
-    // Don't write pct yet — let the glow animation start from zero brightness
-    // Next rAF will write the real pct via normal _tickWords
+    
+    
     requestAnimationFrame(() => {
       el.style.setProperty('--pct', pct);
       setTimeout(() => {
@@ -2491,7 +2464,6 @@ function _setLwState(id, cls, pct) {
   }
 }
 
-// Helpers for tickLrc
 function _nextRealLineMs(fromIdx, fallback) {
   for (let j = fromIdx + 1; j < ST.lrc.length; j++) {
     if (!ST.lrc[j]._isParen && !ST.lrc[j]._synthetic) return ST.lrc[j].ms;
@@ -2499,73 +2471,57 @@ function _nextRealLineMs(fromIdx, fallback) {
   return fallback;
 }
 
-// Tick word highlights for a single line index.
-// nextBound: absolute ceiling — last word must complete by this ms.
 function _tickWords(lineIdx, t, nextBound) {
   const words = ST.lrc[lineIdx]?.words;
   if (!words?.length) return;
 
-  // Find last real (non-pause) word
   let lastRealIdx = words.length - 1;
   while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
 
   const lastW    = words[lastRealIdx];
   const lastSyls = syllableCount(lastW.word);
 
-  // Reconstruct the pace timingForWords used for this line
   const realWords  = words.filter(w => !w._isPause);
   const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
   const lineSpanMs = realWords.length > 1
     ? realWords[realWords.length-1].ms - realWords[0].ms
     : Math.max(300, nextBound - words[0].ms - 80);
-  // Infer pace from word spacing — guard against single-word lines
   const nonLastSyls = Math.max(1, totalSyls - lastSyls);
   const spacingMs   = realWords.length > 1
     ? lineSpanMs / nonLastSyls
     : Math.max(95, (nextBound - words[0].ms) / totalSyls);
-  const msPerSyl    = Math.max(90, spacingMs);
-  const pace       = _paceFactor(msPerSyl);
-  const holdMul    = _lerp(pace, 1.20, 1.90);
-  // Natural hold: last word fills for its full hold duration.
-  // Cap only if it would genuinely bleed into the next content (more than 1 word-duration past bound).
-  const naturalEnd = lastW.ms + lastSyls * msPerSyl * holdMul;
-  // Allow bleed up to one average word-duration past nextBound — singers always trail slightly
-  const bleedAllowance = msPerSyl * 1.2;
-  const lastWordEnd = naturalEnd <= nextBound + bleedAllowance ? naturalEnd : nextBound + bleedAllowance * 0.3;
+  const msPerSyl  = Math.max(90, spacingMs);
+  const pace      = _paceFactor(msPerSyl);
+  const holdMul   = _lerp(pace, 1.20, 1.90);
+  const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
+  // Cap strictly to nextBound - 160ms (max AHEAD) so word is done before focus advances
+  const lastWordEnd = Math.min(naturalEnd, nextBound - 160);
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
     if (w._isPause) continue;
-
     const wStart = w.ms;
-    // Skip sentinel entries when finding wEnd (pause markers, inline parens don't count)
     let wEnd = lastWordEnd;
     if (wi < words.length - 1) {
       for (let ni = wi + 1; ni < words.length; ni++) {
         const nw = words[ni];
         if (!nw._isPause && !nw._isInlineParen) { wEnd = nw.ms; break; }
-        if (nw._isPause) { wEnd = nw.ms; break; } // pause sentinel IS the boundary
+        if (nw._isPause) { wEnd = nw.ms; break; }
       }
     }
-    const id     = 'lw' + lineIdx + '_' + wi;
-
+    const id = 'lw' + lineIdx + '_' + wi;
     if (t < wStart) {
       _setLwState(id, 'upcoming', '-20%');
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
     } else {
-      const raw = (t - wStart) / Math.max(1, wEnd - wStart);
-      // Slight ease-in then linear: starts just a touch late (consonant onset)
-      // then sweeps through the vowel body at near-linear pace
-      const eased = raw < 0.25
-        ? raw * raw * 4          // gentle ease-in for first 25%
-        : 0.25 + (raw - 0.25) * (1 / 0.75) * 0.75; // linear rest
+      const raw   = (t - wStart) / Math.max(1, wEnd - wStart);
+      const eased = raw < 0.25 ? raw * raw * 4 : 0.25 + (raw - 0.25);
       _setLwState(id, 'now-word', (Math.min(1, eased) * 100).toFixed(1) + '%');
     }
   }
 }
 
-// Snap all word spans for a line to "done"
 function _snapDone(lineIdx) {
   (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
     if (w._isPause) return;
@@ -2573,7 +2529,6 @@ function _snapDone(lineIdx) {
   });
 }
 
-// Reset all word spans for a line to "upcoming"
 function _resetUpcoming(lineIdx) {
   (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
     if (w._isPause) return;
@@ -2583,8 +2538,6 @@ function _resetUpcoming(lineIdx) {
   });
 }
 
-// Reset words to upcoming — but skip any whose start time has already passed at time t.
-// This prevents the first-word glitch where word 0 flashes upcoming→done in one tick.
 function _resetUpcomingSelective(lineIdx, t) {
   const words = ST.lrc[lineIdx]?.words;
   if (!words) return;
@@ -2592,18 +2545,13 @@ function _resetUpcomingSelective(lineIdx, t) {
     if (w._isPause) return;
     const id = 'lw'+lineIdx+'_'+wi;
     delete _lwState[id];
-    if (w.ms <= t) {
-      // Already started — don't reset to upcoming, let _tickWords handle it this frame
-    } else {
-      _setLwState(id, 'upcoming', '-20%');
-    }
+    if (w.ms > t) _setLwState(id, 'upcoming', '-20%');
   });
 }
 
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  // Adaptive lookahead based on current line pace
   let AHEAD = 80;
   {
     let lo=0,hi=ST.lrc.length-1,a=0;
@@ -2620,7 +2568,6 @@ function tickLrc(posMs) {
   }
   const t = posMs + AHEAD;
 
-  // Binary search — highest index whose ms <= t
   let lo = 0, hi = ST.lrc.length - 1, active = 0;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
@@ -2629,41 +2576,23 @@ function tickLrc(posMs) {
   }
 
   const activeEntry = ST.lrc[active];
-
-  // ── Resolve focus & parenActive ─────────────────────────────────────────
   let focus = active;
   let parenActive = -1;
 
   if (activeEntry._synthetic) {
     while (focus > 0 && (ST.lrc[focus]._isParen || ST.lrc[focus]._synthetic)) focus--;
-
   } else if (activeEntry._isParen && !activeEntry._wholeLine) {
-    // Walk back to nearest preceding real line
     let prevReal = active - 1;
     while (prevReal >= 0 && (ST.lrc[prevReal]._isParen || ST.lrc[prevReal]._synthetic)) prevReal--;
-
     if (prevReal < 0) {
-      focus = active; // nothing before, paren is focus
+      focus = active;
     } else {
-      // A paren is an independent focus ONLY if it was repositioned AFTER the next
-      // real line (the sort pass moved it). If it still belongs to prevReal, it ticks alongside.
-      const nextRealMs = _nextRealLineMs(active, Infinity);
       const wasRepositioned = activeEntry._parenParentMs !== ST.lrc[prevReal].ms;
-
-      if (wasRepositioned) {
-        // Repositioned paren: it lives below a different line — it IS the focus
-        focus = active;
-      } else {
-        // Paren belongs to prevReal — tick alongside, prevReal stays focus
-        focus = prevReal;
-        parenActive = active;
-      }
+      if (wasRepositioned) { focus = active; }
+      else { focus = prevReal; parenActive = active; }
     }
-
   } else {
-    // Normal line (or _wholeLine paren)
     focus = active;
-    // Check if a sub-line paren that belongs to THIS line has started
     const focusMs = activeEntry.ms;
     for (let j = focus + 1; j < ST.lrc.length; j++) {
       const e = ST.lrc[j];
@@ -2673,7 +2602,6 @@ function tickLrc(posMs) {
     }
   }
 
-  // ── DOM class update — only when focus changes ──────────────────────────
   if (focus !== ST.lrcActive) {
     const prev = ST.lrcActive;
     ST.lrcActive = focus;
@@ -2694,26 +2622,21 @@ function tickLrc(posMs) {
       else if (absDist === 1) el.classList.add('near');
       else if (absDist === 2) el.classList.add('near2');
       if (absDist >= 3) {
-        const blurAmt = dist < 0
-          ? Math.min(5, (absDist-2)*1.5)
-          : Math.min(3, (absDist-2)*0.7);
-        el.style.filter = `blur(${blurAmt.toFixed(1)}px)`;
-      } else {
-        el.style.filter = '';
-      }
+        el.style.filter = dist < 0
+          ? `blur(${Math.min(5,(absDist-2)*1.5).toFixed(1)}px)`
+          : `blur(${Math.min(3,(absDist-2)*0.7).toFixed(1)}px)`;
+      } else { el.style.filter = ''; }
     });
 
     const focusEl = document.getElementById('ll'+focus);
     if (focusEl) {
-      // Remove then re-add class to restart the bounce animation
       focusEl.classList.remove('now');
-      focusEl.offsetWidth; // reflow forces animation restart
+      focusEl.offsetWidth;
       focusEl.classList.add('now');
       focusEl.scrollIntoView({ block:'center', behavior:'smooth' });
     }
 
     if (prev >= 0 && prev !== focus) _snapDone(prev);
-    // Reset words — but don't reset any word whose start time has already passed
     _resetUpcomingSelective(focus, t);
 
     if (ST._parenActive >= 0 && ST._parenActive !== parenActive) {
@@ -2723,7 +2646,6 @@ function tickLrc(posMs) {
     }
   }
 
-  // ── Paren .now tracking ──────────────────────────────────────────────────
   if (parenActive !== ST._parenActive) {
     if (ST._parenActive >= 0) {
       document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
@@ -2739,14 +2661,9 @@ function tickLrc(posMs) {
     }
   }
 
-  // ── Word ticking ─────────────────────────────────────────────────────────
-  // focusBound: the ms at which the focus line's content ends.
-  // Use the next entry (any type) — synthetic dots ARE a real boundary.
-  // But if the next entry is a paren belonging to this line, use the one after that.
   let focusBound = t + 6000;
   for (let j = focus + 1; j < ST.lrc.length; j++) {
     const e = ST.lrc[j];
-    // Skip parens that belong to this line (they tick alongside, not after)
     if (e._isParen && !e._wholeLine && e._parenParentMs === ST.lrc[focus]?.ms) continue;
     focusBound = e.ms;
     break;
@@ -2754,18 +2671,15 @@ function tickLrc(posMs) {
 
   if (parenActive >= 0) {
     _tickWords(focus, t, ST.lrc[parenActive].ms);
-    // Sub-line bound = next entry after the paren
     let parenBound = t + 6000;
-    for (let j = parenActive + 1; j < ST.lrc.length; j++) {
-      parenBound = ST.lrc[j].ms; break;
-    }
+    for (let j = parenActive + 1; j < ST.lrc.length; j++) { parenBound = ST.lrc[j].ms; break; }
     _tickWords(parenActive, t, parenBound);
   } else {
     _tickWords(focus, t, focusBound);
   }
 }
 
-// ── SMART REPEAT ───────────────────────────────────────────────────────────
+
 const _smartRepeatCache = {};
 
 async function doSmartRepeat() {
@@ -2786,7 +2700,7 @@ async function doSmartRepeat() {
 }
 
 async function _askAIRepeatPoint(title, artist, lrc) {
-  // Build a compact lyric map: index → [ms, first 4 words]
+  
   const map = lrc
     .filter(l => l.text && !l._isParen && !l._synthetic)
     .slice(0, 60)
@@ -2810,7 +2724,7 @@ ${map}
 Reply with ONLY the ms integer of your chosen line. Nothing else.`;
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetch('/ai-lyrics', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${AI_KEY}`,
@@ -2831,27 +2745,25 @@ Reply with ONLY the ms integer of your chosen line. Nothing else.`;
     const raw  = data.choices?.[0]?.message?.content?.trim();
     const ms   = parseInt(raw);
     if (isNaN(ms) || ms < 0) return null;
-    // Validate: must correspond to a real line
+    
     const valid = lrc.some(l => Math.abs(l.ms - ms) < 2000);
     return valid ? ms : null;
   } catch { return null; }
 }
 
-// Apple Music-style blend seek:
-// lyrics blur out → audio fades → seek → audio fades in → lyrics blur in
 async function _blendSeek(seekSec) {
   if (!ytReady) { YT_player.seekTo(seekSec); YT_player.playVideo(); return; }
   ST._blending = true;
   const targetVol = ST.muted ? 0 : ST.vol * 100;
   const lscroll   = G('lscroll');
 
-  // ── Phase 1: blur lyrics out (1.8s) while audio fades out (1.2s) in parallel ──
+  
   if (lscroll) {
     lscroll.classList.remove('blend-in');
     lscroll.classList.add('blend-out');
   }
 
-  // Audio fade-out over 1200ms (ease-in² — starts gentle, cuts sharp)
+  
   const OUT_STEPS = 48, OUT_MS = 25;
   for (let i = OUT_STEPS; i >= 0; i--) {
     const frac = i / OUT_STEPS;
@@ -2860,14 +2772,14 @@ async function _blendSeek(seekSec) {
   }
   YT_player.setVolume(0);
 
-  // Wait for blur animation to reach near-complete (total 1.8s, audio took 1.2s)
+  
   await new Promise(r => setTimeout(r, 600));
 
-  // ── Phase 2: seek and start playback silently ──
+  
   YT_player.seekTo(seekSec, true);
   YT_player.playVideo();
 
-  // Poll until playing or 3s timeout
+  
   await new Promise(resolve => {
     const deadline = Date.now() + 3000;
     const poll = setInterval(() => {
@@ -2877,14 +2789,14 @@ async function _blendSeek(seekSec) {
     }, 40);
   });
 
-  // ── Phase 3: blur lyrics back in while audio fades in ──
+  
   if (lscroll) {
     lscroll.classList.remove('blend-out');
     lscroll.classList.add('blend-in');
     setTimeout(() => lscroll.classList.remove('blend-in'), 1300);
   }
 
-  // Audio fade-in over 1000ms (ease-out² — swells in naturally)
+  
   const IN_STEPS = 40, IN_MS = 25;
   for (let i = 0; i <= IN_STEPS; i++) {
     const frac = i / IN_STEPS;
@@ -2894,9 +2806,7 @@ async function _blendSeek(seekSec) {
   YT_player.setVolume(targetVol);
   ST._blending = false;
 }
-// ── END SMART REPEAT ────────────────────────────────────────────────────────
 
-// ── ARTIST PROFILE ─────────────────────────────────────────────────────────
 const _artistCache = {};
 
 async function openArtistProfile(artistName, hintArt) {
@@ -2926,7 +2836,7 @@ async function fetchArtistData(artistName) {
   let artistId = null;
   const al = artistName.toLowerCase();
 
-  // Step 1: Find iTunes artistId via entity search
+  
   const artistData = await itunesFetch(
     `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
   );
@@ -2940,7 +2850,7 @@ async function fetchArtistData(artistName) {
 
   let tracks = [];
 
-  // Step 2: Lookup by artistId — gets full discography reliably
+  
   if (artistId) {
     const ld = await itunesFetch(
       `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`
@@ -2948,7 +2858,7 @@ async function fetchArtistData(artistName) {
     tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
   }
 
-  // Step 3: Fallback — direct search filtered to artist name
+  
   if (tracks.length < 3) {
     const ld = await itunesFetch(
       `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`
@@ -2957,15 +2867,15 @@ async function fetchArtistData(artistName) {
       t.wrapperType === 'track' && t.kind === 'song' &&
       t.artistName?.toLowerCase().includes(al.split(' ')[0])
     );
-    // Merge, dedupe by trackId
+    
     const seen = new Set(tracks.map(t => t.trackId));
     for (const t of extra) if (!seen.has(t.trackId)) { tracks.push(t); seen.add(t.trackId); }
   }
 
-  // Sort by popularity (playCount not available, use trackNumber + collectionName as proxy)
-  // iTunes returns them roughly in popularity order already, keep that order.
+  
+  
 
-  // Artist hero image: use highest-res album art available — skip fanart.tv (unreliable)
+  
   const artTrack = tracks.find(t => t.artworkUrl100);
   if (artTrack) artistImg = artTrack.artworkUrl100.replace('100x100bb', '600x600bb');
 
