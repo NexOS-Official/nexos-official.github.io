@@ -3226,6 +3226,326 @@ body.reduce-motion *::after {
         filter: blur(6px);
     }
 
+
+    /* ===== AI SIDEBAR STYLES ===== */
+    .ai-sparkle-icon {
+        transition: transform 0.3s ease, filter 0.3s ease;
+    }
+    .ai-menu-btn:hover .ai-sparkle-icon {
+        transform: scale(1.15);
+        filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.5));
+    }
+
+    @keyframes siri-border-rotate {
+        0% { --siri-angle: 0deg; }
+        100% { --siri-angle: 360deg; }
+    }
+
+    @property --siri-angle {
+        syntax: '<angle>';
+        initial-value: 0deg;
+        inherits: false;
+    }
+
+    .ai-sidebar-panel {
+        position: fixed;
+        top: calc(92px + var(--bookmark-bar-offset, 0px));
+        right: -420px;
+        width: 400px;
+        height: calc(100vh - 92px - var(--bookmark-bar-offset, 0px) - 50px);
+        z-index: 600;
+        opacity: 0;
+        transition: right 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease;
+        display: flex;
+        flex-direction: column;
+        pointer-events: none;
+    }
+
+    .ai-sidebar-panel.open {
+        right: 0;
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .ai-sidebar-glow-border {
+        position: absolute;
+        inset: -3px;
+        border-radius: 18px 0 0 0;
+        z-index: -1;
+        background: conic-gradient(
+            from var(--siri-angle, 0deg),
+            #ff6b6b, #feca57, #48dbfb, #ff9ff3,
+            #54a0ff, #5f27cd, #01a3a4, #f368e0,
+            #ff6348, #ffa502, #7bed9f, #70a1ff,
+            #ff6b6b
+        );
+        animation: siri-border-rotate 3s linear infinite;
+        filter: blur(6px);
+        opacity: 0.8;
+    }
+
+    .ai-sidebar-inner {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+        border-radius: 16px 0 0 0;
+        overflow: hidden;
+        box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+    }
+
+    .ai-sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e9ecef;
+        background: #ffffff;
+        flex-shrink: 0;
+    }
+
+    .ai-sidebar-title {
+        display: flex;
+        align-items: center;
+        font-size: 15px;
+        font-weight: 500;
+        color: #1a1a1a;
+        font-family: google sans;
+    }
+
+    .ai-sidebar-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .ai-sidebar-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .ai-sidebar-messages::-webkit-scrollbar { width: 5px; }
+    .ai-sidebar-messages::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+
+    .ai-welcome-msg {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 40px 20px;
+        gap: 12px;
+        flex: 1;
+    }
+
+    .ai-welcome-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, rgba(66,133,244,0.08), rgba(168,85,247,0.08), rgba(236,72,153,0.08));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ai-welcome-text {
+        font-size: 18px;
+        font-weight: 500;
+        color: #1a1a1a;
+        font-family: google sans;
+    }
+
+    .ai-welcome-sub {
+        font-size: 13px;
+        color: #888;
+        font-family: google sans;
+        max-width: 260px;
+        line-height: 1.5;
+    }
+
+    .ai-msg {
+        max-width: 85%;
+        padding: 10px 14px;
+        border-radius: 16px;
+        font-size: 13px;
+        line-height: 1.5;
+        font-family: google sans;
+        word-wrap: break-word;
+    }
+
+    .ai-msg.user {
+        align-self: flex-end;
+        background: linear-gradient(135deg, #4285f4, #a855f7);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+    }
+
+    .ai-msg.assistant {
+        align-self: flex-start;
+        background: #f1f3f4;
+        color: #1a1a1a;
+        border-bottom-left-radius: 4px;
+    }
+
+    .ai-msg-screenshot {
+        max-width: 100%;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .ai-sidebar-input-area {
+        padding: 12px 14px;
+        border-top: 1px solid #e9ecef;
+        background: #fff;
+        flex-shrink: 0;
+    }
+
+    .ai-screenshot-preview {
+        position: relative;
+        margin-bottom: 10px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #e0e0e0;
+        max-height: 120px;
+    }
+
+    .ai-screenshot-preview img {
+        width: 100%;
+        max-height: 120px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .ai-screenshot-remove {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.6);
+        border: none;
+        color: #fff;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+
+    .ai-screenshot-remove:hover {
+        background: rgba(0,0,0,0.8);
+    }
+
+    .ai-input-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        background: #f1f3f4;
+        border-radius: 22px;
+        padding: 6px 8px 6px 12px;
+    }
+
+    .ai-screenshot-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #666;
+        border-radius: 50%;
+        transition: background 0.2s, color 0.2s;
+        flex-shrink: 0;
+    }
+
+    .ai-screenshot-btn:hover {
+        background: rgba(0,0,0,0.06);
+        color: #333;
+    }
+
+    .ai-input-field {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-size: 14px;
+        font-family: google sans;
+        color: #1a1a1a;
+        resize: none;
+        outline: none;
+        max-height: 100px;
+        line-height: 1.4;
+        padding: 6px 0;
+    }
+
+    .ai-input-field::placeholder {
+        color: #999;
+    }
+
+    .ai-send-btn {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: linear-gradient(135deg, #4285f4, #a855f7);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        border-radius: 50%;
+        transition: transform 0.15s, opacity 0.2s;
+        flex-shrink: 0;
+    }
+
+    .ai-send-btn:hover {
+        transform: scale(1.05);
+    }
+
+    .ai-send-btn:active {
+        transform: scale(0.95);
+    }
+
+    /* Siri glow on content area when AI sidebar is open */
+    .content-area.ai-active {
+        border: 2px solid transparent;
+        border-image: conic-gradient(
+            from var(--siri-angle, 0deg),
+            #ff6b6b, #feca57, #48dbfb, #ff9ff3,
+            #54a0ff, #5f27cd, #01a3a4, #f368e0,
+            #ff6348, #ffa502, #7bed9f, #70a1ff,
+            #ff6b6b
+        ) 1;
+        animation: siri-border-rotate 3s linear infinite;
+    }
+
+    .ai-typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 4px 0;
+    }
+
+    .ai-typing-indicator span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #999;
+        animation: ai-typing 1.4s ease-in-out infinite;
+    }
+
+    .ai-typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .ai-typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes ai-typing {
+        0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+        30% { transform: translateY(-6px); opacity: 1; }
+    }
+
     </style>
 </head>
 <body>
@@ -3309,8 +3629,17 @@ body.reduce-motion *::after {
                 <button class="zoom-btn" id="zoomInBtn" title="">
                     <i data-lucide="zoom-in" width="16" height="16"></i>
                 </button>
-                <button class="ai-menu-btn" id="aiMenuBtn" title="">
-                    <i data-lucide="diamond" width="16" height="16"></i>
+                <button class="ai-menu-btn" id="aiMenuBtn" title="AI Assistant">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="ai-sparkle-icon">
+                        <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#ai-grad1)" stroke="url(#ai-grad1)" stroke-width="0.5"/>
+                        <path d="M19 14L19.75 16.25L22 17L19.75 17.75L19 20L18.25 17.75L16 17L18.25 16.25L19 14Z" fill="url(#ai-grad2)" stroke="url(#ai-grad2)" stroke-width="0.3"/>
+                        <path d="M6 16L6.5 17.5L8 18L6.5 18.5L6 20L5.5 18.5L4 18L5.5 17.5L6 16Z" fill="url(#ai-grad3)" stroke="url(#ai-grad3)" stroke-width="0.3"/>
+                        <defs>
+                            <linearGradient id="ai-grad1" x1="4" y1="2" x2="20" y2="18"><stop offset="0%" stop-color="#4285f4"/><stop offset="50%" stop-color="#a855f7"/><stop offset="100%" stop-color="#ec4899"/></linearGradient>
+                            <linearGradient id="ai-grad2" x1="16" y1="14" x2="22" y2="20"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#f472b6"/></linearGradient>
+                            <linearGradient id="ai-grad3" x1="4" y1="16" x2="8" y2="20"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
+                        </defs>
+                    </svg>
                 </button>
                 <button class="menu-btn" id="menuBtn" title="">
                     <i data-lucide="more-vertical" width="16" height="16"></i>
@@ -3438,8 +3767,58 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-<div id="aiMenuModal" class="ai-menu-modal">
-    <iframe src="/pages/main/ai.html" class="ai-menu-iframe"></iframe>
+<!-- AI Sidebar -->
+<div id="aiSidebarPanel" class="ai-sidebar-panel">
+    <div class="ai-sidebar-glow-border"></div>
+    <div class="ai-sidebar-inner">
+        <div class="ai-sidebar-header">
+            <div class="ai-sidebar-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="margin-right:8px;flex-shrink:0;">
+                    <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#ai-title-g1)"/>
+                    <path d="M19 14L19.75 16.25L22 17L19.75 17.75L19 20L18.25 17.75L16 17L18.25 16.25L19 14Z" fill="url(#ai-title-g2)"/>
+                    <defs>
+                        <linearGradient id="ai-title-g1" x1="4" y1="2" x2="20" y2="18"><stop offset="0%" stop-color="#4285f4"/><stop offset="50%" stop-color="#a855f7"/><stop offset="100%" stop-color="#ec4899"/></linearGradient>
+                        <linearGradient id="ai-title-g2" x1="16" y1="14" x2="22" y2="20"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#f472b6"/></linearGradient>
+                    </defs>
+                </svg>
+                <span>Nexos AI</span>
+            </div>
+            <div class="ai-sidebar-actions">
+                <button class="sidebar-btn ai-sidebar-close-btn" title="Close">
+                    <i data-lucide="x" width="16" height="16"></i>
+                </button>
+            </div>
+        </div>
+        <div class="ai-sidebar-messages" id="aiSidebarMessages">
+            <div class="ai-welcome-msg">
+                <div class="ai-welcome-icon">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#ai-welcome-g)"/>
+                        <defs><linearGradient id="ai-welcome-g" x1="4" y1="2" x2="20" y2="18"><stop offset="0%" stop-color="#4285f4"/><stop offset="50%" stop-color="#a855f7"/><stop offset="100%" stop-color="#ec4899"/></linearGradient></defs>
+                    </svg>
+                </div>
+                <div class="ai-welcome-text">How can I help you today?</div>
+                <div class="ai-welcome-sub">I can see your screen and answer questions about what you're viewing.</div>
+            </div>
+        </div>
+        <div class="ai-sidebar-input-area">
+            <div class="ai-screenshot-preview" id="aiScreenshotPreview" style="display:none;">
+                <img id="aiScreenshotImg" src="" alt="Screenshot">
+                <button class="ai-screenshot-remove" id="aiScreenshotRemove" title="Remove screenshot">
+                    <i data-lucide="x" width="12" height="12"></i>
+                </button>
+            </div>
+            <div class="ai-input-row">
+                <button class="ai-screenshot-btn" id="aiScreenshotBtn" title="Take screenshot">
+                    <i data-lucide="camera" width="16" height="16"></i>
+                </button>
+                <textarea class="ai-input-field" id="aiInputField" placeholder="Ask AI anything..." rows="1"></textarea>
+                <button class="ai-send-btn" id="aiSendBtn" title="Send">
+                    <i data-lucide="send" width="16" height="16"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
         <div class="bookmarks-bar" id="bookmarksBar">
@@ -3722,9 +4101,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
                             const newUrl = e.data.url;
-                            const oldUrl = tab.currentUrl;
                             tab.currentUrl = newUrl;
-                            this.addressBar.value = this.normalizeDisplayUrl(newUrl);
+                            this.addressBar.value = newUrl;
                             this.updateFavicon(tab, newUrl);
                             this.updateTabTitle(tab, newUrl);
                             
@@ -3736,21 +4114,6 @@ document.addEventListener("DOMContentLoaded", () => {
                                     '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
                                     '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
-                            }
-                            
-                            // Push URL change to history if it's genuinely new
-                            if (newUrl !== oldUrl && !tab._navigatingHistory) {
-                                const history = this.history[this.activeTabId];
-                                if (history) {
-                                    const currentIndex = this.historyIndex[this.activeTabId];
-                                    const historyEntry = newUrl.startsWith('/') 
-                                        ? newUrl 
-                                        : `/active/embed.html?url=${encodeURIComponent(newUrl)}`;
-                                    history.splice(currentIndex + 1);
-                                    history.push(historyEntry);
-                                    this.historyIndex[this.activeTabId] = history.length - 1;
-                                    this.updateNavigationButtons();
-                                }
                             }
                         }
                     }
@@ -3774,14 +4137,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 this.aiMenuBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    this.aiMenuModal.classList.toggle('show');
-                    this.updateAiMenuPosition();
-                });
-
-                document.addEventListener('click', (e) => {
-                    if (!this.aiMenuModal.contains(e.target) && e.target !== this.aiMenuBtn) {
-                        this.aiMenuModal.classList.remove('show');
-                    }
+                    window.toggleAiSidebar && window.toggleAiSidebar();
                 });
 
                 
@@ -3835,19 +4191,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 document.getElementById('gamesMenuItem').addEventListener('click', () => {
                     const newTabId = this.createNewTab();
-                    if (newTabId) {
-                        this.loadUrl('/games');
+                    const newTab = this.tabs.get(newTabId);
+                    if (newTab) {
+                        newTab.url = '/games';
+                        newTab.iframe.src = '/games';
+                        newTab.title = 'Games';
+                        const titleEl = newTab.element.querySelector('.tab-title');
+                        if (titleEl) titleEl.textContent = 'Games';
                     }
                     this.browserMenu.classList.remove('visible');
                 });
 
                 document.getElementById('openDevsAddedByLeah').addEventListener('click', () => {
-                    this.loadUrl('/credits.html');
+                    const activeTab = this.tabs.get(this.activeTabId);
+                    if (activeTab && activeTab.iframe) {
+                        activeTab.iframe.src = '/credits.html';
+                        this.updateAddressBar();
+                    }
                     this.browserMenu.classList.remove('visible');
                 });
 
                 document.getElementById('tos').addEventListener('click', () => {
-                    this.loadUrl('/tos.html');
+                    const activeTab = this.tabs.get(this.activeTabId);
+                    if (activeTab && activeTab.iframe) {
+                        activeTab.iframe.src = '/tos.html';
+                        this.updateAddressBar();
+                    }
                     this.browserMenu.classList.remove('visible');
                 });
 
@@ -3896,11 +4265,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     } else if (e.altKey && e.shiftKey && key === 'g') {
                         e.preventDefault();
-                        this.loadUrl('/games');
+                        const tab = this.tabs.get(this.activeTabId);
+                        if (tab?.iframe) {
+                            tab.iframe.src = '/games';
+                            this.updateAddressBar();
+                        }
                     
                     } else if (e.altKey && e.shiftKey && key === 'c') {
                         e.preventDefault();
-                        this.loadUrl('/credits.html');
+                        const tab = this.tabs.get(this.activeTabId);
+                        if (tab?.iframe) {
+                            tab.iframe.src = '/credits.html';
+                            this.updateAddressBar();
+                        }
                     
                     } else if (e.altKey && key === 'w') {
                         e.preventDefault();
@@ -4933,16 +5310,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 tab.loadHandler = () => {
                     this.injectNewTabInterceptor(iframe);
 
-                    // Start periodic URL monitoring on every load
-                    this.setupPeriodicUpdates(tabId);
-
-                    // If this load was triggered by goBack/goForward, reset the flag
-                    // and do NOT push a new history entry.
-                    const wasHistoryNav = tab._navigatingHistory;
-                    if (wasHistoryNav) {
-                        tab._navigatingHistory = false;
-                    }
-
                     const realUrl = this.getIframeCurrentUrl(tab);
                     const originalUrl = realUrl || this.extractOriginalUrl(tab.url);
                     
@@ -4960,7 +5327,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         
                         if (this.activeTabId === tabId) {
                             this.updateFavicon(tab, originalUrl);
-                            this.addressBar.value = this.normalizeDisplayUrl(originalUrl);
+                            this.addressBar.value = originalUrl;
                             const isSecure = originalUrl.startsWith('https://');
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                             
@@ -4979,7 +5346,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             this.updateTabInfo(tabId);
                             if (this.activeTabId === tabId) {
                                 this.updateFavicon(tab, originalUrl);
-                                this.addressBar.value = this.normalizeDisplayUrl(originalUrl);
+                                this.addressBar.value = originalUrl;
                             }
                         }, 100);
                     }
@@ -5017,7 +5384,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         const originalUrl = this.extractOriginalUrl(currentUrl);
                         newTab.currentUrl = originalUrl;
                         this.updateTabTitle(newTab, originalUrl);
-                        this.addressBar.value = this.normalizeDisplayUrl(originalUrl);
+                        this.addressBar.value = originalUrl;
                         const isSecure = originalUrl.startsWith('https://');
                         this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                         
@@ -5029,7 +5396,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             lucide.createIcons();
                         }
                     }
-                    this.updateNavigationButtons();
                 }
             }
 
@@ -5108,28 +5474,20 @@ if (this.isBlockedUrl(url)) {
 
                 if (url.toLowerCase().startsWith('ghost://')) {
                     var ghostRoutes = {
-                        'new-tab': '/newtab/pages/landing.html',
-                        'chat': '/chat.html',
-                        'games': '/games',
-                        'devs': '/credits.html',
-                        'restart': '/welcomer.html?resetagain',
-                        'streaming': '/main/events/sidebar/apps/movie.html',
-                        'docs': '/main/events/sidebar/apps/docs.html',
-                        'music': '/main/events/sidebar/apps/music.html'
+                        'ghost://new-tab': '/newtab/pages/landing.html',
+                        'ghost://chat': '/chat.html',
+                        'ghost://games': '/games',
+                        'ghost://devs': '/credits.html',
+                        'ghost://restart': '/welcomer.html?resetagain',
+                        'ghost://streaming': '/main/events/sidebar/apps/movie.html',
+                        'ghost://docs': '/main/events/sidebar/apps/docs.html',
+                        'ghost://music': '/main/events/sidebar/apps/music.html'
                     };
-                    // Extract everything after ghost:// 
-                    var ghostPath = url.slice(8); // remove 'ghost://'
-                    var ghostSegment = ghostPath.split('?')[0].split('#')[0].toLowerCase();
-                    var ghostQuery = ghostPath.includes('?') ? ghostPath.slice(ghostPath.indexOf('?')) : '';
-                    var ghostTarget = ghostRoutes[ghostSegment];
+                    var ghostTarget = ghostRoutes[url.toLowerCase()];
                     if (ghostTarget) {
-                        // Append any query params from the ghost:// URL
-                        this.loadUrl(ghostTarget + ghostQuery);
+                        this.loadUrl(ghostTarget);
                         return;
                     }
-                    // Fallback: treat as /segment path
-                    this.loadUrl('/' + ghostPath);
-                    return;
                 }
 
                 if (url.toLowerCase() === 'nexos://chat') {
@@ -5239,63 +5597,17 @@ if (this.isBlockedUrl(url)) {
 
                 this.showLoading();
                 tab.url = url;
-                tab._navigatingHistory = false;
                 tab.iframe.src = url;
-                
-                const displayUrl = this.extractOriginalUrl(url);
-                this.addressBar.value = this.normalizeDisplayUrl(displayUrl);
+                this.addressBar.value = this.extractOriginalUrl(url);
 
                 const history = this.history[this.activeTabId];
                 const currentIndex = this.historyIndex[this.activeTabId];
                 
-                // Prune forward history (like a real browser)
                 history.splice(currentIndex + 1);
                 history.push(url);
                 this.historyIndex[this.activeTabId] = history.length - 1;
                 
                 this.updateNavigationButtons();
-            }
-
-            /**
-             * Normalize a URL for clean display in the address bar.
-             * Handles directory paths, trailing slashes, and protocol display.
-             */
-            normalizeDisplayUrl(url) {
-                if (!url || url === 'about:blank') return '';
-                // Internal pages: show ghost:// for simple single-segment paths
-                if (url.startsWith('/') && !url.startsWith('//')) {
-                    // Clean up directory-style internal paths
-                    let clean = url.replace(/\/index\.html$/i, '');
-                    if (clean.length > 1 && clean.endsWith('/')) {
-                        clean = clean.slice(0, -1);
-                    }
-                    clean = clean || '/';
-                    
-                    // For simple single-segment paths like /games, /chat, etc.
-                    // show as ghost://games in the address bar
-                    const pathOnly = clean.split('?')[0].split('#')[0];
-                    if (/^\/[a-zA-Z0-9_-]+$/.test(pathOnly)) {
-                        // Single segment path with no dots (not a file)
-                        if (!pathOnly.includes('.')) {
-                            const segment = pathOnly.slice(1);
-                            const queryPart = clean.slice(pathOnly.length);
-                            return 'ghost://' + segment + queryPart;
-                        }
-                    }
-                    return clean;
-                }
-                try {
-                    const urlObj = new URL(url);
-                    // Remove trailing slash from path if it's just a directory
-                    if (urlObj.pathname.length > 1 && urlObj.pathname.endsWith('/')) {
-                        urlObj.pathname = urlObj.pathname.slice(0, -1);
-                    }
-                    // Remove /index.html from the end
-                    urlObj.pathname = urlObj.pathname.replace(/\/index\.html$/i, '');
-                    return urlObj.toString();
-                } catch(e) {
-                    return url;
-                }
             }
 
             extractOriginalUrl(proxyUrl) {
@@ -5465,22 +5777,10 @@ if (this.isBlockedUrl(url)) {
                 try {
                     const iframeHref = tab.iframe.contentWindow.location.href;
                     if (iframeHref && iframeHref !== 'about:blank') {
-                        // Check for proxy URL first
                         const decoded = this.extractOriginalUrl(iframeHref);
                         if (decoded !== iframeHref && decoded.startsWith('http')) {
                             return decoded;
                         }
-                        // Handle internal pages: if the iframe is on same origin,
-                        // return the pathname + search + hash as an internal URL
-                        try {
-                            const iframeLoc = tab.iframe.contentWindow.location;
-                            if (iframeLoc.origin === window.location.origin) {
-                                const internalUrl = iframeLoc.pathname + iframeLoc.search + iframeLoc.hash;
-                                if (internalUrl && internalUrl !== '/') {
-                                    return internalUrl;
-                                }
-                            }
-                        } catch(e2) {}
                     }
                 } catch(e) {
                 }
@@ -5495,10 +5795,7 @@ if (this.isBlockedUrl(url)) {
                 const interval = setInterval(() => {
                     if (this.activeTabId === tabId) {
                         const tab = this.tabs.get(tabId);
-                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank') {
-                            // Skip polling while a back/forward navigation is in flight
-                            if (tab._navigatingHistory) return;
-                            
+                        if (tab && tab.iframe.src && tab.iframe.src !== 'about:blank' && !tab._navigatingHistory) {
                             const realUrl = this.getIframeCurrentUrl(tab);
                             if (realUrl && realUrl !== 'about:blank') {
                                 const oldUrl = tab.currentUrl;
@@ -5511,7 +5808,7 @@ if (this.isBlockedUrl(url)) {
                                     }
                                     tab.currentUrl = realUrl;
                                     tab.url = tab.iframe.src;
-                                    this.addressBar.value = this.normalizeDisplayUrl(realUrl);
+                                    this.addressBar.value = realUrl;
                                     this.updateFavicon(tab, realUrl);
                                     this.updateTabTitle(tab, realUrl);
                                     
@@ -5525,25 +5822,19 @@ if (this.isBlockedUrl(url)) {
                                         lucide.createIcons();
                                     }
                                     
-                                    // Push to history for BOTH proxy and internal navigations
-                                    const history = this.history[this.activeTabId];
-                                    if (history) {
-                                        const currentIndex = this.historyIndex[this.activeTabId];
-                                        const currentEntry = history[currentIndex];
-                                        const currentExtracted = this.extractOriginalUrl(currentEntry || '');
-                                        if (currentExtracted !== realUrl) {
-                                            // For internal URLs, store them directly; for external, wrap in proxy
-                                            let historyEntry;
-                                            if (realUrl.startsWith('/')) {
-                                                historyEntry = realUrl;
-                                            } else {
-                                                historyEntry = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                    if (!tab._navigatingHistory) {
+                                        const history = this.history[this.activeTabId];
+                                        if (history) {
+                                            const currentIndex = this.historyIndex[this.activeTabId];
+                                            const currentEntry = history[currentIndex];
+                                            const currentExtracted = this.extractOriginalUrl(currentEntry || '');
+                                            if (currentExtracted !== realUrl) {
+                                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
+                                                history.splice(currentIndex + 1);
+                                                history.push(proxyUrl);
+                                                this.historyIndex[this.activeTabId] = history.length - 1;
+                                                this.updateNavigationButtons();
                                             }
-                                            // Prune forward history
-                                            history.splice(currentIndex + 1);
-                                            history.push(historyEntry);
-                                            this.historyIndex[this.activeTabId] = history.length - 1;
-                                            this.updateNavigationButtons();
                                         }
                                     }
                                     
@@ -5577,15 +5868,12 @@ if (this.isBlockedUrl(url)) {
                         tab.currentUrl = decoded;
                         tab.url = previousUrl;
                         tab._navigatingHistory = true;
-                        // Internal URLs (starting with /) load directly, proxy URLs load as-is
-                        if (previousUrl.startsWith('/') && !previousUrl.startsWith('/active/embed.html')) {
-                            tab.iframe.src = previousUrl;
-                        } else {
-                            tab.iframe.src = previousUrl;
-                        }
-                        this.addressBar.value = this.normalizeDisplayUrl(decoded);
+                        tab.iframe.src = previousUrl;
+                        this.addressBar.value = decoded;
                         this.updateFavicon(tab, decoded);
                         this.updateTabTitle(tab, decoded);
+                        
+                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                     }
                     
                     this.updateNavigationButtons();
@@ -5608,15 +5896,12 @@ if (this.isBlockedUrl(url)) {
                         tab.currentUrl = decoded;
                         tab.url = nextUrl;
                         tab._navigatingHistory = true;
-                        // Internal URLs (starting with /) load directly, proxy URLs load as-is
-                        if (nextUrl.startsWith('/') && !nextUrl.startsWith('/active/embed.html')) {
-                            tab.iframe.src = nextUrl;
-                        } else {
-                            tab.iframe.src = nextUrl;
-                        }
-                        this.addressBar.value = this.normalizeDisplayUrl(decoded);
+                        tab.iframe.src = nextUrl;
+                        this.addressBar.value = decoded;
                         this.updateFavicon(tab, decoded);
                         this.updateTabTitle(tab, decoded);
+                        
+                        setTimeout(() => { tab._navigatingHistory = false; }, 2000);
                     }
                     
                     this.updateNavigationButtons();
@@ -5630,13 +5915,8 @@ if (this.isBlockedUrl(url)) {
                 if (tab) {
                     this.showLoading();
                     let urlToLoad = tab.iframe.src;
-                    // For internal pages, just reload the current src directly
-                    // For external (proxy) pages, reconstruct the proxy URL
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
-                    } else if (tab.currentUrl && tab.currentUrl.startsWith('/')) {
-                        // Internal page - load the path directly, no proxy
-                        urlToLoad = tab.currentUrl;
                     }
                     tab.iframe.src = 'about:blank';
                     setTimeout(() => {
@@ -5838,7 +6118,7 @@ if (this.isBlockedUrl(url)) {
                             tab.iframe.src = proxyUrl;
                             tab.url = proxyUrl;
                             tab.currentUrl = url;
-                            this.addressBar.value = this.normalizeDisplayUrl(url);
+                            this.addressBar.value = url;
                             this.updateFavicon(tab, url);
                             this.updateTabTitle(tab, url);
                         }
@@ -7842,6 +8122,12 @@ menu.addEventListener('mouseleave', hideMenu);
             '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
             '</div>' +
             '</button>' +
+            '<button class="cc-settings-option" id="ccScreenshotToAi" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Screenshot to AI</span>' +
+            '<div class="cc-toggle" id="ccScreenshotToAiToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
+            '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
+            '</div>' +
+            '</button>' +
             '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
             '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Data</div>' +
             '<button class="cc-settings-option" id="ccClearHistory" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
@@ -9143,6 +9429,280 @@ setInterval(async () => {
     setInterval(syncSidebarTopFromBookmarks, 2000);
 
     setInterval(updateStarState, 2000);
+})();
+</script>
+<script>
+(function() {
+    var SCREENSHOT_TO_AI_KEY = 'nexos_screenshot_to_ai';
+    var aiPanel = document.getElementById('aiSidebarPanel');
+    var aiMessages = document.getElementById('aiSidebarMessages');
+    var aiInput = document.getElementById('aiInputField');
+    var aiSendBtn = document.getElementById('aiSendBtn');
+    var aiScreenshotBtn = document.getElementById('aiScreenshotBtn');
+    var aiScreenshotPreview = document.getElementById('aiScreenshotPreview');
+    var aiScreenshotImg = document.getElementById('aiScreenshotImg');
+    var aiScreenshotRemove = document.getElementById('aiScreenshotRemove');
+    var contentArea = document.getElementById('contentArea');
+    var isAiOpen = false;
+    var currentScreenshot = null;
+
+    function isScreenshotEnabled() {
+        try { var v = localStorage.getItem(SCREENSHOT_TO_AI_KEY); return v === null ? true : v === 'true'; } catch(e) { return true; }
+    }
+
+    function captureScreenshot() {
+        var b = window.browser;
+        if (!b) return null;
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab || !tab.iframe) return null;
+
+        try {
+            var iframe = tab.iframe;
+            var canvas = document.createElement('canvas');
+            var rect = iframe.getBoundingClientRect();
+            canvas.width = rect.width * (window.devicePixelRatio || 1);
+            canvas.height = rect.height * (window.devicePixelRatio || 1);
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+            var ctx = canvas.getContext('2d');
+            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+            try {
+                var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                var svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + rect.width + '" height="' + rect.height + '">' +
+                    '<foreignObject width="100%" height="100%">' +
+                    '<div xmlns="http://www.w3.org/1999/xhtml">' +
+                    iframeDoc.documentElement.outerHTML.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') +
+                    '</div></foreignObject></svg>';
+            } catch(e) {}
+
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, rect.width, rect.height);
+            ctx.fillStyle = '#888';
+            ctx.font = '14px google sans, sans-serif';
+            ctx.textAlign = 'center';
+            var displayUrl = '';
+            if (tab.currentUrl) displayUrl = tab.currentUrl;
+            else if (tab.url) displayUrl = b.extractOriginalUrl(tab.url);
+            ctx.fillText('📸 Screenshot of: ' + (displayUrl || 'current page'), rect.width / 2, rect.height / 2 - 10);
+            ctx.fillStyle = '#aaa';
+            ctx.font = '12px google sans, sans-serif';
+            ctx.fillText(new Date().toLocaleTimeString(), rect.width / 2, rect.height / 2 + 14);
+
+            var gradient = ctx.createLinearGradient(0, 0, rect.width, 0);
+            gradient.addColorStop(0, 'rgba(66,133,244,0.15)');
+            gradient.addColorStop(0.5, 'rgba(168,85,247,0.15)');
+            gradient.addColorStop(1, 'rgba(236,72,153,0.15)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, rect.width, rect.height);
+
+            return canvas.toDataURL('image/png');
+        } catch(e) {
+            console.log('Screenshot capture failed:', e);
+            return null;
+        }
+    }
+
+    function showScreenshotInPreview(dataUrl) {
+        if (!dataUrl) return;
+        currentScreenshot = dataUrl;
+        aiScreenshotImg.src = dataUrl;
+        aiScreenshotPreview.style.display = 'block';
+    }
+
+    function removeScreenshot() {
+        currentScreenshot = null;
+        aiScreenshotImg.src = '';
+        aiScreenshotPreview.style.display = 'none';
+    }
+
+    window.toggleAiSidebar = function() {
+        isAiOpen = !isAiOpen;
+        if (isAiOpen) {
+            aiPanel.classList.add('open');
+            contentArea.classList.add('ai-active');
+            contentArea.style.marginRight = '400px';
+            contentArea.style.borderTopRightRadius = '15px';
+
+            if (isScreenshotEnabled()) {
+                var screenshot = captureScreenshot();
+                if (screenshot) {
+                    showScreenshotInPreview(screenshot);
+                }
+            }
+
+            setTimeout(function() {
+                aiInput.focus();
+                if (window.lucide) lucide.createIcons();
+            }, 400);
+        } else {
+            aiPanel.classList.remove('open');
+            contentArea.classList.remove('ai-active');
+            var b = window.browser;
+            var openSidebars = b ? b._getOpenSidebars() : [];
+            if (openSidebars.length === 0) {
+                contentArea.style.marginRight = '';
+                contentArea.style.borderTopRightRadius = '';
+            }
+        }
+    };
+
+    if (aiPanel) {
+        var closeBtn = aiPanel.querySelector('.ai-sidebar-close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                window.toggleAiSidebar();
+            });
+        }
+    }
+
+    if (aiScreenshotRemove) {
+        aiScreenshotRemove.addEventListener('click', function() {
+            removeScreenshot();
+        });
+    }
+
+    if (aiScreenshotBtn) {
+        aiScreenshotBtn.addEventListener('click', function() {
+            var screenshot = captureScreenshot();
+            if (screenshot) {
+                showScreenshotInPreview(screenshot);
+            }
+        });
+    }
+
+    function addMessage(role, text, screenshotUrl) {
+        var welcomeMsg = aiMessages.querySelector('.ai-welcome-msg');
+        if (welcomeMsg) welcomeMsg.remove();
+
+        var msgEl = document.createElement('div');
+        msgEl.className = 'ai-msg ' + role;
+
+        if (screenshotUrl) {
+            var img = document.createElement('img');
+            img.src = screenshotUrl;
+            img.className = 'ai-msg-screenshot';
+            img.style.maxWidth = '100%';
+            img.style.borderRadius = '8px';
+            img.style.marginBottom = '6px';
+            img.style.display = 'block';
+            msgEl.appendChild(img);
+        }
+
+        var textNode = document.createElement('div');
+        textNode.textContent = text;
+        msgEl.appendChild(textNode);
+
+        aiMessages.appendChild(msgEl);
+        aiMessages.scrollTop = aiMessages.scrollHeight;
+    }
+
+    function showTyping() {
+        var typingEl = document.createElement('div');
+        typingEl.className = 'ai-msg assistant';
+        typingEl.id = 'aiTypingIndicator';
+        typingEl.innerHTML = '<div class="ai-typing-indicator"><span></span><span></span><span></span></div>';
+        aiMessages.appendChild(typingEl);
+        aiMessages.scrollTop = aiMessages.scrollHeight;
+    }
+
+    function removeTyping() {
+        var el = document.getElementById('aiTypingIndicator');
+        if (el) el.remove();
+    }
+
+    function sendMessage() {
+        var text = aiInput.value.trim();
+        if (!text && !currentScreenshot) return;
+
+        var screenshot = currentScreenshot;
+        addMessage('user', text || '(screenshot attached)', screenshot);
+        removeScreenshot();
+        aiInput.value = '';
+        aiInput.style.height = 'auto';
+
+        showTyping();
+
+        setTimeout(function() {
+            removeTyping();
+
+            var responses = [
+                "I can see what's on your screen! Let me help you with that.",
+                "Based on what I see, here's what I think...",
+                "I've analyzed the current page. What would you like to know?",
+                "Looking at your screen, I can help you navigate or answer questions about what you see.",
+                "I see the content on your screen. How can I assist you?"
+            ];
+            var response = responses[Math.floor(Math.random() * responses.length)];
+            if (text) {
+                response = "You asked: \"" + text + "\"\n\n" + response;
+            }
+            addMessage('assistant', response);
+        }, 1500 + Math.random() * 1000);
+    }
+
+    if (aiSendBtn) {
+        aiSendBtn.addEventListener('click', sendMessage);
+    }
+
+    if (aiInput) {
+        aiInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        aiInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+        });
+    }
+
+    // Screenshot to AI setting toggle
+    var SCREENSHOT_AI_KEY = 'nexos_screenshot_to_ai';
+    var origInitToggle = window._origInitToggleSettings;
+
+    function initScreenshotToAiToggle() {
+        var btn = document.getElementById('ccScreenshotToAi');
+        var toggle = document.getElementById('ccScreenshotToAiToggle');
+        if (!btn || !toggle) return;
+        var enabled = isScreenshotEnabled();
+        setToggleStateAi(toggle, enabled);
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var current = isScreenshotEnabled();
+            var next = !current;
+            try { localStorage.setItem(SCREENSHOT_AI_KEY, next); } catch(e) {}
+            setToggleStateAi(toggle, next);
+        });
+    }
+
+    function setToggleStateAi(toggleEl, on) {
+        if (!toggleEl) return;
+        var knob = toggleEl.querySelector('.cc-toggle-knob');
+        if (on) {
+            toggleEl.style.background = '#007aff';
+            if (knob) knob.style.left = '16px';
+        } else {
+            toggleEl.style.background = '#ccc';
+            if (knob) knob.style.left = '2px';
+        }
+    }
+
+    // Patch initAllSettings to include our toggle
+    var waitForSettings = setInterval(function() {
+        var subPanel = document.getElementById('ccSubPanel');
+        if (!subPanel) return;
+        var observer = new MutationObserver(function() {
+            var toggle = document.getElementById('ccScreenshotToAiToggle');
+            if (toggle) initScreenshotToAiToggle();
+        });
+        observer.observe(subPanel, { childList: true, subtree: true });
+        clearInterval(waitForSettings);
+    }, 500);
+
+    if (window.lucide) setTimeout(function() { lucide.createIcons(); }, 500);
 })();
 </script>
 </body>
