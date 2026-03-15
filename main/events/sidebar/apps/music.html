@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -179,7 +170,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .lyrics-panel.active{opacity:1;pointer-events:auto}
 .lrc-scroll-outer{
   position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
-  padding:30px 24px 140px;
+  padding:48px 28px 180px;
   z-index:1;
 }
 .lrc-bg{
@@ -245,52 +236,55 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
 .ll{
-  font-size:28px;line-height:1.5;font-weight:800;
-  padding:5px 0;border-radius:8px;cursor:pointer;
-  color:rgba(255,255,255,0.22);
-  filter:blur(3px);
-  opacity:.7;
+  font-size:27px;line-height:1.65;font-weight:700;
+  padding:5px 0 5px 4px;
+  margin-bottom:1px;
+  border-radius:12px;cursor:pointer;
+  color:rgba(255,255,255,0.12);
+  filter:blur(0px);
+  opacity:.32;
   transform-origin:left center;
+  letter-spacing:-0.015em;
   transition:
     color .5s cubic-bezier(.4,0,.2,1),
-    filter .5s cubic-bezier(.4,0,.2,1),
     opacity .5s cubic-bezier(.4,0,.2,1),
-    font-size .38s cubic-bezier(.34,1.56,.64,1);
-  will-change:color,filter,opacity;
+    font-size .38s cubic-bezier(.34,1.56,.64,1),
+    letter-spacing .38s cubic-bezier(.4,0,.2,1);
+  will-change:color,opacity;
   position:relative;
-
-  clip-path: inset(0 round 8px);
+  clip-path:inset(-6px -10px round 12px);
 }
 .ll.past{
-  color:rgba(255,255,255,0.10);
-  filter:blur(4px);
-  opacity:.4;
+  color:rgba(255,255,255,0.06);
+  opacity:.18;
 }
 .ll.near{
-  color:rgba(255,255,255,0.52);
-  filter:blur(1.2px);
-  opacity:.88;
+  color:rgba(255,255,255,0.46);
+  opacity:.76;
   font-size:26px;
 }
 .ll.near2{
-  color:rgba(255,255,255,0.30);
-  filter:blur(2.2px);
-  opacity:.58;
-  font-size:24px;
+  color:rgba(255,255,255,0.24);
+  opacity:.46;
+  font-size:24.5px;
 }
 .ll.now{
   color:#ffffff;
-  font-size:32px;
-  filter:blur(0px);
+  font-size:36px;
   opacity:1;
-  animation: ll-bounce 0.35s cubic-bezier(.34,1.56,.64,1) both;
+  letter-spacing:-0.025em;
+  animation:ll-bounce 0.30s cubic-bezier(.34,1.56,.64,1) both;
+}
+.ll.now.ll-sung{
+  opacity:0.50;
+  color:rgba(255,255,255,0.50);
+  transition:opacity 1.2s ease-out, color 1.2s ease-out !important;
 }
 @keyframes ll-bounce {
-  0%   { transform: scale(0.94) translateX(0); }
-  55%  { transform: scale(1.04) translateX(0); }
-  100% { transform: scale(1.00) translateX(0); }
+  0%   { transform:scale(0.93); }
+  52%  { transform:scale(1.05); }
+  100% { transform:scale(1.00); }
 }
-
 .ll-ripple {
   position:absolute;
   border-radius:50%;
@@ -351,24 +345,28 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   initial-value: -20%;
 }
 
+
+
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
     #ffffff calc(var(--pct, -20%) - 10%),
-    rgba(255,255,255,0.85) calc(var(--pct, -20%) - 2%),
-    rgba(255,255,255,0.30) calc(var(--pct, -20%) + 8%),
-    rgba(255,255,255,0.06) calc(var(--pct, -20%) + 18%)
+    rgba(255,255,255,0.92) calc(var(--pct, -20%) - 2%),
+    rgba(255,255,255,0.25) calc(var(--pct, -20%) + 8%),
+    rgba(255,255,255,0.05) calc(var(--pct, -20%) + 18%)
   );
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
   transition:
-    filter 180ms ease-out,
-    --pct 0ms linear,
-    opacity 120ms ease-out;
-  opacity: 1;
+    filter 120ms ease-out,
+    opacity 80ms ease-out;
+  opacity:1;
 }
-.ll.now .lw.done{
+.ll.now .lw.done,
+.ll.past .lw,
+.ll.near .lw,
+.ll.near2 .lw{
   --pct:110%;
   filter:none;
   opacity:1;
@@ -377,7 +375,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   --pct:-20%;
   filter:none;
   opacity:0.55;
-  transition: opacity 200ms ease-in;
 }
 .ll.now .lw.now-word{
   filter:none;
@@ -416,7 +413,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   55%{transform:translateY(-7px) scale(1.05)}
   75%{transform:translateY(-3px) scale(1.02)}
 }
-
 .ll.now .beat-dots span{
   transition: none;
 }
@@ -1076,7 +1072,7 @@ const ST = {
   queue:[], idx:-1,
   playing:false, shuffle:false, repeat:false, smartRepeat:false, muted:false,
   vol:0.8, pos:0, dur:0,
-  lrc:[], lrcType:'none', lrcActive:-1, _parenActive:-1,
+  lrc:[], lrcType:'none', lrcActive:-1, _parenActive:-1, _lineWordsDone:false,
 };
 
 function G(id){ return document.getElementById(id); }
@@ -1109,6 +1105,10 @@ let YT_player = null, ytReady = false, ticker = null;
 let _lastYtPollMs = 0, _lastYtPosMs = 0;
 
 function getPrecisePos() {
+  if (ytReady && ST.playing) {
+    const direct = YT_player.getCurrentTime?.() * 1000;
+    if (direct > 0) { _lastYtPosMs = direct; _lastYtPollMs = performance.now(); return direct; }
+  }
   const elapsed = performance.now() - _lastYtPollMs;
   return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
 }
@@ -1134,11 +1134,10 @@ window.onYouTubeIframeAPIReady = function() {
             _lastYtPosMs = ST.pos;
             _lastYtPollMs = performance.now();
             syncBar();
-          }, 250);
+          }, 100);
           if (!ST._rafRunning) {
             ST._rafRunning = true;
             const rafLoop = () => {
-              if (!ST._rafRunning) return;
               if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
               requestAnimationFrame(rafLoop);
             };
@@ -1147,7 +1146,7 @@ window.onYouTubeIframeAPIReady = function() {
         } else if (e.data === YT.PlayerState.PAUSED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
-          clearInterval(ticker); ST._rafRunning = false;
+          clearInterval(ticker);
         } else if (e.data === YT.PlayerState.ENDED) {
           ST.playing = false; syncPP();
           G('cover-art').classList.remove('playing');
@@ -1667,45 +1666,80 @@ G('btn-pp').addEventListener('click',togglePlay);
 
 const wordSyncOn = true;
 
-const AI_KEY = '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';
-const AI_MODEL = 'google/gemini-flash-1.5-8b';
+const AI_MODEL = 'google/gemini-2.5-flash-preview';
 const _aiTimingCache = {};
 
-async function aiRefineWordTimings(lines, title, artist) {
-  
-  
+async function aiRefineWordTimings(lrcLines, title, artist) {
   const ck = (title + '||' + artist).toLowerCase();
   if (_aiTimingCache[ck]) return _aiTimingCache[ck];
 
-  
-  const payload = lines.map((line, i) => ({
-    i,
-    ms: line.ms,
-    nextMs: lines[i+1]?.ms ?? (line.ms + 3500),
-    words: line.words?.map(w => w.word) ?? [],
-    hasEmbedded: !!line._wordTimed
-  })).filter(l => l.words.length > 0 && !l.hasEmbedded);
+  const realLines = lrcLines.filter(l =>
+    !l._synthetic &&
+    l.words?.some(w => !w._isPause && !w._isInlineParen && w.word?.trim())
+  );
+  if (!realLines.length) return null;
 
-  if (!payload.length) return null;
+  function buildPayload(batch) {
+    return batch.map((line, li) => {
+      const globalLi = realLines.indexOf(line);
+      const nextReal  = realLines[globalLi + 1];
+      const rw        = line.words.filter(w => !w._isPause && !w._isInlineParen && w.word?.trim());
+      const lineEnd   = nextReal?.ms ?? (line.ms + 5000);
+      const singMs    = lineEnd - line.ms;
+      const syls      = rw.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+      const prevReal  = realLines[globalLi - 1];
+      const prevSyls  = prevReal
+        ? prevReal.words.filter(w=>!w._isPause&&!w._isInlineParen&&w.word?.trim()).reduce((a,w)=>a+syllableCount(w.word),0)||1
+        : null;
+      const prevMsps  = prevReal ? Math.round((line.ms - prevReal.ms) / prevSyls) : null;
+      return {
+        i:       lrcLines.indexOf(line),
+        ms:      line.ms,
+        end:     lineEnd,
+        singMs,
+        mspsy:   Math.round(singMs / syls),
+        prevMsps,
+        words:   rw.map(w => w.word),
+      };
+    });
+  }
 
-  
-  const sample = payload.slice(0, 40);
+  async function callAI(payload) {
+    const prompt = `Lyrics sync engine for "${title}" by ${artist}.
 
-  const prompt = `You are a music lyrics timing expert. Given LRC line timestamps and their words, redistribute the word start times (in ms) to feel more natural and musical — matching how a real singer would stress syllables and pace delivery.
+You receive LRC lines. Each has exact timestamps from the LRC file.
+Your job: distribute word start times within each line's window, AND decide when the singing ends.
 
-Song: "${title}" by ${artist}
+Fields:
+- ms: line start
+- end: next line start (NO word may reach or exceed this)
+- singMs: end - ms (total window in ms)
+- mspsy: ms-per-syllable tempo reference
+- prevMsps: previous line's tempo
+- words: the words to time
 
-For each line, you receive: line start ms, line end ms, and the words.
-Return ONLY a JSON array matching the same order as input, each element being an array of ms offsets for each word (absolute ms from song start). Words should fill naturally within [lineMs, nextMs-100ms]. Consider natural speech rhythm, stressed syllables, and musical phrasing.
+TIMING RULES:
+1. First word starts at ms (or up to 80ms after for breath)
+2. Connector words (a, the, and, to, of, in, I, my, you, it, was, is, be, do): duration = 0.4 × mspsy
+3. Content words: duration = 0.9 × mspsy × syllables
+4. Emotionally stressed words (death, love, hate, never, always, etc): 1.2 × mspsy × syllables
+5. Last word gets a natural hold — singer holds the note
+6. Punctuation pause: comma=+0.25×mspsy, period/!/?=+0.5×mspsy — shift NEXT word later
+7. If mspsy < prevMsps: speeding up — shrink connectors to 0.3×
+8. If mspsy > prevMsps: slowing down — stretch last word hold more
+9. All word times strictly increasing
+10. All word times within [ms, end-60]
 
-Lines to time:
-${JSON.stringify(sample)}
+SING_END: After placing all words, output singEnd = the ms when the LAST word finishes being sung (last word start + its natural hold duration). The line will sit highlighted at 100% from singEnd until end. singEnd must be <= end - 50.
 
-Respond ONLY with a raw JSON array like: [[ms1,ms2,...],[ms1,ms2,...],...]
-No explanation, no markdown.`;
+Return ONLY: [{"w":[ms,ms,...],"se":singEndMs},...]
+"w" array length MUST equal words array length.
+"se" = singEnd ms (when last word finishes, line sits done until "end")
+Raw JSON only. No markdown.
 
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+${JSON.stringify(payload)}`;
+
+    const res = await fetch('/ai-lyrics', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${AI_KEY}`,
@@ -1715,34 +1749,74 @@ No explanation, no markdown.`;
       },
       body: JSON.stringify({
         model: AI_MODEL,
-        max_tokens: 2000,
-        temperature: 0.2,
+        max_tokens: 3000,
+        temperature: 0.05,
         messages: [{ role: 'user', content: prompt }]
       }),
-      signal: AbortSignal.timeout(12000)
+      signal: AbortSignal.timeout(20000)
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const raw = data.choices?.[0]?.message?.content?.trim();
+    const raw  = data.choices?.[0]?.message?.content?.trim();
     if (!raw) return null;
-    
     const clean = raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
-    const timings = JSON.parse(clean);
-    if (!Array.isArray(timings)) return null;
+    const parsed = JSON.parse(clean);
+    if (!Array.isArray(parsed)) return null;
+    return parsed;
+  }
 
-    
-    const refined = new Map();
-    sample.forEach((linePayload, si) => {
-      const aiTimes = timings[si];
-      if (!Array.isArray(aiTimes) || aiTimes.length !== linePayload.words.length) return;
-      
-      if (!aiTimes.every(t => typeof t === 'number' && t >= 0 && t < 36000000)) return;
-      refined.set(linePayload.i, aiTimes);
+  const BATCH = 30;
+  const batches = [];
+  for (let i = 0; i < Math.min(realLines.length, 90); i += BATCH) {
+    batches.push(realLines.slice(i, i + BATCH));
+  }
+
+  const refined = new Map();
+
+  function applyBatch(payload, results) {
+    payload.forEach((lp, si) => {
+      const ai = results[si];
+      if (!ai?.w || ai.w.length !== lp.words.length) return;
+      if (!ai.w.every(t => typeof t==='number' && t >= lp.ms - 100 && t < lp.end)) return;
+      for (let j = 1; j < ai.w.length; j++) if (ai.w[j] <= ai.w[j-1]) return;
+      const singEnd = (typeof ai.se === 'number' && ai.se > lp.ms && ai.se <= lp.end)
+        ? ai.se : null;
+      refined.set(lp.i, { words: ai.w, singEnd });
     });
+  }
+
+  try {
+    const p1 = buildPayload(batches[0]);
+    const r1 = await callAI(p1);
+    if (r1) applyBatch(p1, r1);
 
     _aiTimingCache[ck] = refined;
-    return refined;
-  } catch { return null; }
+
+    const remaining = batches.slice(1).map(batch => {
+      const p = buildPayload(batch);
+      return callAI(p).then(r => { if (r) applyBatch(p, r); });
+    });
+
+    if (remaining.length > 0) {
+      Promise.all(remaining).then(() => {
+        const track = ST.queue[ST.idx];
+        if (!track) return;
+        const curCk = (track.title + '||' + track.artist).toLowerCase();
+        if (curCk !== ck) return;
+        applyAIRefinements(ST.lrc, track.title, track.artist, refined).then(reRefined => {
+          if (reRefined !== ST.lrc) {
+            ST.lrc = reRefined;
+            ST.lrcActive = -1;
+            ST._parenActive = -1;
+            Object.keys(_lwState).forEach(k => delete _lwState[k]);
+            renderSynced();
+          }
+        });
+      });
+    }
+  } catch { return refined.size ? refined : null; }
+
+  return refined.size ? refined : null;
 }
 
 async function aiGenerateSyncedLyrics(plainLyrics, title, artist, durMs) {
@@ -1771,7 +1845,7 @@ ${lines.map((l, i) => `${i+1}. ${l}`).join('\n')}
 Respond ONLY with raw LRC text, no explanation:`;
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetch('/ai-lyrics', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${AI_KEY}`,
@@ -1796,17 +1870,35 @@ Respond ONLY with raw LRC text, no explanation:`;
   } catch { return null; }
 }
 
-async function applyAIRefinements(lines, title, artist) {
-  const refined = await aiRefineWordTimings(lines, title, artist);
+async function applyAIRefinements(lines, title, artist, preRefined) {
+  const refined = preRefined ?? await aiRefineWordTimings(lines, title, artist);
   if (!refined || !refined.size) return lines;
   return lines.map((line, i) => {
-    const aiTimes = refined.get(i);
-    if (!aiTimes || !line.words?.length) return line;
-    const newWords = line.words.map((w, wi) => ({
-      ...w,
-      ms: aiTimes[wi] ?? w.ms
-    }));
-    return { ...line, words: newWords };
+    const ai = refined.get(i);
+    if (!ai || !line.words?.length) return line;
+
+    const singEnd  = ai.singEnd ?? null;
+    const rawTimes = ai.words ?? [];
+
+    let wordTimes = rawTimes;
+    if (singEnd && rawTimes.length > 0) {
+      const origFirst = rawTimes[0];
+      const origLast  = rawTimes[rawTimes.length - 1];
+      const origSpan  = Math.max(1, origLast - origFirst);
+      const targetEnd = singEnd - 60;
+      const targetSpan = Math.max(1, targetEnd - line.ms);
+      const scale = Math.min(1, targetSpan / origSpan);
+      wordTimes = rawTimes.map(ms => Math.round(line.ms + (ms - origFirst) * scale));
+    }
+
+    let realWordIdx = 0;
+    const newWords = line.words.map((w) => {
+      if (w._isPause || w._isInlineParen) return w;
+      const newMs = wordTimes[realWordIdx] ?? w.ms;
+      realWordIdx++;
+      return { ...w, ms: newMs };
+    });
+    return { ...line, words: newWords, _singEnd: singEnd };
   });
 }
 
@@ -1829,6 +1921,9 @@ async function fetchLyrics(title, artist) {
         applyAIRefinements(lines, title, artist).then(refined => {
           if (refined !== lines && ST.queue[ST.idx]?.title === title) {
             ST.lrc = refined;
+            ST.lrcActive = -1;
+            ST._parenActive = -1;
+            Object.keys(_lwState).forEach(k => delete _lwState[k]);
             renderSynced();
           }
         });
@@ -1848,6 +1943,9 @@ async function fetchLyrics(title, artist) {
         applyAIRefinements(lines, title, artist).then(refined => {
           if (refined !== lines && ST.queue[ST.idx]?.title === title) {
             ST.lrc = refined;
+            ST.lrcActive = -1;
+            ST._parenActive = -1;
+            Object.keys(_lwState).forEach(k => delete _lwState[k]);
             renderSynced();
           }
         });
@@ -1871,6 +1969,9 @@ async function fetchLyrics(title, artist) {
           applyAIRefinements(lines, title, artist).then(refined => {
             if (refined !== lines && ST.queue[ST.idx]?.title === title) {
               ST.lrc = refined;
+              ST.lrcActive = -1;
+              ST._parenActive = -1;
+              Object.keys(_lwState).forEach(k => delete _lwState[k]);
               renderSynced();
             }
           });
@@ -1925,38 +2026,24 @@ function parseLRC(rawStr) {
       if (word) wTimed.push({ ms: wMs, word });
     }
 
-    const text = raw.replace(/<[^>]+>/g,'').trim();
+    let text = raw.replace(/<[^>]+>/g,'').trim();
+    if (/^[♪♫\s\-_]+$/.test(text)) text = '';
     return { ms, text, _wordTimed: wTimed.length > 0 ? wTimed : null };
   }).filter(Boolean);
 }
 
 function syllableCount(word) {
-  
-  word = word.toLowerCase().replace(/[^a-z']/g, '').replace(/'/g, '');
+  word = word.toLowerCase().replace(/[^a-z']/g,'').replace(/'/g,'');
   if (!word) return 1;
-  
   word = word
-    .replace(/tion$/,  'shun')   
-    .replace(/sion$/,  'shun')
-    .replace(/cious$/, 'shus')
-    .replace(/tious$/, 'shus')
-    .replace(/eous$/,  'us')
-    .replace(/geous$/, 'jus')
-    .replace(/ious$/,  'yus')
-    .replace(/ued$/,   'ude')    
-    .replace(/ves$/,   've');    
-  
-  if (word.length > 2 && word.endsWith('e') && !/[aeiou]e$/.test(word)) {
-    word = word.slice(0, -1);
-  }
-  
-  if (word.endsWith('ed') && !/[dt]ed$/.test(word)) {
-    word = word.slice(0, -1);
-  }
-  
+    .replace(/tion$/,'shun').replace(/sion$/,'shun')
+    .replace(/cious$/,'shus').replace(/tious$/,'shus')
+    .replace(/eous$/,'us').replace(/geous$/,'jus').replace(/ious$/,'yus')
+    .replace(/ued$/,'ude').replace(/ves$/,'ve');
+  if (word.length > 2 && word.endsWith('e') && !/[aeiou]e$/.test(word)) word = word.slice(0,-1);
+  if (word.endsWith('ed') && !/[dt]ed$/.test(word)) word = word.slice(0,-1);
   const vowels = word.match(/[aeiouy]+/g);
   let count = vowels ? vowels.length : 1;
-  
   if (word[0] === 'y') count = Math.max(1, count - 1);
   return Math.max(1, count);
 }
@@ -1968,73 +2055,38 @@ const FAST_WORDS = new Set([
   'had','has','have','that','this','with','from','not','can','will','just','your',
 ]);
 
+const VOWELS = new Set(['a','e','i','o','u']);
+
 function _lerp(x, lo, hi) { return lo + x * (hi - lo); }
 
 function _paceFactor(msPerSyl) {
-  
   return Math.max(0, Math.min(1, (msPerSyl - 80) / 620));
 }
+
 
 function wordDurMul(word, syls, isLast, msPerSyl) {
   const clean = word.replace(/[^a-z']/gi,'').replace(/'/g,'').toLowerCase();
   const len   = clean.length;
-  const pace  = _paceFactor(msPerSyl);  
-
+  const pace  = _paceFactor(msPerSyl);
   let mul = 1.0;
-
-  
-  if (FAST_WORDS.has(clean)) {
-    mul = _lerp(pace, 0.52, 0.65);  
-  } else if (len <= 2) {
-    mul = _lerp(pace, 0.62, 0.75);
-  } else if (len <= 3) {
-    mul = _lerp(pace, 0.76, 0.88);
-  }
-  
-  else {
-    mul = _lerp(pace, 0.92, 1.08);
-  }
-
-  
+  if (FAST_WORDS.has(clean))      mul = _lerp(pace, 0.52, 0.65);
+  else if (len <= 2)              mul = _lerp(pace, 0.62, 0.75);
+  else if (len <= 3)              mul = _lerp(pace, 0.76, 0.88);
+  else                            mul = _lerp(pace, 0.92, 1.08);
   if (/([aeiou])\1{1,}/.test(clean)) mul *= _lerp(pace, 1.25, 1.65);
-
-  
   if (/[aeio]$/.test(clean) && len > 2) mul *= _lerp(pace, 1.05, 1.20);
-
-  
   if (isLast) mul *= _lerp(pace, 1.20, 1.90);
-
   return mul;
 }
 
 function wordPauseAfter(word, msPerSyl) {
   const pace = _paceFactor(msPerSyl);
-
-  
-  if (/[,;]$/.test(word)) {
-    
-    return msPerSyl * _lerp(pace, 0.18, 0.65);
-  }
-  
-  if (/:$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.25, 0.75);
-  }
-  
-  if (/[—…]$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.40, 1.10);
-  }
-  
-  if (/!$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.22, 0.72);
-  }
-  
-  if (/\?$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.28, 0.82);
-  }
-  
-  if (/\.$/.test(word)) {
-    return msPerSyl * _lerp(pace, 0.15, 0.55);
-  }
+  if (/[,;]$/.test(word))  return msPerSyl * _lerp(pace, 0.20, 0.70);
+  if (/:$/.test(word))     return msPerSyl * _lerp(pace, 0.28, 0.80);
+  if (/[—…]$/.test(word))  return msPerSyl * _lerp(pace, 0.45, 1.20);
+  if (/!$/.test(word))     return msPerSyl * _lerp(pace, 0.25, 0.78);
+  if (/\?$/.test(word))    return msPerSyl * _lerp(pace, 0.30, 0.88);
+  if (/\.$/.test(word))    return msPerSyl * _lerp(pace, 0.18, 0.60);
   return 0;
 }
 
@@ -2046,82 +2098,61 @@ function timingForWords(rawWords, lineMs, nextMs) {
   const n    = rawWords.length;
   const syls = rawWords.map(syllableCount);
   const totalSyls = syls.reduce((a,b) => a+b, 0) || 1;
-
   const gapMs = Math.max(300, nextMs - lineMs - 80);
 
-  
-  
   const neutralMsPerSyl = Math.max(95, gapMs / totalSyls);
-  const estimatedPauseMs = rawWords.reduce((acc, w) => {
-    const p = wordPauseAfter(w, neutralMsPerSyl);
-    return acc + p;
-  }, 0);
-  
-  const singMs       = Math.max(200, gapMs - estimatedPauseMs);
-  const rawMsPerSyl  = singMs / totalSyls;
-  
-  
-  const sylDensity   = totalSyls / Math.max(1, gapMs / 1000); 
-  const maxMsPerSyl  = sylDensity > 2.5 ? 280   
-                     : sylDensity > 1.2 ? 360   
-                     :                    480;   
-  const msPerSyl = Math.max(90, Math.min(maxMsPerSyl, rawMsPerSyl));
+  const estimatedPauseMs = rawWords.reduce((acc, w) =>
+    acc + wordPauseAfter(w, neutralMsPerSyl), 0);
+  const singMs   = Math.max(200, gapMs - estimatedPauseMs);
+  const msPerSyl = Math.max(90, singMs / totalSyls);
 
-  
-  const fillDurs  = rawWords.map((word, wi) =>
-    syls[wi] * msPerSyl * wordDurMul(word, syls[wi], wi === n - 1, msPerSyl)
-  );
-  const pauseDurs = rawWords.map(word => wordPauseAfter(word, msPerSyl));
+  const fillDurs  = rawWords.map((w, wi) =>
+    syls[wi] * msPerSyl * wordDurMul(w, syls[wi], false, msPerSyl));
+  const pauseDurs = rawWords.map(w => wordPauseAfter(w, msPerSyl));
   const totalDurs = fillDurs.map((f, wi) => f + pauseDurs[wi]);
   const rawTotal  = totalDurs.reduce((a,b) => a+b, 0);
 
-  
   let scaledFill  = fillDurs.slice();
   let scaledPause = pauseDurs.slice();
 
   if (rawTotal > gapMs) {
-    const overflow   = rawTotal - gapMs;
-    const isFastArr  = rawWords.map(w => {
+    const overflow  = rawTotal - gapMs;
+    const isFastArr = rawWords.map(w => {
       const c = w.replace(/[^a-z]/gi,'').toLowerCase();
       return FAST_WORDS.has(c) || c.length <= 3;
     });
     const fastBudget = totalDurs.reduce((s,d,wi) => s + (isFastArr[wi] ? d : 0), 0);
-
     if (fastBudget >= overflow * 0.8) {
-      const ratio    = Math.max(0.1, (fastBudget - overflow) / fastBudget);
-      scaledFill     = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
-      scaledPause    = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
+      const ratio = Math.max(0.1, (fastBudget - overflow) / fastBudget);
+      scaledFill  = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
+      scaledPause = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
     } else {
-      
-      const scale    = gapMs / rawTotal;
-      scaledFill     = fillDurs.map(d  => d * scale);
-      scaledPause    = pauseDurs.map(d => Math.max(d * 0.35, d * scale));
-      
-      const newTotal = scaledFill.reduce((a,b)=>a+b,0) + scaledPause.reduce((a,b)=>a+b,0);
-      if (newTotal > gapMs) {
-        const s2   = gapMs / newTotal;
-        scaledFill  = scaledFill.map(d  => d * s2);
+      const scale  = gapMs / rawTotal;
+      scaledFill   = fillDurs.map(d => d * scale);
+      scaledPause  = pauseDurs.map(d => Math.max(d * 0.35, d * scale));
+      const newTot = scaledFill.reduce((a,b)=>a+b,0) + scaledPause.reduce((a,b)=>a+b,0);
+      if (newTot > gapMs) {
+        const s2 = gapMs / newTot;
+        scaledFill  = scaledFill.map(d => d * s2);
         scaledPause = scaledPause.map(d => d * s2);
       }
     }
-    
-    scaledFill = scaledFill.map((d, wi) => {
+    scaledFill = scaledFill.map((d,wi) => {
       const c = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
-      return FAST_WORDS.has(c) ? Math.max(d, 35) : Math.max(d, 60);
+      return FAST_WORDS.has(c) ? Math.max(d,35) : Math.max(d,60);
     });
   }
 
-  
   const result = [];
   let cursor = lineMs;
   for (let wi = 0; wi < n; wi++) {
     result.push({ ms: cursor, word: rawWords[wi] });
     cursor += scaledFill[wi];
-    if (scaledPause[wi] > 50) {  
+    if (scaledPause[wi] > 50) {
       result.push({ ms: cursor, word: '', _isPause: true });
       cursor += scaledPause[wi];
     } else {
-      cursor += scaledPause[wi]; 
+      cursor += scaledPause[wi];
     }
   }
   return result;
@@ -2158,67 +2189,34 @@ function buildWordTimings(lrc) {
         });
       }
       
-      if (nextMs !== null) {
-        const parenWords = parens[parens.length-1].text.split(/\s+/).filter(Boolean);
-        const parenSyls  = parenWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
-        const gap        = nextMs - line.ms;
-        const rawMPS     = Math.max(90, gap / parenSyls);
-        const estMs      = parenWords.reduce((acc, w) => {
-          const s = syllableCount(w); return acc + s * rawMPS * wordDurMul(w, s, false, rawMPS);
-        }, 0);
-        if (gap > estMs + 2000) {
-          const instrStart = line.ms + Math.min(estMs + 200, gap * 0.45);
-          expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
-        }
-      }
+
       continue;
     }
 
-    
-    const mainRawWords  = mainText.split(/\s+/).filter(Boolean);
-    const mainSyls      = mainRawWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
-    const gap           = nextMs !== null ? nextMs - line.ms : 3500;
+    const mainRawWords = mainText.split(/\s+/).filter(Boolean);
+    const mainSyls     = mainRawWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
+    const gap          = nextMs !== null ? nextMs - line.ms : 3500;
 
-    
-    
-    
-    const naturalMsPerSyl = Math.max(95, gap / mainSyls);
-    
-    
-    const estSingMs = mainRawWords.reduce((acc, w) => {
-      const s   = syllableCount(w);
-      const mul = wordDurMul(w, s, false, naturalMsPerSyl);
-      return acc + s * naturalMsPerSyl * mul;
-    }, 0);
+    const estSingMs = gap * 0.65;
 
     expanded.push({ ...line, text: mainText,
       _parensSource: parens.length > 0 ? parens : null,
-      _inlineParens: parens.filter(p => p.isMidLine)   
+      _inlineParens: parens.filter(p => p.isMidLine)
     });
 
-    
     for (const paren of parens.filter(p => !p.isMidLine)) {
-      const frac    = mainRawWords.length > 0
-        ? Math.min(0.92, paren.afterWordIdx / mainRawWords.length)
-        : 0.5;
-      let parenMs   = Math.round(line.ms + estSingMs * frac);
+      const frac  = mainRawWords.length > 0
+        ? Math.min(0.92, paren.afterWordIdx / mainRawWords.length) : 0.5;
+      let parenMs = Math.round(line.ms + estSingMs * frac);
       if (nextMs !== null) parenMs = Math.min(parenMs, nextMs - 80);
       expanded.push({
-        ms: parenMs,
-        text: paren.text,
-        _wordTimed: null,
-        _synthetic: false,
-        _isParen: true,
-        _parenParentMs: line.ms,
+        ms: parenMs, text: paren.text,
+        _wordTimed: null, _synthetic: false,
+        _isParen: true, _parenParentMs: line.ms,
       });
     }
-    
 
-    
-    if (nextMs !== null && gap > estSingMs + 2000) {
-      const instrStart = line.ms + Math.min(estSingMs + 200, gap * 0.45);
-      expanded.push({ ms: Math.round(instrStart), text: '', _wordTimed: null, _synthetic: true });
-    }
+
   }
 
   
@@ -2464,61 +2462,47 @@ function _tickWords(lineIdx, t, nextBound) {
   const words = ST.lrc[lineIdx]?.words;
   if (!words?.length) return;
 
-  
   let lastRealIdx = words.length - 1;
   while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
 
   const lastW    = words[lastRealIdx];
   const lastSyls = syllableCount(lastW.word);
 
-  
   const realWords  = words.filter(w => !w._isPause);
   const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
   const lineSpanMs = realWords.length > 1
     ? realWords[realWords.length-1].ms - realWords[0].ms
     : Math.max(300, nextBound - words[0].ms - 80);
-  
   const nonLastSyls = Math.max(1, totalSyls - lastSyls);
   const spacingMs   = realWords.length > 1
     ? lineSpanMs / nonLastSyls
     : Math.max(95, (nextBound - words[0].ms) / totalSyls);
-  const msPerSyl    = Math.max(90, spacingMs);
-  const pace       = _paceFactor(msPerSyl);
-  const holdMul    = _lerp(pace, 1.20, 1.90);
-  
-  
-  const naturalEnd = lastW.ms + lastSyls * msPerSyl * holdMul;
-  
-  const bleedAllowance = msPerSyl * 1.2;
-  const lastWordEnd = naturalEnd <= nextBound + bleedAllowance ? naturalEnd : nextBound + bleedAllowance * 0.3;
+  const msPerSyl  = Math.max(90, spacingMs);
+  const pace      = _paceFactor(msPerSyl);
+  const holdMul   = _lerp(pace, 1.20, 1.90);
+  const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
+  const lastWordEnd = Math.min(naturalEnd, nextBound - 160);
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
     if (w._isPause) continue;
-
     const wStart = w.ms;
-    
     let wEnd = lastWordEnd;
     if (wi < words.length - 1) {
       for (let ni = wi + 1; ni < words.length; ni++) {
         const nw = words[ni];
         if (!nw._isPause && !nw._isInlineParen) { wEnd = nw.ms; break; }
-        if (nw._isPause) { wEnd = nw.ms; break; } 
+        if (nw._isPause) { wEnd = nw.ms; break; }
       }
     }
-    const id     = 'lw' + lineIdx + '_' + wi;
-
+    const id = 'lw' + lineIdx + '_' + wi;
     if (t < wStart) {
       _setLwState(id, 'upcoming', '-20%');
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
     } else {
-      const raw = (t - wStart) / Math.max(1, wEnd - wStart);
-      
-      
-      const eased = raw < 0.25
-        ? raw * raw * 4          
-        : 0.25 + (raw - 0.25) * (1 / 0.75) * 0.75; 
+      const raw   = (t - wStart) / Math.max(1, wEnd - wStart);
+      const eased = raw < 0.25 ? raw * raw * 4 : 0.25 + (raw - 0.25);
       _setLwState(id, 'now-word', (Math.min(1, eased) * 100).toFixed(1) + '%');
     }
   }
@@ -2547,18 +2531,13 @@ function _resetUpcomingSelective(lineIdx, t) {
     if (w._isPause) return;
     const id = 'lw'+lineIdx+'_'+wi;
     delete _lwState[id];
-    if (w.ms <= t) {
-      
-    } else {
-      _setLwState(id, 'upcoming', '-20%');
-    }
+    if (w.ms > t) _setLwState(id, 'upcoming', '-20%');
   });
 }
 
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  
   let AHEAD = 80;
   {
     let lo=0,hi=ST.lrc.length-1,a=0;
@@ -2575,7 +2554,6 @@ function tickLrc(posMs) {
   }
   const t = posMs + AHEAD;
 
-  
   let lo = 0, hi = ST.lrc.length - 1, active = 0;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
@@ -2584,41 +2562,23 @@ function tickLrc(posMs) {
   }
 
   const activeEntry = ST.lrc[active];
-
-  
   let focus = active;
   let parenActive = -1;
 
   if (activeEntry._synthetic) {
     while (focus > 0 && (ST.lrc[focus]._isParen || ST.lrc[focus]._synthetic)) focus--;
-
   } else if (activeEntry._isParen && !activeEntry._wholeLine) {
-    
     let prevReal = active - 1;
     while (prevReal >= 0 && (ST.lrc[prevReal]._isParen || ST.lrc[prevReal]._synthetic)) prevReal--;
-
     if (prevReal < 0) {
-      focus = active; 
+      focus = active;
     } else {
-      
-      
-      const nextRealMs = _nextRealLineMs(active, Infinity);
       const wasRepositioned = activeEntry._parenParentMs !== ST.lrc[prevReal].ms;
-
-      if (wasRepositioned) {
-        
-        focus = active;
-      } else {
-        
-        focus = prevReal;
-        parenActive = active;
-      }
+      if (wasRepositioned) { focus = active; }
+      else { focus = prevReal; parenActive = active; }
     }
-
   } else {
-    
     focus = active;
-    
     const focusMs = activeEntry.ms;
     for (let j = focus + 1; j < ST.lrc.length; j++) {
       const e = ST.lrc[j];
@@ -2628,7 +2588,6 @@ function tickLrc(posMs) {
     }
   }
 
-  
   if (focus !== ST.lrcActive) {
     const prev = ST.lrcActive;
     ST.lrcActive = focus;
@@ -2649,26 +2608,21 @@ function tickLrc(posMs) {
       else if (absDist === 1) el.classList.add('near');
       else if (absDist === 2) el.classList.add('near2');
       if (absDist >= 3) {
-        const blurAmt = dist < 0
-          ? Math.min(5, (absDist-2)*1.5)
-          : Math.min(3, (absDist-2)*0.7);
-        el.style.filter = `blur(${blurAmt.toFixed(1)}px)`;
-      } else {
-        el.style.filter = '';
-      }
+        el.style.filter = dist < 0
+          ? `blur(${Math.min(5,(absDist-2)*1.5).toFixed(1)}px)`
+          : `blur(${Math.min(3,(absDist-2)*0.7).toFixed(1)}px)`;
+      } else { el.style.filter = ''; }
     });
 
     const focusEl = document.getElementById('ll'+focus);
     if (focusEl) {
-      
       focusEl.classList.remove('now');
-      focusEl.offsetWidth; 
+      focusEl.offsetWidth;
       focusEl.classList.add('now');
       focusEl.scrollIntoView({ block:'center', behavior:'smooth' });
     }
 
     if (prev >= 0 && prev !== focus) _snapDone(prev);
-    
     _resetUpcomingSelective(focus, t);
 
     if (ST._parenActive >= 0 && ST._parenActive !== parenActive) {
@@ -2678,7 +2632,6 @@ function tickLrc(posMs) {
     }
   }
 
-  
   if (parenActive !== ST._parenActive) {
     if (ST._parenActive >= 0) {
       document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
@@ -2694,14 +2647,9 @@ function tickLrc(posMs) {
     }
   }
 
-  
-  
-  
-  
   let focusBound = t + 6000;
   for (let j = focus + 1; j < ST.lrc.length; j++) {
     const e = ST.lrc[j];
-    
     if (e._isParen && !e._wholeLine && e._parenParentMs === ST.lrc[focus]?.ms) continue;
     focusBound = e.ms;
     break;
@@ -2709,16 +2657,14 @@ function tickLrc(posMs) {
 
   if (parenActive >= 0) {
     _tickWords(focus, t, ST.lrc[parenActive].ms);
-    
     let parenBound = t + 6000;
-    for (let j = parenActive + 1; j < ST.lrc.length; j++) {
-      parenBound = ST.lrc[j].ms; break;
-    }
+    for (let j = parenActive + 1; j < ST.lrc.length; j++) { parenBound = ST.lrc[j].ms; break; }
     _tickWords(parenActive, t, parenBound);
   } else {
     _tickWords(focus, t, focusBound);
   }
 }
+
 
 const _smartRepeatCache = {};
 
@@ -2764,7 +2710,7 @@ ${map}
 Reply with ONLY the ms integer of your chosen line. Nothing else.`;
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetch('/ai-lyrics', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${AI_KEY}`,
