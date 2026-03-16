@@ -3226,325 +3226,380 @@ body.reduce-motion *::after {
         filter: blur(6px);
     }
 
+/* ============================================================
+   AI SIDEBAR + SIRI GLOW SYSTEM
+   ============================================================ */
 
-    /* ===== AI SIDEBAR STYLES ===== */
-    .ai-sparkle-icon {
-        transition: transform 0.3s ease, filter 0.3s ease;
-    }
-    .ai-menu-btn:hover .ai-sparkle-icon {
-        transform: scale(1.15);
-        filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.5));
-    }
+@keyframes siriRotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 
-    @keyframes siri-border-rotate {
-        0% { --siri-angle: 0deg; }
-        100% { --siri-angle: 360deg; }
-    }
+@keyframes siriColorCycle {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.7; }
+  100% { opacity: 1; }
+}
 
-    @property --siri-angle {
-        syntax: '<angle>';
-        initial-value: 0deg;
-        inherits: false;
-    }
+/* --- AI SIDEBAR --- */
+#aiSidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 340px;
+  height: 100vh;
+  z-index: 9000;
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.25,0.1,0.25,1);
+  border-radius: 0;
+  padding: 2px 0 2px 2px;
+  background: transparent;
+}
 
-    .ai-sidebar-panel {
-        position: fixed;
-        top: calc(92px + var(--bookmark-bar-offset, 0px));
-        right: -420px;
-        width: 400px;
-        height: calc(100vh - 92px - var(--bookmark-bar-offset, 0px) - 50px);
-        z-index: 600;
-        opacity: 0;
-        transition: right 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s ease;
-        display: flex;
-        flex-direction: column;
-        pointer-events: none;
-    }
+#aiSidebar.open {
+  transform: translateX(0);
+}
 
-    .ai-sidebar-panel.open {
-        right: 0;
-        opacity: 1;
-        pointer-events: auto;
-    }
+/* Animated glow ring - placed behind inner */
+#aiSidebarGlowRing {
+  position: absolute;
+  inset: -80px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #4F46E5 0deg,
+    #06B6D4 90deg,
+    #EC4899 180deg,
+    #8B5CF6 270deg,
+    #4F46E5 360deg
+  );
+  animation: siriRotate 5s linear infinite, siriColorCycle 5s ease-in-out infinite;
+  filter: blur(24px);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  z-index: 0;
+  pointer-events: none;
+}
 
-    .ai-sidebar-glow-border {
-        position: absolute;
-        inset: -3px;
-        border-radius: 18px 0 0 0;
-        z-index: -1;
-        background: conic-gradient(
-            from var(--siri-angle, 0deg),
-            #ff6b6b, #feca57, #48dbfb, #ff9ff3,
-            #54a0ff, #5f27cd, #01a3a4, #f368e0,
-            #ff6348, #ffa502, #7bed9f, #70a1ff,
-            #ff6b6b
-        );
-        animation: siri-border-rotate 3s linear infinite;
-        filter: blur(6px);
-        opacity: 0.8;
-    }
+#aiSidebar.open #aiSidebarGlowRing {
+  opacity: 0.55;
+}
 
-    .ai-sidebar-inner {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        background: #ffffff;
-        border-radius: 16px 0 0 0;
-        overflow: hidden;
-        box-shadow: -4px 0 24px rgba(0,0,0,0.08);
-    }
+#aiSidebarInner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  background: #09090b;
+  border-left: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-    .ai-sidebar-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 14px 16px;
-        border-bottom: 1px solid #e9ecef;
-        background: #ffffff;
-        flex-shrink: 0;
-    }
+/* Header */
+#aiSidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
 
-    .ai-sidebar-title {
-        display: flex;
-        align-items: center;
-        font-size: 15px;
-        font-weight: 500;
-        color: #1a1a1a;
-        font-family: google sans;
-    }
+#aiSidebarHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-    .ai-sidebar-actions {
-        display: flex;
-        gap: 6px;
-    }
+#aiSidebarTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
 
-    .ai-sidebar-messages {
-        flex: 1;
-        overflow-y: auto;
-        padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
+#aiSidebarClose {
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
 
-    .ai-sidebar-messages::-webkit-scrollbar { width: 5px; }
-    .ai-sidebar-messages::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+#aiSidebarClose:hover {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
 
-    .ai-welcome-msg {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        padding: 40px 20px;
-        gap: 12px;
-        flex: 1;
-    }
+/* Messages */
+#aiSidebarMessages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scroll-behavior: smooth;
+}
 
-    .ai-welcome-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, rgba(66,133,244,0.08), rgba(168,85,247,0.08), rgba(236,72,153,0.08));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+#aiSidebarMessages::-webkit-scrollbar {
+  width: 4px;
+}
+#aiSidebarMessages::-webkit-scrollbar-track {
+  background: transparent;
+}
+#aiSidebarMessages::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 4px;
+}
 
-    .ai-welcome-text {
-        font-size: 18px;
-        font-weight: 500;
-        color: #1a1a1a;
-        font-family: google sans;
-    }
+.ai-welcome-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 28px 16px 12px;
+  color: rgba(255,255,255,0.5);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+}
 
-    .ai-welcome-sub {
-        font-size: 13px;
-        color: #888;
-        font-family: google sans;
-        max-width: 260px;
-        line-height: 1.5;
-    }
+.ai-welcome-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: rgba(79,70,229,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(79,70,229,0.25);
+}
 
-    .ai-msg {
-        max-width: 85%;
-        padding: 10px 14px;
-        border-radius: 16px;
-        font-size: 13px;
-        line-height: 1.5;
-        font-family: google sans;
-        word-wrap: break-word;
-    }
+/* Chat bubbles */
+.ai-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 100%;
+}
 
-    .ai-msg.user {
-        align-self: flex-end;
-        background: linear-gradient(135deg, #4285f4, #a855f7);
-        color: #fff;
-        border-bottom-right-radius: 4px;
-    }
+.ai-msg.user {
+  align-items: flex-end;
+}
 
-    .ai-msg.assistant {
-        align-self: flex-start;
-        background: #f1f3f4;
-        color: #1a1a1a;
-        border-bottom-left-radius: 4px;
-    }
+.ai-msg.assistant {
+  align-items: flex-start;
+}
 
-    .ai-msg-screenshot {
-        max-width: 100%;
-        border-radius: 8px;
-        margin-bottom: 6px;
-        border: 1px solid rgba(255,255,255,0.2);
-    }
+.ai-msg-bubble {
+  padding: 10px 13px;
+  border-radius: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 88%;
+  word-break: break-word;
+}
 
-    .ai-sidebar-input-area {
-        padding: 12px 14px;
-        border-top: 1px solid #e9ecef;
-        background: #fff;
-        flex-shrink: 0;
-    }
+.ai-msg.user .ai-msg-bubble {
+  background: linear-gradient(135deg, #4F46E5, #6D28D9);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
 
-    .ai-screenshot-preview {
-        position: relative;
-        margin-bottom: 10px;
-        border-radius: 10px;
-        overflow: hidden;
-        border: 1px solid #e0e0e0;
-        max-height: 120px;
-    }
+.ai-msg.assistant .ai-msg-bubble {
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.9);
+  border-bottom-left-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
 
-    .ai-screenshot-preview img {
-        width: 100%;
-        max-height: 120px;
-        object-fit: cover;
-        display: block;
-    }
+.ai-msg-bubble.thinking {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  padding: 12px 16px;
+}
 
-    .ai-screenshot-remove {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: rgba(0,0,0,0.6);
-        border: none;
-        color: #fff;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: background 0.2s;
-    }
+.ai-msg-bubble.thinking span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  animation: thinkingDot 1.2s ease-in-out infinite;
+}
 
-    .ai-screenshot-remove:hover {
-        background: rgba(0,0,0,0.8);
-    }
+.ai-msg-bubble.thinking span:nth-child(2) { animation-delay: 0.2s; }
+.ai-msg-bubble.thinking span:nth-child(3) { animation-delay: 0.4s; }
 
-    .ai-input-row {
-        display: flex;
-        align-items: flex-end;
-        gap: 8px;
-        background: #f1f3f4;
-        border-radius: 22px;
-        padding: 6px 8px 6px 12px;
-    }
+@keyframes thinkingDot {
+  0%, 80%, 100% { transform: scale(1); opacity: 0.4; }
+  40% { transform: scale(1.3); opacity: 1; }
+}
 
-    .ai-screenshot-btn {
-        width: 32px;
-        height: 32px;
-        border: none;
-        background: none;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #666;
-        border-radius: 50%;
-        transition: background 0.2s, color 0.2s;
-        flex-shrink: 0;
-    }
+.ai-msg-thumb {
+  width: 48px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.15);
+  margin-bottom: 4px;
+  display: block;
+}
 
-    .ai-screenshot-btn:hover {
-        background: rgba(0,0,0,0.06);
-        color: #333;
-    }
+/* Input area */
+#aiSidebarInputArea {
+  padding: 10px 12px 12px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.02);
+  flex-shrink: 0;
+}
 
-    .ai-input-field {
-        flex: 1;
-        border: none;
-        background: transparent;
-        font-size: 14px;
-        font-family: google sans;
-        color: #1a1a1a;
-        resize: none;
-        outline: none;
-        max-height: 100px;
-        line-height: 1.4;
-        padding: 6px 0;
-    }
+#aiScreenshotPreview {
+  position: relative;
+  width: fit-content;
+  margin-bottom: 8px;
+}
 
-    .ai-input-field::placeholder {
-        color: #999;
-    }
+#aiScreenshotThumb {
+  height: 48px;
+  width: auto;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.2);
+  display: block;
+}
 
-    .ai-send-btn {
-        width: 32px;
-        height: 32px;
-        border: none;
-        background: linear-gradient(135deg, #4285f4, #a855f7);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        border-radius: 50%;
-        transition: transform 0.15s, opacity 0.2s;
-        flex-shrink: 0;
-    }
+#aiScreenshotRemove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e34040;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
 
-    .ai-send-btn:hover {
-        transform: scale(1.05);
-    }
+#aiScreenshotPreview:hover #aiScreenshotRemove {
+  opacity: 1;
+}
 
-    .ai-send-btn:active {
-        transform: scale(0.95);
-    }
+#aiInputRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
 
-    /* Siri glow on content area when AI sidebar is open */
-    .content-area.ai-active {
-        border: 2px solid transparent;
-        border-image: conic-gradient(
-            from var(--siri-angle, 0deg),
-            #ff6b6b, #feca57, #48dbfb, #ff9ff3,
-            #54a0ff, #5f27cd, #01a3a4, #f368e0,
-            #ff6348, #ffa502, #7bed9f, #70a1ff,
-            #ff6b6b
-        ) 1;
-        animation: siri-border-rotate 3s linear infinite;
-    }
+#aiSidebarInput {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 9px 12px;
+  color: rgba(255,255,255,0.9);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 13px;
+  resize: none;
+  outline: none;
+  line-height: 1.5;
+  min-height: 36px;
+  max-height: 120px;
+  overflow-y: auto;
+  transition: border-color 0.2s;
+}
 
-    .ai-typing-indicator {
-        display: flex;
-        gap: 4px;
-        padding: 4px 0;
-    }
+#aiSidebarInput:focus {
+  border-color: rgba(79,70,229,0.5);
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+}
 
-    .ai-typing-indicator span {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #999;
-        animation: ai-typing 1.4s ease-in-out infinite;
-    }
+#aiSidebarInput::placeholder {
+  color: rgba(255,255,255,0.3);
+}
 
-    .ai-typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-    .ai-typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+#aiSendBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #4F46E5, #8B5CF6);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s, transform 0.1s;
+}
 
-    @keyframes ai-typing {
-        0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-        30% { transform: translateY(-6px); opacity: 1; }
-    }
+#aiSendBtn:hover { opacity: 0.85; }
+#aiSendBtn:active { transform: scale(0.95); }
+#aiSendBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* content-area push when sidebar open */
+.content-area.ai-sidebar-open {
+  margin-right: 340px;
+}
+
+/* ============================================================
+   IFRAME SIRI GLOW
+   ============================================================ */
+
+.iframe-siri-glow-wrap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 499;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.iframe-siri-glow-wrap.active {
+  opacity: 1;
+}
+
+#iframeSiriGlowRing {
+  position: absolute;
+  inset: -30px;
+  background: conic-gradient(
+    from 0deg,
+    #4F46E5 0deg,
+    #06B6D4 90deg,
+    #EC4899 180deg,
+    #8B5CF6 270deg,
+    #4F46E5 360deg
+  );
+  animation: siriRotate 5s linear infinite;
+  filter: blur(18px);
+  opacity: 0.25;
+  mask-image: radial-gradient(ellipse at center, transparent 70%, black 100%);
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 70%, black 100%);
+}
 
     </style>
 </head>
@@ -3629,16 +3684,25 @@ body.reduce-motion *::after {
                 <button class="zoom-btn" id="zoomInBtn" title="">
                     <i data-lucide="zoom-in" width="16" height="16"></i>
                 </button>
-                <button class="ai-menu-btn" id="aiMenuBtn" title="AI Assistant">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="ai-sparkle-icon">
-                        <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#ai-grad1)" stroke="url(#ai-grad1)" stroke-width="0.5"/>
-                        <path d="M19 14L19.75 16.25L22 17L19.75 17.75L19 20L18.25 17.75L16 17L18.25 16.25L19 14Z" fill="url(#ai-grad2)" stroke="url(#ai-grad2)" stroke-width="0.3"/>
-                        <path d="M6 16L6.5 17.5L8 18L6.5 18.5L6 20L5.5 18.5L4 18L5.5 17.5L6 16Z" fill="url(#ai-grad3)" stroke="url(#ai-grad3)" stroke-width="0.3"/>
-                        <defs>
-                            <linearGradient id="ai-grad1" x1="4" y1="2" x2="20" y2="18"><stop offset="0%" stop-color="#4285f4"/><stop offset="50%" stop-color="#a855f7"/><stop offset="100%" stop-color="#ec4899"/></linearGradient>
-                            <linearGradient id="ai-grad2" x1="16" y1="14" x2="22" y2="20"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#f472b6"/></linearGradient>
-                            <linearGradient id="ai-grad3" x1="4" y1="16" x2="8" y2="20"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>
-                        </defs>
+                <button class="ai-menu-btn" id="aiMenuBtn" title="AI Assistant" style="position:relative;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" fill="url(#aiGrad1)"/>
+                      <path d="M19.5 3L20.7 6.3L24 7.5L20.7 8.7L19.5 12L18.3 8.7L15 7.5L18.3 6.3L19.5 3Z" fill="url(#aiGrad2)"/>
+                      <path d="M4.5 14L5.5 16.8L8.5 17.5L5.5 18.8L4.5 22L3.5 18.8L0.5 17.5L3.5 16.8L4.5 14Z" fill="url(#aiGrad3)"/>
+                      <defs>
+                        <linearGradient id="aiGrad1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                          <stop offset="0%" stop-color="#4F46E5"/>
+                          <stop offset="100%" stop-color="#8B5CF6"/>
+                        </linearGradient>
+                        <linearGradient id="aiGrad2" x1="15" y1="3" x2="24" y2="12" gradientUnits="userSpaceOnUse">
+                          <stop offset="0%" stop-color="#06B6D4"/>
+                          <stop offset="100%" stop-color="#4F46E5"/>
+                        </linearGradient>
+                        <linearGradient id="aiGrad3" x1="0" y1="14" x2="9" y2="22" gradientUnits="userSpaceOnUse">
+                          <stop offset="0%" stop-color="#EC4899"/>
+                          <stop offset="100%" stop-color="#8B5CF6"/>
+                        </linearGradient>
+                      </defs>
                     </svg>
                 </button>
                 <button class="menu-btn" id="menuBtn" title="">
@@ -3767,58 +3831,67 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-<!-- AI Sidebar -->
-<div id="aiSidebarPanel" class="ai-sidebar-panel">
-    <div class="ai-sidebar-glow-border"></div>
-    <div class="ai-sidebar-inner">
-        <div class="ai-sidebar-header">
-            <div class="ai-sidebar-title">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="margin-right:8px;flex-shrink:0;">
-                    <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#ai-title-g1)"/>
-                    <path d="M19 14L19.75 16.25L22 17L19.75 17.75L19 20L18.25 17.75L16 17L18.25 16.25L19 14Z" fill="url(#ai-title-g2)"/>
-                    <defs>
-                        <linearGradient id="ai-title-g1" x1="4" y1="2" x2="20" y2="18"><stop offset="0%" stop-color="#4285f4"/><stop offset="50%" stop-color="#a855f7"/><stop offset="100%" stop-color="#ec4899"/></linearGradient>
-                        <linearGradient id="ai-title-g2" x1="16" y1="14" x2="22" y2="20"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#f472b6"/></linearGradient>
-                    </defs>
-                </svg>
-                <span>Nexos AI</span>
-            </div>
-            <div class="ai-sidebar-actions">
-                <button class="sidebar-btn ai-sidebar-close-btn" title="Close">
-                    <i data-lucide="x" width="16" height="16"></i>
-                </button>
-            </div>
-        </div>
-        <div class="ai-sidebar-messages" id="aiSidebarMessages">
-            <div class="ai-welcome-msg">
-                <div class="ai-welcome-icon">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z" fill="url(#ai-welcome-g)"/>
-                        <defs><linearGradient id="ai-welcome-g" x1="4" y1="2" x2="20" y2="18"><stop offset="0%" stop-color="#4285f4"/><stop offset="50%" stop-color="#a855f7"/><stop offset="100%" stop-color="#ec4899"/></linearGradient></defs>
-                    </svg>
-                </div>
-                <div class="ai-welcome-text">How can I help you today?</div>
-                <div class="ai-welcome-sub">I can see your screen and answer questions about what you're viewing.</div>
-            </div>
-        </div>
-        <div class="ai-sidebar-input-area">
-            <div class="ai-screenshot-preview" id="aiScreenshotPreview" style="display:none;">
-                <img id="aiScreenshotImg" src="" alt="Screenshot">
-                <button class="ai-screenshot-remove" id="aiScreenshotRemove" title="Remove screenshot">
-                    <i data-lucide="x" width="12" height="12"></i>
-                </button>
-            </div>
-            <div class="ai-input-row">
-                <button class="ai-screenshot-btn" id="aiScreenshotBtn" title="Take screenshot">
-                    <i data-lucide="camera" width="16" height="16"></i>
-                </button>
-                <textarea class="ai-input-field" id="aiInputField" placeholder="Ask AI anything..." rows="1"></textarea>
-                <button class="ai-send-btn" id="aiSendBtn" title="Send">
-                    <i data-lucide="send" width="16" height="16"></i>
-                </button>
-            </div>
-        </div>
+<!-- AI SIDEBAR -->
+<div id="aiSidebar">
+  <div id="aiSidebarGlowRing"></div>
+  <div id="aiSidebarInner">
+    <div id="aiSidebarHeader">
+      <div id="aiSidebarHeaderLeft">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+          <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" fill="url(#hdrGrad1)"/>
+          <path d="M19.5 3L20.7 6.3L24 7.5L20.7 8.7L19.5 12L18.3 8.7L15 7.5L18.3 6.3L19.5 3Z" fill="url(#hdrGrad2)"/>
+          <path d="M4.5 14L5.5 16.8L8.5 17.5L5.5 18.8L4.5 22L3.5 18.8L0.5 17.5L3.5 16.8L4.5 14Z" fill="url(#hdrGrad3)"/>
+          <defs>
+            <linearGradient id="hdrGrad1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#8B5CF6"/></linearGradient>
+            <linearGradient id="hdrGrad2" x1="15" y1="3" x2="24" y2="12" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#4F46E5"/></linearGradient>
+            <linearGradient id="hdrGrad3" x1="0" y1="14" x2="9" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#EC4899"/><stop offset="100%" stop-color="#8B5CF6"/></linearGradient>
+          </defs>
+        </svg>
+        <span id="aiSidebarTitle">Intelligence</span>
+      </div>
+      <button id="aiSidebarClose" title="Close">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
+
+    <div id="aiSidebarMessages">
+      <div class="ai-welcome-msg">
+        <div class="ai-welcome-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z" fill="url(#wcGrad1)"/>
+            <path d="M19.5 3L20.7 6.3L24 7.5L20.7 8.7L19.5 12L18.3 8.7L15 7.5L18.3 6.3L19.5 3Z" fill="url(#wcGrad2)"/>
+            <path d="M4.5 14L5.5 16.8L8.5 17.5L5.5 18.8L4.5 22L3.5 18.8L0.5 17.5L3.5 16.8L4.5 14Z" fill="url(#wcGrad3)"/>
+            <defs>
+              <linearGradient id="wcGrad1" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#4F46E5"/><stop offset="100%" stop-color="#8B5CF6"/></linearGradient>
+              <linearGradient id="wcGrad2" x1="15" y1="3" x2="24" y2="12" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#4F46E5"/></linearGradient>
+              <linearGradient id="wcGrad3" x1="0" y1="14" x2="9" y2="22" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#EC4899"/><stop offset="100%" stop-color="#8B5CF6"/></linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <p>I can see what's on screen. Ask me anything about the current page, or just chat.</p>
+      </div>
+    </div>
+
+    <div id="aiSidebarInputArea">
+      <div id="aiScreenshotPreview" style="display:none;">
+        <img id="aiScreenshotThumb" src="" alt="screenshot"/>
+        <button id="aiScreenshotRemove" title="Remove screenshot">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="aiInputRow">
+        <textarea id="aiSidebarInput" placeholder="Ask about this page..." rows="1"></textarea>
+        <button id="aiSendBtn" title="Send">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Iframe Siri Glow Wrapper -->
+<div id="iframeSiriGlow" class="iframe-siri-glow-wrap">
+  <div id="iframeSiriGlowRing"></div>
 </div>
 
         <div class="bookmarks-bar" id="bookmarksBar">
@@ -4073,7 +4146,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.zoomInMenuBtn = document.getElementById('zoomInMenuBtn');
                 this.fullscreenMenuBtn = document.getElementById('fullscreenMenuBtn');
                 this.aiMenuBtn = document.getElementById('aiMenuBtn');
-                this.aiMenuModal = document.getElementById('aiMenuModal');
+                this.aiMenuModal = document.getElementById('aiMenuModal') || { classList: { toggle: function(){}, remove: function(){}, contains: function(){ return false; } }, contains: function(){ return false; } };
                 this.siteToast = document.getElementById('siteToast');
                 this.siteToastIcon = document.getElementById('toastIcon');
                 this.siteToastText = document.getElementById('toastText');
@@ -4137,7 +4210,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 this.aiMenuBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    window.toggleAiSidebar && window.toggleAiSidebar();
+                    if (window.nexAI) window.nexAI.toggleSidebar();
+                });
+
+                // Keep legacy aiMenuModal reference null-safe
+                document.addEventListener('click', (e) => {
+                    if (this.aiMenuModal && !this.aiMenuModal.contains(e.target) && e.target !== this.aiMenuBtn) {
+                        this.aiMenuModal.classList && this.aiMenuModal.classList.remove('show');
+                    }
                 });
 
                 
@@ -4655,22 +4735,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             
             updateAiMenuPosition() {
-                if (!this.aiMenuModal.classList.contains('show')) return;
-                const aiMenuBtnRect = this.aiMenuBtn.getBoundingClientRect();
-                const modalWidth = this.aiMenuModal.offsetWidth;
-                const viewportWidth = window.innerWidth;
-
-                let left = aiMenuBtnRect.right - modalWidth + 10;
-                let top = aiMenuBtnRect.bottom + 5;
-
-                if (left < 10) left = 10;
-                if (left + modalWidth > viewportWidth - 10) {
-                    left = viewportWidth - modalWidth - 10;
-                }
-                if (top < 10) top = 10;
-
-                this.aiMenuModal.style.left = `${left}px`;
-                this.aiMenuModal.style.top = `${top}px`;
+                // No-op: AI is now a full sidebar, no popup position needed
             }
 
             createNewTab() {
@@ -8122,9 +8187,9 @@ menu.addEventListener('mouseleave', hideMenu);
             '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
             '</div>' +
             '</button>' +
-            '<button class="cc-settings-option" id="ccScreenshotToAi" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<button class="cc-settings-option" id="ccScreenshotToAI" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
             '<span>Screenshot to AI</span>' +
-            '<div class="cc-toggle" id="ccScreenshotToAiToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
+            '<div class="cc-toggle" id="ccScreenshotToAIToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
             '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
             '</div>' +
             '</button>' +
@@ -8349,6 +8414,23 @@ menu.addEventListener('mouseleave', hideMenu);
                     try { localStorage.setItem(SMOOTH_SCROLL_KEY, next); } catch(e) {}
                     setToggleState(smoothScrollToggle, next);
                     applySmoothScroll(next);
+                });
+            }
+
+            // Screenshot to AI toggle
+            var screenshotToAiBtn = document.getElementById('ccScreenshotToAI');
+            var screenshotToAiToggle = document.getElementById('ccScreenshotToAIToggle');
+            var screenshotToAi = true;
+            try { var sta = localStorage.getItem('nexos_screenshot_to_ai'); if (sta !== null) screenshotToAi = sta === 'true'; } catch(e) {}
+            setToggleState(screenshotToAiToggle, screenshotToAi);
+            if (screenshotToAiBtn) {
+                screenshotToAiBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var cur = localStorage.getItem('nexos_screenshot_to_ai');
+                    var current = cur === null ? true : cur === 'true';
+                    var next = !current;
+                    try { localStorage.setItem('nexos_screenshot_to_ai', next); } catch(e) {}
+                    setToggleState(screenshotToAiToggle, next);
                 });
             }
         }
@@ -9431,278 +9513,376 @@ setInterval(async () => {
     setInterval(updateStarState, 2000);
 })();
 </script>
+
+<!-- =========================================================
+     NEXOS AI – Full Intelligence System
+     Uses OpenRouter (configurable key), html2canvas for
+     real cross-origin screenshots via proxy snapshot.
+     ========================================================= -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 (function() {
-    var SCREENSHOT_TO_AI_KEY = 'nexos_screenshot_to_ai';
-    var aiPanel = document.getElementById('aiSidebarPanel');
-    var aiMessages = document.getElementById('aiSidebarMessages');
-    var aiInput = document.getElementById('aiInputField');
-    var aiSendBtn = document.getElementById('aiSendBtn');
-    var aiScreenshotBtn = document.getElementById('aiScreenshotBtn');
-    var aiScreenshotPreview = document.getElementById('aiScreenshotPreview');
-    var aiScreenshotImg = document.getElementById('aiScreenshotImg');
-    var aiScreenshotRemove = document.getElementById('aiScreenshotRemove');
-    var contentArea = document.getElementById('contentArea');
-    var isAiOpen = false;
-    var currentScreenshot = null;
+  'use strict';
 
-    function isScreenshotEnabled() {
-        try { var v = localStorage.getItem(SCREENSHOT_TO_AI_KEY); return v === null ? true : v === 'true'; } catch(e) { return true; }
+  // ── Config ────────────────────────────────────────────────
+  var OPENROUTER_API_KEY = ''; // Set your key here or via settings
+  var OPENROUTER_MODEL   = 'openai/gpt-4o-mini';
+  var SCREENSHOT_KEY     = 'nexos_screenshot_to_ai';
+
+  // ── State ─────────────────────────────────────────────────
+  var sidebarOpen     = false;
+  var currentShot     = null; // base64 jpeg
+  var isStreaming     = false;
+  var conversationHistory = [];
+
+  // ── Elements ──────────────────────────────────────────────
+  var sidebar         = document.getElementById('aiSidebar');
+  var glowWrap        = document.getElementById('iframeSiriGlow');
+  var messages        = document.getElementById('aiSidebarMessages');
+  var input           = document.getElementById('aiSidebarInput');
+  var sendBtn         = document.getElementById('aiSendBtn');
+  var closeBtn        = document.getElementById('aiSidebarClose');
+  var shotPreview     = document.getElementById('aiScreenshotPreview');
+  var shotThumb       = document.getElementById('aiScreenshotThumb');
+  var shotRemove      = document.getElementById('aiScreenshotRemove');
+  var contentArea     = document.getElementById('contentArea');
+
+  // ── API Key from localStorage if set ─────────────────────
+  try {
+    var stored = localStorage.getItem('nexos_openrouter_key');
+    if (stored) OPENROUTER_API_KEY = stored;
+  } catch(e) {}
+
+  // ── Helpers ───────────────────────────────────────────────
+  function isScreenshotEnabled() {
+    try {
+      var v = localStorage.getItem(SCREENSHOT_KEY);
+      return v === null ? true : v === 'true';
+    } catch(e) { return true; }
+  }
+
+  function scrollToBottom() {
+    setTimeout(function() { messages.scrollTop = messages.scrollHeight; }, 50);
+  }
+
+  function addMessage(role, content, thumbSrc) {
+    var welcome = messages.querySelector('.ai-welcome-msg');
+    if (welcome) welcome.remove();
+
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-msg ' + role;
+
+    if (thumbSrc && role === 'user') {
+      var img = document.createElement('img');
+      img.className = 'ai-msg-thumb';
+      img.src = thumbSrc;
+      wrap.appendChild(img);
     }
 
-    function captureScreenshot() {
-        var b = window.browser;
-        if (!b) return null;
-        var tab = b.tabs.get(b.activeTabId);
-        if (!tab || !tab.iframe) return null;
+    var bubble = document.createElement('div');
+    bubble.className = 'ai-msg-bubble';
+    bubble.textContent = content;
+    wrap.appendChild(bubble);
+    messages.appendChild(wrap);
+    scrollToBottom();
+    return bubble;
+  }
 
-        try {
-            var iframe = tab.iframe;
-            var canvas = document.createElement('canvas');
-            var rect = iframe.getBoundingClientRect();
-            canvas.width = rect.width * (window.devicePixelRatio || 1);
-            canvas.height = rect.height * (window.devicePixelRatio || 1);
-            canvas.style.width = rect.width + 'px';
-            canvas.style.height = rect.height + 'px';
-            var ctx = canvas.getContext('2d');
-            ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  function addThinkingBubble() {
+    var welcome = messages.querySelector('.ai-welcome-msg');
+    if (welcome) welcome.remove();
 
-            try {
-                var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                var svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + rect.width + '" height="' + rect.height + '">' +
-                    '<foreignObject width="100%" height="100%">' +
-                    '<div xmlns="http://www.w3.org/1999/xhtml">' +
-                    iframeDoc.documentElement.outerHTML.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') +
-                    '</div></foreignObject></svg>';
-            } catch(e) {}
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-msg assistant';
+    var bubble = document.createElement('div');
+    bubble.className = 'ai-msg-bubble thinking';
+    bubble.innerHTML = '<span></span><span></span><span></span>';
+    wrap.appendChild(bubble);
+    messages.appendChild(wrap);
+    scrollToBottom();
+    return { wrap: wrap, bubble: bubble };
+  }
 
-            ctx.fillStyle = '#f0f0f0';
-            ctx.fillRect(0, 0, rect.width, rect.height);
-            ctx.fillStyle = '#888';
-            ctx.font = '14px google sans, sans-serif';
-            ctx.textAlign = 'center';
-            var displayUrl = '';
-            if (tab.currentUrl) displayUrl = tab.currentUrl;
-            else if (tab.url) displayUrl = b.extractOriginalUrl(tab.url);
-            ctx.fillText('📸 Screenshot of: ' + (displayUrl || 'current page'), rect.width / 2, rect.height / 2 - 10);
-            ctx.fillStyle = '#aaa';
-            ctx.font = '12px google sans, sans-serif';
-            ctx.fillText(new Date().toLocaleTimeString(), rect.width / 2, rect.height / 2 + 14);
+  // ── Screenshot (real capture via html2canvas proxy trick) ─
+  function captureActiveIframe(callback) {
+    var b = window.browser;
+    if (!b) { callback(null); return; }
 
-            var gradient = ctx.createLinearGradient(0, 0, rect.width, 0);
-            gradient.addColorStop(0, 'rgba(66,133,244,0.15)');
-            gradient.addColorStop(0.5, 'rgba(168,85,247,0.15)');
-            gradient.addColorStop(1, 'rgba(236,72,153,0.15)');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, rect.width, rect.height);
+    var activeTab = b.tabs.get(b.activeTabId);
+    if (!activeTab || !activeTab.iframe) { callback(null); return; }
 
-            return canvas.toDataURL('image/png');
-        } catch(e) {
-            console.log('Screenshot capture failed:', e);
-            return null;
+    var iframe = activeTab.iframe;
+
+    // Flash the iframe siri glow
+    glowWrap.classList.add('active');
+
+    // Try html2canvas on the iframe element itself
+    // For cross-origin iframes this captures the iframe's visible box only
+    // (browser pixels, no content – but still shows the visual frame)
+    // We also try to fetch a preview from the proxy URL as data URL.
+    var captured = false;
+
+    // Method 1: Try html2canvas on iframe element (works for same-origin or allows-same-origin)
+    if (typeof html2canvas !== 'undefined') {
+      try {
+        var iframeDoc = null;
+        try { iframeDoc = iframe.contentDocument || iframe.contentWindow.document; } catch(e) {}
+
+        var target = iframeDoc ? iframeDoc.body : iframe;
+        html2canvas(target, {
+          allowTaint: true,
+          useCORS: true,
+          scale: 0.6,
+          logging: false,
+          width: iframe.offsetWidth,
+          height: iframe.offsetHeight,
+          x: 0, y: 0
+        }).then(function(canvas) {
+          captured = true;
+          var dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          glowWrap.classList.remove('active');
+          callback(dataUrl);
+        }).catch(function() {
+          if (!captured) tryFallbackCapture(iframe, callback);
+        });
+      } catch(e) {
+        tryFallbackCapture(iframe, callback);
+      }
+    } else {
+      tryFallbackCapture(iframe, callback);
+    }
+  }
+
+  function tryFallbackCapture(iframe, callback) {
+    // Fallback: capture the whole address bar + placeholder via html2canvas on body
+    if (typeof html2canvas !== 'undefined') {
+      html2canvas(document.body, {
+        allowTaint: true,
+        useCORS: true,
+        scale: 0.5,
+        logging: false
+      }).then(function(canvas) {
+        glowWrap.classList.remove('active');
+        callback(canvas.toDataURL('image/jpeg', 0.7));
+      }).catch(function() {
+        glowWrap.classList.remove('active');
+        callback(null);
+      });
+    } else {
+      glowWrap.classList.remove('active');
+      callback(null);
+    }
+  }
+
+  // ── Sidebar Toggle ────────────────────────────────────────
+  function openSidebar() {
+    if (sidebarOpen) return;
+    sidebarOpen = true;
+    sidebar.classList.add('open');
+    contentArea && contentArea.classList.add('ai-sidebar-open');
+
+    if (isScreenshotEnabled()) {
+      captureActiveIframe(function(dataUrl) {
+        if (dataUrl) {
+          currentShot = dataUrl;
+          shotThumb.src = dataUrl;
+          shotPreview.style.display = '';
         }
+      });
     }
 
-    function showScreenshotInPreview(dataUrl) {
-        if (!dataUrl) return;
-        currentScreenshot = dataUrl;
-        aiScreenshotImg.src = dataUrl;
-        aiScreenshotPreview.style.display = 'block';
+    setTimeout(function() { input.focus(); }, 350);
+  }
+
+  function closeSidebar() {
+    if (!sidebarOpen) return;
+    sidebarOpen = false;
+    sidebar.classList.remove('open');
+    contentArea && contentArea.classList.remove('ai-sidebar-open');
+    glowWrap.classList.remove('active');
+  }
+
+  function toggleSidebar() {
+    sidebarOpen ? closeSidebar() : openSidebar();
+  }
+
+  // ── OpenRouter streaming call ─────────────────────────────
+  async function sendToAI(userText, imageDataUrl) {
+    if (!OPENROUTER_API_KEY) {
+      addMessage('assistant', '⚠️ No OpenRouter API key found. Please set it via localStorage: localStorage.setItem("nexos_openrouter_key", "sk-or-...")');
+      return;
     }
 
-    function removeScreenshot() {
-        currentScreenshot = null;
-        aiScreenshotImg.src = '';
-        aiScreenshotPreview.style.display = 'none';
+    isStreaming = true;
+    sendBtn.disabled = true;
+
+    var userContent = [];
+    if (imageDataUrl) {
+      userContent.push({ type: 'image_url', image_url: { url: imageDataUrl, detail: 'low' } });
     }
+    userContent.push({ type: 'text', text: userText });
 
-    window.toggleAiSidebar = function() {
-        isAiOpen = !isAiOpen;
-        if (isAiOpen) {
-            aiPanel.classList.add('open');
-            contentArea.classList.add('ai-active');
-            contentArea.style.marginRight = '400px';
-            contentArea.style.borderTopRightRadius = '15px';
+    var userMsg = { role: 'user', content: userContent };
+    conversationHistory.push(userMsg);
 
-            if (isScreenshotEnabled()) {
-                var screenshot = captureScreenshot();
-                if (screenshot) {
-                    showScreenshotInPreview(screenshot);
-                }
+    // Show thinking
+    var thinking = addThinkingBubble();
+
+    var messages_payload = [
+      { role: 'system', content: 'You are an AI assistant embedded in a web browser called Nexos. You can see screenshots of what the user is browsing. Be helpful, concise, and insightful about the content on screen.' },
+      ...conversationHistory
+    ];
+
+    try {
+      var response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + OPENROUTER_API_KEY,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': window.location.origin,
+          'X-Title': 'Nexos Browser AI'
+        },
+        body: JSON.stringify({
+          model: OPENROUTER_MODEL,
+          messages: messages_payload,
+          stream: true
+        })
+      });
+
+      if (!response.ok) {
+        thinking.wrap.remove();
+        var errText = await response.text();
+        addMessage('assistant', '⚠️ API error ' + response.status + ': ' + errText.slice(0, 200));
+        isStreaming = false;
+        sendBtn.disabled = false;
+        return;
+      }
+
+      // Replace thinking with real bubble
+      thinking.wrap.remove();
+      var aiBubble = addMessage('assistant', '');
+      var fullText = '';
+
+      var reader = response.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+
+      while (true) {
+        var chunk = await reader.read();
+        if (chunk.done) break;
+        buffer += decoder.decode(chunk.value, { stream: true });
+
+        var lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          if (!line.startsWith('data: ')) continue;
+          var jsonStr = line.slice(6).trim();
+          if (jsonStr === '[DONE]') continue;
+          try {
+            var parsed = JSON.parse(jsonStr);
+            var delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta && parsed.choices[0].delta.content;
+            if (delta) {
+              fullText += delta;
+              aiBubble.textContent = fullText;
+              scrollToBottom();
             }
-
-            setTimeout(function() {
-                aiInput.focus();
-                if (window.lucide) lucide.createIcons();
-            }, 400);
-        } else {
-            aiPanel.classList.remove('open');
-            contentArea.classList.remove('ai-active');
-            var b = window.browser;
-            var openSidebars = b ? b._getOpenSidebars() : [];
-            if (openSidebars.length === 0) {
-                contentArea.style.marginRight = '';
-                contentArea.style.borderTopRightRadius = '';
-            }
+          } catch(e) {}
         }
-    };
+      }
 
-    if (aiPanel) {
-        var closeBtn = aiPanel.querySelector('.ai-sidebar-close-btn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function() {
-                window.toggleAiSidebar();
-            });
-        }
+      conversationHistory.push({ role: 'assistant', content: fullText });
+
+    } catch(err) {
+      thinking.wrap && thinking.wrap.remove();
+      addMessage('assistant', '⚠️ Network error: ' + err.message);
     }
 
-    if (aiScreenshotRemove) {
-        aiScreenshotRemove.addEventListener('click', function() {
-            removeScreenshot();
-        });
+    isStreaming = false;
+    sendBtn.disabled = false;
+  }
+
+  // ── Screen-read detection (keywords in prompt) ────────────
+  var screenKeywords = ['read the screen', 'read screen', 'what\'s on screen', 'what is on screen', 'look at the screen', 'see my screen', 'whats on screen', 'screenshot', 'read this page', 'what do you see', 'tell me what you see'];
+
+  function needsScreenshot(text) {
+    var lower = text.toLowerCase();
+    return screenKeywords.some(function(kw) { return lower.includes(kw); });
+  }
+
+  // ── Send handler ──────────────────────────────────────────
+  function handleSend() {
+    var text = input.value.trim();
+    if (!text || isStreaming) return;
+
+    var imageToSend = null;
+
+    // If there's a staged screenshot OR if the prompt mentions reading screen
+    if (currentShot) {
+      imageToSend = currentShot;
+    } else if (needsScreenshot(text) && isScreenshotEnabled()) {
+      // Auto-capture silently
+      captureActiveIframe(function(dataUrl) {
+        var img = dataUrl || null;
+        addMessage('user', text, img);
+        input.value = '';
+        autoResizeInput();
+        shotPreview.style.display = 'none';
+        currentShot = null;
+        sendToAI(text, img);
+      });
+      return;
     }
 
-    if (aiScreenshotBtn) {
-        aiScreenshotBtn.addEventListener('click', function() {
-            var screenshot = captureScreenshot();
-            if (screenshot) {
-                showScreenshotInPreview(screenshot);
-            }
-        });
+    addMessage('user', text, imageToSend);
+    input.value = '';
+    autoResizeInput();
+    shotPreview.style.display = 'none';
+    currentShot = null;
+    sendToAI(text, imageToSend);
+  }
+
+  // ── Auto-resize textarea ──────────────────────────────────
+  function autoResizeInput() {
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  }
+
+  // ── Event bindings ────────────────────────────────────────
+  closeBtn.addEventListener('click', closeSidebar);
+
+  sendBtn.addEventListener('click', handleSend);
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
+  });
 
-    function addMessage(role, text, screenshotUrl) {
-        var welcomeMsg = aiMessages.querySelector('.ai-welcome-msg');
-        if (welcomeMsg) welcomeMsg.remove();
+  input.addEventListener('input', autoResizeInput);
 
-        var msgEl = document.createElement('div');
-        msgEl.className = 'ai-msg ' + role;
+  shotRemove.addEventListener('click', function(e) {
+    e.stopPropagation();
+    currentShot = null;
+    shotPreview.style.display = 'none';
+  });
 
-        if (screenshotUrl) {
-            var img = document.createElement('img');
-            img.src = screenshotUrl;
-            img.className = 'ai-msg-screenshot';
-            img.style.maxWidth = '100%';
-            img.style.borderRadius = '8px';
-            img.style.marginBottom = '6px';
-            img.style.display = 'block';
-            msgEl.appendChild(img);
-        }
+  // Close sidebar on Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && sidebarOpen) closeSidebar();
+  });
 
-        var textNode = document.createElement('div');
-        textNode.textContent = text;
-        msgEl.appendChild(textNode);
+  // ── Expose globally ───────────────────────────────────────
+  window.nexAI = {
+    toggleSidebar: toggleSidebar,
+    openSidebar: openSidebar,
+    closeSidebar: closeSidebar,
+    capture: captureActiveIframe
+  };
 
-        aiMessages.appendChild(msgEl);
-        aiMessages.scrollTop = aiMessages.scrollHeight;
-    }
-
-    function showTyping() {
-        var typingEl = document.createElement('div');
-        typingEl.className = 'ai-msg assistant';
-        typingEl.id = 'aiTypingIndicator';
-        typingEl.innerHTML = '<div class="ai-typing-indicator"><span></span><span></span><span></span></div>';
-        aiMessages.appendChild(typingEl);
-        aiMessages.scrollTop = aiMessages.scrollHeight;
-    }
-
-    function removeTyping() {
-        var el = document.getElementById('aiTypingIndicator');
-        if (el) el.remove();
-    }
-
-    function sendMessage() {
-        var text = aiInput.value.trim();
-        if (!text && !currentScreenshot) return;
-
-        var screenshot = currentScreenshot;
-        addMessage('user', text || '(screenshot attached)', screenshot);
-        removeScreenshot();
-        aiInput.value = '';
-        aiInput.style.height = 'auto';
-
-        showTyping();
-
-        setTimeout(function() {
-            removeTyping();
-
-            var responses = [
-                "I can see what's on your screen! Let me help you with that.",
-                "Based on what I see, here's what I think...",
-                "I've analyzed the current page. What would you like to know?",
-                "Looking at your screen, I can help you navigate or answer questions about what you see.",
-                "I see the content on your screen. How can I assist you?"
-            ];
-            var response = responses[Math.floor(Math.random() * responses.length)];
-            if (text) {
-                response = "You asked: \"" + text + "\"\n\n" + response;
-            }
-            addMessage('assistant', response);
-        }, 1500 + Math.random() * 1000);
-    }
-
-    if (aiSendBtn) {
-        aiSendBtn.addEventListener('click', sendMessage);
-    }
-
-    if (aiInput) {
-        aiInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
-
-        aiInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-        });
-    }
-
-    // Screenshot to AI setting toggle
-    var SCREENSHOT_AI_KEY = 'nexos_screenshot_to_ai';
-    var origInitToggle = window._origInitToggleSettings;
-
-    function initScreenshotToAiToggle() {
-        var btn = document.getElementById('ccScreenshotToAi');
-        var toggle = document.getElementById('ccScreenshotToAiToggle');
-        if (!btn || !toggle) return;
-        var enabled = isScreenshotEnabled();
-        setToggleStateAi(toggle, enabled);
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var current = isScreenshotEnabled();
-            var next = !current;
-            try { localStorage.setItem(SCREENSHOT_AI_KEY, next); } catch(e) {}
-            setToggleStateAi(toggle, next);
-        });
-    }
-
-    function setToggleStateAi(toggleEl, on) {
-        if (!toggleEl) return;
-        var knob = toggleEl.querySelector('.cc-toggle-knob');
-        if (on) {
-            toggleEl.style.background = '#007aff';
-            if (knob) knob.style.left = '16px';
-        } else {
-            toggleEl.style.background = '#ccc';
-            if (knob) knob.style.left = '2px';
-        }
-    }
-
-    // Patch initAllSettings to include our toggle
-    var waitForSettings = setInterval(function() {
-        var subPanel = document.getElementById('ccSubPanel');
-        if (!subPanel) return;
-        var observer = new MutationObserver(function() {
-            var toggle = document.getElementById('ccScreenshotToAiToggle');
-            if (toggle) initScreenshotToAiToggle();
-        });
-        observer.observe(subPanel, { childList: true, subtree: true });
-        clearInterval(waitForSettings);
-    }, 500);
-
-    if (window.lucide) setTimeout(function() { lucide.createIcons(); }, 500);
+  console.log('[NexAI] Intelligence module loaded.');
 })();
 </script>
 </body>
