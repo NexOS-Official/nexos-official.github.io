@@ -5,7 +5,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ghost | music</title>
+<title>Ghost | music v3</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -278,9 +278,11 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   animation:ll-bounce 0.30s cubic-bezier(.34,1.56,.64,1) both;
 }
 .ll.now.ll-sung{
-  opacity:0.50;
-  color:rgba(255,255,255,0.50);
-  transition:opacity 1.2s ease-out, color 1.2s ease-out !important;
+  font-size:26px !important;
+  opacity:0.45 !important;
+  color:rgba(255,255,255,0.45) !important;
+  letter-spacing:-0.015em !important;
+  transition:font-size 0.8s cubic-bezier(.4,0,.2,1), opacity 0.9s ease-out, color 0.9s ease-out !important;
 }
 @keyframes ll-bounce {
   0%   { transform:scale(0.93); }
@@ -2117,7 +2119,13 @@ function timingForWords(rawWords, lineMs, nextMs) {
   const n    = rawWords.length;
   const syls = rawWords.map(syllableCount);
   const totalSyls = syls.reduce((a,b) => a+b, 0) || 1;
-  const gapMs = Math.max(300, nextMs - lineMs - 80);
+  const rawGapMs = Math.max(300, nextMs - lineMs - 80);
+
+  // Cap the singing window so words don't get spread across instrumental gaps.
+  // Max realistic singing: 500ms/syllable (slow ballad) + small hold for last word.
+  // Without this cap, a 30s gap produces word positions spread over 30s.
+  const maxSingMs = Math.round(totalSyls * 500 * 1.4); // 500ms/syl * 1.4 hold factor
+  const gapMs = Math.min(rawGapMs, maxSingMs);
 
   const neutralMsPerSyl = Math.max(95, gapMs / totalSyls);
   const estimatedPauseMs = rawWords.reduce((acc, w) =>
