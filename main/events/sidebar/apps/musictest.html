@@ -172,15 +172,15 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .lyrics-panel.active{opacity:1;pointer-events:auto}
 .lrc-scroll-outer{
   position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
-  padding:48px 28px 180px;
+  padding:40vh 28px 55vh;
   z-index:1;
 }
 .lrc-bg{
   position:absolute;inset:0;
   background-size:cover;background-position:center;
-  filter:blur(40px) saturate(1.6) brightness(.35);
-  transform:scale(1.15);
-  opacity:0;transition:opacity .8s ease;
+  filter:blur(50px) saturate(2.2) brightness(.28);
+  transform:scale(1.2);
+  opacity:0;transition:opacity 1s ease;
   pointer-events:none;z-index:0;
 }
 .lrc-bg.on{opacity:1}
@@ -238,76 +238,79 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
 .ll{
-  font-size:27px;line-height:1.65;font-weight:700;
-  padding:5px 0 5px 4px;
-  margin-bottom:1px;
-  border-radius:12px;cursor:pointer;
-  color:rgba(255,255,255,0.12);
-  filter:blur(0px);
-  opacity:.32;
+  font-size:27px;line-height:1.55;font-weight:700;
+  padding:6px 12px 6px 12px;
+  margin-bottom:4px;
+  border-radius:14px;cursor:pointer;
+  color:rgba(255,255,255,0.10);
+  opacity:.28;
   transform-origin:left center;
   letter-spacing:-0.015em;
   transition:
-    color .5s cubic-bezier(.4,0,.2,1),
-    opacity .5s cubic-bezier(.4,0,.2,1),
-    font-size .38s cubic-bezier(.34,1.56,.64,1),
-    letter-spacing .38s cubic-bezier(.4,0,.2,1);
-  will-change:color,opacity;
+    color .45s cubic-bezier(.4,0,.2,1),
+    opacity .45s cubic-bezier(.4,0,.2,1),
+    transform .38s cubic-bezier(.4,0,.2,1),
+    letter-spacing .38s cubic-bezier(.4,0,.2,1),
+    filter .45s cubic-bezier(.4,0,.2,1);
+  will-change:color,opacity,transform;
   position:relative;
-  clip-path:inset(-6px -10px round 12px);
 }
-.ll.past{
-  color:rgba(255,255,255,0.06);
-  opacity:.18;
-}
-.ll.near{
-  color:rgba(255,255,255,0.46);
-  opacity:.76;
-  font-size:26px;
-}
-.ll.near2{
-  color:rgba(255,255,255,0.24);
-  opacity:.46;
-  font-size:24.5px;
-}
+/* depth gradient: lines further from active fade harder */
+.ll.past   { color:rgba(255,255,255,0.07); opacity:.16; transform:translateX(-2px); }
+.ll.past2  { color:rgba(255,255,255,0.04); opacity:.09; transform:translateX(-3px); filter:blur(0.5px); }
+.ll.past3  { color:rgba(255,255,255,0.02); opacity:.05; transform:translateX(-4px); filter:blur(1px); }
+.ll.near   { color:rgba(255,255,255,0.50); opacity:.82; transform:translateX(2px); }
+.ll.near2  { color:rgba(255,255,255,0.26); opacity:.50; transform:translateX(0px); }
+.ll.near3  { color:rgba(255,255,255,0.13); opacity:.28; }
 .ll.now{
   color:#ffffff;
-  font-size:36px;
   opacity:1;
-  letter-spacing:-0.025em;
-  animation:ll-bounce 0.30s cubic-bezier(.34,1.56,.64,1) both;
+  letter-spacing:-0.022em;
+  transform:translateX(4px);
+  animation:ll-bounce 0.28s cubic-bezier(.34,1.56,.64,1) both;
 }
+/* pink left accent bar on active line */
+.ll.now::before{
+  content:'';
+  position:absolute;
+  left:-8px; top:20%; height:60%;
+  width:3px;
+  background:var(--pink);
+  border-radius:3px;
+  opacity:0.85;
+  transition:opacity .3s;
+}
+.ll.now.ll-sung::before{ opacity:0; }
 .ll.now.ll-sung{
-  font-size:24px !important;
-  opacity:0.38 !important;
-  color:rgba(255,255,255,0.38) !important;
-  letter-spacing:-0.010em !important;
-  transition:font-size 1.0s cubic-bezier(.4,0,.2,1), opacity 1.0s ease-out, color 1.0s ease-out, letter-spacing 1.0s ease-out !important;
+  opacity:0.32;
+  color:rgba(255,255,255,0.32);
+  transform:translateX(2px);
+  transition:opacity .9s ease-out, color .9s ease-out, transform .9s ease-out !important;
 }
 @keyframes ll-bounce {
-  0%   { transform:scale(0.93); }
-  52%  { transform:scale(1.05); }
-  100% { transform:scale(1.00); }
+  0%   { transform:translateX(0px) scale(0.96); }
+  55%  { transform:translateX(5px) scale(1.02); }
+  100% { transform:translateX(4px) scale(1.00); }
 }
 .ll-ripple {
   position:absolute;
   border-radius:50%;
   width:14px;height:14px;
   margin:-7px 0 0 -7px;
-  background:rgba(255,255,255,0.18);
+  background:rgba(255,255,255,0.15);
   transform:scale(0);
-  animation:ll-ripple-anim 0.55s ease-out forwards;
+  animation:ll-ripple-anim 0.5s ease-out forwards;
   pointer-events:none;
   z-index:10;
 }
 @keyframes ll-ripple-anim {
-  to { transform:scale(20); opacity:0; }
+  to { transform:scale(22); opacity:0; }
 }
 .ll.ll-sub{
   font-size:18px;
-  padding-left:16px;
-  margin-top:-4px;
-  opacity:.55;
+  padding-left:20px;
+  margin-top:-2px;
+  opacity:.48;
 }
 .ll.ll-sub.now{
   font-size:20px;
@@ -340,7 +343,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   white-space:nowrap;
 }
 .ll.now .lw-inline-paren .lw-ip-text{
-  opacity:0.80;
+  opacity:0.75;
 }
 
 @property --pct {
@@ -352,15 +355,14 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
-    #ffffff calc(var(--pct, -20%) - 2%),
-    rgba(255,255,255,0.88) calc(var(--pct, -20%) + 5%),
-    rgba(255,255,255,0.20) calc(var(--pct, -20%) + 14%),
-    rgba(255,255,255,0.03) calc(var(--pct, -20%) + 22%)
+    #ffffff calc(var(--pct, -20%) - 1%),
+    rgba(255,255,255,0.90) calc(var(--pct, -20%) + 4%),
+    rgba(255,255,255,0.22) calc(var(--pct, -20%) + 13%),
+    rgba(255,255,255,0.04) calc(var(--pct, -20%) + 21%)
   );
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
-  /* transition set dynamically per-word via JS */
   transition: --pct 120ms linear, opacity 60ms ease-out;
   opacity:1;
 }
@@ -375,46 +377,50 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now .lw.upcoming{
   --pct:-20%;
   transition: none !important;
-  opacity:0.35;
+  opacity:0.28;
 }
 .ll.now .lw.now-word{
   opacity:1;
 }
 .ll.now .lw.now-word.word-enter{
-  animation: word-entry-glow 160ms ease-out forwards;
+  animation: word-entry-glow 150ms ease-out forwards;
 }
 @keyframes word-entry-glow {
-  0%   { opacity: 0.35; }
+  0%   { opacity: 0.28; }
   100% { opacity: 1; }
 }
 
-.ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
+.ll:hover:not(.now){ opacity:.55; color:rgba(255,255,255,0.55); filter:none !important; }
+
+/* hide scrollbar until hover */
+.lrc-scroll-outer{ scrollbar-width:none; }
+.lrc-scroll-outer::-webkit-scrollbar{ width:0; }
+.lrc-scroll-outer:hover{ scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.12) transparent; }
+.lrc-scroll-outer:hover::-webkit-scrollbar{ width:3px; }
+.lrc-scroll-outer:hover::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.12); border-radius:3px; }
+.lrc-scroll-outer:hover::-webkit-scrollbar-track{ background:transparent; }
 
 .beat-dots{
-  display:inline-flex;align-items:flex-end;gap:7px;
+  display:inline-flex;align-items:center;gap:8px;
   height:1em;vertical-align:middle;
 }
 .beat-dots span{
-  width:8px;height:8px;border-radius:50%;
-  background:rgba(255,255,255,0.28);
+  width:7px;height:7px;border-radius:50%;
+  background:rgba(255,255,255,0.20);
   display:inline-block;
-  transform:translateY(0);
-  transition:background .3s;
+  transition:background .4s, transform .4s;
 }
 .ll.now .beat-dots span{
-  background:#ffffff;
-  animation:beatbounce var(--beat-dur,600ms) ease-in-out infinite;
-}
-.ll.now .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) / 3)}
-.ll.now .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) / 3 * 2)}
-@keyframes beatbounce{
-  0%,100%{transform:translateY(0) scale(1)}
-  35%{transform:translateY(-11px) scale(1.15)}
-  55%{transform:translateY(-7px) scale(1.05)}
-  75%{transform:translateY(-3px) scale(1.02)}
-}
-.ll.now .beat-dots span{
+  background:rgba(255,255,255,0.80);
+  animation:beatpulse var(--beat-dur,600ms) cubic-bezier(.4,0,.2,1) infinite;
   transition: none;
+}
+.ll.now .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) * 0.33)}
+.ll.now .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) * 0.66)}
+@keyframes beatpulse{
+  0%,100%{ transform:scale(1);   opacity:0.5; }
+  40%    { transform:scale(1.5); opacity:1;   box-shadow:0 0 6px 2px rgba(255,255,255,0.3); }
+  60%    { transform:scale(1.2); opacity:0.8; }
 }
 .lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
 .lrc-empty svg{width:38px;height:38px;opacity:.22}
@@ -2777,7 +2783,7 @@ function tickLrc(posMs) {
 
     const domLines = document.querySelectorAll('#lscroll .ll');
     domLines.forEach((el, i) => {
-      el.classList.remove('now','past','near','near2','ll-sung');
+      el.classList.remove('now','past','past2','past3','near','near2','near3','ll-sung');
       const entry = ST.lrc[i];
       let di = i;
       if (entry?._isParen || entry?._synthetic) {
@@ -2787,22 +2793,30 @@ function tickLrc(posMs) {
       }
       const dist = di - focus;
       const absDist = Math.abs(dist);
-      if      (dist < 0)      el.classList.add('past');
-      else if (absDist === 1) el.classList.add('near');
-      else if (absDist === 2) el.classList.add('near2');
-      if (absDist >= 3) {
-        el.style.filter = dist < 0
-          ? `blur(${Math.min(5,(absDist-2)*1.5).toFixed(1)}px)`
-          : `blur(${Math.min(3,(absDist-2)*0.7).toFixed(1)}px)`;
-      } else { el.style.filter = ''; }
+      el.style.filter = '';
+      if (dist < 0) {
+        if      (absDist === 1) el.classList.add('past');
+        else if (absDist === 2) el.classList.add('past2');
+        else                    el.classList.add('past3');
+      } else if (dist > 0) {
+        if      (absDist === 1) el.classList.add('near');
+        else if (absDist === 2) el.classList.add('near2');
+        else                    el.classList.add('near3');
+      }
     });
 
     const focusEl = document.getElementById('ll'+focus);
     if (focusEl) {
       focusEl.classList.remove('now');
-      focusEl.offsetWidth;
+      focusEl.offsetWidth; // reflow to restart animation
       focusEl.classList.add('now');
-      focusEl.scrollIntoView({ block:'center', behavior:'smooth' });
+      // Scroll so active line sits at ~35% from top (feels more natural than center)
+      const container = G('lrc-scroll-outer');
+      const containerRect = container.getBoundingClientRect();
+      const elRect = focusEl.getBoundingClientRect();
+      const targetTop = containerRect.top + containerRect.height * 0.35;
+      const currentTop = elRect.top;
+      container.scrollBy({ top: currentTop - targetTop, behavior: 'smooth' });
     }
 
     if (prev >= 0 && prev !== focus) _snapDone(prev);
