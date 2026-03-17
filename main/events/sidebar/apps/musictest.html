@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -65,7 +67,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   transition:opacity .8s;pointer-events:none;
 }
 .cover-bg.on{opacity:1}
-/* Gradient overlay so controls remain readable */
 .cover-wrap::after{
   content:'';position:absolute;inset:0;
   background:linear-gradient(to bottom,
@@ -184,7 +185,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .lrc-bg.on{opacity:1}
 
-/* Smart repeat lyric blend states */
 #lscroll.blend-out {
   animation: lrc-blend-out 1.8s ease-in-out forwards;
 }
@@ -287,7 +287,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   52%  { transform:scale(1.05); }
   100% { transform:scale(1.00); }
 }
-/* Tap ripple */
 .ll-ripple {
   position:absolute;
   border-radius:50%;
@@ -302,7 +301,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 @keyframes ll-ripple-anim {
   to { transform:scale(20); opacity:0; }
 }
-/* paren sub-lines: same .ll behaviour but smaller and indented */
 .ll.ll-sub{
   font-size:18px;
   padding-left:16px;
@@ -319,7 +317,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.ll-sub.near2{
   font-size:16px;
 }
-/* inline mid-line parens: small italic text sitting above the word below */
 .lw-inline-paren{
   display:inline-flex;
   flex-direction:column;
@@ -344,7 +341,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   opacity:0.80;
 }
 
-/* Register --pct as animatable for browsers that support @property */
 @property --pct {
   syntax: '<percentage>';
   inherits: false;
@@ -386,7 +382,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   filter:none;
   opacity:1;
 }
-/* Entry shimmer: a very brief brightening at word start */
 .ll.now .lw.now-word.word-enter{
   animation: word-entry-glow 220ms ease-out forwards;
 }
@@ -397,7 +392,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
 
-/* ♪ beat dots */
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
   height:1em;vertical-align:middle;
@@ -421,7 +415,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   55%{transform:translateY(-7px) scale(1.05)}
   75%{transform:translateY(-3px) scale(1.02)}
 }
-/* Waveform-style beat dots for active instrumental lines */
 .ll.now .beat-dots span{
   transition: none;
 }
@@ -1675,7 +1668,6 @@ G('btn-pp').addEventListener('click',togglePlay);
 
 const wordSyncOn = true;
 
-// API key removed; handled by server
 const AI_MODEL = 'google/gemini-2.5-flash-preview';
 const _aiTimingCache = {};
 
@@ -1694,6 +1686,7 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
       const globalLi = realLines.indexOf(line);
       const nextReal  = realLines[globalLi + 1];
       const rw        = line.words.filter(w => !w._isPause && !w._isInlineParen && w.word?.trim());
+      // Hard boundary: when the NEXT line starts (no word may reach this)
       const lineEnd   = nextReal?.ms ?? (line.ms + 5000);
       const singMs    = lineEnd - line.ms;
       const syls      = rw.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
@@ -1702,51 +1695,85 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
         ? prevReal.words.filter(w=>!w._isPause&&!w._isInlineParen&&w.word?.trim()).reduce((a,w)=>a+syllableCount(w.word),0)||1
         : null;
       const prevMsps  = prevReal ? Math.round((line.ms - prevReal.ms) / prevSyls) : null;
+
+      // Estimate realistic singing duration (separate from the hard gap to next line).
+      // mspsy is based on the full gap which may include a long instrumental rest —
+      // cap the singing estimate so AI doesn't over-stretch words.
+      const rawMsPerSyl = singMs / syls;
+      const cappedMsPerSyl = Math.min(rawMsPerSyl, 600); // realistic max ~600ms/syl
+      const estSingDur = Math.round(syls * cappedMsPerSyl * 1.15); // +15% for natural hold
+      // naturalEnd: where singing realistically ends (may be << lineEnd for long instrumentals)
+      const naturalEnd = Math.min(line.ms + estSingDur, lineEnd - 100);
+
       return {
-        i:       lrcLines.indexOf(line),
-        ms:      line.ms,
-        end:     lineEnd,
+        i:          lrcLines.indexOf(line),
+        ms:         line.ms,
+        end:        lineEnd,         // hard boundary — no word may reach/exceed this
+        naturalEnd: naturalEnd,      // estimated end of singing (where singEnd should land)
         singMs,
-        mspsy:   Math.round(singMs / syls),
+        mspsy:      Math.round(cappedMsPerSyl), // realistic ms-per-syllable (capped)
+        rawMspsy:   Math.round(rawMsPerSyl),    // actual gap/syls (may be huge for instrumentals)
         prevMsps,
-        words:   rw.map(w => w.word),
+        words:      rw.map(w => w.word),
       };
     });
   }
 
   async function callAI(payload) {
-    const prompt = `Lyrics sync engine for "${title}" by ${artist}.
+    const prompt = `You are a professional lyrics sync engineer for "${title}" by ${artist}. Your output will drive a real-time karaoke word-highlight system.
 
-You receive LRC lines. Each has exact timestamps from the LRC file.
-Your job: distribute word start times within each line's window, AND decide when the singing ends.
+Each line object has:
+  ms        — line start time (ms)
+  end       — HARD boundary: next line starts here. NO word time may reach or exceed this.
+  naturalEnd — your TARGET for singEnd: where singing likely ends before any instrumental gap.
+               If naturalEnd << end, there is an instrumental gap. DO NOT fill it with words.
+  mspsy     — realistic ms-per-syllable for this line (capped at 600, reflects actual singing speed)
+  rawMspsy  — raw gap divided by syllables (may be huge if there's a long rest after this line)
+  prevMsps  — previous line's ms-per-syllable (null if first line)
+  words     — array of words to time
 
-Fields:
-- ms: line start
-- end: next line start (NO word may reach or exceed this)
-- singMs: end - ms (total window in ms)
-- mspsy: ms-per-syllable tempo reference
-- prevMsps: previous line's tempo
-- words: the words to time
+YOUR TASK: For each line, produce:
+  w[]  — one timestamp (ms) per word, strictly increasing, all within [ms, end-80]
+  se   — singEnd: the ms when the LAST SYLLABLE finishes. After se, the line sits done/dimmed.
+         se MUST be <= naturalEnd. If naturalEnd - ms < 300, set se = ms + (end-ms)*0.7.
 
-TIMING RULES:
-1. First word starts at ms (or up to 80ms after for breath)
-2. Connector words (a, the, and, to, of, in, I, my, you, it, was, is, be, do): duration = 0.4 × mspsy
-3. Content words: duration = 0.9 × mspsy × syllables
-4. Emotionally stressed words (death, love, hate, never, always, etc): 1.2 × mspsy × syllables
-5. Last word gets a natural hold — singer holds the note
-6. Punctuation pause: comma=+0.25×mspsy, period/!/?=+0.5×mspsy — shift NEXT word later
-7. If mspsy < prevMsps: speeding up — shrink connectors to 0.3×
-8. If mspsy > prevMsps: slowing down — stretch last word hold more
-9. All word times strictly increasing
-10. All word times within [ms, end-60]
+MUSIC INTUITION — apply all of these:
+• Tempo feel: use mspsy as your beat grid. Fast lines (mspsy<150) = tight rap/pop cadence.
+  Slow lines (mspsy>350) = ballad/held notes. Match the feel of the song.
+• Breath & phrasing: singers breathe between phrases. After a comma/semicolon add ~0.3×mspsy gap.
+  After period/!/? add ~0.5×mspsy gap (shift the NEXT word later, don't shrink the previous one).
+• Word weight: function words (a, the, and, I, my, you, it, is, to, of, in, on, at, be, do, we)
+  are sung fast: 0.35–0.50 × mspsy × syllables.
+  Content words: 0.85–1.10 × mspsy × syllables.
+  Emotionally weighted words (love, never, always, pain, heart, death, alone, forever, gone, lost,
+  please, hate, cry, dream, fall, hold, need, save, stay, time, wait): 1.15–1.40 × mspsy × syllables.
+• Vowel holds: words ending in open vowels (ay, oh, ee, ow, ah) or repeated vowels (ooo, aah)
+  get 1.3–1.7× duration multiplier — singers hold these.
+• Last word: always gets the longest hold — typically 1.4–2.2× mspsy × syllables.
+  For a ballad (mspsy>300) the last word can hold even longer.
+• Acceleration / deceleration: if mspsy < prevMsps the line is speeding up — tighten all durations.
+  If mspsy > prevMsps × 1.4 the line is slowing/trailing off — stretch last word more.
+• Syllable spread: multi-syllable words occupy proportionally more time. "beautiful" (3 syls) ≈
+  3× a 1-syllable function word at the same pace.
+• Timing floor: function words ≥ 35ms, content words ≥ 60ms. No word shorter than these.
 
-SING_END: After placing all words, output singEnd = the ms when the LAST word finishes being sung (last word start + its natural hold duration). The line will sit highlighted at 100% from singEnd until end. singEnd must be <= end - 50.
+SING_END (se) rules — THIS IS CRITICAL:
+• se = when the last word's SOUND ends (not when the next line starts).
+• For normal lines: se ≈ last_word_start + last_word_syls × mspsy × holdMul
+  where holdMul is 1.4 (fast) to 2.2 (slow/ballad).
+• se must be ≤ naturalEnd (to avoid highlighting bleeding into instrumental gaps).
+• After se, the karaoke system dims this line and waits silently. This is correct behavior.
+• DO NOT artificially extend se toward end just because there's space — that causes the
+  "lyrics glowing for 30 seconds of guitar solo" bug.
 
-Return ONLY: [{"w":[ms,ms,...],"se":singEndMs},...]
-"w" array length MUST equal words array length.
-"se" = singEnd ms (when last word finishes, line sits done until "end")
-Raw JSON only. No markdown.
+OUTPUT FORMAT — raw JSON only, no markdown, no explanation:
+[{"w":[ms,ms,...],"se":singEndMs},...]
 
+Array length MUST equal words array length for every line.
+All w[] values strictly increasing. All within [ms, end-80].
+se <= naturalEnd and > last word's ms.
+
+INPUT:
 ${JSON.stringify(payload)}`;
 
     const res = await fetch('/ai-lyrics', {
@@ -1789,8 +1816,13 @@ ${JSON.stringify(payload)}`;
       if (!ai?.w || ai.w.length !== lp.words.length) return;
       if (!ai.w.every(t => typeof t==='number' && t >= lp.ms - 100 && t < lp.end)) return;
       for (let j = 1; j < ai.w.length; j++) if (ai.w[j] <= ai.w[j-1]) return;
-      const singEnd = (typeof ai.se === 'number' && ai.se > lp.ms && ai.se <= lp.end)
-        ? ai.se : null;
+      // singEnd must be after last word and within naturalEnd (not just end).
+      // This is what prevents the "glowing during 30s of instrumental" bug.
+      const lastWordMs = ai.w[ai.w.length - 1];
+      const maxSingEnd = lp.naturalEnd ?? (lp.end - 50);
+      const singEnd = (typeof ai.se === 'number' && ai.se > lastWordMs && ai.se <= maxSingEnd)
+        ? ai.se
+        : (lastWordMs < maxSingEnd ? Math.round(lastWordMs + (maxSingEnd - lastWordMs) * 0.6) : null);
       refined.set(lp.i, { words: ai.w, singEnd });
     });
   }
@@ -1887,11 +1919,9 @@ async function applyAIRefinements(lines, title, artist, preRefined) {
     const ai = refined.get(i);
     if (!ai || !line.words?.length) return line;
 
-    const singEnd  = ai.singEnd ?? null;
+    let singEnd  = ai.singEnd ?? null;
     const rawTimes = ai.words ?? [];
 
-    // If singEnd provided, scale all word times into [line.ms, singEnd-60]
-    // so every word fills within the singing window, not the full LRC gap.
     let wordTimes = rawTimes;
     if (singEnd && rawTimes.length > 0) {
       const origFirst = rawTimes[0];
@@ -1901,6 +1931,22 @@ async function applyAIRefinements(lines, title, artist, preRefined) {
       const targetSpan = Math.max(1, targetEnd - line.ms);
       const scale = Math.min(1, targetSpan / origSpan);
       wordTimes = rawTimes.map(ms => Math.round(line.ms + (ms - origFirst) * scale));
+    }
+
+    // Find next real line start to compute naturalEnd clamp
+    let nextLineMs = null;
+    for (let j = i + 1; j < lines.length; j++) {
+      if (!lines[j]._isParen && !lines[j]._synthetic) { nextLineMs = lines[j].ms; break; }
+    }
+    // Cap singEnd to be reasonable: not past natural end of singing
+    if (singEnd && nextLineMs) {
+      const rawWords = line.words.filter(w => !w._isPause && !w._isInlineParen && w.word?.trim());
+      const syls = rawWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+      const rawMsPerSyl = (nextLineMs - line.ms) / syls;
+      const cappedMsPerSyl = Math.min(rawMsPerSyl, 600);
+      const estimatedSingDur = syls * cappedMsPerSyl * 1.25;
+      const naturalEnd = line.ms + estimatedSingDur;
+      if (singEnd > naturalEnd) singEnd = Math.round(naturalEnd);
     }
 
     let realWordIdx = 0;
@@ -2039,7 +2085,6 @@ function parseLRC(rawStr) {
     }
 
     let text = raw.replace(/<[^>]+>/g,'').trim();
-    // Treat ♪ / instrumental markers as empty (renders as dots)
     if (/^[♪♫\s\-_]+$/.test(text)) text = '';
     return { ms, text, _wordTimed: wTimed.length > 0 ? wTimed : null };
   }).filter(Boolean);
@@ -2483,19 +2528,36 @@ function _tickWords(lineIdx, t, nextBound) {
 
   const realWords  = words.filter(w => !w._isPause);
   const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+
+  // Use AI-provided singEnd if available — this is the key fix for the "long instrumental gap" bug.
+  // singEnd tells us exactly when singing ends, independent of when the next lyric line starts.
+  const aiSingEnd = ST.lrc[lineIdx]?._singEnd;
+
+  // Compute a natural end from actual word timing rather than the next-line boundary.
+  // Cap the "effective" window at singEnd if we have it, or estimate based on syllable density.
   const lineSpanMs = realWords.length > 1
     ? realWords[realWords.length-1].ms - realWords[0].ms
-    : Math.max(300, nextBound - words[0].ms - 80);
+    : Math.max(300, Math.min(nextBound, words[0].ms + 4000) - words[0].ms - 80);
   const nonLastSyls = Math.max(1, totalSyls - lastSyls);
   const spacingMs   = realWords.length > 1
     ? lineSpanMs / nonLastSyls
-    : Math.max(95, (nextBound - words[0].ms) / totalSyls);
+    : Math.max(95, Math.min(350, (Math.min(nextBound, words[0].ms + 4000) - words[0].ms) / totalSyls));
   const msPerSyl  = Math.max(90, spacingMs);
   const pace      = _paceFactor(msPerSyl);
   const holdMul   = _lerp(pace, 1.20, 1.90);
   const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
-  // Cap strictly to nextBound - 160ms (max AHEAD) so word is done before focus advances
-  const lastWordEnd = Math.min(naturalEnd, nextBound - 160);
+
+  // If AI gave us a singEnd, use it directly (clamped to be sane).
+  // Otherwise fall back to naturalEnd — but never extend past nextBound - 160.
+  // This prevents the "last word glows for 30 extra seconds of instrumental" bug.
+  let lastWordEnd;
+  if (aiSingEnd && aiSingEnd > lastW.ms && aiSingEnd < nextBound) {
+    lastWordEnd = aiSingEnd;
+  } else {
+    // Without AI singEnd, clamp naturalEnd to a reasonable hold (max ~2.5s after last word start)
+    const maxHold = lastW.ms + Math.max(400, lastSyls * msPerSyl * 1.6);
+    lastWordEnd = Math.min(naturalEnd, maxHold, nextBound - 160);
+  }
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
@@ -2608,7 +2670,7 @@ function tickLrc(posMs) {
 
     const domLines = document.querySelectorAll('#lscroll .ll');
     domLines.forEach((el, i) => {
-      el.classList.remove('now','past','near','near2');
+      el.classList.remove('now','past','near','near2','ll-sung');
       const entry = ST.lrc[i];
       let di = i;
       if (entry?._isParen || entry?._synthetic) {
@@ -2667,6 +2729,15 @@ function tickLrc(posMs) {
     if (e._isParen && !e._wholeLine && e._parenParentMs === ST.lrc[focus]?.ms) continue;
     focusBound = e.ms;
     break;
+  }
+
+  // Apply ll-sung fade when singing has ended (singEnd reached) but we're still on this line.
+  // This is what makes lyrics dim naturally during instrumental gaps instead of staying bright.
+  const focusEl2 = document.getElementById('ll' + focus);
+  if (focusEl2) {
+    const singEnd = ST.lrc[focus]?._singEnd;
+    const isSung = singEnd ? (t >= singEnd) : false;
+    focusEl2.classList.toggle('ll-sung', isSung);
   }
 
   if (parenActive >= 0) {
