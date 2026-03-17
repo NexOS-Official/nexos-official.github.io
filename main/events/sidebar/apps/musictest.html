@@ -349,30 +349,19 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   initial-value: -20%;
 }
 
-@property --lw-dur {
-  syntax: '<time>';
-  inherits: false;
-  initial-value: 0ms;
-}
-
-
-
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
     #ffffff calc(var(--pct, -20%) - 2%),
-    rgba(255,255,255,0.85) calc(var(--pct, -20%) + 4%),
-    rgba(255,255,255,0.18) calc(var(--pct, -20%) + 12%),
-    rgba(255,255,255,0.04) calc(var(--pct, -20%) + 20%)
+    rgba(255,255,255,0.88) calc(var(--pct, -20%) + 5%),
+    rgba(255,255,255,0.20) calc(var(--pct, -20%) + 14%),
+    rgba(255,255,255,0.03) calc(var(--pct, -20%) + 22%)
   );
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
-  /* --pct transition drives the smooth sweep — duration set per-word by JS */
-  transition:
-    --pct var(--lw-dur, 120ms) linear,
-    filter 80ms ease-out,
-    opacity 60ms ease-out;
+  /* transition set dynamically per-word via JS */
+  transition: --pct 120ms linear, opacity 60ms ease-out;
   opacity:1;
 }
 .ll.now .lw.done,
@@ -380,25 +369,22 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.near .lw,
 .ll.near2 .lw{
   --pct:110%;
-  --lw-dur:0ms;
-  filter:none;
+  transition: none !important;
   opacity:1;
 }
 .ll.now .lw.upcoming{
   --pct:-20%;
-  --lw-dur:0ms;
-  filter:none;
-  opacity:0.38;
+  transition: none !important;
+  opacity:0.35;
 }
 .ll.now .lw.now-word{
-  filter:none;
   opacity:1;
 }
 .ll.now .lw.now-word.word-enter{
-  animation: word-entry-glow 180ms ease-out forwards;
+  animation: word-entry-glow 160ms ease-out forwards;
 }
 @keyframes word-entry-glow {
-  0%   { opacity: 0.4; }
+  0%   { opacity: 0.35; }
   100% { opacity: 1; }
 }
 
@@ -1721,44 +1707,41 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
         mspsy,
         prevMsps,
         words:   rw.map(w => w.word),
+        syls:    rw.map(w => syllableCount(w.word)),
       };
     });
   }
 
   async function callAI(payload) {
-    const prompt = `You are a lyrics sync engine for "${title}" by ${artist}.
+    const prompt = `You are a karaoke word-sync engine for "${title}" by ${artist}.
 
-Each line object:
-- ms: when this line starts (ms)
-- end: when the NEXT line starts — NO word timestamp may reach or exceed this
-- seMax: the MAXIMUM allowed value for "se" (singEnd). NEVER set se > seMax.
-         seMax accounts for the actual singing duration. If end >> seMax, there is an
-         instrumental gap after the words — the line should dim at seMax, not glow through it.
-- mspsy: ms per syllable (capped at 500 — use this for timing words)
-- prevMsps: previous line's mspsy (null for first line)
-- words: array of words to place timestamps for
+Each line has: ms (start), end (next line — no word reaches this), seMax (max singEnd), mspsy (ms/syllable, capped at 500), prevMsps (previous line tempo), words (array), syls (syllable count per word).
 
-WORD TIMING:
-1. First word at ms (±60ms for breath/pickup)
-2. Function words (a, an, the, and, or, but, I, my, you, it, in, on, at, to, of, is, be, do, so, we, he, she, they, our, not, no, oh, ah): 0.35–0.50 × mspsy
-3. Content words: 0.85–1.05 × mspsy × syllables
-4. Held/emotional words (love, never, always, heart, pain, gone, stay, wait, please, alone, forever, dream, cry, hold, fall, need, time, lost): 1.10–1.35 × mspsy × syllables
-5. After comma/semicolon: next word starts +0.25×mspsy later
-6. After period/!/?: next word starts +0.40×mspsy later
-7. If mspsy < prevMsps: speeding up — tighten function words to 0.30×
-8. If mspsy > prevMsps×1.3: slowing down — last word holds longer
-9. All timestamps strictly increasing. All within [ms, end-80].
+PLACE WORD TIMESTAMPS:
+Distribute words proportionally by syllable weight. Total singing budget = roughly (words.length * mspsy * avg_syls), but front-loaded to function words being fast.
+
+Word duration formula:  dur = syls[i] × mspsy × multiplier
+Multipliers:
+- Function words (a,an,the,and,or,but,I,my,you,it,in,on,at,to,of,is,be,do,so,we,he,she,oh,ah,not,no): 0.35–0.50
+- Short content (2–3 chars): 0.60–0.75
+- Normal content: 0.85–1.05 per syllable
+- Emotional/held (love,never,always,heart,pain,gone,stay,forever,dream,hold,lost,alone,free,mine,time,fall): 1.15–1.40 per syllable
+- Last word: multiply by extra 1.3–2.0 (singer holds it out)
+
+After comma/semicolon: +0.25×mspsy gap before next word
+After . ! ?: +0.40×mspsy gap before next word
+
+First word: starts at ms (or up to 80ms later for breath)
+All timestamps: strictly increasing, all within [ms, end-80]
 
 SING_END (se):
-- se = ms when the last syllable finishes ringing out
-- se = last_word_ms + (last_word_syllables × mspsy × holdFactor)
-  holdFactor: 1.2 for fast lines (mspsy<150), 1.5 for normal, 1.9 for slow (mspsy>350)
-- se MUST be <= seMax. This is a hard constraint — not a suggestion.
-- If you place se > seMax, the lyric line will glow through instrumental silence. That is a bug.
+se = when last syllable finishes. Use: se = last_word_ms + syls[last] × mspsy × holdFactor
+holdFactor: 1.3 (mspsy<150ms fast), 1.6 (normal), 2.0 (mspsy>300ms slow ballad)
+HARD RULE: se ≤ seMax always. Never exceed seMax.
 
-Return ONLY raw JSON — no markdown, no explanation:
+OUTPUT: raw JSON only, no markdown:
 [{"w":[ms,ms,...],"se":singEndMs},...]
-Every "w" array length must exactly equal the words array length.
+w.length must equal words.length exactly.
 
 ${JSON.stringify(payload)}`;
 
@@ -1909,25 +1892,19 @@ async function applyAIRefinements(lines, title, artist, preRefined) {
     if (!ai || !line.words?.length) return line;
 
     const singEnd  = ai.singEnd ?? null;
-    const rawTimes = ai.words ?? [];
+    const aiTimes  = ai.words ?? [];
 
-    let wordTimes = rawTimes;
-    if (singEnd && rawTimes.length > 0) {
-      const origFirst = rawTimes[0];
-      const origLast  = rawTimes[rawTimes.length - 1];
-      const origSpan  = Math.max(1, origLast - origFirst);
-      const targetEnd = singEnd - 60;
-      const targetSpan = Math.max(1, targetEnd - line.ms);
-      const scale = Math.min(1, targetSpan / origSpan);
-      wordTimes = rawTimes.map(ms => Math.round(line.ms + (ms - origFirst) * scale));
-    }
+    // Use AI timestamps directly — they're already placed correctly
+    // Only apply if count matches real words in this line
+    const realWordCount = line.words.filter(w => !w._isPause && !w._isInlineParen).length;
+    if (aiTimes.length !== realWordCount) return { ...line, _singEnd: singEnd };
 
     let realWordIdx = 0;
     const newWords = line.words.map((w) => {
       if (w._isPause || w._isInlineParen) return w;
-      const newMs = wordTimes[realWordIdx] ?? w.ms;
+      const newMs = aiTimes[realWordIdx] ?? w.ms;
       realWordIdx++;
-      return { ...w, ms: newMs };
+      return { ...w, ms: Math.round(newMs) };
     });
     return { ...line, words: newWords, _singEnd: singEnd };
   });
@@ -2063,19 +2040,78 @@ function parseLRC(rawStr) {
   }).filter(Boolean);
 }
 
+// Common words whose syllable count is irregular or context-dependent when sung
+const SYLLABLE_EXCEPTIONS = {
+  // 1 syllable
+  'fire':1,'hour':1,'our':1,'are':1,'were':1,'there':1,'where':1,'here':1,
+  'sure':1,'your':1,'you\'re':1,'they\'re':1,'we\'re':1,'i\'m':1,'i\'ll':1,
+  'i\'ve':1,'i\'d':1,'you\'re':1,'it\'s':1,'that\'s':1,'he\'s':1,'she\'s':1,
+  'who\'s':1,'what\'s':1,'there\'s':1,'here\'s':1,'let\'s':1,'don\'t':1,
+  'can\'t':1,'won\'t':1,'isn\'t':1,'aren\'t':1,'wasn\'t':1,'weren\'t':1,
+  'hadn\'t':1,'hasn\'t':1,'haven\'t':1,'didn\'t':1,'doesn\'t':1,'wouldn\'t':1,
+  'couldn\'t':1,'shouldn\'t':1,'ain\'t':1,'through':1,'though':1,'you':1,
+  'do':1,'to':1,'two':1,'too':1,'who':1,'knew':1,'new':1,'true':1,'blue':1,
+  'give':1,'live':1,'love':1,'come':1,'some':1,'done':1,'none':1,'one':1,
+  'gone':1,'have':1,'give':1,'been':1,'said':1,'does':1,'says':1,
+  // 2 syllables  
+  'every':2,'even':2,'over':2,'under':2,'never':2,'other':2,'after':2,
+  'only':2,'also':2,'away':2,'again':2,'around':2,'before':2,'between':2,
+  'because':2,'people':2,'little':2,'different':2,'water':2,'power':2,
+  'always':2,'something':2,'nothing':2,'anything':2,'everything':2,
+  'heaven':2,'river':2,'better':2,'pretty':2,'feeling':2,'saying':2,
+  'making':2,'taking':2,'coming':2,'going':2,'knowing':2,'showing':2,
+  'trying':2,'crying':2,'lying':2,'dying':2,'flying':2,'buying':2,
+  'runnin':2,'tryna':2,'wanna':2,'gonna':2,'gotta':2,'kinda':2,'sorta':2,
+  'ya':1,'uh':1,'oh':1,'ah':1,'ooh':1,'mm':1,'hmm':1,'yeah':1,'yea':1,
+  'hey':1,'ok':2,'okay':2,
+  // 3 syllables
+  'beautiful':3,'family':3,'natural':3,'personal':3,'national':3,
+  'magical':3,'physical':3,'musical':3,'spiritual':3,'criminal':3,
+  'memory':3,'history':3,'mystery':3,'company':3,'enemy':3,'energy':3,
+  'separate':3,'desperate':3,'different':2,'comfortable':4,
+  'everything':3,'anyone':3,'everyone':3,'somebody':3,'nobody':3,
+  'another':3,'together':3,'forever':3,'whatever':3,'whenever':3,
+  'wherever':3,'however':3,'remember':3,'surrender':3,'discover':3,
+  'consider':3,'deliver':3,'recover':3,'together':3,'belong':2,
+  // 4 syllables
+  'everybody':4,'everything':3,'ordinary':4,'imaginary':5,'unnecessary':5,
+  'American':4,'individual':5,'communication':5,'information':4,
+  'relationship':4,'opportunity':5,'responsibility':6,
+};
+
 function syllableCount(word) {
-  word = word.toLowerCase().replace(/[^a-z']/g,'').replace(/'/g,'');
-  if (!word) return 1;
-  word = word
-    .replace(/tion$/,'shun').replace(/sion$/,'shun')
-    .replace(/cious$/,'shus').replace(/tious$/,'shus')
-    .replace(/eous$/,'us').replace(/geous$/,'jus').replace(/ious$/,'yus')
-    .replace(/ued$/,'ude').replace(/ves$/,'ve');
-  if (word.length > 2 && word.endsWith('e') && !/[aeiou]e$/.test(word)) word = word.slice(0,-1);
-  if (word.endsWith('ed') && !/[dt]ed$/.test(word)) word = word.slice(0,-1);
-  const vowels = word.match(/[aeiouy]+/g);
-  let count = vowels ? vowels.length : 1;
-  if (word[0] === 'y') count = Math.max(1, count - 1);
+  // Strip punctuation for lookup but keep apostrophes for contractions
+  const stripped = word.toLowerCase().replace(/[^a-z']/g, '');
+  if (!stripped) return 1;
+  if (SYLLABLE_EXCEPTIONS[stripped] !== undefined) return SYLLABLE_EXCEPTIONS[stripped];
+
+  // Work on version without apostrophes for phonetic rules
+  let w = stripped.replace(/'/g, '');
+  if (!w) return 1;
+
+  // Common suffix normalizations
+  w = w
+    .replace(/tion$/, 'shun').replace(/sion$/, 'shun')
+    .replace(/cious$/, 'shus').replace(/tious$/, 'shus')
+    .replace(/cial$/, 'shul').replace(/tial$/, 'shul')
+    .replace(/eous$/, 'us').replace(/ious$/, 'us')
+    .replace(/geous$/, 'jus')
+    .replace(/ture$/, 'cher')
+    .replace(/ised$/, 'ized').replace(/ises$/, 'izes')
+    .replace(/ue$/, '') // argue→argu, blue→blu handled by vowel count
+    .replace(/le$/, 'ul'); // handle→handul, simple→simpul
+
+  // Silent e (not after vowel+e pattern like "ee", "ae")
+  if (w.length > 2 && w.endsWith('e') && !/[aeiou]e$/.test(w)) w = w.slice(0, -1);
+  // Silent ed
+  if (w.endsWith('ed') && !/[dt]ed$/.test(w)) w = w.slice(0, -1);
+
+  const vowelGroups = w.match(/[aeiouy]+/g);
+  let count = vowelGroups ? vowelGroups.length : 1;
+
+  // Leading y is consonant
+  if (w[0] === 'y') count = Math.max(1, count - 1);
+
   return Math.max(1, count);
 }
 
@@ -2095,29 +2131,74 @@ function _paceFactor(msPerSyl) {
 }
 
 
+// Words that carry emotional weight — singers hold these longer
+const HELD_WORDS = new Set([
+  'love','loved','loving','lover','hate','hated','pain','cry','cried','tears',
+  'heart','soul','mind','life','die','died','dead','death','live','lived',
+  'lost','gone','away','alone','cold','dark','light','hope','dream','dreamed',
+  'dreaming','stay','stayed','leave','leaving','left','need','needed','want',
+  'wanted','wait','waiting','hold','holding','held','fall','fell','falling',
+  'break','broke','broken','burn','burned','burning','fade','fading','faded',
+  'never','always','forever','ever','still','free','true','real','deep',
+  'far','near','long','strong','wrong','right','night','fight','time',
+  'mine','yours','ours','home','safe','brave','name','face','eyes','hands',
+  'all','end','begin','rise','run','fly','stand','fall','rise','shine',
+  'scream','whisper','silence','breathe','bleed','heal','save','lost',
+]);
+
 function wordDurMul(word, syls, isLast, msPerSyl) {
-  const clean = word.replace(/[^a-z']/gi,'').replace(/'/g,'').toLowerCase();
+  const clean = word.replace(/[^a-z']/gi, '').replace(/'/g, '').toLowerCase();
   const len   = clean.length;
   const pace  = _paceFactor(msPerSyl);
-  let mul = 1.0;
-  if (FAST_WORDS.has(clean))      mul = _lerp(pace, 0.52, 0.65);
-  else if (len <= 2)              mul = _lerp(pace, 0.62, 0.75);
-  else if (len <= 3)              mul = _lerp(pace, 0.76, 0.88);
-  else                            mul = _lerp(pace, 0.92, 1.08);
-  if (/([aeiou])\1{1,}/.test(clean)) mul *= _lerp(pace, 1.25, 1.65);
-  if (/[aeio]$/.test(clean) && len > 2) mul *= _lerp(pace, 1.05, 1.20);
-  if (isLast) mul *= _lerp(pace, 1.20, 1.90);
+
+  // Base multiplier by word category
+  let mul;
+  if (FAST_WORDS.has(clean)) {
+    mul = _lerp(pace, 0.40, 0.58); // function words are quick
+  } else if (len <= 2) {
+    mul = _lerp(pace, 0.55, 0.70);
+  } else if (len <= 3) {
+    mul = _lerp(pace, 0.72, 0.86);
+  } else {
+    mul = _lerp(pace, 0.88, 1.06);
+  }
+
+  // Emotional/held words — singers linger on these
+  if (HELD_WORDS.has(clean)) mul *= _lerp(pace, 1.15, 1.45);
+
+  // Open vowel endings — singer holds the note out (oo, oh, ay, ah, ee)
+  if (/[aeiou]{2,}$/.test(clean)) mul *= _lerp(pace, 1.20, 1.60); // "free", "away", "blue"
+  else if (/[aeo]$/.test(clean) && len > 2) mul *= _lerp(pace, 1.08, 1.22); // "come", "love"
+
+  // Repeated vowel sounds (oooh, ahhh etc) — held sustain
+  if (/([aeiou])\1{1,}/.test(clean)) mul *= _lerp(pace, 1.30, 1.70);
+
+  // Multi-syllable words need proportionally more time
+  if (syls >= 3) mul *= 1.05;
+  if (syls >= 4) mul *= 1.08;
+
+  // Last word always gets a natural hold
+  if (isLast) {
+    const holdBoost = HELD_WORDS.has(clean) || /[aeiou]$/.test(clean)
+      ? _lerp(pace, 1.50, 2.40) // held last word (e.g. "forever", "free")
+      : _lerp(pace, 1.25, 1.85); // normal last word
+    mul *= holdBoost;
+  }
+
   return mul;
 }
 
 function wordPauseAfter(word, msPerSyl) {
   const pace = _paceFactor(msPerSyl);
-  if (/[,;]$/.test(word))  return msPerSyl * _lerp(pace, 0.20, 0.70);
-  if (/:$/.test(word))     return msPerSyl * _lerp(pace, 0.28, 0.80);
-  if (/[—…]$/.test(word))  return msPerSyl * _lerp(pace, 0.45, 1.20);
-  if (/!$/.test(word))     return msPerSyl * _lerp(pace, 0.25, 0.78);
-  if (/\?$/.test(word))    return msPerSyl * _lerp(pace, 0.30, 0.88);
-  if (/\.$/.test(word))    return msPerSyl * _lerp(pace, 0.18, 0.60);
+  // Strip trailing symbols to get actual last char
+  const w = word.replace(/\s+$/, '');
+  if (/[,;]$/.test(w))  return msPerSyl * _lerp(pace, 0.18, 0.65);
+  if (/:$/.test(w))     return msPerSyl * _lerp(pace, 0.25, 0.75);
+  if (/[—–…]$/.test(w)) return msPerSyl * _lerp(pace, 0.40, 1.10);
+  if (/!$/.test(w))     return msPerSyl * _lerp(pace, 0.22, 0.72);
+  if (/\?$/.test(w))    return msPerSyl * _lerp(pace, 0.28, 0.82);
+  if (/\.$/.test(w))    return msPerSyl * _lerp(pace, 0.15, 0.55);
+  if (/[-~*]$/.test(w)) return msPerSyl * _lerp(pace, 0.10, 0.30); // continuation marks
   return 0;
 }
 
@@ -2127,69 +2208,65 @@ function wordSpeedWeight(word, syls, isLast) {
 
 function timingForWords(rawWords, lineMs, nextMs) {
   const n    = rawWords.length;
+  if (n === 0) return [];
+
   const syls = rawWords.map(syllableCount);
   const totalSyls = syls.reduce((a,b) => a+b, 0) || 1;
-  const rawGapMs = Math.max(300, nextMs - lineMs - 80);
 
-  // Cap the singing window so words don't get spread across instrumental gaps.
-  // Max realistic singing: 500ms/syllable (slow ballad) + small hold for last word.
-  // Without this cap, a 30s gap produces word positions spread over 30s.
-  const maxSingMs = Math.round(totalSyls * 500 * 1.4); // 500ms/syl * 1.4 hold factor
+  // Cap the singing window — above 500ms/syl is an instrumental gap, not slow singing
+  const rawGapMs = Math.max(200, nextMs - lineMs - 60);
+  const maxSingMs = Math.round(totalSyls * 500 * 1.5);
   const gapMs = Math.min(rawGapMs, maxSingMs);
 
-  const neutralMsPerSyl = Math.max(95, gapMs / totalSyls);
-  const estimatedPauseMs = rawWords.reduce((acc, w) =>
-    acc + wordPauseAfter(w, neutralMsPerSyl), 0);
-  const singMs   = Math.max(200, gapMs - estimatedPauseMs);
-  const msPerSyl = Math.max(90, singMs / totalSyls);
+  // Estimate ms-per-syllable from this line
+  const neutralMsPerSyl = Math.max(80, gapMs / totalSyls);
+  const pauseEst = rawWords.reduce((acc, w) => acc + wordPauseAfter(w, neutralMsPerSyl), 0);
+  const singMs   = Math.max(150, gapMs - pauseEst);
+  const msPerSyl = Math.max(80, singMs / totalSyls);
 
-  const fillDurs  = rawWords.map((w, wi) =>
-    syls[wi] * msPerSyl * wordDurMul(w, syls[wi], wi === n - 1, msPerSyl));
+  // Compute weighted duration for each word using its syllable count + phonetic mul
+  // This gives "I love you forever" roughly: 5%, 12%, 8%, 75% of time
+  const weights = rawWords.map((w, wi) =>
+    syls[wi] * wordDurMul(w, syls[wi], wi === n - 1, msPerSyl)
+  );
   const pauseDurs = rawWords.map(w => wordPauseAfter(w, msPerSyl));
-  const totalDurs = fillDurs.map((f, wi) => f + pauseDurs[wi]);
-  const rawTotal  = totalDurs.reduce((a,b) => a+b, 0);
+  const totalWeight = weights.reduce((a,b) => a+b, 0) || 1;
+  const totalPause  = pauseDurs.reduce((a,b) => a+b, 0);
 
-  let scaledFill  = fillDurs.slice();
-  let scaledPause = pauseDurs.slice();
+  // Distribute singMs proportionally by weight
+  const singBudget = Math.max(150, singMs - totalPause);
+  let fillDurs = weights.map(w => (w / totalWeight) * singBudget);
 
-  if (rawTotal > gapMs) {
-    const overflow  = rawTotal - gapMs;
-    const isFastArr = rawWords.map(w => {
-      const c = w.replace(/[^a-z]/gi,'').toLowerCase();
-      return FAST_WORDS.has(c) || c.length <= 3;
-    });
-    const fastBudget = totalDurs.reduce((s,d,wi) => s + (isFastArr[wi] ? d : 0), 0);
-    if (fastBudget >= overflow * 0.8) {
-      const ratio = Math.max(0.1, (fastBudget - overflow) / fastBudget);
-      scaledFill  = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
-      scaledPause = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
-    } else {
-      const scale  = gapMs / rawTotal;
-      scaledFill   = fillDurs.map(d => d * scale);
-      scaledPause  = pauseDurs.map(d => Math.max(d * 0.35, d * scale));
-      const newTot = scaledFill.reduce((a,b)=>a+b,0) + scaledPause.reduce((a,b)=>a+b,0);
-      if (newTot > gapMs) {
-        const s2 = gapMs / newTot;
-        scaledFill  = scaledFill.map(d => d * s2);
-        scaledPause = scaledPause.map(d => d * s2);
-      }
-    }
-    scaledFill = scaledFill.map((d,wi) => {
+  // Enforce minimums: function words ≥ 40ms, content words ≥ 65ms
+  fillDurs = fillDurs.map((d, wi) => {
+    const c = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
+    const min = FAST_WORDS.has(c) ? 40 : 65;
+    return Math.max(d, min);
+  });
+
+  // If we've overrun, scale down proportionally (preserve shape)
+  const totalFill = fillDurs.reduce((a,b) => a+b, 0);
+  const budget = gapMs - totalPause;
+  if (totalFill > budget && budget > 0) {
+    const scale = budget / totalFill;
+    fillDurs = fillDurs.map((d, wi) => {
       const c = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
-      return FAST_WORDS.has(c) ? Math.max(d,35) : Math.max(d,60);
+      const min = FAST_WORDS.has(c) ? 35 : 55;
+      return Math.max(min, d * scale);
     });
   }
 
+  // Build result with cursor
   const result = [];
   let cursor = lineMs;
   for (let wi = 0; wi < n; wi++) {
-    result.push({ ms: cursor, word: rawWords[wi] });
-    cursor += scaledFill[wi];
-    if (scaledPause[wi] > 50) {
-      result.push({ ms: cursor, word: '', _isPause: true });
-      cursor += scaledPause[wi];
+    result.push({ ms: Math.round(cursor), word: rawWords[wi] });
+    cursor += fillDurs[wi];
+    if (pauseDurs[wi] > 40) {
+      result.push({ ms: Math.round(cursor), word: '', _isPause: true });
+      cursor += pauseDurs[wi];
     } else {
-      cursor += scaledPause[wi];
+      cursor += pauseDurs[wi];
     }
   }
   return result;
@@ -2289,9 +2366,21 @@ function buildWordTimings(lrc) {
         }
       }
     } else {
-      nextMs = expanded[i+1]?.ms ?? (lineMs + 3500);
+      // Use the next REAL lyric line, not the next array entry (which might be a paren)
+      nextMs = lineMs + 3500;
+      for (let j = i + 1; j < expanded.length; j++) {
+        if (!expanded[j]._isParen && !expanded[j]._synthetic) {
+          nextMs = expanded[j].ms;
+          break;
+        }
+      }
     }
-    const rawWords = (line.text || '').split(/\s+/).filter(Boolean);
+    // Filter out symbol-only tokens (♪, ~, -, *, etc.) — they aren't words to sync
+    const rawWords = (line.text || '').split(/\s+/).filter(w => {
+      if (!w) return false;
+      // Keep if it has at least one letter or digit
+      return /[a-zA-Z0-9']/.test(w);
+    });
 
     if (!rawWords.length) {
       const nextIsWholeParen = expanded[i+1]?._wholeLine;
@@ -2458,31 +2547,33 @@ function seekLrc(i, evt) {
 
 const _lwState = {};
 
-function _setLwState(id, cls, pct, durMs) {
+function _setLwState(id, cls, pct, sweepMs) {
   const prev = _lwState[id];
-  // Only skip if truly nothing changed
   if (prev && prev.cls === cls && prev.pct === pct) return;
-
   _lwState[id] = { cls, pct };
 
   const el = document.getElementById(id);
   if (!el) return;
 
-  const wasUpcoming = prev?.cls === 'upcoming' || !prev;
+  const wasUpcoming = !prev || prev.cls === 'upcoming';
   const isEntry = wasUpcoming && cls === 'now-word';
 
-  if (cls === 'now-word' && durMs !== undefined) {
-    // Set transition duration for this specific word's sweep
-    el.style.setProperty('--lw-dur', durMs + 'ms');
+  if (cls === 'now-word' && sweepMs != null) {
+    // Set the transition duration directly — this is the only reliable way
+    el.style.transition = `--pct ${sweepMs}ms linear, opacity 60ms ease-out`;
+  } else if (cls === 'done' || cls === 'upcoming') {
+    el.style.transition = 'none';
   }
 
   if (isEntry) {
-    el.className = 'lw ' + cls + ' word-enter';
+    el.className = 'lw now-word word-enter';
+    // Set start position without transition, then trigger sweep in next frame
+    el.style.setProperty('--pct', '-20%');
     requestAnimationFrame(() => {
-      el.style.setProperty('--pct', pct);
-      setTimeout(() => {
-        if (el.classList.contains('word-enter')) el.classList.remove('word-enter');
-      }, 200);
+      if (_lwState[id]?.cls !== 'now-word') return;
+      el.style.transition = `--pct ${sweepMs ?? 120}ms linear, opacity 60ms ease-out`;
+      el.style.setProperty('--pct', '110%');
+      setTimeout(() => el.classList.remove('word-enter'), 180);
     });
   } else {
     el.className = 'lw ' + cls;
@@ -2502,38 +2593,45 @@ function _tickWords(lineIdx, t, nextBound) {
   if (!words?.length) return;
 
   let lastRealIdx = words.length - 1;
-  while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
+  while (lastRealIdx > 0 && (words[lastRealIdx]._isPause || words[lastRealIdx]._isInlineParen)) lastRealIdx--;
 
-  const lastW    = words[lastRealIdx];
-  const lastSyls = syllableCount(lastW?.word || '');
+  const lastW = words[lastRealIdx];
+  if (!lastW) return;
+  const lastSyls = syllableCount(lastW.word || '');
 
-  const realWords  = words.filter(w => !w._isPause);
-  const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+  const realWords = words.filter(w => !w._isPause && !w._isInlineParen);
+  const totalSyls = realWords.reduce((a, w) => a + syllableCount(w.word), 0) || 1;
 
-  // Derive msPerSyl from actual word spread — cap at 500 to ignore instrumental gaps
-  const lineSpanMs = realWords.length > 1
-    ? realWords[realWords.length-1].ms - realWords[0].ms : 0;
-  const nonLastSyls = Math.max(1, totalSyls - lastSyls);
-  const rawSpacingMs = realWords.length > 1
-    ? lineSpanMs / nonLastSyls
-    : Math.max(95, Math.min(400, (nextBound - (words[0]?.ms ?? 0)) / totalSyls));
-  const msPerSyl    = Math.max(90, Math.min(500, rawSpacingMs));
-  const pace        = _paceFactor(msPerSyl);
-  const holdMul     = _lerp(pace, 1.20, 1.90);
-  const naturalEnd  = (lastW?.ms ?? 0) + lastSyls * msPerSyl * holdMul;
-  const lastWordEnd = Math.min(naturalEnd, (lastW?.ms ?? 0) + 3000, nextBound - 160);
+  // msPerSyl from actual word spread — never from gap to next line
+  const lineSpanMs = realWords.length > 1 ? realWords[realWords.length-1].ms - realWords[0].ms : 0;
+  let msPerSyl;
+  if (realWords.length > 1) {
+    const nonLastSyls = Math.max(1, totalSyls - lastSyls);
+    msPerSyl = Math.max(80, Math.min(500, lineSpanMs / nonLastSyls));
+  } else {
+    msPerSyl = Math.max(80, Math.min(380, Math.min(nextBound - lastW.ms, 1800) / totalSyls));
+  }
+
+  const pace    = _paceFactor(msPerSyl);
+  const holdMul = _lerp(pace, 1.15, 1.80);
+  const lastWordEnd = Math.min(
+    lastW.ms + Math.round(lastSyls * msPerSyl * holdMul),
+    lastW.ms + 2200,
+    nextBound - 80
+  );
 
   const singEnd = ST.lrc[lineIdx]?._singEnd;
-  const effectiveEnd = (singEnd && singEnd > (lastW?.ms ?? 0) && singEnd < nextBound)
+  const effectiveEnd = (singEnd && singEnd > lastW.ms && singEnd < nextBound && singEnd <= lastWordEnd + 300)
     ? singEnd : lastWordEnd;
+
+  let allDone = true;
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
-    if (w._isPause) continue;
+    if (w._isPause || w._isInlineParen) continue;
+
     const wStart = w.ms;
     const isLast = (wi === lastRealIdx);
-
-    // Find where this word ends (start of next real word, or effectiveEnd for last)
     let wEnd = effectiveEnd;
     if (!isLast) {
       for (let ni = wi + 1; ni < words.length; ni++) {
@@ -2543,49 +2641,53 @@ function _tickWords(lineIdx, t, nextBound) {
       }
     }
 
+    const durMs = Math.max(50, wEnd - wStart);
     const id = 'lw' + lineIdx + '_' + wi;
-    const durMs = Math.max(40, wEnd - wStart);
 
     if (t < wStart) {
+      allDone = false;
       _setLwState(id, 'upcoming', '-20%');
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '110%');
     } else {
-      // Word is currently active — fire CSS transition from -20% to 110%
-      // Duration = remaining time from wStart to wEnd so it arrives exactly on beat
-      const remainingMs = Math.max(40, wEnd - t);
-      const startPct = ((t - wStart) / durMs * 130 - 20).toFixed(1) + '%';
+      allDone = false;
       const prev = _lwState[id];
       if (!prev || prev.cls !== 'now-word') {
-        // Newly active: start the sweep from where we are right now
-        _setLwState(id, 'now-word', startPct, remainingMs);
-        // Immediately kick the CSS transition toward 110%
-        requestAnimationFrame(() => {
-          const el = document.getElementById(id);
-          if (el && _lwState[id]?.cls === 'now-word') {
-            el.style.setProperty('--lw-dur', remainingMs + 'ms');
+        // Word just became active — calculate where in the sweep we currently are
+        const elapsed  = Math.max(0, t - wStart);
+        const remaining = Math.max(50, wEnd - t);
+        const startPct  = Math.max(-20, Math.min(105, (elapsed / durMs) * 130 - 20));
+        // Paint start position instantly (no transition), then kick sweep to end
+        const el = document.getElementById(id);
+        if (el) {
+          el.className = 'lw now-word' + ((!prev || prev.cls === 'upcoming') ? ' word-enter' : '');
+          el.style.transition = 'none';
+          el.style.setProperty('--pct', startPct.toFixed(1) + '%');
+          requestAnimationFrame(() => {
+            if (_lwState[id]?.cls !== 'now-word') return;
+            el.style.transition = `--pct ${remaining}ms linear, opacity 60ms ease-out`;
             el.style.setProperty('--pct', '110%');
-            _lwState[id].pct = '110%';
-          }
-        });
+            setTimeout(() => el.classList.remove('word-enter'), 180);
+          });
+        }
+        _lwState[id] = { cls: 'now-word', pct: '110%' };
       }
-      // If already active, the CSS transition is handling it — don't touch it
+      // Already active — CSS transition handles it
     }
   }
 
-  // Dim the line (ll-sung) once all words are done
+  // ll-sung: dim the line as soon as all sweeps complete
   const lineEl = document.getElementById('ll' + lineIdx);
-  if (lineEl && lineEl.classList.contains('now')) {
-    lineEl.classList.toggle('ll-sung', t >= effectiveEnd);
+  if (lineEl?.classList.contains('now')) {
+    lineEl.classList.toggle('ll-sung', allDone || t >= effectiveEnd);
   }
 }
-
 function _snapDone(lineIdx) {
   (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
     if (w._isPause) return;
     const id = 'lw'+lineIdx+'_'+wi;
     const el = document.getElementById(id);
-    if (el) { el.style.setProperty('--lw-dur', '0ms'); }
+    if (el) el.style.transition = 'none';
     _setLwState(id, 'done', '110%');
   });
 }
@@ -2596,7 +2698,7 @@ function _resetUpcoming(lineIdx) {
     const id = 'lw'+lineIdx+'_'+wi;
     delete _lwState[id];
     const el = document.getElementById(id);
-    if (el) { el.style.setProperty('--lw-dur', '0ms'); }
+    if (el) el.style.transition = 'none';
     _setLwState(id, 'upcoming', '-20%');
   });
 }
@@ -2609,7 +2711,7 @@ function _resetUpcomingSelective(lineIdx, t) {
     const id = 'lw'+lineIdx+'_'+wi;
     delete _lwState[id];
     const el = document.getElementById(id);
-    if (el) { el.style.setProperty('--lw-dur', '0ms'); }
+    if (el) el.style.transition = 'none';
     if (w.ms > t) _setLwState(id, 'upcoming', '-20%');
   });
 }
@@ -2617,7 +2719,7 @@ function _resetUpcomingSelective(lineIdx, t) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  let AHEAD = 150;
+  let AHEAD = 80;
   {
     let lo=0,hi=ST.lrc.length-1,a=0;
     while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
@@ -2626,9 +2728,10 @@ function tickLrc(posMs) {
       const realW = aLine.words.filter(w=>!w._isPause&&!w._isInlineParen);
       if (realW.length > 1) {
         const span = realW[realW.length-1].ms - realW[0].ms;
-        const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
-        // Scale lookahead with tempo: faster songs need less lookahead
-        AHEAD = Math.round(Math.max(80, Math.min(200, mps * 0.45)));
+        const mps  = span / (realW.reduce((s,w)=>s+syllableCount(w.word),0)||1);
+        // Small lookahead: LRC timestamps are at word start, we want highlight ON the beat
+        // Fast songs (mps~100): 50ms. Slow songs (mps~400): 100ms.
+        AHEAD = Math.round(Math.max(40, Math.min(120, mps * 0.25)));
       }
     }
   }
