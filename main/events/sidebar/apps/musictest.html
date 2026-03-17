@@ -1686,7 +1686,6 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
       const globalLi = realLines.indexOf(line);
       const nextReal  = realLines[globalLi + 1];
       const rw        = line.words.filter(w => !w._isPause && !w._isInlineParen && w.word?.trim());
-      // Hard boundary: when the NEXT line starts (no word may reach this)
       const lineEnd   = nextReal?.ms ?? (line.ms + 5000);
       const singMs    = lineEnd - line.ms;
       const syls      = rw.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
@@ -1695,85 +1694,60 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
         ? prevReal.words.filter(w=>!w._isPause&&!w._isInlineParen&&w.word?.trim()).reduce((a,w)=>a+syllableCount(w.word),0)||1
         : null;
       const prevMsps  = prevReal ? Math.round((line.ms - prevReal.ms) / prevSyls) : null;
-
-      // Estimate realistic singing duration (separate from the hard gap to next line).
-      // mspsy is based on the full gap which may include a long instrumental rest —
-      // cap the singing estimate so AI doesn't over-stretch words.
-      const rawMsPerSyl = singMs / syls;
-      const cappedMsPerSyl = Math.min(rawMsPerSyl, 600); // realistic max ~600ms/syl
-      const estSingDur = Math.round(syls * cappedMsPerSyl * 1.15); // +15% for natural hold
-      // naturalEnd: where singing realistically ends (may be << lineEnd for long instrumentals)
-      const naturalEnd = Math.min(line.ms + estSingDur, lineEnd - 100);
-
+      // mspsy capped at 500 — if raw value is higher, it means there's an instrumental gap
+      // after this line, not that the words are sung slowly. The AI must NOT use the inflated
+      // value for singEnd — seMax is the hard ceiling for singEnd.
+      const rawMspsy  = Math.round(singMs / syls);
+      const mspsy     = Math.min(rawMspsy, 500);
+      // seMax: the latest singEnd should ever be. Based on realistic singing duration.
+      const seMax     = Math.min(lineEnd - 80, line.ms + Math.round(syls * mspsy * 1.8));
       return {
-        i:          lrcLines.indexOf(line),
-        ms:         line.ms,
-        end:        lineEnd,         // hard boundary — no word may reach/exceed this
-        naturalEnd: naturalEnd,      // estimated end of singing (where singEnd should land)
-        singMs,
-        mspsy:      Math.round(cappedMsPerSyl), // realistic ms-per-syllable (capped)
-        rawMspsy:   Math.round(rawMsPerSyl),    // actual gap/syls (may be huge for instrumentals)
+        i:       lrcLines.indexOf(line),
+        ms:      line.ms,
+        end:     lineEnd,
+        seMax,
+        mspsy,
         prevMsps,
-        words:      rw.map(w => w.word),
+        words:   rw.map(w => w.word),
       };
     });
   }
 
   async function callAI(payload) {
-    const prompt = `You are a professional lyrics sync engineer for "${title}" by ${artist}. Your output will drive a real-time karaoke word-highlight system.
+    const prompt = `You are a lyrics sync engine for "${title}" by ${artist}.
 
-Each line object has:
-  ms        — line start time (ms)
-  end       — HARD boundary: next line starts here. NO word time may reach or exceed this.
-  naturalEnd — your TARGET for singEnd: where singing likely ends before any instrumental gap.
-               If naturalEnd << end, there is an instrumental gap. DO NOT fill it with words.
-  mspsy     — realistic ms-per-syllable for this line (capped at 600, reflects actual singing speed)
-  rawMspsy  — raw gap divided by syllables (may be huge if there's a long rest after this line)
-  prevMsps  — previous line's ms-per-syllable (null if first line)
-  words     — array of words to time
+Each line object:
+- ms: when this line starts (ms)
+- end: when the NEXT line starts — NO word timestamp may reach or exceed this
+- seMax: the MAXIMUM allowed value for "se" (singEnd). NEVER set se > seMax.
+         seMax accounts for the actual singing duration. If end >> seMax, there is an
+         instrumental gap after the words — the line should dim at seMax, not glow through it.
+- mspsy: ms per syllable (capped at 500 — use this for timing words)
+- prevMsps: previous line's mspsy (null for first line)
+- words: array of words to place timestamps for
 
-YOUR TASK: For each line, produce:
-  w[]  — one timestamp (ms) per word, strictly increasing, all within [ms, end-80]
-  se   — singEnd: the ms when the LAST SYLLABLE finishes. After se, the line sits done/dimmed.
-         se MUST be <= naturalEnd. If naturalEnd - ms < 300, set se = ms + (end-ms)*0.7.
+WORD TIMING:
+1. First word at ms (±60ms for breath/pickup)
+2. Function words (a, an, the, and, or, but, I, my, you, it, in, on, at, to, of, is, be, do, so, we, he, she, they, our, not, no, oh, ah): 0.35–0.50 × mspsy
+3. Content words: 0.85–1.05 × mspsy × syllables
+4. Held/emotional words (love, never, always, heart, pain, gone, stay, wait, please, alone, forever, dream, cry, hold, fall, need, time, lost): 1.10–1.35 × mspsy × syllables
+5. After comma/semicolon: next word starts +0.25×mspsy later
+6. After period/!/?: next word starts +0.40×mspsy later
+7. If mspsy < prevMsps: speeding up — tighten function words to 0.30×
+8. If mspsy > prevMsps×1.3: slowing down — last word holds longer
+9. All timestamps strictly increasing. All within [ms, end-80].
 
-MUSIC INTUITION — apply all of these:
-• Tempo feel: use mspsy as your beat grid. Fast lines (mspsy<150) = tight rap/pop cadence.
-  Slow lines (mspsy>350) = ballad/held notes. Match the feel of the song.
-• Breath & phrasing: singers breathe between phrases. After a comma/semicolon add ~0.3×mspsy gap.
-  After period/!/? add ~0.5×mspsy gap (shift the NEXT word later, don't shrink the previous one).
-• Word weight: function words (a, the, and, I, my, you, it, is, to, of, in, on, at, be, do, we)
-  are sung fast: 0.35–0.50 × mspsy × syllables.
-  Content words: 0.85–1.10 × mspsy × syllables.
-  Emotionally weighted words (love, never, always, pain, heart, death, alone, forever, gone, lost,
-  please, hate, cry, dream, fall, hold, need, save, stay, time, wait): 1.15–1.40 × mspsy × syllables.
-• Vowel holds: words ending in open vowels (ay, oh, ee, ow, ah) or repeated vowels (ooo, aah)
-  get 1.3–1.7× duration multiplier — singers hold these.
-• Last word: always gets the longest hold — typically 1.4–2.2× mspsy × syllables.
-  For a ballad (mspsy>300) the last word can hold even longer.
-• Acceleration / deceleration: if mspsy < prevMsps the line is speeding up — tighten all durations.
-  If mspsy > prevMsps × 1.4 the line is slowing/trailing off — stretch last word more.
-• Syllable spread: multi-syllable words occupy proportionally more time. "beautiful" (3 syls) ≈
-  3× a 1-syllable function word at the same pace.
-• Timing floor: function words ≥ 35ms, content words ≥ 60ms. No word shorter than these.
+SING_END (se):
+- se = ms when the last syllable finishes ringing out
+- se = last_word_ms + (last_word_syllables × mspsy × holdFactor)
+  holdFactor: 1.2 for fast lines (mspsy<150), 1.5 for normal, 1.9 for slow (mspsy>350)
+- se MUST be <= seMax. This is a hard constraint — not a suggestion.
+- If you place se > seMax, the lyric line will glow through instrumental silence. That is a bug.
 
-SING_END (se) rules — THIS IS CRITICAL:
-• se = when the last word's SOUND ends (not when the next line starts).
-• For normal lines: se ≈ last_word_start + last_word_syls × mspsy × holdMul
-  where holdMul is 1.4 (fast) to 2.2 (slow/ballad).
-• se must be ≤ naturalEnd (to avoid highlighting bleeding into instrumental gaps).
-• After se, the karaoke system dims this line and waits silently. This is correct behavior.
-• DO NOT artificially extend se toward end just because there's space — that causes the
-  "lyrics glowing for 30 seconds of guitar solo" bug.
-
-OUTPUT FORMAT — raw JSON only, no markdown, no explanation:
+Return ONLY raw JSON — no markdown, no explanation:
 [{"w":[ms,ms,...],"se":singEndMs},...]
+Every "w" array length must exactly equal the words array length.
 
-Array length MUST equal words array length for every line.
-All w[] values strictly increasing. All within [ms, end-80].
-se <= naturalEnd and > last word's ms.
-
-INPUT:
 ${JSON.stringify(payload)}`;
 
     const res = await fetch('/ai-lyrics', {
@@ -1816,13 +1790,16 @@ ${JSON.stringify(payload)}`;
       if (!ai?.w || ai.w.length !== lp.words.length) return;
       if (!ai.w.every(t => typeof t==='number' && t >= lp.ms - 100 && t < lp.end)) return;
       for (let j = 1; j < ai.w.length; j++) if (ai.w[j] <= ai.w[j-1]) return;
-      // singEnd must be after last word and within naturalEnd (not just end).
-      // This is what prevents the "glowing during 30s of instrumental" bug.
       const lastWordMs = ai.w[ai.w.length - 1];
-      const maxSingEnd = lp.naturalEnd ?? (lp.end - 50);
-      const singEnd = (typeof ai.se === 'number' && ai.se > lastWordMs && ai.se <= maxSingEnd)
+      // Clamp singEnd to seMax — this prevents glowing through instrumental gaps
+      const ceiling = lp.seMax ?? (lp.end - 50);
+      let singEnd = (typeof ai.se === 'number' && ai.se > lastWordMs && ai.se <= ceiling)
         ? ai.se
-        : (lastWordMs < maxSingEnd ? Math.round(lastWordMs + (maxSingEnd - lastWordMs) * 0.6) : null);
+        : null;
+      // Fallback: compute a reasonable singEnd from last word position
+      if (!singEnd && lastWordMs < ceiling) {
+        singEnd = Math.min(ceiling, Math.round(lastWordMs + (ceiling - lastWordMs) * 0.55));
+      }
       refined.set(lp.i, { words: ai.w, singEnd });
     });
   }
@@ -1919,7 +1896,7 @@ async function applyAIRefinements(lines, title, artist, preRefined) {
     const ai = refined.get(i);
     if (!ai || !line.words?.length) return line;
 
-    let singEnd  = ai.singEnd ?? null;
+    const singEnd  = ai.singEnd ?? null;
     const rawTimes = ai.words ?? [];
 
     let wordTimes = rawTimes;
@@ -1931,22 +1908,6 @@ async function applyAIRefinements(lines, title, artist, preRefined) {
       const targetSpan = Math.max(1, targetEnd - line.ms);
       const scale = Math.min(1, targetSpan / origSpan);
       wordTimes = rawTimes.map(ms => Math.round(line.ms + (ms - origFirst) * scale));
-    }
-
-    // Find next real line start to compute naturalEnd clamp
-    let nextLineMs = null;
-    for (let j = i + 1; j < lines.length; j++) {
-      if (!lines[j]._isParen && !lines[j]._synthetic) { nextLineMs = lines[j].ms; break; }
-    }
-    // Cap singEnd to be reasonable: not past natural end of singing
-    if (singEnd && nextLineMs) {
-      const rawWords = line.words.filter(w => !w._isPause && !w._isInlineParen && w.word?.trim());
-      const syls = rawWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
-      const rawMsPerSyl = (nextLineMs - line.ms) / syls;
-      const cappedMsPerSyl = Math.min(rawMsPerSyl, 600);
-      const estimatedSingDur = syls * cappedMsPerSyl * 1.25;
-      const naturalEnd = line.ms + estimatedSingDur;
-      if (singEnd > naturalEnd) singEnd = Math.round(naturalEnd);
     }
 
     let realWordIdx = 0;
@@ -2529,41 +2490,33 @@ function _tickWords(lineIdx, t, nextBound) {
   const realWords  = words.filter(w => !w._isPause);
   const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
 
-  // Use AI-provided singEnd if available — this is the key fix for the "long instrumental gap" bug.
-  // singEnd tells us exactly when singing ends, independent of when the next lyric line starts.
-  const aiSingEnd = ST.lrc[lineIdx]?._singEnd;
-
-  // Compute a natural end from actual word timing rather than the next-line boundary.
-  // Cap the "effective" window at singEnd if we have it, or estimate based on syllable density.
+  // Derive msPerSyl from actual word positions — NOT from nextBound.
+  // nextBound can be 30s away (instrumental gap); using it inflates hold time massively.
   const lineSpanMs = realWords.length > 1
     ? realWords[realWords.length-1].ms - realWords[0].ms
-    : Math.max(300, Math.min(nextBound, words[0].ms + 4000) - words[0].ms - 80);
+    : 0;
   const nonLastSyls = Math.max(1, totalSyls - lastSyls);
-  const spacingMs   = realWords.length > 1
+  const rawSpacingMs = realWords.length > 1
     ? lineSpanMs / nonLastSyls
-    : Math.max(95, Math.min(350, (Math.min(nextBound, words[0].ms + 4000) - words[0].ms) / totalSyls));
-  const msPerSyl  = Math.max(90, spacingMs);
+    : Math.max(95, Math.min(400, (nextBound - words[0].ms) / totalSyls));
+  // Cap at 500ms/syl — above this means an instrumental rest, not slow singing
+  const msPerSyl  = Math.max(90, Math.min(500, rawSpacingMs));
   const pace      = _paceFactor(msPerSyl);
   const holdMul   = _lerp(pace, 1.20, 1.90);
   const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
+  // Hard cap: never hold last word more than 3s past where it starts
+  const lastWordEnd = Math.min(naturalEnd, lastW.ms + 3000, nextBound - 160);
 
-  // If AI gave us a singEnd, use it directly (clamped to be sane).
-  // Otherwise fall back to naturalEnd — but never extend past nextBound - 160.
-  // This prevents the "last word glows for 30 extra seconds of instrumental" bug.
-  let lastWordEnd;
-  if (aiSingEnd && aiSingEnd > lastW.ms && aiSingEnd < nextBound) {
-    lastWordEnd = aiSingEnd;
-  } else {
-    // Without AI singEnd, clamp naturalEnd to a reasonable hold (max ~2.5s after last word start)
-    const maxHold = lastW.ms + Math.max(400, lastSyls * msPerSyl * 1.6);
-    lastWordEnd = Math.min(naturalEnd, maxHold, nextBound - 160);
-  }
+  // Use AI _singEnd if present — it's always more reliable than the estimate above
+  const singEnd = ST.lrc[lineIdx]?._singEnd;
+  const effectiveEnd = (singEnd && singEnd > lastW.ms && singEnd < nextBound)
+    ? singEnd : lastWordEnd;
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
     if (w._isPause) continue;
     const wStart = w.ms;
-    let wEnd = lastWordEnd;
+    let wEnd = effectiveEnd;
     if (wi < words.length - 1) {
       for (let ni = wi + 1; ni < words.length; ni++) {
         const nw = words[ni];
@@ -2577,10 +2530,19 @@ function _tickWords(lineIdx, t, nextBound) {
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
     } else {
+      // Smooth ease-in-out: the gradient sweeps naturally, not with a hard knee
       const raw   = (t - wStart) / Math.max(1, wEnd - wStart);
-      const eased = raw < 0.25 ? raw * raw * 4 : 0.25 + (raw - 0.25);
+      const eased = raw < 0.5
+        ? 2 * raw * raw
+        : 1 - Math.pow(-2 * raw + 2, 2) / 2;
       _setLwState(id, 'now-word', (Math.min(1, eased) * 100).toFixed(1) + '%');
     }
+  }
+
+  // Dim the line (ll-sung) once singing is done, so it doesn't glow through instrumentals
+  const lineEl = document.getElementById('ll' + lineIdx);
+  if (lineEl && lineEl.classList.contains('now')) {
+    lineEl.classList.toggle('ll-sung', t >= effectiveEnd);
   }
 }
 
@@ -2729,15 +2691,6 @@ function tickLrc(posMs) {
     if (e._isParen && !e._wholeLine && e._parenParentMs === ST.lrc[focus]?.ms) continue;
     focusBound = e.ms;
     break;
-  }
-
-  // Apply ll-sung fade when singing has ended (singEnd reached) but we're still on this line.
-  // This is what makes lyrics dim naturally during instrumental gaps instead of staying bright.
-  const focusEl2 = document.getElementById('ll' + focus);
-  if (focusEl2) {
-    const singEnd = ST.lrc[focus]?._singEnd;
-    const isSung = singEnd ? (t >= singEnd) : false;
-    focusEl2.classList.toggle('ll-sung', isSung);
   }
 
   if (parenActive >= 0) {
