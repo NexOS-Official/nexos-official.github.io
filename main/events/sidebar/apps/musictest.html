@@ -5,7 +5,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ghost | music v3</title>
+<title>Ghost | music</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -278,11 +278,11 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   animation:ll-bounce 0.30s cubic-bezier(.34,1.56,.64,1) both;
 }
 .ll.now.ll-sung{
-  font-size:26px !important;
-  opacity:0.45 !important;
-  color:rgba(255,255,255,0.45) !important;
-  letter-spacing:-0.015em !important;
-  transition:font-size 0.8s cubic-bezier(.4,0,.2,1), opacity 0.9s ease-out, color 0.9s ease-out !important;
+  font-size:24px !important;
+  opacity:0.38 !important;
+  color:rgba(255,255,255,0.38) !important;
+  letter-spacing:-0.010em !important;
+  transition:font-size 1.0s cubic-bezier(.4,0,.2,1), opacity 1.0s ease-out, color 1.0s ease-out, letter-spacing 1.0s ease-out !important;
 }
 @keyframes ll-bounce {
   0%   { transform:scale(0.93); }
@@ -349,22 +349,30 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   initial-value: -20%;
 }
 
+@property --lw-dur {
+  syntax: '<time>';
+  inherits: false;
+  initial-value: 0ms;
+}
+
 
 
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
-    #ffffff calc(var(--pct, -20%) - 10%),
-    rgba(255,255,255,0.92) calc(var(--pct, -20%) - 2%),
-    rgba(255,255,255,0.25) calc(var(--pct, -20%) + 8%),
-    rgba(255,255,255,0.05) calc(var(--pct, -20%) + 18%)
+    #ffffff calc(var(--pct, -20%) - 2%),
+    rgba(255,255,255,0.85) calc(var(--pct, -20%) + 4%),
+    rgba(255,255,255,0.18) calc(var(--pct, -20%) + 12%),
+    rgba(255,255,255,0.04) calc(var(--pct, -20%) + 20%)
   );
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
+  /* --pct transition drives the smooth sweep — duration set per-word by JS */
   transition:
-    filter 120ms ease-out,
-    opacity 80ms ease-out;
+    --pct var(--lw-dur, 120ms) linear,
+    filter 80ms ease-out,
+    opacity 60ms ease-out;
   opacity:1;
 }
 .ll.now .lw.done,
@@ -372,23 +380,25 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.near .lw,
 .ll.near2 .lw{
   --pct:110%;
+  --lw-dur:0ms;
   filter:none;
   opacity:1;
 }
 .ll.now .lw.upcoming{
   --pct:-20%;
+  --lw-dur:0ms;
   filter:none;
-  opacity:0.55;
+  opacity:0.38;
 }
 .ll.now .lw.now-word{
   filter:none;
   opacity:1;
 }
 .ll.now .lw.now-word.word-enter{
-  animation: word-entry-glow 220ms ease-out forwards;
+  animation: word-entry-glow 180ms ease-out forwards;
 }
 @keyframes word-entry-glow {
-  0%   { opacity: 0.5; }
+  0%   { opacity: 0.4; }
   100% { opacity: 1; }
 }
 
@@ -2134,7 +2144,7 @@ function timingForWords(rawWords, lineMs, nextMs) {
   const msPerSyl = Math.max(90, singMs / totalSyls);
 
   const fillDurs  = rawWords.map((w, wi) =>
-    syls[wi] * msPerSyl * wordDurMul(w, syls[wi], false, msPerSyl));
+    syls[wi] * msPerSyl * wordDurMul(w, syls[wi], wi === n - 1, msPerSyl));
   const pauseDurs = rawWords.map(w => wordPauseAfter(w, msPerSyl));
   const totalDurs = fillDurs.map((f, wi) => f + pauseDurs[wi]);
   const rawTotal  = totalDurs.reduce((a,b) => a+b, 0);
@@ -2448,29 +2458,31 @@ function seekLrc(i, evt) {
 
 const _lwState = {};
 
-function _setLwState(id, cls, pct) {
+function _setLwState(id, cls, pct, durMs) {
   const prev = _lwState[id];
-  if (prev && prev.cls === cls && (cls !== 'now-word' || prev.pct === pct)) return;
+  // Only skip if truly nothing changed
+  if (prev && prev.cls === cls && prev.pct === pct) return;
 
-  const wasUpcoming = prev?.cls === 'upcoming' || !prev;
   _lwState[id] = { cls, pct };
 
   const el = document.getElementById(id);
   if (!el) return;
 
-  
+  const wasUpcoming = prev?.cls === 'upcoming' || !prev;
   const isEntry = wasUpcoming && cls === 'now-word';
 
+  if (cls === 'now-word' && durMs !== undefined) {
+    // Set transition duration for this specific word's sweep
+    el.style.setProperty('--lw-dur', durMs + 'ms');
+  }
+
   if (isEntry) {
-    
     el.className = 'lw ' + cls + ' word-enter';
-    
-    
     requestAnimationFrame(() => {
       el.style.setProperty('--pct', pct);
       setTimeout(() => {
         if (el.classList.contains('word-enter')) el.classList.remove('word-enter');
-      }, 230);
+      }, 200);
     });
   } else {
     el.className = 'lw ' + cls;
@@ -2493,61 +2505,75 @@ function _tickWords(lineIdx, t, nextBound) {
   while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
 
   const lastW    = words[lastRealIdx];
-  const lastSyls = syllableCount(lastW.word);
+  const lastSyls = syllableCount(lastW?.word || '');
 
   const realWords  = words.filter(w => !w._isPause);
   const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
 
-  // Derive msPerSyl from actual word positions — NOT from nextBound.
-  // nextBound can be 30s away (instrumental gap); using it inflates hold time massively.
+  // Derive msPerSyl from actual word spread — cap at 500 to ignore instrumental gaps
   const lineSpanMs = realWords.length > 1
-    ? realWords[realWords.length-1].ms - realWords[0].ms
-    : 0;
+    ? realWords[realWords.length-1].ms - realWords[0].ms : 0;
   const nonLastSyls = Math.max(1, totalSyls - lastSyls);
   const rawSpacingMs = realWords.length > 1
     ? lineSpanMs / nonLastSyls
-    : Math.max(95, Math.min(400, (nextBound - words[0].ms) / totalSyls));
-  // Cap at 500ms/syl — above this means an instrumental rest, not slow singing
-  const msPerSyl  = Math.max(90, Math.min(500, rawSpacingMs));
-  const pace      = _paceFactor(msPerSyl);
-  const holdMul   = _lerp(pace, 1.20, 1.90);
-  const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
-  // Hard cap: never hold last word more than 3s past where it starts
-  const lastWordEnd = Math.min(naturalEnd, lastW.ms + 3000, nextBound - 160);
+    : Math.max(95, Math.min(400, (nextBound - (words[0]?.ms ?? 0)) / totalSyls));
+  const msPerSyl    = Math.max(90, Math.min(500, rawSpacingMs));
+  const pace        = _paceFactor(msPerSyl);
+  const holdMul     = _lerp(pace, 1.20, 1.90);
+  const naturalEnd  = (lastW?.ms ?? 0) + lastSyls * msPerSyl * holdMul;
+  const lastWordEnd = Math.min(naturalEnd, (lastW?.ms ?? 0) + 3000, nextBound - 160);
 
-  // Use AI _singEnd if present — it's always more reliable than the estimate above
   const singEnd = ST.lrc[lineIdx]?._singEnd;
-  const effectiveEnd = (singEnd && singEnd > lastW.ms && singEnd < nextBound)
+  const effectiveEnd = (singEnd && singEnd > (lastW?.ms ?? 0) && singEnd < nextBound)
     ? singEnd : lastWordEnd;
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
     if (w._isPause) continue;
     const wStart = w.ms;
+    const isLast = (wi === lastRealIdx);
+
+    // Find where this word ends (start of next real word, or effectiveEnd for last)
     let wEnd = effectiveEnd;
-    if (wi < words.length - 1) {
+    if (!isLast) {
       for (let ni = wi + 1; ni < words.length; ni++) {
         const nw = words[ni];
         if (!nw._isPause && !nw._isInlineParen) { wEnd = nw.ms; break; }
         if (nw._isPause) { wEnd = nw.ms; break; }
       }
     }
+
     const id = 'lw' + lineIdx + '_' + wi;
+    const durMs = Math.max(40, wEnd - wStart);
+
     if (t < wStart) {
       _setLwState(id, 'upcoming', '-20%');
     } else if (t >= wEnd) {
-      _setLwState(id, 'done', '100%');
+      _setLwState(id, 'done', '110%');
     } else {
-      // Smooth ease-in-out: the gradient sweeps naturally, not with a hard knee
-      const raw   = (t - wStart) / Math.max(1, wEnd - wStart);
-      const eased = raw < 0.5
-        ? 2 * raw * raw
-        : 1 - Math.pow(-2 * raw + 2, 2) / 2;
-      _setLwState(id, 'now-word', (Math.min(1, eased) * 100).toFixed(1) + '%');
+      // Word is currently active — fire CSS transition from -20% to 110%
+      // Duration = remaining time from wStart to wEnd so it arrives exactly on beat
+      const remainingMs = Math.max(40, wEnd - t);
+      const startPct = ((t - wStart) / durMs * 130 - 20).toFixed(1) + '%';
+      const prev = _lwState[id];
+      if (!prev || prev.cls !== 'now-word') {
+        // Newly active: start the sweep from where we are right now
+        _setLwState(id, 'now-word', startPct, remainingMs);
+        // Immediately kick the CSS transition toward 110%
+        requestAnimationFrame(() => {
+          const el = document.getElementById(id);
+          if (el && _lwState[id]?.cls === 'now-word') {
+            el.style.setProperty('--lw-dur', remainingMs + 'ms');
+            el.style.setProperty('--pct', '110%');
+            _lwState[id].pct = '110%';
+          }
+        });
+      }
+      // If already active, the CSS transition is handling it — don't touch it
     }
   }
 
-  // Dim the line (ll-sung) once singing is done, so it doesn't glow through instrumentals
+  // Dim the line (ll-sung) once all words are done
   const lineEl = document.getElementById('ll' + lineIdx);
   if (lineEl && lineEl.classList.contains('now')) {
     lineEl.classList.toggle('ll-sung', t >= effectiveEnd);
@@ -2557,7 +2583,10 @@ function _tickWords(lineIdx, t, nextBound) {
 function _snapDone(lineIdx) {
   (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
     if (w._isPause) return;
-    _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
+    const id = 'lw'+lineIdx+'_'+wi;
+    const el = document.getElementById(id);
+    if (el) { el.style.setProperty('--lw-dur', '0ms'); }
+    _setLwState(id, 'done', '110%');
   });
 }
 
@@ -2566,6 +2595,8 @@ function _resetUpcoming(lineIdx) {
     if (w._isPause) return;
     const id = 'lw'+lineIdx+'_'+wi;
     delete _lwState[id];
+    const el = document.getElementById(id);
+    if (el) { el.style.setProperty('--lw-dur', '0ms'); }
     _setLwState(id, 'upcoming', '-20%');
   });
 }
@@ -2577,6 +2608,8 @@ function _resetUpcomingSelective(lineIdx, t) {
     if (w._isPause) return;
     const id = 'lw'+lineIdx+'_'+wi;
     delete _lwState[id];
+    const el = document.getElementById(id);
+    if (el) { el.style.setProperty('--lw-dur', '0ms'); }
     if (w.ms > t) _setLwState(id, 'upcoming', '-20%');
   });
 }
@@ -2584,7 +2617,7 @@ function _resetUpcomingSelective(lineIdx, t) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  let AHEAD = 80;
+  let AHEAD = 150;
   {
     let lo=0,hi=ST.lrc.length-1,a=0;
     while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
@@ -2594,7 +2627,8 @@ function tickLrc(posMs) {
       if (realW.length > 1) {
         const span = realW[realW.length-1].ms - realW[0].ms;
         const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
-        AHEAD = Math.round(Math.max(50, Math.min(150, mps * 0.30)));
+        // Scale lookahead with tempo: faster songs need less lookahead
+        AHEAD = Math.round(Math.max(80, Math.min(200, mps * 0.45)));
       }
     }
   }
