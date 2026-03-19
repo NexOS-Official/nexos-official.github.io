@@ -3780,30 +3780,39 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (!bkBar.contains(e.target)) bkCtxMenu.style.display = 'none';
                 });
 
-                document.getElementById('addJsBookmarkBtn').addEventListener('click', () => {
+                document.getElementById('addJsBookmarkBtn').addEventListener('click', (e) => {
+                    e.stopPropagation();
                     bkCtxMenu.style.display = 'none';
+
                     var popup = document.getElementById('bookmarkEditPopup');
+                    if (!popup) return;
+
                     var titleNode = popup.querySelector('.bk-title');
                     var nameInput = document.getElementById('bkEditName');
+                    var urlInput = document.getElementById('bkEditUrl');
                     var urlField = popup.querySelector('.bk-field-url');
                     var codeField = popup.querySelector('.bk-field-code');
                     var codeInput = document.getElementById('bkEditCode');
                     var removeBtn = document.getElementById('bkRemoveBtn');
 
                     if (titleNode) titleNode.textContent = 'Add JS Bookmark';
-                    nameInput.value = '';
-                    urlField.style.display = 'none';
-                    codeField.style.display = '';
-                    codeInput.value = '';
-                    removeBtn.style.display = 'none';
+                    if (nameInput) nameInput.value = '';
+                    if (urlInput) urlInput.value = '';
+                    if (urlField) urlField.style.display = 'none';
+                    if (codeField) codeField.style.display = '';
+                    if (codeInput) codeInput.value = '';
+                    if (removeBtn) removeBtn.style.display = 'none';
                     popup.dataset.jsMode = 'true';
 
                     var starBtn = document.getElementById('bookmarkStarBtn');
-                    var rect = starBtn.getBoundingClientRect();
-                    popup.style.top = (rect.bottom + 4) + 'px';
-                    popup.style.right = (window.innerWidth - rect.right) + 'px';
+                    if (starBtn) {
+                        var rect = starBtn.getBoundingClientRect();
+                        popup.style.top = (rect.bottom + 4) + 'px';
+                        popup.style.right = (window.innerWidth - rect.right) + 'px';
+                    }
+
                     popup.classList.add('visible');
-                    nameInput.focus();
+                    if (nameInput) nameInput.focus();
                 });
 
                 this.music.addEventListener('click', () => this.handleHeadphonesClick());
@@ -5977,24 +5986,48 @@ if (this.isBlockedUrl(url)) {
                     // Listen for bookmarklet execution messages and forward to nested iframes
                     try {
                         iframeWin.addEventListener('message', function(evt) {
-                            if (evt.data && evt.data.type === 'nexos-run-bookmarklet' && evt.data.code) {
+                            if (!evt.data || !evt.data.type) return;
+
+                            if (evt.data.type === 'nexos-hide-eruda-entry') {
+                                try {
+                                    var erudaBtn = iframeWin.document.querySelector('.eruda-entry-btn');
+                                    if (erudaBtn) erudaBtn.style.display = 'none';
+                                } catch(e) {}
+
+                                try {
+                                    var erudaFrames = iframeWin.document.querySelectorAll('iframe');
+                                    erudaFrames.forEach(function(f) {
+                                        try { f.contentWindow.postMessage({ type: 'nexos-hide-eruda-entry' }, '*'); } catch(e) {}
+                                    });
+                                } catch(e) {}
+                                return;
+                            }
+
+                            if (evt.data.type === 'nexos-run-bookmarklet' && evt.data.code) {
+                                var payload = String(evt.data.code);
                                 var executed = false;
+
                                 try {
                                     var s = iframeWin.document.createElement('script');
-                                    s.textContent = evt.data.code;
+                                    s.textContent = payload;
                                     (iframeWin.document.head || iframeWin.document.documentElement).appendChild(s);
                                     setTimeout(function() { try { s.remove(); } catch(e) {} }, 100);
                                     executed = true;
                                 } catch(e) {
-                                    try { iframeWin.eval(evt.data.code); executed = true; } catch(e2) {}
+                                    try { iframeWin.eval(payload); executed = true; } catch(e2) {}
                                 }
-                                // Also forward to all nested iframes in case this is a proxy wrapper
+
+                                // Forward to all nested iframes in case this is a proxy wrapper
                                 try {
                                     var nestedFrames = iframeWin.document.querySelectorAll('iframe');
                                     nestedFrames.forEach(function(f) {
                                         try {
-                                            f.contentWindow.postMessage({ type: 'nexos-run-bookmarklet', code: evt.data.code }, '*');
+                                            f.contentWindow.postMessage({ type: 'nexos-run-bookmarklet', code: payload }, '*');
                                         } catch(e) {}
+
+                                        if (!executed) {
+                                            try { f.contentWindow.location.href = 'javascript:' + payload; } catch(e) {}
+                                        }
                                     });
                                 } catch(e) {}
                             }
@@ -9018,11 +9051,73 @@ setInterval(async () => {
         try { code = decodeURIComponent(code); } catch(e) {}
 
         // Deduplicate: hash the code to prevent spam execution of the same bookmarklet
-        var codeHash = code.length + '_' + code.substring(0, 100);
+        var codeHash = code.length + '_' + code.substring(0, 120);
         var tabKey = tab.id + '_' + codeHash;
         if (_bookmarkletRunning[tabKey]) return;
         _bookmarkletRunning[tabKey] = true;
-        setTimeout(function() { delete _bookmarkletRunning[tabKey]; }, 1500);
+        setTimeout(function() { delete _bookmarkletRunning[tabKey]; }, 2000);
+
+        var runId = String(Date.now()) + '_' + Math.random().toString(36).slice(2, 8);
+        var guardKey = '__nexosBookmarkletRun_' + codeHash.replace(/[^a-zA-Z0-9_]/g, '_');
+        var payload = "(function(){try{if(window['" + guardKey + "']) return; window['" + guardKey + "']=1;" + code + "}catch(__nexosErr){try{console.error(__nexosErr);}catch(__ignore){}}})();";
+
+        function postToAllFrames(win, msg) {
+            try { win.postMessage(msg, '*'); } catch(e) {}
+            try {
+                for (var i = 0; i < win.frames.length; i++) {
+                    try { postToAllFrames(win.frames[i], msg); } catch(e) {}
+                }
+            } catch(e) {}
+        }
+
+        function tryExecuteInWindow(win) {
+            if (!win) return false;
+            var marker = '__nexosExecMarker_' + runId;
+            var ran = false;
+
+            try { win[marker] = 0; } catch(e) {}
+
+            // Inline script (fast path)
+            try {
+                var doc = win.document;
+                var inline = doc.createElement('script');
+                inline.textContent = "window['" + marker + "']=1;" + payload;
+                (doc.head || doc.documentElement).appendChild(inline);
+                try { inline.remove(); } catch(e) {}
+                ran = ran || win[marker] === 1;
+            } catch(e) {}
+
+            // eval fallback
+            if (!ran) {
+                try {
+                    win.eval("window['" + marker + "']=2;" + payload);
+                    ran = win[marker] === 2;
+                } catch(e) {}
+            }
+
+            // Function constructor fallback
+            if (!ran) {
+                try {
+                    win.Function("window['" + marker + "']=3;" + payload)();
+                    ran = win[marker] === 3;
+                } catch(e) {}
+            }
+
+            // Blob URL script fallback (for strict inline CSP pages)
+            if (!ran) {
+                try {
+                    var blob = new Blob(["window['" + marker + "']=4;" + payload], { type: 'application/javascript' });
+                    var blobUrl = URL.createObjectURL(blob);
+                    var blobScript = win.document.createElement('script');
+                    blobScript.src = blobUrl;
+                    blobScript.onload = function() { try { URL.revokeObjectURL(blobUrl); } catch(e) {} try { blobScript.remove(); } catch(e) {} };
+                    blobScript.onerror = function() { try { URL.revokeObjectURL(blobUrl); } catch(e) {} try { blobScript.remove(); } catch(e) {} };
+                    (win.document.head || win.document.documentElement).appendChild(blobScript);
+                } catch(e) {}
+            }
+
+            return ran;
+        }
 
         // Detect eruda
         var isEruda = /eruda/i.test(code);
@@ -9031,7 +9126,7 @@ setInterval(async () => {
             if (_erudaLoaded[erudaTabKey]) return;
             _erudaLoaded[erudaTabKey] = true;
 
-            // Open eruda in sidebar
+            // Open eruda in sidebar immediately
             var erudaSidebarId = b.openSidebar('Console', 'about:blank');
             var sb = b.sidebars.get(erudaSidebarId);
             if (sb && sb.iframe) {
@@ -9042,7 +9137,7 @@ setInterval(async () => {
                         var win = erudaIframe.contentWindow;
                         var doc = win.document;
                         doc.open();
-                        doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Console</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#fff;font-family:monospace;height:100vh;overflow:hidden;}</style></head><body><div id="eruda-container" style="width:100%;height:100%;"></div></body></html>');
+                        doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Console</title><style>*{margin:0;padding:0;box-sizing:border-box;}html,body{width:100%;height:100%;overflow:hidden;background:#fff;font-family:monospace;}#eruda-container{width:100%;height:100%;}</style></head><body><div id="eruda-container"></div></body></html>');
                         doc.close();
 
                         var script = doc.createElement('script');
@@ -9055,33 +9150,9 @@ setInterval(async () => {
                                     useShadowDom: false,
                                     autoScale: true
                                 });
-                                // Hide the floating button, show console directly
                                 var entryBtn = doc.querySelector('.eruda-entry-btn');
                                 if (entryBtn) entryBtn.style.display = 'none';
                                 win.eruda.show('console');
-                                // Make eruda fill the container
-                                var erudaEl = doc.querySelector('.eruda-container');
-                                if (erudaEl) {
-                                    erudaEl.style.position = 'relative';
-                                    erudaEl.style.width = '100%';
-                                    erudaEl.style.height = '100%';
-                                    erudaEl.style.left = '0';
-                                    erudaEl.style.top = '0';
-                                    erudaEl.style.bottom = '0';
-                                }
-                                // Connect to main tab's console
-                                var origConsole = {};
-                                var targetWin = getDeepestIframeWindow(tab.iframe);
-                                if (targetWin) {
-                                    ['log','warn','error','info','debug'].forEach(function(m) {
-                                        var orig = targetWin.console[m];
-                                        origConsole[m] = orig;
-                                        targetWin.console[m] = function() {
-                                            try { orig.apply(targetWin.console, arguments); } catch(e) {}
-                                            try { win.eruda.get('console')[m].apply(null, arguments); } catch(e) {}
-                                        };
-                                    });
-                                }
                             } catch(e) { console.error('Eruda init error:', e); }
                         };
                         doc.head.appendChild(script);
@@ -9090,90 +9161,52 @@ setInterval(async () => {
                 erudaIframe.src = 'about:blank';
             }
 
-            // Clean up eruda tracking when sidebar closes
+            // Keep eruda single-instance per tab and clear lock on sidebar close
             var origClose = b.closeSidebarById.bind(b);
             b.closeSidebarById = function(id) {
                 if (id === erudaSidebarId) delete _erudaLoaded[erudaTabKey];
                 return origClose(id);
             };
+
+            // Ensure any in-page eruda launcher button stays hidden
+            try {
+                var rootForEruda = tab.iframe.contentWindow;
+                if (rootForEruda) postToAllFrames(rootForEruda, { type: 'nexos-hide-eruda-entry' });
+            } catch(e) {}
             return;
         }
 
-        var executed = false;
-
-        // Try direct access first
         var targetWin = getDeepestIframeWindow(tab.iframe);
-        if (targetWin) {
-            try {
-                var scriptEl = targetWin.document.createElement('script');
-                scriptEl.textContent = code;
-                (targetWin.document.head || targetWin.document.documentElement).appendChild(scriptEl);
-                setTimeout(function() { try { scriptEl.remove(); } catch(e) {} }, 100);
-                executed = true;
-            } catch(e) {}
+        var rootWin = null;
+        try { rootWin = tab.iframe.contentWindow; } catch(e) {}
 
-            if (!executed) {
-                try { targetWin.eval(code); executed = true; } catch(e) {}
-            }
+        var executed = false;
+        executed = tryExecuteInWindow(targetWin) || executed;
+        if (rootWin && rootWin !== targetWin) {
+            executed = tryExecuteInWindow(rootWin) || executed;
         }
 
-        // Try URL-based injection for CSP-restricted pages
-        if (!executed) {
-            try {
-                var iframeWin = tab.iframe.contentWindow;
-                if (iframeWin) {
-                    // Try creating a blob URL script
-                    try {
-                        var blob = new Blob([code], { type: 'application/javascript' });
-                        var blobUrl = URL.createObjectURL(blob);
-                        var s = iframeWin.document.createElement('script');
-                        s.src = blobUrl;
-                        s.onload = function() { URL.revokeObjectURL(blobUrl); try { s.remove(); } catch(e) {} };
-                        s.onerror = function() { URL.revokeObjectURL(blobUrl); try { s.remove(); } catch(e) {} };
-                        (iframeWin.document.head || iframeWin.document.documentElement).appendChild(s);
-                        executed = true;
-                    } catch(e) {}
-                }
-            } catch(e) {}
-        }
-
-        // Try data URI injection
-        if (!executed) {
-            try {
-                var iframeWin = tab.iframe.contentWindow;
-                if (iframeWin) {
-                    var s = iframeWin.document.createElement('script');
-                    s.src = 'data:text/javascript;base64,' + btoa(unescape(encodeURIComponent(code)));
-                    s.onload = function() { try { s.remove(); } catch(e) {} };
-                    (iframeWin.document.head || iframeWin.document.documentElement).appendChild(s);
-                    executed = true;
-                }
-            } catch(e) {}
-        }
-
-        // Try navigation-based execution as last resort
-        if (!executed) {
-            try {
-                tab.iframe.contentWindow.location.href = 'javascript:' + encodeURIComponent(code);
-                executed = true;
-            } catch(e) {}
-        }
-
-        // PostMessage fallback for fully cross-origin pages
-        if (!executed) {
-            function postToAllFrames(win, msg) {
-                try { win.postMessage(msg, '*'); } catch(e) {}
-                try {
-                    for (var i = 0; i < win.frames.length; i++) {
-                        try { postToAllFrames(win.frames[i], msg); } catch(e) {}
-                    }
-                } catch(e) {}
-            }
-            try {
-                postToAllFrames(tab.iframe.contentWindow, {
+        // Broadcast payload so proxy wrappers and nested frames can run it too
+        try {
+            if (rootWin) {
+                postToAllFrames(rootWin, {
                     type: 'nexos-run-bookmarklet',
-                    code: code
+                    code: payload
                 });
+            }
+        } catch(e) {}
+
+        // Navigation fallback for heavily restricted pages
+        if (!executed) {
+            try {
+                if (rootWin) rootWin.location.href = 'javascript:' + payload;
+            } catch(e) {}
+            try {
+                if (rootWin) {
+                    for (var fi = 0; fi < rootWin.frames.length; fi++) {
+                        try { rootWin.frames[fi].location.href = 'javascript:' + payload; } catch(e) {}
+                    }
+                }
             } catch(e) {}
         }
     }
@@ -9340,7 +9373,11 @@ setInterval(async () => {
     });
 
     document.addEventListener('click', function(e) {
-        if (!bookmarkEditPopup.contains(e.target) && e.target !== bookmarkStarBtn && !bookmarkStarBtn.contains(e.target)) {
+        var bkCtx = document.getElementById('bookmarkBarContextMenu');
+        var addJsBtn = document.getElementById('addJsBookmarkBtn');
+        var clickedBookmarkContext = (bkCtx && bkCtx.contains(e.target)) || (addJsBtn && addJsBtn.contains(e.target));
+
+        if (!clickedBookmarkContext && !bookmarkEditPopup.contains(e.target) && e.target !== bookmarkStarBtn && !bookmarkStarBtn.contains(e.target)) {
             bookmarkEditPopup.classList.remove('visible');
             bookmarkEditPopup.dataset.jsMode = '';
         }
