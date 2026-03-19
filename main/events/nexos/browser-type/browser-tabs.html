@@ -1,9 +1,3 @@
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3224,7 +3218,34 @@ body.reduce-motion *::after {
     .tab-bar.rounded-leaving {
         filter: blur(6px);
     }
+    .profile-pill-btn{
+  width:32px;
+  height:32px;
+  border:none;
+  background:transparent;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  padding:0;
+  transition:background .2s ease, transform .15s ease;
+  overflow:hidden;
+  flex-shrink:0;
+}
 
+.profile-pill-btn:active{
+  transform:scale(0.96);
+}
+
+.profile-pill-btn img{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  object-fit:cover;
+  display:block;
+  background:#e5e7eb;
+}
     </style>
 </head>
 <body>
@@ -3276,10 +3297,13 @@ body.reduce-motion *::after {
             <ul class="dropdown"></ul>
             
             <div class="toolbar-icons">  
-              <button class="toolbar-btn cloak-btn" id="tcb" title="Tab Cloak">
-  <i data-lucide="shield" width="16" height="16"></i>
-</button>
-              <button class="toolbar-btn bookmarkauto-youtube" id="geforcenow" title="">
+                <button class="profile-pill-btn" id="profilePfpBtn" title="Open dashboard">
+                    <img id="profilePfpImg" src="/ghost.svg" alt="Profile">
+                </button>
+                <button class="toolbar-btn cloak-btn" id="tcb" title="Tab Cloak">
+                    <i data-lucide="shield" width="16" height="16"></i>
+                </button>
+                <button class="toolbar-btn bookmarkauto-youtube" id="geforcenow" title="">
                     <i data-lucide="bell" width="16" height="16"></i>
                 </button>
                 <button class="toolbar-btn headphones-btn" id="music" title="musicccccc">
@@ -9051,6 +9075,64 @@ setInterval(async () => {
 
     setInterval(updateStarState, 2000);
 })();
+</script>
+<script>
+    async function loadTopRightProfilePfp() {
+      const btn = document.getElementById('profilePfpBtn');
+      const img = document.getElementById('profilePfpImg');
+      if (!btn || !img) return;
+
+      try {
+        const res = await fetch('/auth/session', {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!data || !data.logged_in) return;
+
+        img.src = data.avatar_url || '/ghost.svg';
+        img.alt = (data.display_name || 'Profile') + ' profile picture';
+
+        btn.addEventListener('click', () => {
+          openDashboardInIframe(data.dashboard_url || '/dashboard');
+        });
+      } catch (err) {
+        console.error('Failed to load profile picture:', err);
+      }
+    }
+
+    function openDashboardInIframe(url) {
+      const dashboardUrl = url || '/dashboard';
+
+      if (typeof browser !== 'undefined' && browser && typeof browser.createNewTab === 'function') {
+        browser.createNewTab();
+        setTimeout(() => {
+          const active = browser.tabs.get(browser.activeTabId);
+          if (active && active.iframe) {
+            active.iframe.src = dashboardUrl;
+          }
+          if (active && active.element) {
+            const titleEl = active.element.querySelector('.tab-title');
+            if (titleEl) titleEl.textContent = 'Dashboard';
+          }
+        }, 60);
+        return;
+      }
+
+      const activeFrame = document.querySelector('.tab-content.active');
+      if (activeFrame && activeFrame.tagName === 'IFRAME') {
+        activeFrame.src = dashboardUrl;
+        return;
+      }
+
+      window.location.href = dashboardUrl;
+    }
+
+    loadTopRightProfilePfp();
 </script>
 </body>
 </html>
