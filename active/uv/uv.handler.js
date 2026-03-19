@@ -83,6 +83,32 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
         __uv.dispatchEvent = window.EventTarget.prototype.dispatchEvent;
     };
 
+    // ── URL rewrite/source caches for performance ──────────────────────────────
+    const rewriteUrlCache = new Map();
+    const sourceUrlCache = new Map();
+
+    const _originalRewriteUrl = __uv.rewriteUrl.bind(__uv);
+    __uv.rewriteUrl = (url, meta) => {
+        // Only cache simple string calls without a custom meta argument
+        if (meta !== undefined) return _originalRewriteUrl(url, meta);
+        if (rewriteUrlCache.has(url)) return rewriteUrlCache.get(url);
+        const result = _originalRewriteUrl(url);
+        // Keep the cache from growing unbounded
+        if (rewriteUrlCache.size > 500) rewriteUrlCache.clear();
+        rewriteUrlCache.set(url, result);
+        return result;
+    };
+
+    const _originalSourceUrl = __uv.sourceUrl.bind(__uv);
+    __uv.sourceUrl = (url) => {
+        if (sourceUrlCache.has(url)) return sourceUrlCache.get(url);
+        const result = _originalSourceUrl(url);
+        if (sourceUrlCache.size > 500) sourceUrlCache.clear();
+        sourceUrlCache.set(url, result);
+        return result;
+    };
+    // ──────────────────────────────────────────────────────────────────────────
+
     // Storage wrappers
     client.nativeMethods.defineProperty(client.storage.storeProto, '__uv$storageObj', {
         get() {
@@ -980,14 +1006,14 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
     });
 
 
+    // ── Fix: preserve all window.open arguments (target, features) ────────────
     client.override(window, 'open', (target, that, args) => {
         if (!args.length) return target.apply(that, args);
-        let [url] = args;
-
+        let [url, name, features] = args;
         url = __uv.rewriteUrl(url);
-
-        return target.call(that, url);
+        return target.call(that, url, name, features);
     });
+    // ──────────────────────────────────────────────────────────────────────────
 
     __uv.$wrap = function(name) {
         if (name === 'location') return __uv.methods.location;
@@ -1127,5 +1153,3 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
         },
     });
 };
-
-
