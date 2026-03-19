@@ -5,6 +5,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3228,6 +3230,34 @@ body.reduce-motion *::after {
         filter: blur(6px);
     }
 
+    .profile-pill-btn{
+  width:32px;
+  height:32px;
+  border:none;
+  background:transparent;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  padding:0;
+  transition:background .2s ease, transform .15s ease;
+  overflow:hidden;
+  flex-shrink:0;
+}
+
+.profile-pill-btn:active{
+  transform:scale(0.96);
+}
+
+.profile-pill-btn img{
+  width:24px;
+  height:24px;
+  border-radius:50%;
+  object-fit:cover;
+  display:block;
+  background:#e5e7eb;
+}
     </style>
 </head>
 <body>
@@ -3279,6 +3309,9 @@ body.reduce-motion *::after {
             <ul class="dropdown"></ul>
             
             <div class="toolbar-icons">  
+                <button class="profile-pill-btn" id="profilePfpBtn" title="Open dashboard">
+                    <img id="profilePfpImg" src="/ghost.svg" alt="Profile">
+                </button>
               <button class="toolbar-btn cloak-btn" id="tcb" title="Tab Cloak">
   <i data-lucide="shield" width="16" height="16"></i>
 </button>
@@ -9126,53 +9159,94 @@ setInterval(async () => {
             if (_erudaLoaded[erudaTabKey]) return;
             _erudaLoaded[erudaTabKey] = true;
 
-            // Open eruda in sidebar immediately
-            var erudaSidebarId = b.openSidebar('Console', 'about:blank');
-            var sb = b.sidebars.get(erudaSidebarId);
-            if (sb && sb.iframe) {
-                var erudaIframe = sb.iframe;
-                erudaIframe.addEventListener('load', function onLoad() {
-                    erudaIframe.removeEventListener('load', onLoad);
-                    try {
-                        var win = erudaIframe.contentWindow;
-                        var doc = win.document;
-                        doc.open();
-                        doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Console</title><style>*{margin:0;padding:0;box-sizing:border-box;}html,body{width:100%;height:100%;overflow:hidden;background:#fff;font-family:monospace;}#eruda-container{width:100%;height:100%;}</style></head><body><div id="eruda-container"></div></body></html>');
-                        doc.close();
-
-                        var script = doc.createElement('script');
-                        script.src = 'https://cdn.jsdelivr.net/npm/eruda';
-                        script.onload = function() {
-                            try {
-                                win.eruda.init({
-                                    container: doc.getElementById('eruda-container'),
-                                    tool: ['console', 'elements', 'network', 'resources', 'info'],
-                                    useShadowDom: false,
-                                    autoScale: true
-                                });
-                                var entryBtn = doc.querySelector('.eruda-entry-btn');
-                                if (entryBtn) entryBtn.style.display = 'none';
-                                win.eruda.show('console');
-                            } catch(e) { console.error('Eruda init error:', e); }
-                        };
-                        doc.head.appendChild(script);
-                    } catch(e) { console.error('Eruda sidebar setup error:', e); }
-                }, { once: true });
-                erudaIframe.src = 'about:blank';
+            // Get the deepest accessible window in the tab's iframe
+            var targetWin = getDeepestIframeWindow(tab.iframe);
+            if (!targetWin) {
+                try { targetWin = tab.iframe.contentWindow; } catch(e) {}
+            }
+            if (!targetWin) {
+                delete _erudaLoaded[erudaTabKey];
+                return;
             }
 
-            // Keep eruda single-instance per tab and clear lock on sidebar close
-            var origClose = b.closeSidebarById.bind(b);
-            b.closeSidebarById = function(id) {
-                if (id === erudaSidebarId) delete _erudaLoaded[erudaTabKey];
-                return origClose(id);
-            };
-
-            // Ensure any in-page eruda launcher button stays hidden
             try {
-                var rootForEruda = tab.iframe.contentWindow;
-                if (rootForEruda) postToAllFrames(rootForEruda, { type: 'nexos-hide-eruda-entry' });
-            } catch(e) {}
+                var targetDoc = targetWin.document;
+
+                // Check if eruda already exists in this window
+                if (targetWin.eruda) {
+                    try {
+                        var entryBtn2 = targetDoc.querySelector('.eruda-entry-btn');
+                        if (entryBtn2) entryBtn2.style.display = 'none';
+                        targetWin.eruda.show('console');
+                    } catch(e) {}
+                    return;
+                }
+
+                // Inject eruda script into the page
+                var script = targetDoc.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+                script.onload = function() {
+                    try {
+                        targetWin.eruda.init({
+                            tool: ['console', 'elements', 'network', 'resources', 'info'],
+                            useShadowDom: true,
+                            autoScale: true
+                        });
+                        // Hide the floating entry button - go straight to panel
+                        var entryBtn = targetDoc.querySelector('.eruda-entry-btn');
+                        if (entryBtn) entryBtn.style.display = 'none';
+                        // Immediately show the console panel
+                        targetWin.eruda.show('console');
+                    } catch(e) { console.error('Eruda init error:', e); }
+                };
+                script.onerror = function() {
+                    delete _erudaLoaded[erudaTabKey];
+                    console.error('Failed to load eruda script');
+                };
+                (targetDoc.head || targetDoc.documentElement).appendChild(script);
+            } catch(e) {
+                // Cross-origin: can't inject directly, fall back to sidebar approach
+                delete _erudaLoaded[erudaTabKey];
+                
+                var erudaSidebarId = b.openSidebar('Console', 'about:blank');
+                var sb = b.sidebars.get(erudaSidebarId);
+                if (sb && sb.iframe) {
+                    var erudaIframe = sb.iframe;
+                    erudaIframe.addEventListener('load', function onLoad() {
+                        erudaIframe.removeEventListener('load', onLoad);
+                        try {
+                            var win = erudaIframe.contentWindow;
+                            var doc = win.document;
+                            doc.open();
+                            doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Console</title><style>*{margin:0;padding:0;box-sizing:border-box;}html,body{width:100%;height:100%;overflow:hidden;background:#fff;font-family:monospace;}#eruda-container{width:100%;height:100%;}</style></head><body><div id="eruda-container"></div></body></html>');
+                            doc.close();
+                            var s2 = doc.createElement('script');
+                            s2.src = 'https://cdn.jsdelivr.net/npm/eruda';
+                            s2.onload = function() {
+                                try {
+                                    win.eruda.init({
+                                        container: doc.getElementById('eruda-container'),
+                                        tool: ['console', 'elements', 'network', 'resources', 'info'],
+                                        useShadowDom: false,
+                                        autoScale: true
+                                    });
+                                    var eb = doc.querySelector('.eruda-entry-btn');
+                                    if (eb) eb.style.display = 'none';
+                                    win.eruda.show('console');
+                                } catch(e) { console.error('Eruda init error:', e); }
+                            };
+                            doc.head.appendChild(s2);
+                        } catch(e) { console.error('Eruda sidebar setup error:', e); }
+                    }, { once: true });
+                    erudaIframe.src = 'about:blank';
+                    _erudaLoaded[erudaTabKey] = true;
+                    var origClose = b.closeSidebarById.bind(b);
+                    b.closeSidebarById = function(id) {
+                        if (id === erudaSidebarId) delete _erudaLoaded[erudaTabKey];
+                        return origClose(id);
+                    };
+                }
+            }
             return;
         }
 
@@ -9436,6 +9510,64 @@ setInterval(async () => {
 
     setInterval(updateStarState, 2000);
 })();
+</script>
+<script>
+    async function loadTopRightProfilePfp() {
+      const btn = document.getElementById('profilePfpBtn');
+      const img = document.getElementById('profilePfpImg');
+      if (!btn || !img) return;
+
+      try {
+        const res = await fetch('/auth/session', {
+          method: 'GET',
+          credentials: 'same-origin',
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!data || !data.logged_in) return;
+
+        img.src = data.avatar_url || '/ghost.svg';
+        img.alt = (data.display_name || 'Profile') + ' profile picture';
+
+        btn.addEventListener('click', () => {
+          openDashboardInIframe(data.dashboard_url || '/dashboard');
+        });
+      } catch (err) {
+        console.error('Failed to load profile picture:', err);
+      }
+    }
+
+    function openDashboardInIframe(url) {
+      const dashboardUrl = url || '/dashboard';
+
+      if (typeof browser !== 'undefined' && browser && typeof browser.createNewTab === 'function') {
+        browser.createNewTab();
+        setTimeout(() => {
+          const active = browser.tabs.get(browser.activeTabId);
+          if (active && active.iframe) {
+            active.iframe.src = dashboardUrl;
+          }
+          if (active && active.element) {
+            const titleEl = active.element.querySelector('.tab-title');
+            if (titleEl) titleEl.textContent = 'Dashboard';
+          }
+        }, 60);
+        return;
+      }
+
+      const activeFrame = document.querySelector('.tab-content.active');
+      if (activeFrame && activeFrame.tagName === 'IFRAME') {
+        activeFrame.src = dashboardUrl;
+        return;
+      }
+
+      window.location.href = dashboardUrl;
+    }
+
+    loadTopRightProfilePfp();
 </script>
 </body>
 </html>
