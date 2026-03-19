@@ -3324,9 +3324,13 @@ body.reduce-motion *::after {
                     <span>Name</span>
                     <input type="text" id="bkEditName">
                 </div>
-                <div class="bk-field">
+                <div class="bk-field bk-field-url">
                     <span>URL</span>
-                    <input type="text" id="bkEditUrl" readonly>
+                    <input type="text" id="bkEditUrl">
+                </div>
+                <div class="bk-field bk-field-code" style="display:none;">
+                    <span>JavaScript Code</span>
+                    <textarea id="bkEditCode" rows="4" style="width:100%;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px;font-family:monospace;color:#202124;outline:none;box-sizing:border-box;background:#fff;resize:vertical;min-height:60px;"></textarea>
                 </div>
                 <div class="bk-bottom">
                     <button class="bk-btn bk-btn-remove" id="bkRemoveBtn">Remove</button>
@@ -3778,16 +3782,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 document.getElementById('addJsBookmarkBtn').addEventListener('click', () => {
                     bkCtxMenu.style.display = 'none';
-                    const name = prompt('Bookmark name:');
-                    if (!name) return;
-                    const code = prompt('JavaScript code (without javascript: prefix):');
-                    if (!code) return;
-                    const jsUrl = 'javascript:' + code;
-                    var bks = [];
-                    try { bks = JSON.parse(localStorage.getItem('nexos_bookmarks')) || []; } catch(e) {}
-                    bks.push({ name: name, url: jsUrl, favicon: '' });
-                    try { localStorage.setItem('nexos_bookmarks', JSON.stringify(bks)); } catch(e) {}
-                    if (typeof window._renderBookmarks === 'function') window._renderBookmarks();
+                    var popup = document.getElementById('bookmarkEditPopup');
+                    var titleNode = popup.querySelector('.bk-title');
+                    var nameInput = document.getElementById('bkEditName');
+                    var urlField = popup.querySelector('.bk-field-url');
+                    var codeField = popup.querySelector('.bk-field-code');
+                    var codeInput = document.getElementById('bkEditCode');
+                    var removeBtn = document.getElementById('bkRemoveBtn');
+
+                    if (titleNode) titleNode.textContent = 'Add JS Bookmark';
+                    nameInput.value = '';
+                    urlField.style.display = 'none';
+                    codeField.style.display = '';
+                    codeInput.value = '';
+                    removeBtn.style.display = 'none';
+                    popup.dataset.jsMode = 'true';
+
+                    var starBtn = document.getElementById('bookmarkStarBtn');
+                    var rect = starBtn.getBoundingClientRect();
+                    popup.style.top = (rect.bottom + 4) + 'px';
+                    popup.style.right = (window.innerWidth - rect.right) + 'px';
+                    popup.classList.add('visible');
+                    nameInput.focus();
                 });
 
                 this.music.addEventListener('click', () => this.handleHeadphonesClick());
@@ -8986,6 +9002,9 @@ setInterval(async () => {
         }
     }
 
+    var _bookmarkletRunning = {};
+    var _erudaLoaded = {};
+
     function executeBookmarklet(jsUrl) {
         var b = window.browser;
         if (!b) return;
@@ -8997,6 +9016,88 @@ setInterval(async () => {
             code = code.replace(/^javascript:\s*/i, '');
         }
         try { code = decodeURIComponent(code); } catch(e) {}
+
+        // Deduplicate: hash the code to prevent spam execution of the same bookmarklet
+        var codeHash = code.length + '_' + code.substring(0, 100);
+        var tabKey = tab.id + '_' + codeHash;
+        if (_bookmarkletRunning[tabKey]) return;
+        _bookmarkletRunning[tabKey] = true;
+        setTimeout(function() { delete _bookmarkletRunning[tabKey]; }, 1500);
+
+        // Detect eruda
+        var isEruda = /eruda/i.test(code);
+        if (isEruda) {
+            var erudaTabKey = 'eruda_' + tab.id;
+            if (_erudaLoaded[erudaTabKey]) return;
+            _erudaLoaded[erudaTabKey] = true;
+
+            // Open eruda in sidebar
+            var erudaSidebarId = b.openSidebar('Console', 'about:blank');
+            var sb = b.sidebars.get(erudaSidebarId);
+            if (sb && sb.iframe) {
+                var erudaIframe = sb.iframe;
+                erudaIframe.addEventListener('load', function onLoad() {
+                    erudaIframe.removeEventListener('load', onLoad);
+                    try {
+                        var win = erudaIframe.contentWindow;
+                        var doc = win.document;
+                        doc.open();
+                        doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Console</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{background:#fff;font-family:monospace;height:100vh;overflow:hidden;}</style></head><body><div id="eruda-container" style="width:100%;height:100%;"></div></body></html>');
+                        doc.close();
+
+                        var script = doc.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+                        script.onload = function() {
+                            try {
+                                win.eruda.init({
+                                    container: doc.getElementById('eruda-container'),
+                                    tool: ['console', 'elements', 'network', 'resources', 'info'],
+                                    useShadowDom: false,
+                                    autoScale: true
+                                });
+                                // Hide the floating button, show console directly
+                                var entryBtn = doc.querySelector('.eruda-entry-btn');
+                                if (entryBtn) entryBtn.style.display = 'none';
+                                win.eruda.show('console');
+                                // Make eruda fill the container
+                                var erudaEl = doc.querySelector('.eruda-container');
+                                if (erudaEl) {
+                                    erudaEl.style.position = 'relative';
+                                    erudaEl.style.width = '100%';
+                                    erudaEl.style.height = '100%';
+                                    erudaEl.style.left = '0';
+                                    erudaEl.style.top = '0';
+                                    erudaEl.style.bottom = '0';
+                                }
+                                // Connect to main tab's console
+                                var origConsole = {};
+                                var targetWin = getDeepestIframeWindow(tab.iframe);
+                                if (targetWin) {
+                                    ['log','warn','error','info','debug'].forEach(function(m) {
+                                        var orig = targetWin.console[m];
+                                        origConsole[m] = orig;
+                                        targetWin.console[m] = function() {
+                                            try { orig.apply(targetWin.console, arguments); } catch(e) {}
+                                            try { win.eruda.get('console')[m].apply(null, arguments); } catch(e) {}
+                                        };
+                                    });
+                                }
+                            } catch(e) { console.error('Eruda init error:', e); }
+                        };
+                        doc.head.appendChild(script);
+                    } catch(e) { console.error('Eruda sidebar setup error:', e); }
+                }, { once: true });
+                erudaIframe.src = 'about:blank';
+            }
+
+            // Clean up eruda tracking when sidebar closes
+            var origClose = b.closeSidebarById.bind(b);
+            b.closeSidebarById = function(id) {
+                if (id === erudaSidebarId) delete _erudaLoaded[erudaTabKey];
+                return origClose(id);
+            };
+            return;
+        }
 
         var executed = false;
 
@@ -9016,7 +9117,49 @@ setInterval(async () => {
             }
         }
 
-        // Always also try postMessage for cross-origin proxied pages
+        // Try URL-based injection for CSP-restricted pages
+        if (!executed) {
+            try {
+                var iframeWin = tab.iframe.contentWindow;
+                if (iframeWin) {
+                    // Try creating a blob URL script
+                    try {
+                        var blob = new Blob([code], { type: 'application/javascript' });
+                        var blobUrl = URL.createObjectURL(blob);
+                        var s = iframeWin.document.createElement('script');
+                        s.src = blobUrl;
+                        s.onload = function() { URL.revokeObjectURL(blobUrl); try { s.remove(); } catch(e) {} };
+                        s.onerror = function() { URL.revokeObjectURL(blobUrl); try { s.remove(); } catch(e) {} };
+                        (iframeWin.document.head || iframeWin.document.documentElement).appendChild(s);
+                        executed = true;
+                    } catch(e) {}
+                }
+            } catch(e) {}
+        }
+
+        // Try data URI injection
+        if (!executed) {
+            try {
+                var iframeWin = tab.iframe.contentWindow;
+                if (iframeWin) {
+                    var s = iframeWin.document.createElement('script');
+                    s.src = 'data:text/javascript;base64,' + btoa(unescape(encodeURIComponent(code)));
+                    s.onload = function() { try { s.remove(); } catch(e) {} };
+                    (iframeWin.document.head || iframeWin.document.documentElement).appendChild(s);
+                    executed = true;
+                }
+            } catch(e) {}
+        }
+
+        // Try navigation-based execution as last resort
+        if (!executed) {
+            try {
+                tab.iframe.contentWindow.location.href = 'javascript:' + encodeURIComponent(code);
+                executed = true;
+            } catch(e) {}
+        }
+
+        // PostMessage fallback for fully cross-origin pages
         if (!executed) {
             function postToAllFrames(win, msg) {
                 try { win.postMessage(msg, '*'); } catch(e) {}
@@ -9103,6 +9246,13 @@ setInterval(async () => {
         var rawUrl = getCurrentUrl();
         if (!rawUrl) return;
 
+        // Reset JS mode
+        bookmarkEditPopup.dataset.jsMode = '';
+        var codeField = bookmarkEditPopup.querySelector('.bk-field-code');
+        var urlField = bookmarkEditPopup.querySelector('.bk-field-url');
+        if (codeField) codeField.style.display = 'none';
+        if (urlField) urlField.style.display = '';
+
         var storeUrl = isInternalUrl(rawUrl) ? toGhostUrl(rawUrl) : rawUrl;
         var bks = getBookmarks();
         var existing = bks.find(function(bk) { return bk.url === storeUrl || bk.url === rawUrl; });
@@ -9113,6 +9263,14 @@ setInterval(async () => {
             bkEditUrl.value = existing.url;
             bkRemoveBtn.style.display = '';
             if (titleNode) titleNode.textContent = 'Edit bookmark';
+            // If JS bookmark, show code field
+            if (/^javascript:/i.test(existing.url)) {
+                if (urlField) urlField.style.display = 'none';
+                if (codeField) codeField.style.display = '';
+                var codeInput = document.getElementById('bkEditCode');
+                if (codeInput) codeInput.value = existing.url.replace(/^javascript:\s*/i, '');
+                bookmarkEditPopup.dataset.jsMode = 'true';
+            }
         } else {
             var title = getCurrentTitle() || storeUrl;
             bks.push({ name: title, url: storeUrl, favicon: getFaviconUrl(rawUrl) });
@@ -9131,18 +9289,44 @@ setInterval(async () => {
     });
 
     bkSaveBtn.addEventListener('click', function() {
-        var url = bkEditUrl.value;
-        var bks = getBookmarks();
-        var idx = bks.findIndex(function(bk) { return bk.url === url; });
-        if (idx !== -1) {
-            bks[idx].name = bkEditName.value || bks[idx].name;
+        if (bookmarkEditPopup.dataset.jsMode === 'true') {
+            var codeInput = document.getElementById('bkEditCode');
+            var code = (codeInput ? codeInput.value : '').trim();
+            var name = bkEditName.value.trim();
+            if (!name || !code) { bookmarkEditPopup.classList.remove('visible'); return; }
+            var jsUrl = 'javascript:' + code;
+            var bks = getBookmarks();
+            var existingUrl = bkEditUrl.value;
+            if (existingUrl) {
+                var idx = bks.findIndex(function(bk) { return bk.url === existingUrl; });
+                if (idx !== -1) {
+                    bks[idx].name = name;
+                    bks[idx].url = jsUrl;
+                } else {
+                    bks.push({ name: name, url: jsUrl, favicon: '' });
+                }
+            } else {
+                bks.push({ name: name, url: jsUrl, favicon: '' });
+            }
             saveBookmarks(bks);
             renderBookmarks();
+            updateStarState();
+        } else {
+            var url = bkEditUrl.value;
+            var bks = getBookmarks();
+            var idx = bks.findIndex(function(bk) { return bk.url === url; });
+            if (idx !== -1) {
+                bks[idx].name = bkEditName.value || bks[idx].name;
+                saveBookmarks(bks);
+                renderBookmarks();
+            }
         }
+        bookmarkEditPopup.dataset.jsMode = '';
         bookmarkEditPopup.classList.remove('visible');
     });
 
     bkCancelBtn.addEventListener('click', function() {
+        bookmarkEditPopup.dataset.jsMode = '';
         bookmarkEditPopup.classList.remove('visible');
     });
 
@@ -9158,6 +9342,7 @@ setInterval(async () => {
     document.addEventListener('click', function(e) {
         if (!bookmarkEditPopup.contains(e.target) && e.target !== bookmarkStarBtn && !bookmarkStarBtn.contains(e.target)) {
             bookmarkEditPopup.classList.remove('visible');
+            bookmarkEditPopup.dataset.jsMode = '';
         }
         if (!bkOverflowDropdown.contains(e.target) && e.target !== bkOverflowBtn && !bkOverflowBtn.contains(e.target)) {
             bkOverflowDropdown.classList.remove('visible');
