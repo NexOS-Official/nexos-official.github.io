@@ -1,3 +1,12 @@
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -909,20 +918,20 @@
     content: '';
     position: absolute;
     top: 0;
-    left: -24px;
-    width: 24px;
-    height: 24px;
+    left: -12px;
+    width: 12px;
+    height: 12px;
     background: #ffffff;
 
     mask-image: radial-gradient(
         circle at 0% 100%,
-        transparent 24px,
-        black 24.5px
+        transparent 12px,
+        black 12.5px
     );
     -webkit-mask-image: radial-gradient(
         circle at 0% 100%,
-        transparent 24px,
-        black 24.5px
+        transparent 12px,
+        black 12.5px
     );
 
     transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -1198,6 +1207,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            padding: 3px;
         }
 
         .sidebar-iframe {
@@ -1205,6 +1215,7 @@
             height: 100%;
             border: none;
             background: #ffffff;
+            border-radius: 8px;
         }
 
        
@@ -3218,6 +3229,7 @@ body.reduce-motion *::after {
     .tab-bar.rounded-leaving {
         filter: blur(6px);
     }
+
     .profile-pill-btn{
   width:32px;
   height:32px;
@@ -3300,10 +3312,10 @@ body.reduce-motion *::after {
                 <button class="profile-pill-btn" id="profilePfpBtn" title="Open dashboard">
                     <img id="profilePfpImg" src="/ghost.svg" alt="Profile">
                 </button>
-                <button class="toolbar-btn cloak-btn" id="tcb" title="Tab Cloak">
-                    <i data-lucide="shield" width="16" height="16"></i>
-                </button>
-                <button class="toolbar-btn bookmarkauto-youtube" id="geforcenow" title="">
+              <button class="toolbar-btn cloak-btn" id="tcb" title="Tab Cloak">
+  <i data-lucide="shield" width="16" height="16"></i>
+</button>
+              <button class="toolbar-btn bookmarkauto-youtube" id="geforcenow" title="">
                     <i data-lucide="bell" width="16" height="16"></i>
                 </button>
                 <button class="toolbar-btn headphones-btn" id="music" title="musicccccc">
@@ -3345,9 +3357,13 @@ body.reduce-motion *::after {
                     <span>Name</span>
                     <input type="text" id="bkEditName">
                 </div>
-                <div class="bk-field">
+                <div class="bk-field bk-field-url">
                     <span>URL</span>
-                    <input type="text" id="bkEditUrl" readonly>
+                    <input type="text" id="bkEditUrl">
+                </div>
+                <div class="bk-field bk-field-code" style="display:none;">
+                    <span>JavaScript Code</span>
+                    <textarea id="bkEditCode" rows="4" style="width:100%;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px;font-family:monospace;color:#202124;outline:none;box-sizing:border-box;background:#fff;resize:vertical;min-height:60px;"></textarea>
                 </div>
                 <div class="bk-bottom">
                     <button class="bk-btn bk-btn-remove" id="bkRemoveBtn">Remove</button>
@@ -3471,6 +3487,13 @@ document.addEventListener("DOMContentLoaded", () => {
             </button>
         </div>
         <div class="bk-overflow-dropdown" id="bkOverflowDropdown"></div>
+
+        <div class="context-menu" id="bookmarkBarContextMenu" style="display:none;">
+            <button class="context-menu-item" id="addJsBookmarkBtn">
+                <i data-lucide="code" width="14" height="14"></i>
+                Add JS Bookmark
+            </button>
+        </div>
 
         <div class="content-area" id="contentArea">
             <div class="loading-indicator" id="loadingIndicator"></div>
@@ -3772,6 +3795,59 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.closeTabBtn.addEventListener('click', () => this.closeTab(this.contextMenuTabId));
                 this.closeOtherTabsBtn.addEventListener('click', () => this.closeOtherTabs(this.contextMenuTabId));
 
+                // Bookmarks bar right-click context menu
+                const bkBar = document.getElementById('bookmarksBar');
+                const bkCtxMenu = document.getElementById('bookmarkBarContextMenu');
+                bkBar.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.hideContextMenu();
+                    bkCtxMenu.style.display = 'block';
+                    bkCtxMenu.style.position = 'fixed';
+                    bkCtxMenu.style.left = Math.min(e.clientX, window.innerWidth - 200) + 'px';
+                    bkCtxMenu.style.top = e.clientY + 'px';
+                    bkCtxMenu.style.zIndex = '99999';
+                });
+                document.addEventListener('click', () => { bkCtxMenu.style.display = 'none'; });
+                document.addEventListener('contextmenu', (e) => {
+                    if (!bkBar.contains(e.target)) bkCtxMenu.style.display = 'none';
+                });
+
+                document.getElementById('addJsBookmarkBtn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    bkCtxMenu.style.display = 'none';
+
+                    var popup = document.getElementById('bookmarkEditPopup');
+                    if (!popup) return;
+
+                    var titleNode = popup.querySelector('.bk-title');
+                    var nameInput = document.getElementById('bkEditName');
+                    var urlInput = document.getElementById('bkEditUrl');
+                    var urlField = popup.querySelector('.bk-field-url');
+                    var codeField = popup.querySelector('.bk-field-code');
+                    var codeInput = document.getElementById('bkEditCode');
+                    var removeBtn = document.getElementById('bkRemoveBtn');
+
+                    if (titleNode) titleNode.textContent = 'Add JS Bookmark';
+                    if (nameInput) nameInput.value = '';
+                    if (urlInput) urlInput.value = '';
+                    if (urlField) urlField.style.display = 'none';
+                    if (codeField) codeField.style.display = '';
+                    if (codeInput) codeInput.value = '';
+                    if (removeBtn) removeBtn.style.display = 'none';
+                    popup.dataset.jsMode = 'true';
+
+                    var starBtn = document.getElementById('bookmarkStarBtn');
+                    if (starBtn) {
+                        var rect = starBtn.getBoundingClientRect();
+                        popup.style.top = (rect.bottom + 4) + 'px';
+                        popup.style.right = (window.innerWidth - rect.right) + 'px';
+                    }
+
+                    popup.classList.add('visible');
+                    if (nameInput) nameInput.focus();
+                });
+
                 this.music.addEventListener('click', () => this.handleHeadphonesClick());
                 this.geforcenow.addEventListener('click', () => this.handleGeforceClick());
                 this.movies.addEventListener('click', () => this.handlePhoneClick());
@@ -4032,9 +4108,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (openSidebars.length > 0) {
                     this.contentArea.style.marginRight = sidebarWidth + 'px';
                     this.contentArea.style.borderTopRightRadius = '15px';
+                    this.contentArea.style.borderBottomRightRadius = '15px';
                 } else {
                     this.contentArea.style.marginRight = '';
                     this.contentArea.style.borderTopRightRadius = '';
+                    this.contentArea.style.borderBottomRightRadius = '';
                 }
             }
 
@@ -5118,6 +5196,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 let url = input.trim();
                 if (!url) return;
 
+                // Handle javascript: bookmarklets
+                if (/^javascript:/i.test(url)) {
+                    if (typeof executeBookmarklet === 'function') {
+                        executeBookmarklet(url);
+                    }
+                    return;
+                }
+
 if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
   return;
@@ -5774,6 +5860,7 @@ if (this.isBlockedUrl(url)) {
                             this.updateTabTitle(tab, url);
                         }
                     }
+                    // Eruda sidebar handling removed - eruda opens normally now
                 });
 
                 const originalWindowOpen = window.open.bind(window);
@@ -5928,6 +6015,59 @@ if (this.isBlockedUrl(url)) {
                             childList: true, subtree: true
                         });
                     } catch(e) {}
+
+                    // Listen for bookmarklet execution messages and forward to nested iframes
+                    try {
+                        iframeWin.addEventListener('message', function(evt) {
+                            if (!evt.data || !evt.data.type) return;
+
+                            if (evt.data.type === 'nexos-hide-eruda-entry') {
+                                try {
+                                    var erudaBtn = iframeWin.document.querySelector('.eruda-entry-btn');
+                                    if (erudaBtn) erudaBtn.style.display = 'none';
+                                } catch(e) {}
+
+                                try {
+                                    var erudaFrames = iframeWin.document.querySelectorAll('iframe');
+                                    erudaFrames.forEach(function(f) {
+                                        try { f.contentWindow.postMessage({ type: 'nexos-hide-eruda-entry' }, '*'); } catch(e) {}
+                                    });
+                                } catch(e) {}
+                                return;
+                            }
+
+                            if (evt.data.type === 'nexos-run-bookmarklet' && evt.data.code) {
+                                var payload = String(evt.data.code);
+                                var executed = false;
+
+                                try {
+                                    var s = iframeWin.document.createElement('script');
+                                    s.textContent = payload;
+                                    (iframeWin.document.head || iframeWin.document.documentElement).appendChild(s);
+                                    setTimeout(function() { try { s.remove(); } catch(e) {} }, 100);
+                                    executed = true;
+                                } catch(e) {
+                                    try { iframeWin.eval(payload); executed = true; } catch(e2) {}
+                                }
+
+                                // Forward to all nested iframes in case this is a proxy wrapper
+                                try {
+                                    var nestedFrames = iframeWin.document.querySelectorAll('iframe');
+                                    nestedFrames.forEach(function(f) {
+                                        try {
+                                            f.contentWindow.postMessage({ type: 'nexos-run-bookmarklet', code: payload }, '*');
+                                        } catch(e) {}
+
+                                        if (!executed) {
+                                            try { f.contentWindow.location.href = 'javascript:' + payload; } catch(e) {}
+                                        }
+                                    });
+                                } catch(e) {}
+                            }
+                        });
+                    } catch(e) {}
+
+                    // Eruda: let it open normally (user will handle sidebar later)
 
                 } catch(e) {
                 }
@@ -8870,6 +9010,11 @@ setInterval(async () => {
                 div.addEventListener('click', function() {
                     var b = window.browser;
                     var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (navUrl && /^javascript:/i.test(navUrl.trim())) {
+                        executeBookmarklet(navUrl);
+                        bkOverflowDropdown.classList.remove('visible');
+                        return;
+                    }
                     if (b) {
                         if (navUrl && !navUrl.startsWith('http')) {
                             b.loadUrl(navUrl);
@@ -8899,6 +9044,205 @@ setInterval(async () => {
             bkOverflowDropdown.classList.add('visible');
         }
     });
+
+    function getDeepestIframeWindow(iframe) {
+        try {
+            var win = iframe.contentWindow;
+            if (!win) return null;
+            var doc = win.document;
+            // Check for proxy embed pattern - look for nested iframe
+            var nested = doc.querySelector('iframe');
+            if (nested) {
+                try {
+                    var nestedWin = nested.contentWindow;
+                    if (nestedWin && nestedWin.document) {
+                        // Recurse to find deepest accessible iframe
+                        var deeper = getDeepestIframeWindow(nested);
+                        return deeper || nestedWin;
+                    }
+                } catch(e) {}
+            }
+            return win;
+        } catch(e) {
+            return null;
+        }
+    }
+
+    var _bookmarkletRunning = {};
+    var _erudaLoaded = {};
+
+    function executeBookmarklet(jsUrl) {
+        var b = window.browser;
+        if (!b) return;
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab || !tab.iframe) return;
+
+        var code = jsUrl.trim();
+        if (/^javascript:/i.test(code)) {
+            code = code.replace(/^javascript:\s*/i, '');
+        }
+        try { code = decodeURIComponent(code); } catch(e) {}
+
+        // Deduplicate: hash the code to prevent spam execution of the same bookmarklet
+        var codeHash = code.length + '_' + code.substring(0, 120);
+        var tabKey = tab.id + '_' + codeHash;
+        if (_bookmarkletRunning[tabKey]) return;
+        _bookmarkletRunning[tabKey] = true;
+        setTimeout(function() { delete _bookmarkletRunning[tabKey]; }, 2000);
+
+        var runId = String(Date.now()) + '_' + Math.random().toString(36).slice(2, 8);
+        var guardKey = '__nexosBookmarkletRun_' + codeHash.replace(/[^a-zA-Z0-9_]/g, '_');
+        var payload = "(function(){try{if(window['" + guardKey + "']) return; window['" + guardKey + "']=1;" + code + "}catch(__nexosErr){try{console.error(__nexosErr);}catch(__ignore){}}})();";
+
+        function postToAllFrames(win, msg) {
+            try { win.postMessage(msg, '*'); } catch(e) {}
+            try {
+                for (var i = 0; i < win.frames.length; i++) {
+                    try { postToAllFrames(win.frames[i], msg); } catch(e) {}
+                }
+            } catch(e) {}
+        }
+
+        function tryExecuteInWindow(win) {
+            if (!win) return false;
+            var marker = '__nexosExecMarker_' + runId;
+            var ran = false;
+
+            try { win[marker] = 0; } catch(e) {}
+
+            // Inline script (fast path)
+            try {
+                var doc = win.document;
+                var inline = doc.createElement('script');
+                inline.textContent = "window['" + marker + "']=1;" + payload;
+                (doc.head || doc.documentElement).appendChild(inline);
+                try { inline.remove(); } catch(e) {}
+                ran = ran || win[marker] === 1;
+            } catch(e) {}
+
+            // eval fallback
+            if (!ran) {
+                try {
+                    win.eval("window['" + marker + "']=2;" + payload);
+                    ran = win[marker] === 2;
+                } catch(e) {}
+            }
+
+            // Function constructor fallback
+            if (!ran) {
+                try {
+                    win.Function("window['" + marker + "']=3;" + payload)();
+                    ran = win[marker] === 3;
+                } catch(e) {}
+            }
+
+            // Blob URL script fallback (for strict inline CSP pages)
+            if (!ran) {
+                try {
+                    var blob = new Blob(["window['" + marker + "']=4;" + payload], { type: 'application/javascript' });
+                    var blobUrl = URL.createObjectURL(blob);
+                    var blobScript = win.document.createElement('script');
+                    blobScript.src = blobUrl;
+                    blobScript.onload = function() { try { URL.revokeObjectURL(blobUrl); } catch(e) {} try { blobScript.remove(); } catch(e) {} };
+                    blobScript.onerror = function() { try { URL.revokeObjectURL(blobUrl); } catch(e) {} try { blobScript.remove(); } catch(e) {} };
+                    (win.document.head || win.document.documentElement).appendChild(blobScript);
+                } catch(e) {}
+            }
+
+            return ran;
+        }
+
+        // Detect eruda
+        var isEruda = /eruda/i.test(code);
+        if (isEruda) {
+            var erudaTabKey = 'eruda_' + tab.id;
+            if (_erudaLoaded[erudaTabKey]) return;
+            _erudaLoaded[erudaTabKey] = true;
+
+            // Open eruda in sidebar immediately
+            var erudaSidebarId = b.openSidebar('Console', 'about:blank');
+            var sb = b.sidebars.get(erudaSidebarId);
+            if (sb && sb.iframe) {
+                var erudaIframe = sb.iframe;
+                erudaIframe.addEventListener('load', function onLoad() {
+                    erudaIframe.removeEventListener('load', onLoad);
+                    try {
+                        var win = erudaIframe.contentWindow;
+                        var doc = win.document;
+                        doc.open();
+                        doc.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Console</title><style>*{margin:0;padding:0;box-sizing:border-box;}html,body{width:100%;height:100%;overflow:hidden;background:#fff;font-family:monospace;}#eruda-container{width:100%;height:100%;}</style></head><body><div id="eruda-container"></div></body></html>');
+                        doc.close();
+
+                        var script = doc.createElement('script');
+                        script.src = 'https://cdn.jsdelivr.net/npm/eruda';
+                        script.onload = function() {
+                            try {
+                                win.eruda.init({
+                                    container: doc.getElementById('eruda-container'),
+                                    tool: ['console', 'elements', 'network', 'resources', 'info'],
+                                    useShadowDom: false,
+                                    autoScale: true
+                                });
+                                var entryBtn = doc.querySelector('.eruda-entry-btn');
+                                if (entryBtn) entryBtn.style.display = 'none';
+                                win.eruda.show('console');
+                            } catch(e) { console.error('Eruda init error:', e); }
+                        };
+                        doc.head.appendChild(script);
+                    } catch(e) { console.error('Eruda sidebar setup error:', e); }
+                }, { once: true });
+                erudaIframe.src = 'about:blank';
+            }
+
+            // Keep eruda single-instance per tab and clear lock on sidebar close
+            var origClose = b.closeSidebarById.bind(b);
+            b.closeSidebarById = function(id) {
+                if (id === erudaSidebarId) delete _erudaLoaded[erudaTabKey];
+                return origClose(id);
+            };
+
+            // Ensure any in-page eruda launcher button stays hidden
+            try {
+                var rootForEruda = tab.iframe.contentWindow;
+                if (rootForEruda) postToAllFrames(rootForEruda, { type: 'nexos-hide-eruda-entry' });
+            } catch(e) {}
+            return;
+        }
+
+        var targetWin = getDeepestIframeWindow(tab.iframe);
+        var rootWin = null;
+        try { rootWin = tab.iframe.contentWindow; } catch(e) {}
+
+        var executed = false;
+        executed = tryExecuteInWindow(targetWin) || executed;
+        if (rootWin && rootWin !== targetWin) {
+            executed = tryExecuteInWindow(rootWin) || executed;
+        }
+
+        // Broadcast payload so proxy wrappers and nested frames can run it too
+        try {
+            if (rootWin) {
+                postToAllFrames(rootWin, {
+                    type: 'nexos-run-bookmarklet',
+                    code: payload
+                });
+            }
+        } catch(e) {}
+
+        // Navigation fallback for heavily restricted pages
+        if (!executed) {
+            try {
+                if (rootWin) rootWin.location.href = 'javascript:' + payload;
+            } catch(e) {}
+            try {
+                if (rootWin) {
+                    for (var fi = 0; fi < rootWin.frames.length; fi++) {
+                        try { rootWin.frames[fi].location.href = 'javascript:' + payload; } catch(e) {}
+                    }
+                }
+            } catch(e) {}
+        }
+    }
 
     window._renderBookmarks = renderBookmarks;
     function renderBookmarks() {
@@ -8932,6 +9276,10 @@ setInterval(async () => {
                     }
                     var b = window.browser;
                     var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (navUrl && /^javascript:/i.test(navUrl.trim())) {
+                        executeBookmarklet(navUrl);
+                        return;
+                    }
                     if (b) {
                         if (navUrl && !navUrl.startsWith('http')) {
                             b.loadUrl(navUrl);
@@ -8964,6 +9312,13 @@ setInterval(async () => {
         var rawUrl = getCurrentUrl();
         if (!rawUrl) return;
 
+        // Reset JS mode
+        bookmarkEditPopup.dataset.jsMode = '';
+        var codeField = bookmarkEditPopup.querySelector('.bk-field-code');
+        var urlField = bookmarkEditPopup.querySelector('.bk-field-url');
+        if (codeField) codeField.style.display = 'none';
+        if (urlField) urlField.style.display = '';
+
         var storeUrl = isInternalUrl(rawUrl) ? toGhostUrl(rawUrl) : rawUrl;
         var bks = getBookmarks();
         var existing = bks.find(function(bk) { return bk.url === storeUrl || bk.url === rawUrl; });
@@ -8974,6 +9329,14 @@ setInterval(async () => {
             bkEditUrl.value = existing.url;
             bkRemoveBtn.style.display = '';
             if (titleNode) titleNode.textContent = 'Edit bookmark';
+            // If JS bookmark, show code field
+            if (/^javascript:/i.test(existing.url)) {
+                if (urlField) urlField.style.display = 'none';
+                if (codeField) codeField.style.display = '';
+                var codeInput = document.getElementById('bkEditCode');
+                if (codeInput) codeInput.value = existing.url.replace(/^javascript:\s*/i, '');
+                bookmarkEditPopup.dataset.jsMode = 'true';
+            }
         } else {
             var title = getCurrentTitle() || storeUrl;
             bks.push({ name: title, url: storeUrl, favicon: getFaviconUrl(rawUrl) });
@@ -8992,18 +9355,44 @@ setInterval(async () => {
     });
 
     bkSaveBtn.addEventListener('click', function() {
-        var url = bkEditUrl.value;
-        var bks = getBookmarks();
-        var idx = bks.findIndex(function(bk) { return bk.url === url; });
-        if (idx !== -1) {
-            bks[idx].name = bkEditName.value || bks[idx].name;
+        if (bookmarkEditPopup.dataset.jsMode === 'true') {
+            var codeInput = document.getElementById('bkEditCode');
+            var code = (codeInput ? codeInput.value : '').trim();
+            var name = bkEditName.value.trim();
+            if (!name || !code) { bookmarkEditPopup.classList.remove('visible'); return; }
+            var jsUrl = 'javascript:' + code;
+            var bks = getBookmarks();
+            var existingUrl = bkEditUrl.value;
+            if (existingUrl) {
+                var idx = bks.findIndex(function(bk) { return bk.url === existingUrl; });
+                if (idx !== -1) {
+                    bks[idx].name = name;
+                    bks[idx].url = jsUrl;
+                } else {
+                    bks.push({ name: name, url: jsUrl, favicon: '' });
+                }
+            } else {
+                bks.push({ name: name, url: jsUrl, favicon: '' });
+            }
             saveBookmarks(bks);
             renderBookmarks();
+            updateStarState();
+        } else {
+            var url = bkEditUrl.value;
+            var bks = getBookmarks();
+            var idx = bks.findIndex(function(bk) { return bk.url === url; });
+            if (idx !== -1) {
+                bks[idx].name = bkEditName.value || bks[idx].name;
+                saveBookmarks(bks);
+                renderBookmarks();
+            }
         }
+        bookmarkEditPopup.dataset.jsMode = '';
         bookmarkEditPopup.classList.remove('visible');
     });
 
     bkCancelBtn.addEventListener('click', function() {
+        bookmarkEditPopup.dataset.jsMode = '';
         bookmarkEditPopup.classList.remove('visible');
     });
 
@@ -9017,8 +9406,13 @@ setInterval(async () => {
     });
 
     document.addEventListener('click', function(e) {
-        if (!bookmarkEditPopup.contains(e.target) && e.target !== bookmarkStarBtn && !bookmarkStarBtn.contains(e.target)) {
+        var bkCtx = document.getElementById('bookmarkBarContextMenu');
+        var addJsBtn = document.getElementById('addJsBookmarkBtn');
+        var clickedBookmarkContext = (bkCtx && bkCtx.contains(e.target)) || (addJsBtn && addJsBtn.contains(e.target));
+
+        if (!clickedBookmarkContext && !bookmarkEditPopup.contains(e.target) && e.target !== bookmarkStarBtn && !bookmarkStarBtn.contains(e.target)) {
             bookmarkEditPopup.classList.remove('visible');
+            bookmarkEditPopup.dataset.jsMode = '';
         }
         if (!bkOverflowDropdown.contains(e.target) && e.target !== bkOverflowBtn && !bkOverflowBtn.contains(e.target)) {
             bkOverflowDropdown.classList.remove('visible');
