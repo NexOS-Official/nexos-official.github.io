@@ -5,7 +5,6 @@
 
 
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -917,20 +916,20 @@
     content: '';
     position: absolute;
     top: 0;
-    left: -24px;
-    width: 24px;
-    height: 24px;
+    left: -12px;
+    width: 12px;
+    height: 12px;
     background: #ffffff;
 
     mask-image: radial-gradient(
         circle at 0% 100%,
-        transparent 24px,
-        black 24.5px
+        transparent 12px,
+        black 12.5px
     );
     -webkit-mask-image: radial-gradient(
         circle at 0% 100%,
-        transparent 24px,
-        black 24.5px
+        transparent 12px,
+        black 12.5px
     );
 
     transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -1206,6 +1205,7 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            padding: 3px;
         }
 
         .sidebar-iframe {
@@ -1213,6 +1213,7 @@
             height: 100%;
             border: none;
             background: #ffffff;
+            border-radius: 8px;
         }
 
        
@@ -4361,7 +4362,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const iframe = document.createElement('iframe');
                 iframe.className = 'tab-content';
                 iframe.dataset.tabId = tabId;
-                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-presentation allow-downloads');
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-presentation allow-popups-to-escape-sandbox allow-downloads');
                 iframe.src = tab.url;
                 this.contentArea.appendChild(iframe);
 
@@ -5096,6 +5097,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 let url = input.trim();
                 if (!url) return;
 
+                // Handle javascript: bookmarklets
+                if (/^javascript:/i.test(url)) {
+                    if (typeof executeBookmarklet === 'function') {
+                        executeBookmarklet(url);
+                    }
+                    return;
+                }
+
 if (this.isBlockedUrl(url)) {
   this.loadUrl('/search/blocker/profanity/blockedmalware.html');
   return;
@@ -5752,6 +5761,14 @@ if (this.isBlockedUrl(url)) {
                             this.updateTabTitle(tab, url);
                         }
                     }
+                    if (e.data && e.data.type === 'nexos-open-eruda-sidebar') {
+                        // Open eruda console in a sidebar
+                        const tab = this.tabs.get(this.activeTabId);
+                        if (tab && tab.currentUrl) {
+                            const erudaUrl = '/active/embed.html?url=' + encodeURIComponent(tab.currentUrl);
+                            this.openSidebar('Console', erudaUrl);
+                        }
+                    }
                 });
 
                 const originalWindowOpen = window.open.bind(window);
@@ -5903,6 +5920,44 @@ if (this.isBlockedUrl(url)) {
                             });
                         });
                         observer.observe(iframeWin.document.body || iframeWin.document.documentElement, {
+                            childList: true, subtree: true
+                        });
+                    } catch(e) {}
+
+                    // Listen for bookmarklet execution messages
+                    try {
+                        iframeWin.addEventListener('message', function(evt) {
+                            if (evt.data && evt.data.type === 'nexos-run-bookmarklet' && evt.data.code) {
+                                try {
+                                    var s = iframeWin.document.createElement('script');
+                                    s.textContent = evt.data.code;
+                                    (iframeWin.document.head || iframeWin.document.documentElement).appendChild(s);
+                                    setTimeout(function() { try { s.remove(); } catch(e) {} }, 100);
+                                } catch(e) {
+                                    try { iframeWin.eval(evt.data.code); } catch(e2) {}
+                                }
+                            }
+                        });
+                    } catch(e) {}
+
+                    // Intercept eruda - detect when eruda script is added and redirect to sidebar
+                    try {
+                        var erudaObserver = new iframeWin.MutationObserver(function(mutations) {
+                            mutations.forEach(function(mutation) {
+                                mutation.addedNodes.forEach(function(node) {
+                                    if (node.tagName === 'SCRIPT' && node.src && node.src.indexOf('eruda') !== -1) {
+                                        // Don't block eruda loading, but once it inits, move it to sidebar
+                                    }
+                                    // Detect eruda container being added to DOM
+                                    if (node.id === 'eruda' || (node.classList && node.classList.contains('eruda-container'))) {
+                                        // Hide eruda in the iframe and open in sidebar instead
+                                        node.style.display = 'none';
+                                        window.postMessage({ type: 'nexos-open-eruda-sidebar' }, '*');
+                                    }
+                                });
+                            });
+                        });
+                        erudaObserver.observe(iframeWin.document.documentElement, {
                             childList: true, subtree: true
                         });
                     } catch(e) {}
@@ -8848,6 +8903,11 @@ setInterval(async () => {
                 div.addEventListener('click', function() {
                     var b = window.browser;
                     var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (navUrl && /^javascript:/i.test(navUrl.trim())) {
+                        executeBookmarklet(navUrl);
+                        bkOverflowDropdown.classList.remove('visible');
+                        return;
+                    }
                     if (b) {
                         if (navUrl && !navUrl.startsWith('http')) {
                             b.loadUrl(navUrl);
@@ -8878,6 +8938,92 @@ setInterval(async () => {
         }
     });
 
+    function getDeepestIframeWindow(iframe) {
+        try {
+            var win = iframe.contentWindow;
+            if (!win) return null;
+            var doc = win.document;
+            // Check for proxy embed pattern - look for nested iframe
+            var nested = doc.querySelector('iframe');
+            if (nested) {
+                try {
+                    var nestedWin = nested.contentWindow;
+                    if (nestedWin && nestedWin.document) {
+                        // Recurse to find deepest accessible iframe
+                        var deeper = getDeepestIframeWindow(nested);
+                        return deeper || nestedWin;
+                    }
+                } catch(e) {}
+            }
+            return win;
+        } catch(e) {
+            return null;
+        }
+    }
+
+    function executeBookmarklet(jsUrl) {
+        var b = window.browser;
+        if (!b) return;
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab || !tab.iframe) return;
+
+        var code = jsUrl.trim();
+        // Strip javascript: prefix
+        if (/^javascript:/i.test(code)) {
+            code = code.replace(/^javascript:\s*/i, '');
+        }
+        // Decode if URI encoded
+        try { code = decodeURIComponent(code); } catch(e) {}
+
+        // Try to get the deepest iframe window (the actual proxied page)
+        var targetWin = getDeepestIframeWindow(tab.iframe);
+
+        if (targetWin) {
+            try {
+                // Method 1: script tag injection
+                var scriptEl = targetWin.document.createElement('script');
+                scriptEl.textContent = code;
+                (targetWin.document.head || targetWin.document.documentElement).appendChild(scriptEl);
+                setTimeout(function() { try { scriptEl.remove(); } catch(e) {} }, 100);
+                return;
+            } catch(e) {}
+
+            try {
+                // Method 2: eval fallback
+                targetWin.eval(code);
+                return;
+            } catch(e) {}
+        }
+
+        // Method 3: postMessage to iframe to run script
+        try {
+            tab.iframe.contentWindow.postMessage({
+                type: 'nexos-run-bookmarklet',
+                code: code
+            }, '*');
+        } catch(e) {}
+
+        // Method 4: reload iframe and inject on load
+        var currentSrc = tab.iframe.src;
+        tab.iframe.addEventListener('load', function onLoad() {
+            tab.iframe.removeEventListener('load', onLoad);
+            setTimeout(function() {
+                var tw = getDeepestIframeWindow(tab.iframe);
+                if (tw) {
+                    try {
+                        var s = tw.document.createElement('script');
+                        s.textContent = code;
+                        (tw.document.head || tw.document.documentElement).appendChild(s);
+                        setTimeout(function() { try { s.remove(); } catch(e) {} }, 100);
+                    } catch(e) {
+                        try { tw.eval(code); } catch(e2) {}
+                    }
+                }
+            }, 500);
+        });
+        tab.iframe.src = currentSrc;
+    }
+
     window._renderBookmarks = renderBookmarks;
     function renderBookmarks() {
         var bks = getBookmarks();
@@ -8894,17 +9040,10 @@ setInterval(async () => {
             bks.forEach(function(bk, i) {
                 var btn = document.createElement('button');
                 btn.className = 'bookmark-item';
-                var isJsBookmark = bk.url && bk.url.trim().toLowerCase().startsWith('javascript:');
-                var favicon = isJsBookmark ? '' : (bk.favicon || getFaviconUrl(bk.url) || DEFAULT_FAVICON);
-                if (isJsBookmark) {
-                    btn.innerHTML = '<span style="font-size:14px;margin-right:2px;">📜</span>' +
-                        '<span>' + escapeBookmarkHtml(bk.name) + '</span>' +
-                        '<span class="bk-remove" title="Remove">×</span>';
-                } else {
-                    btn.innerHTML = '<img src="' + favicon + '" onerror="this.src=\'' + DEFAULT_FAVICON + '\'" alt="">' +
-                        '<span>' + escapeBookmarkHtml(bk.name) + '</span>' +
-                        '<span class="bk-remove" title="Remove">×</span>';
-                }
+                var favicon = bk.favicon || getFaviconUrl(bk.url) || DEFAULT_FAVICON;
+                btn.innerHTML = '<img src="' + favicon + '" onerror="this.src=\'' + DEFAULT_FAVICON + '\'" alt="">' +
+                    '<span>' + escapeBookmarkHtml(bk.name) + '</span>' +
+                    '<span class="bk-remove" title="Remove">×</span>';
                 btn.addEventListener('click', function(e) {
                     if (e.target.classList.contains('bk-remove')) {
                         e.stopPropagation();
@@ -8916,73 +9055,11 @@ setInterval(async () => {
                         return;
                     }
                     var b = window.browser;
-                    if (isJsBookmark && b) {
-                        var tab = b.tabs.get(b.activeTabId);
-                        if (tab && tab.iframe) {
-                            var jsCode = bk.url.trim().substring('javascript:'.length);
-                            // Helper: find the deepest contentWindow we can access
-                            function getTargetWindow(iframe) {
-                                try {
-                                    var win = iframe.contentWindow;
-                                    if (!win) return null;
-                                    // Try to reach into nested iframes (e.g. embed.html wrapping proxied content)
-                                    try {
-                                        var innerFrames = win.document.querySelectorAll('iframe');
-                                        if (innerFrames.length === 1) {
-                                            var innerWin = innerFrames[0].contentWindow;
-                                            if (innerWin && innerWin.document) return innerWin;
-                                        }
-                                    } catch(e) {}
-                                    // Check if we can access document
-                                    if (win.document) return win;
-                                    return null;
-                                } catch(e) { return null; }
-                            }
-                            function injectScript(targetWin, code) {
-                                try {
-                                    var doc = targetWin.document;
-                                    var script = doc.createElement('script');
-                                    script.textContent = code;
-                                    (doc.head || doc.documentElement).appendChild(script);
-                                    script.remove();
-                                    return true;
-                                } catch(e) {
-                                    console.warn('Script injection failed:', e);
-                                    return false;
-                                }
-                            }
-                            var targetWin = getTargetWindow(tab.iframe);
-                            if (targetWin) {
-                                if (!injectScript(targetWin, jsCode)) {
-                                    // Fallback: try eval
-                                    try { targetWin.eval(jsCode); } catch(e2) { console.warn('JS bookmark eval fallback failed:', e2); }
-                                }
-                            } else {
-                                // Reload and try again
-                                console.warn('JS bookmark: no accessible window, reloading...');
-                                var currentSrc = tab.iframe.src;
-                                tab.iframe.src = 'about:blank';
-                                setTimeout(function() {
-                                    tab.iframe.src = currentSrc;
-                                    tab.iframe.addEventListener('load', function onceLoad2() {
-                                        tab.iframe.removeEventListener('load', onceLoad2);
-                                        setTimeout(function() {
-                                            var tw = getTargetWindow(tab.iframe);
-                                            if (tw) {
-                                                if (!injectScript(tw, jsCode)) {
-                                                    try { tw.eval(jsCode); } catch(e3) { console.warn('JS bookmark error after reload:', e3); }
-                                                }
-                                            } else {
-                                                console.warn('JS bookmark: still cannot access iframe after reload');
-                                            }
-                                        }, 200);
-                                    });
-                                }, 50);
-                            }
-                        }
+                    var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
+                    if (navUrl && /^javascript:/i.test(navUrl.trim())) {
+                        executeBookmarklet(navUrl);
                         return;
                     }
-                    var navUrl = bk.url.startsWith('ghost://') ? fromGhostUrl(bk.url) : bk.url;
                     if (b) {
                         if (navUrl && !navUrl.startsWith('http')) {
                             b.loadUrl(navUrl);
@@ -9125,70 +9202,6 @@ setInterval(async () => {
     setInterval(syncSidebarTopFromBookmarks, 2000);
 
     setInterval(updateStarState, 2000);
-
-    // ========== BOOKMARKS BAR RIGHT-CLICK CONTEXT MENU ==========
-    var bkCtxMenu = document.createElement('div');
-    bkCtxMenu.className = 'context-menu';
-    bkCtxMenu.id = 'bkBarContextMenu';
-    bkCtxMenu.style.zIndex = '10002';
-    bkCtxMenu.innerHTML = '<button class="context-menu-item" id="bkCtxAddBookmark"><i data-lucide="plus" width="16" height="16"></i><span>Add a bookmark</span></button>';
-    document.body.appendChild(bkCtxMenu);
-
-    var bkAddPopup = document.createElement('div');
-    bkAddPopup.className = 'bookmark-edit-popup';
-    bkAddPopup.id = 'bkAddPopup';
-    bkAddPopup.innerHTML = '<div class="bk-title">Add bookmark</div>' +
-        '<div class="bk-field"><span>Name</span><input type="text" id="bkAddName" placeholder="Bookmark name"></div>' +
-        '<div class="bk-field"><span>URL (or javascript: for bookmarklet)</span><input type="text" id="bkAddUrl" placeholder="https://example.com or javascript:alert(1)"></div>' +
-        '<div class="bk-bottom"><button class="bk-btn" id="bkAddCancelBtn">Cancel</button><button class="bk-btn bk-btn-save" id="bkAddSaveBtn">Save</button></div>';
-    document.body.appendChild(bkAddPopup);
-
-    bookmarksBar.addEventListener('contextmenu', function(e) {
-        if (e.target.closest('.bookmark-item')) return;
-        e.preventDefault();
-        e.stopPropagation();
-        bkCtxMenu.style.left = e.clientX + 'px';
-        bkCtxMenu.style.top = e.clientY + 'px';
-        bkCtxMenu.classList.add('visible');
-        if (window.lucide) lucide.createIcons();
-    });
-
-    document.getElementById('bkCtxAddBookmark').addEventListener('click', function() {
-        bkCtxMenu.classList.remove('visible');
-        var addName = document.getElementById('bkAddName');
-        var addUrl = document.getElementById('bkAddUrl');
-        addName.value = '';
-        addUrl.value = '';
-        var rect = bookmarksBar.getBoundingClientRect();
-        bkAddPopup.style.top = (rect.bottom + 4) + 'px';
-        bkAddPopup.style.left = Math.min(parseInt(bkCtxMenu.style.left) || rect.left, window.innerWidth - 380) + 'px';
-        bkAddPopup.style.right = 'auto';
-        bkAddPopup.classList.add('visible');
-        addName.focus();
-    });
-
-    document.getElementById('bkAddSaveBtn').addEventListener('click', function() {
-        var name = document.getElementById('bkAddName').value.trim();
-        var url = document.getElementById('bkAddUrl').value.trim();
-        if (!url) return;
-        if (!name) name = url.startsWith('javascript:') ? 'JS: ' + url.substring(11, 30) : url;
-        var bks = getBookmarks();
-        var favicon = url.startsWith('javascript:') ? null : getFaviconUrl(url);
-        bks.push({ name: name, url: url, favicon: favicon });
-        saveBookmarks(bks);
-        renderBookmarks();
-        updateStarState();
-        bkAddPopup.classList.remove('visible');
-    });
-
-    document.getElementById('bkAddCancelBtn').addEventListener('click', function() {
-        bkAddPopup.classList.remove('visible');
-    });
-
-    document.addEventListener('click', function(e) {
-        if (!bkCtxMenu.contains(e.target)) bkCtxMenu.classList.remove('visible');
-        if (!bkAddPopup.contains(e.target) && !bkCtxMenu.contains(e.target)) bkAddPopup.classList.remove('visible');
-    });
 })();
 </script>
 </body>
