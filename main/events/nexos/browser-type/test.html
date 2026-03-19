@@ -3451,6 +3451,13 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
         <div class="bk-overflow-dropdown" id="bkOverflowDropdown"></div>
 
+        <div class="context-menu" id="bookmarkBarContextMenu" style="display:none;">
+            <button class="context-menu-item" id="addJsBookmarkBtn">
+                <i data-lucide="code" width="14" height="14"></i>
+                Add JS Bookmark
+            </button>
+        </div>
+
         <div class="content-area" id="contentArea">
             <div class="loading-indicator" id="loadingIndicator"></div>
         </div>
@@ -3472,11 +3479,6 @@ document.addEventListener("DOMContentLoaded", () => {
             <button class="context-menu-item" id="closeTabBtn">
                 <i data-lucide="x" width="14" height="14"></i>
                 Close tab
-            </button>
-            <div class="context-menu-separator"></div>
-            <button class="context-menu-item" id="addJsBookmarkBtn">
-                <i data-lucide="code" width="14" height="14"></i>
-                Add JS Bookmark
             </button>
             <div class="context-menu-separator"></div>
             <button class="context-menu-item" id="closeOtherTabsBtn">
@@ -3756,8 +3758,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.closeTabBtn.addEventListener('click', () => this.closeTab(this.contextMenuTabId));
                 this.closeOtherTabsBtn.addEventListener('click', () => this.closeOtherTabs(this.contextMenuTabId));
 
-                document.getElementById('addJsBookmarkBtn').addEventListener('click', () => {
+                // Bookmarks bar right-click context menu
+                const bkBar = document.getElementById('bookmarksBar');
+                const bkCtxMenu = document.getElementById('bookmarkBarContextMenu');
+                bkBar.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     this.hideContextMenu();
+                    bkCtxMenu.style.display = 'block';
+                    bkCtxMenu.style.position = 'fixed';
+                    bkCtxMenu.style.left = Math.min(e.clientX, window.innerWidth - 200) + 'px';
+                    bkCtxMenu.style.top = e.clientY + 'px';
+                    bkCtxMenu.style.zIndex = '99999';
+                });
+                document.addEventListener('click', () => { bkCtxMenu.style.display = 'none'; });
+                document.addEventListener('contextmenu', (e) => {
+                    if (!bkBar.contains(e.target)) bkCtxMenu.style.display = 'none';
+                });
+
+                document.getElementById('addJsBookmarkBtn').addEventListener('click', () => {
+                    bkCtxMenu.style.display = 'none';
                     const name = prompt('Bookmark name:');
                     if (!name) return;
                     const code = prompt('JavaScript code (without javascript: prefix):');
@@ -5782,11 +5802,7 @@ if (this.isBlockedUrl(url)) {
                             this.updateTabTitle(tab, url);
                         }
                     }
-                    if (e.data && e.data.type === 'nexos-open-eruda-sidebar') {
-                        // Open eruda directly in the sidebar without proxying
-                        const erudaHtml = 'data:text/html;charset=utf-8,' + encodeURIComponent('<!DOCTYPE html><html><head><style>body{margin:0;font-family:sans-serif;}<\/style></head><body><script src="https://cdn.jsdelivr.net/npm/eruda"><\/script><script>eruda.init();<\/script></body></html>');
-                        this.openSidebar('Console', erudaHtml);
-                    }
+                    // Eruda sidebar handling removed - eruda opens normally now
                 });
 
                 const originalWindowOpen = window.open.bind(window);
@@ -5969,27 +5985,7 @@ if (this.isBlockedUrl(url)) {
                         });
                     } catch(e) {}
 
-                    // Intercept eruda - detect when eruda script is added and redirect to sidebar
-                    try {
-                        var erudaObserver = new iframeWin.MutationObserver(function(mutations) {
-                            mutations.forEach(function(mutation) {
-                                mutation.addedNodes.forEach(function(node) {
-                                    if (node.tagName === 'SCRIPT' && node.src && node.src.indexOf('eruda') !== -1) {
-                                        // Don't block eruda loading, but once it inits, move it to sidebar
-                                    }
-                                    // Detect eruda container being added to DOM
-                                    if (node.id === 'eruda' || (node.classList && node.classList.contains('eruda-container'))) {
-                                        // Hide eruda in the iframe and open in sidebar instead
-                                        node.style.display = 'none';
-                                        window.postMessage({ type: 'nexos-open-eruda-sidebar' }, '*');
-                                    }
-                                });
-                            });
-                        });
-                        erudaObserver.observe(iframeWin.document.documentElement, {
-                            childList: true, subtree: true
-                        });
-                    } catch(e) {}
+                    // Eruda: let it open normally (user will handle sidebar later)
 
                 } catch(e) {
                 }
@@ -8997,50 +8993,46 @@ setInterval(async () => {
         if (!tab || !tab.iframe) return;
 
         var code = jsUrl.trim();
-        // Strip javascript: prefix
         if (/^javascript:/i.test(code)) {
             code = code.replace(/^javascript:\s*/i, '');
         }
-        // Decode if URI encoded
         try { code = decodeURIComponent(code); } catch(e) {}
 
-        // Try to get the deepest iframe window (the actual proxied page)
-        var targetWin = getDeepestIframeWindow(tab.iframe);
+        var executed = false;
 
+        // Try direct access first
+        var targetWin = getDeepestIframeWindow(tab.iframe);
         if (targetWin) {
             try {
-                // Method 1: script tag injection
                 var scriptEl = targetWin.document.createElement('script');
                 scriptEl.textContent = code;
                 (targetWin.document.head || targetWin.document.documentElement).appendChild(scriptEl);
                 setTimeout(function() { try { scriptEl.remove(); } catch(e) {} }, 100);
-                return;
+                executed = true;
             } catch(e) {}
 
-            try {
-                // Method 2: eval fallback
-                targetWin.eval(code);
-                return;
-            } catch(e) {}
+            if (!executed) {
+                try { targetWin.eval(code); executed = true; } catch(e) {}
+            }
         }
 
-        // Method 3: postMessage to iframe and all nested iframes
-        function postToAllFrames(win, msg) {
+        // Always also try postMessage for cross-origin proxied pages
+        if (!executed) {
+            function postToAllFrames(win, msg) {
+                try { win.postMessage(msg, '*'); } catch(e) {}
+                try {
+                    for (var i = 0; i < win.frames.length; i++) {
+                        try { postToAllFrames(win.frames[i], msg); } catch(e) {}
+                    }
+                } catch(e) {}
+            }
             try {
-                win.postMessage(msg, '*');
-            } catch(e) {}
-            try {
-                for (var i = 0; i < win.frames.length; i++) {
-                    try { postToAllFrames(win.frames[i], msg); } catch(e) {}
-                }
+                postToAllFrames(tab.iframe.contentWindow, {
+                    type: 'nexos-run-bookmarklet',
+                    code: code
+                });
             } catch(e) {}
         }
-        try {
-            postToAllFrames(tab.iframe.contentWindow, {
-                type: 'nexos-run-bookmarklet',
-                code: code
-            });
-        } catch(e) {}
     }
 
     window._renderBookmarks = renderBookmarks;
