@@ -8920,26 +8920,62 @@ setInterval(async () => {
                         var tab = b.tabs.get(b.activeTabId);
                         if (tab && tab.iframe) {
                             var jsCode = bk.url.trim().substring('javascript:'.length);
-                            try {
-                                var iframeWin = tab.iframe.contentWindow;
-                                if (iframeWin) {
-                                    iframeWin.eval(jsCode);
-                                } else {
-                                    tab.iframe.src = tab.iframe.src;
-                                    tab.iframe.addEventListener('load', function onceLoad() {
-                                        tab.iframe.removeEventListener('load', onceLoad);
-                                        try { tab.iframe.contentWindow.eval(jsCode); } catch(ex) { console.warn('JS bookmark error:', ex); }
-                                    });
+                            // Helper: find the deepest contentWindow we can access
+                            function getTargetWindow(iframe) {
+                                try {
+                                    var win = iframe.contentWindow;
+                                    if (!win) return null;
+                                    // Try to reach into nested iframes (e.g. embed.html wrapping proxied content)
+                                    try {
+                                        var innerFrames = win.document.querySelectorAll('iframe');
+                                        if (innerFrames.length === 1) {
+                                            var innerWin = innerFrames[0].contentWindow;
+                                            if (innerWin && innerWin.document) return innerWin;
+                                        }
+                                    } catch(e) {}
+                                    // Check if we can access document
+                                    if (win.document) return win;
+                                    return null;
+                                } catch(e) { return null; }
+                            }
+                            function injectScript(targetWin, code) {
+                                try {
+                                    var doc = targetWin.document;
+                                    var script = doc.createElement('script');
+                                    script.textContent = code;
+                                    (doc.head || doc.documentElement).appendChild(script);
+                                    script.remove();
+                                    return true;
+                                } catch(e) {
+                                    console.warn('Script injection failed:', e);
+                                    return false;
                                 }
-                            } catch(ex) {
-                                console.warn('JS bookmark cross-origin, reloading iframe to inject...');
+                            }
+                            var targetWin = getTargetWindow(tab.iframe);
+                            if (targetWin) {
+                                if (!injectScript(targetWin, jsCode)) {
+                                    // Fallback: try eval
+                                    try { targetWin.eval(jsCode); } catch(e2) { console.warn('JS bookmark eval fallback failed:', e2); }
+                                }
+                            } else {
+                                // Reload and try again
+                                console.warn('JS bookmark: no accessible window, reloading...');
                                 var currentSrc = tab.iframe.src;
                                 tab.iframe.src = 'about:blank';
                                 setTimeout(function() {
                                     tab.iframe.src = currentSrc;
                                     tab.iframe.addEventListener('load', function onceLoad2() {
                                         tab.iframe.removeEventListener('load', onceLoad2);
-                                        try { tab.iframe.contentWindow.eval(jsCode); } catch(ex2) { console.warn('JS bookmark error after reload:', ex2); }
+                                        setTimeout(function() {
+                                            var tw = getTargetWindow(tab.iframe);
+                                            if (tw) {
+                                                if (!injectScript(tw, jsCode)) {
+                                                    try { tw.eval(jsCode); } catch(e3) { console.warn('JS bookmark error after reload:', e3); }
+                                                }
+                                            } else {
+                                                console.warn('JS bookmark: still cannot access iframe after reload');
+                                            }
+                                        }, 200);
                                     });
                                 }, 50);
                             }
