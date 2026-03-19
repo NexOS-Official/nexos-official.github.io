@@ -3474,6 +3474,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 Close tab
             </button>
             <div class="context-menu-separator"></div>
+            <button class="context-menu-item" id="addJsBookmarkBtn">
+                <i data-lucide="code" width="14" height="14"></i>
+                Add JS Bookmark
+            </button>
+            <div class="context-menu-separator"></div>
             <button class="context-menu-item" id="closeOtherTabsBtn">
                 <i data-lucide="x-circle" width="14" height="14"></i>
                 Close other tabs
@@ -3751,6 +3756,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.closeTabBtn.addEventListener('click', () => this.closeTab(this.contextMenuTabId));
                 this.closeOtherTabsBtn.addEventListener('click', () => this.closeOtherTabs(this.contextMenuTabId));
 
+                document.getElementById('addJsBookmarkBtn').addEventListener('click', () => {
+                    this.hideContextMenu();
+                    const name = prompt('Bookmark name:');
+                    if (!name) return;
+                    const code = prompt('JavaScript code (without javascript: prefix):');
+                    if (!code) return;
+                    const jsUrl = 'javascript:' + code;
+                    var bks = [];
+                    try { bks = JSON.parse(localStorage.getItem('nexos_bookmarks')) || []; } catch(e) {}
+                    bks.push({ name: name, url: jsUrl, favicon: '' });
+                    try { localStorage.setItem('nexos_bookmarks', JSON.stringify(bks)); } catch(e) {}
+                    if (typeof window._renderBookmarks === 'function') window._renderBookmarks();
+                });
+
                 this.music.addEventListener('click', () => this.handleHeadphonesClick());
                 this.geforcenow.addEventListener('click', () => this.handleGeforceClick());
                 this.movies.addEventListener('click', () => this.handlePhoneClick());
@@ -4011,9 +4030,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (openSidebars.length > 0) {
                     this.contentArea.style.marginRight = sidebarWidth + 'px';
                     this.contentArea.style.borderTopRightRadius = '15px';
+                    this.contentArea.style.borderBottomRightRadius = '15px';
                 } else {
                     this.contentArea.style.marginRight = '';
                     this.contentArea.style.borderTopRightRadius = '';
+                    this.contentArea.style.borderBottomRightRadius = '';
                 }
             }
 
@@ -5762,12 +5783,9 @@ if (this.isBlockedUrl(url)) {
                         }
                     }
                     if (e.data && e.data.type === 'nexos-open-eruda-sidebar') {
-                        // Open eruda console in a sidebar
-                        const tab = this.tabs.get(this.activeTabId);
-                        if (tab && tab.currentUrl) {
-                            const erudaUrl = '/active/embed.html?url=' + encodeURIComponent(tab.currentUrl);
-                            this.openSidebar('Console', erudaUrl);
-                        }
+                        // Open eruda directly in the sidebar without proxying
+                        const erudaHtml = 'data:text/html;charset=utf-8,' + encodeURIComponent('<!DOCTYPE html><html><head><style>body{margin:0;font-family:sans-serif;}<\/style></head><body><script src="https://cdn.jsdelivr.net/npm/eruda"><\/script><script>eruda.init();<\/script></body></html>');
+                        this.openSidebar('Console', erudaHtml);
                     }
                 });
 
@@ -5924,18 +5942,29 @@ if (this.isBlockedUrl(url)) {
                         });
                     } catch(e) {}
 
-                    // Listen for bookmarklet execution messages
+                    // Listen for bookmarklet execution messages and forward to nested iframes
                     try {
                         iframeWin.addEventListener('message', function(evt) {
                             if (evt.data && evt.data.type === 'nexos-run-bookmarklet' && evt.data.code) {
+                                var executed = false;
                                 try {
                                     var s = iframeWin.document.createElement('script');
                                     s.textContent = evt.data.code;
                                     (iframeWin.document.head || iframeWin.document.documentElement).appendChild(s);
                                     setTimeout(function() { try { s.remove(); } catch(e) {} }, 100);
+                                    executed = true;
                                 } catch(e) {
-                                    try { iframeWin.eval(evt.data.code); } catch(e2) {}
+                                    try { iframeWin.eval(evt.data.code); executed = true; } catch(e2) {}
                                 }
+                                // Also forward to all nested iframes in case this is a proxy wrapper
+                                try {
+                                    var nestedFrames = iframeWin.document.querySelectorAll('iframe');
+                                    nestedFrames.forEach(function(f) {
+                                        try {
+                                            f.contentWindow.postMessage({ type: 'nexos-run-bookmarklet', code: evt.data.code }, '*');
+                                        } catch(e) {}
+                                    });
+                                } catch(e) {}
                             }
                         });
                     } catch(e) {}
@@ -8995,33 +9024,23 @@ setInterval(async () => {
             } catch(e) {}
         }
 
-        // Method 3: postMessage to iframe to run script
+        // Method 3: postMessage to iframe and all nested iframes
+        function postToAllFrames(win, msg) {
+            try {
+                win.postMessage(msg, '*');
+            } catch(e) {}
+            try {
+                for (var i = 0; i < win.frames.length; i++) {
+                    try { postToAllFrames(win.frames[i], msg); } catch(e) {}
+                }
+            } catch(e) {}
+        }
         try {
-            tab.iframe.contentWindow.postMessage({
+            postToAllFrames(tab.iframe.contentWindow, {
                 type: 'nexos-run-bookmarklet',
                 code: code
-            }, '*');
+            });
         } catch(e) {}
-
-        // Method 4: reload iframe and inject on load
-        var currentSrc = tab.iframe.src;
-        tab.iframe.addEventListener('load', function onLoad() {
-            tab.iframe.removeEventListener('load', onLoad);
-            setTimeout(function() {
-                var tw = getDeepestIframeWindow(tab.iframe);
-                if (tw) {
-                    try {
-                        var s = tw.document.createElement('script');
-                        s.textContent = code;
-                        (tw.document.head || tw.document.documentElement).appendChild(s);
-                        setTimeout(function() { try { s.remove(); } catch(e) {} }, 100);
-                    } catch(e) {
-                        try { tw.eval(code); } catch(e2) {}
-                    }
-                }
-            }, 500);
-        });
-        tab.iframe.src = currentSrc;
     }
 
     window._renderBookmarks = renderBookmarks;
