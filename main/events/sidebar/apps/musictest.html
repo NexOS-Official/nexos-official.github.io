@@ -403,22 +403,29 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   opacity: inherit !important;
 }
 
-/* Each segment: inline-block so top offset works, own gradient for background-clip:text */
+@property --spct {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: -220%;
+}
+
+/* Each segment: its own gradient using --spct (separate from parent --pct) */
 .ll.now .lw-seg {
   display: inline-block;
   position: relative;
   top: 0px;
   background: linear-gradient(to right,
-    #ffffff               calc(var(--pct, -120%) - 2%),
-    rgba(255,255,255,.95) calc(var(--pct, -120%) + 5%),
-    rgba(255,255,255,.90) 200%
+    rgba(255,255,255,.88) 0%,
+    #ffffff               calc(var(--spct) - 2%),
+    #ffffff               calc(var(--spct) + 2%),
+    rgba(255,255,255,.88) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   transition:
-    top 480ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    --pct 100ms linear;
+    top  480ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    --spct 110ms linear;
 }
 
 /* Non-active lines: plain inherited color, no lift */
@@ -433,16 +440,14 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   transition: none !important;
 }
 
-/* upcoming: --pct far left so gradient tail (0.90) covers the letter = bright */
-.ll.now .lw-seg.upcoming { top: 0px;  --pct: -220%; }
-/* done: --pct far right, letter fully in the 0.90 tail = bright, lifted */
-.ll.now .lw-seg.done     { top: -4px; --pct:  220%; }
-/* now-seg: --pct driven by JS, letter gets the bright peak as sweep passes */
+/* upcoming: peak far left = letter shows 0.88 base brightness */
+.ll.now .lw-seg.upcoming { top: 0px;  --spct: -220%; }
+/* done: peak far right = letter shows 0.88 base brightness, lifted */
+.ll.now .lw-seg.done     { top: -4px; --spct:  220%; }
+/* now-seg: --spct driven per-frame by JS, bright peak sweeps through */
 .ll.now .lw-seg.now-seg  { top: -2px; }
 
 .lc { display: inline; }
-
-.ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
 
 .ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
 
@@ -2581,20 +2586,20 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
       if (prev !== 'upcoming') {
         sp._segState = 'upcoming';
         sp.className = 'lw-seg upcoming';
-        sp.style.setProperty('--pct', '-120%');
+        sp.style.setProperty('--spct', '-220%');
       }
     } else if (t >= segEnd) {
       if (prev !== 'done') {
         sp._segState = 'done';
         sp.className = 'lw-seg done';
-        sp.style.setProperty('--pct', '120%');
+        sp.style.setProperty('--spct', '220%');
       }
     } else {
       // Sweep --pct from -220% to 220% — bright peak passes through the letter
       const raw = (t - segStart) / Math.max(1, segEnd - segStart);
       const pct = (-220 + raw * 440).toFixed(1) + '%';
       if (prev !== 'now-seg') { sp._segState = 'now-seg'; sp.className = 'lw-seg now-seg'; }
-      sp.style.setProperty('--pct', pct);
+      sp.style.setProperty('--spct', pct);
     }
   }
 }
@@ -2657,7 +2662,7 @@ function _tickWords(lineIdx, t, nextBound) {
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
       if (segsEl) segsEl.querySelectorAll('.lw-seg').forEach(sp => {
-        if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--pct','110%'); }
+        if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--spct','220%'); }
       });
     } else {
       const raw   = (t - wStart) / Math.max(1, wNext - wStart);
@@ -2674,7 +2679,7 @@ function _snapDone(lineIdx) {
     _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
     const lwEl = document.getElementById('lw'+lineIdx+'_'+wi);
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--pct','220%'); }
+      if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--spct','220%'); }
     });
   });
 }
@@ -2687,7 +2692,7 @@ function _resetUpcoming(lineIdx) {
     _setLwState(id, 'upcoming', '-20%');
     const lwEl = document.getElementById(id);
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-220%');
+      sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--spct','-220%');
     });
   });
 }
@@ -2703,7 +2708,7 @@ function _resetUpcomingSelective(lineIdx, t) {
       _setLwState(id, 'upcoming', '-20%');
       const lwEl = document.getElementById(id);
       if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-        sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-220%');
+        sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--spct','-220%');
       });
     }
   });
