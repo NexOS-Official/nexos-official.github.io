@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NexOS — Loading</title>
+
+    <style>
+        @font-face {
+            font-family: 'Satoshi';
+            src: url('/fonts/Satoshi-Regular.otf') format('opentype');
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f5f5f5;
+            font-family: 'Satoshi', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            position: relative;
+        }
+
+        #main {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 2.5px solid #d0d0d0;
+            border-top-color: #666666;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #loading-text {
+            font-size: 18px;
+            color: #000000;
+            font-weight: 400;
+        }
+
+        #refresh-btn {
+            position: absolute;
+            bottom: 0;
+            padding: 8px 20px 8px 12px;
+            font-size: 13px;
+            font-family: 'Satoshi', -apple-system, sans-serif;
+            color: #444;
+            border: none;
+            background: #ffffff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 36px;
+            border-radius: 10px 10px 0 0;
+            z-index: 1;
+            transition: background 0.2s;
+        }
+
+        #refresh-btn:hover {
+            background: #f0f0f0;
+        }
+
+        #refresh-btn::before,
+        #refresh-btn::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            width: 12px;
+            height: 12px;
+            background: transparent;
+        }
+
+        #refresh-btn::before {
+            left: -11.9px;
+            background: #ffffff;
+            mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+            -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+        }
+
+        #refresh-btn::after {
+            right: -12px;
+            background: #ffffff;
+            mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+            -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+        }
+
+        .tab-favicon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .tab-favicon svg {
+            width: 14px;
+            height: 14px;
+            color: #5f6368;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div class="spinner"></div>
+        <div id="loading-text">Extracting URL...</div>
+    </div>
+
+    <button id="refresh-btn" onclick="location.reload()">
+        <span class="tab-favicon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                <path d="M16 21h5v-5"/>
+            </svg>
+        </span>
+        Refresh if proxy refused to load
+    </button>
+
+    <script src="/ixlmath/baremux/index.js"></script>
+    <script src="/ixlmath/scram/scramjet.all.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const statusText = document.getElementById('loading-text');
+
+            // 1. Get Target URL from Hash
+            let targetUrl = window.location.hash.slice(1);
+            if (!targetUrl) {
+                statusText.innerText = "Error: No destination URL provided.";
+                return;
+            }
+            if (!targetUrl.startsWith('http')) {
+                targetUrl = 'https://' + targetUrl;
+            }
+
+            // 2. Fetch Wisp Servers 
+            const wispUrls = [
+                atob("d3NzOi8vZW5nbGlzaC53cml0aW5nLmNhbXB1cy5jb21wdXRlci5nZW9tZXRyeS5tdmQta2JyLnJ1L3dpc3Av"),
+                atob("d3NzOi8vd2lzcC5yaHcub25lLw=="),
+                atob("d3NzOi8vaXhsbWF0aGxvZ2luLml4bC5iZXN0L3dpc3Av"),
+                atob("d3NzOi8vczBsYWNlLWoybnAub25yZW5kZXIuY29tL3dpc3Av"),
+                atob("d3NzOi8vd2lzcC50ZXJiaXVtb24udG9wL3dpc3Av"),
+                atob("d3NzOi8vZ2xzZXJpZXMubmV0L3dpc3Av")
+            ];
+
+            statusText.innerText = "Finding fastest server...";
+
+            
+            async function getFastestWisp() {
+                const wispTests = wispUrls.map(url => {
+                    return new Promise((resolve, reject) => {
+                        try {
+                            const ws = new WebSocket(url);
+                            const timeout = setTimeout(() => { ws.close(); reject(); }, 2500);
+                            ws.onopen = () => { clearTimeout(timeout); ws.close(); resolve(url); };
+                            ws.onerror = () => { clearTimeout(timeout); reject(); };
+                        } catch(e) { reject(); }
+                    });
+                });
+
+                try {
+                    return await Promise.any(wispTests);
+                } catch (e) {
+                    return null; // All servers failed
+                }
+            }
+
+            const activeWisp = await getFastestWisp();
+            if (!activeWisp) {
+                statusText.innerText = "All proxy servers are currently down.";
+                return;
+            }
+
+            statusText.innerText = "Booting Engine...";
+
+            try {
+                
+                if ('serviceWorker' in navigator) {
+                    await navigator.serviceWorker.register("/ixlmath/sw.js", { scope: "/ixlmath/go/" });
+                    
+                    await Promise.race([
+                        navigator.serviceWorker.ready,
+                        new Promise(resolve => setTimeout(resolve, 2500))
+                    ]);
+                }
+
+                
+                if (window.BareMux) {
+                    const conn = new BareMux.BareMuxConnection("/ixlmath/baremux/worker.js");
+                    await conn.setTransport("/ixlmath/libcurl/index.mjs", [{ websocket: activeWisp }]);
+                }
+
+                
+                if (window.$scramjetLoadController) {
+                    const { ScramjetController } = window.$scramjetLoadController();
+                    const scramjetCtrl = new ScramjetController({
+                        files: { 
+                            all: "/ixlmath/scram/scramjet.all.js", 
+                            wasm: "/ixlmath/scram/scramjet.wasm.wasm", 
+                            sync: "/ixlmath/scram/scramjet.sync.js" 
+                        },
+                        prefix: "/ixlmath/go/" 
+                    });
+                    
+                    scramjetCtrl.init();
+                    statusText.innerText = "Routing...";
+
+                    
+                    setTimeout(() => {
+                        const finalScramLink = scramjetCtrl.encodeUrl(targetUrl);
+                        window.location.replace(finalScramLink);
+                    }, 50);
+
+                } else {
+                    throw new Error("Scramjet controller not found.");
+                }
+
+            } catch (error) {
+                console.error("Proxy Boot Error:", error);
+                statusText.innerText = "Failed to launch proxy. Please refresh.";
+            }
+        });
+    </script>
+</body>
+</html>
