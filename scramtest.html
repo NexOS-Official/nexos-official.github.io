@@ -1,228 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>NexOS — Loading</title>
-
-    <style>
-        @font-face {
-            font-family: 'Satoshi';
-            src: url('/fonts/Satoshi-Regular.otf') format('opentype');
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #f5f5f5;
-            font-family: 'Satoshi', sans-serif;
-            overflow: hidden;
-        }
-
-        #main {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .spinner {
-            width: 32px;
-            height: 32px;
-            border: 2.5px solid #d0d0d0;
-            border-top-color: #666;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        #loading-text {
-            font-size: 18px;
-            color: #000;
-        }
-
-        #refresh-btn {
-            position: absolute;
-            bottom: 0;
-            padding: 8px 16px;
-            font-size: 13px;
-            background: #fff;
-            border: none;
-            cursor: pointer;
-            border-radius: 10px 10px 0 0;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>NexOS</title>
 </head>
 
 <body>
-    <div id="main">
-        <div class="spinner"></div>
-        <div id="loading-text">Starting...</div>
-    </div>
+<div id="status">Starting...</div>
 
-    <button id="refresh-btn" onclick="location.reload()">Refresh</button>
+<script src="/ixlmath/baremux/index.js"></script>
+<script src="/ixlmath/scram/scramjet.all.js"></script>
 
-    <script src="/ixlmath/baremux/index.js"></script>
-    <script src="/ixlmath/scram/scramjet.all.js"></script>
+<script>
+(async () => {
 
-    <script>
-    document.addEventListener('DOMContentLoaded', async () => {
+const status = document.getElementById("status");
 
-        const statusText = document.getElementById('loading-text');
+try {
 
-        try {
-            // -----------------------------
-            // GET TARGET URL
-            // -----------------------------
-            let targetUrl = location.hash.slice(1);
+    // -------------------------
+    // GET URL
+    // -------------------------
+    let target = location.hash.slice(1);
 
-            if (!targetUrl) {
-                statusText.innerText = "No URL provided.";
-                return;
-            }
+    if (!target) {
+        status.innerText = "No URL.";
+        return;
+    }
 
-            if (!targetUrl.startsWith("http")) {
-                targetUrl = "https://" + targetUrl;
-            }
+    if (!target.startsWith("http")) {
+        target = "https://" + target;
+    }
 
-            document.title = "NexOS — " + new URL(targetUrl).hostname;
+    document.title = new URL(target).hostname;
 
-            // -----------------------------
-            // WISP SERVERS
-            // -----------------------------
-            const wispUrls = [
-                atob("d3NzOi8vd2lzcC5yaHcub25lLw=="),
-                atob("d3NzOi8vczBsYWNlLWoybnAub25yZW5kZXIuY29tL3dpc3Av"),
-                atob("d3NzOi8vd2lzcC50ZXJiaXVtb24udG9wL3dpc3Av")
-            ];
+    // -------------------------
+    // WISP
+    // -------------------------
+    status.innerText = "Finding server...";
 
-            statusText.innerText = "Finding server...";
+    const wisps = [
+        atob("d3NzOi8vd2lzcC5yaHcub25lLw=="),
+        atob("d3NzOi8vczBsYWNlLWoybnAub25yZW5kZXIuY29tL3dpc3Av"),
+        atob("d3NzOi8vd2lzcC50ZXJiaXVtb24udG9wL3dpc3Av")
+    ];
 
-            async function getWorkingWisp() {
-                for (const url of wispUrls) {
-                    try {
-                        await new Promise((resolve, reject) => {
-                            const ws = new WebSocket(url);
-                            const t = setTimeout(() => reject(), 2000);
+    async function getWisp() {
+        for (const url of wisps) {
+            try {
+                await new Promise((res, rej) => {
+                    const ws = new WebSocket(url);
+                    const t = setTimeout(() => rej(), 2000);
 
-                            ws.onopen = () => {
-                                clearTimeout(t);
-                                ws.close();
-                                resolve();
-                            };
+                    ws.onopen = () => {
+                        clearTimeout(t);
+                        ws.close();
+                        res();
+                    };
 
-                            ws.onerror = reject;
-                        });
-
-                        return url;
-                    } catch {}
-                }
-                return null;
-            }
-
-            const activeWisp = await getWorkingWisp();
-
-            if (!activeWisp) {
-                statusText.innerText = "No servers available.";
-                return;
-            }
-
-            // -----------------------------
-            // SERVICE WORKER
-            // -----------------------------
-            statusText.innerText = "Starting engine...";
-
-            if ('serviceWorker' in navigator) {
-                await navigator.serviceWorker.register("/ixlmath/sw.js", {
-                    scope: "/ixlmath/go/"
+                    ws.onerror = rej;
                 });
 
-                await navigator.serviceWorker.ready;
-            }
-
-            // -----------------------------
-            // BAREMUX TRANSPORT (FIXED .JS)
-            // -----------------------------
-            if (!window.BareMux) {
-                statusText.innerText = "BareMux failed.";
-                return;
-            }
-
-            const conn = new BareMux.BareMuxConnection("/ixlmath/baremux/worker.js");
-
-            await conn.setTransport("/ixlmath/libcurl/index.js", [
-                { websocket: activeWisp }
-            ]);
-
-            console.log("Transport ready:", activeWisp);
-
-            // -----------------------------
-            // SCRAMJET
-            // -----------------------------
-            if (!window.$scramjetLoadController) {
-                statusText.innerText = "Scramjet missing.";
-                return;
-            }
-
-            const { ScramjetController } = window.$scramjetLoadController();
-
-            const scramjetCtrl = new ScramjetController({
-                files: {
-                    all: "/ixlmath/scram/scramjet.all.js",
-                    wasm: "/ixlmath/scram/scramjet.wasm.wasm",
-                    sync: "/ixlmath/scram/scramjet.sync.js"
-                },
-                prefix: "/ixlmath/go/"
-            });
-
-            await scramjetCtrl.init();
-
-            statusText.innerText = "Routing...";
-
-            // -----------------------------
-            // SAFE ENCODE (NO RACE CONDITION)
-            // -----------------------------
-            let finalUrl;
-
-            for (let i = 0; i < 10; i++) {
-                try {
-                    finalUrl = scramjetCtrl.encodeUrl(targetUrl);
-                    if (finalUrl) break;
-                } catch {}
-
-                await new Promise(r => setTimeout(r, 100));
-            }
-
-            if (!finalUrl) {
-                statusText.innerText = "Failed to route.";
-                console.error("Encode failed");
-                return;
-            }
-
-            console.log("Redirecting to:", finalUrl);
-
-            // -----------------------------
-            // REDIRECT (RELIABLE)
-            // -----------------------------
-            window.location.href = finalUrl;
-
-            // fallback retry
-            setTimeout(() => {
-                statusText.innerText = "Retrying...";
-                location.reload();
-            }, 5000);
-
-        } catch (err) {
-            console.error(err);
-            statusText.innerText = "Crash. Refresh.";
+                return url;
+            } catch {}
         }
+        return null;
+    }
 
+    const wisp = await getWisp();
+
+    if (!wisp) {
+        status.innerText = "No servers.";
+        return;
+    }
+
+    // -------------------------
+    // SERVICE WORKER
+    // -------------------------
+    status.innerText = "Starting engine...";
+
+    if ('serviceWorker' in navigator) {
+
+        await navigator.serviceWorker.register("/ixlmath/sw.js", {
+            scope: "/ixlmath/go/"
+        });
+
+        // if not controlling, reload ONCE
+        if (!navigator.serviceWorker.controller) {
+            location.reload();
+            return;
+        }
+    }
+
+    // -------------------------
+    // BAREMUX
+    // -------------------------
+    status.innerText = "Connecting...";
+
+    if (!window.BareMux) {
+        status.innerText = "BareMux missing.";
+        return;
+    }
+
+    const conn = new BareMux.BareMuxConnection("/ixlmath/baremux/worker.js");
+
+    await conn.setTransport("/ixlmath/libcurl/index.js", [
+        { websocket: wisp }
+    ]);
+
+    // -------------------------
+    // SCRAMJET
+    // -------------------------
+    status.innerText = "Routing...";
+
+    if (!window.$scramjetLoadController) {
+        status.innerText = "Scramjet missing.";
+        return;
+    }
+
+    const { ScramjetController } = window.$scramjetLoadController();
+
+    const scram = new ScramjetController({
+        files: {
+            all: "/ixlmath/scram/scramjet.all.js",
+            wasm: "/ixlmath/scram/scramjet.wasm.wasm",
+            sync: "/ixlmath/scram/scramjet.sync.js"
+        },
+        prefix: "/ixlmath/go/"
     });
-    </script>
+
+    await scram.init();
+
+    // wait until encode works (important)
+    let final;
+    for (let i = 0; i < 10; i++) {
+        try {
+            final = scram.encodeUrl(target);
+            if (final) break;
+        } catch {}
+        await new Promise(r => setTimeout(r, 100));
+    }
+
+    if (!final) {
+        status.innerText = "Failed.";
+        return;
+    }
+
+    // -------------------------
+    // REDIRECT
+    // -------------------------
+    window.location.href = final;
+
+} catch (e) {
+    console.error(e);
+    status.innerText = "Error.";
+}
+
+})();
+</script>
+
 </body>
 </html>
