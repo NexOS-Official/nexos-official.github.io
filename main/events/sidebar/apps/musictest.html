@@ -393,33 +393,56 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 
 /* ── Per-letter / per-syllable lift ── */
-/* Key insight: background-clip:text on parent DOES paint through children
-   IF the children use position:relative + top (not transform, not inline-block).
-   We set .lc to display:inline with position:relative so they're in the text
-   flow and the parent gradient paints through them. Only `top` changes per letter. */
 
-.ll.now .lw.has-splits,
-.ll:not(.now) .lw.has-splits {
-  /* No overrides — gradient stays exactly as normal .lw */
+/* has-splits: parent .lw must NOT use background-clip:text because inline-block
+   children break it. Disable gradient on split words, use plain color per .lc. */
+.lw.has-splits {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  color: transparent !important;
 }
 
+/* .lc spans are inline-block (needed for top offset to work visually),
+   each one renders its own color. Parent is transparent so only .lc is visible. */
 .lc {
-  display: inline;
+  display: inline-block;
   position: relative;
   top: 0px;
-  transition: top 550ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  -webkit-text-fill-color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.55);
+  transition:
+    top  500ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    -webkit-text-fill-color 250ms ease-out,
+    color 250ms ease-out;
 }
 
-.ll:not(.now) .lc {
-  top: 0px !important;
-  transition: none !important;
-}
+/* Non-active lines: no lift, match parent brightness */
+.ll:not(.now) .lc { top: 0px !important; transition: none !important; }
+.ll.past  .lc { -webkit-text-fill-color: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.06) !important; }
+.ll.near  .lc { -webkit-text-fill-color: rgba(255,255,255,0.46) !important; color: rgba(255,255,255,0.46) !important; }
+.ll.near2 .lc { -webkit-text-fill-color: rgba(255,255,255,0.24) !important; color: rgba(255,255,255,0.24) !important; }
 
-.ll.now .lc.lc-upcoming { top: 0px; }
-.ll.now .lc.lc-now      { top: -2px; }
-.ll.now .lc.lc-sung     { top: -3px; }
+/* Active line letter states */
+.ll.now .lc.lc-upcoming {
+  top: 0px;
+  -webkit-text-fill-color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.55);
+}
+.ll.now .lc.lc-now {
+  top: -3px;
+  -webkit-text-fill-color: #ffffff;
+  color: #ffffff;
+}
+.ll.now .lc.lc-sung {
+  top: -4px;
+  -webkit-text-fill-color: rgba(255,255,255,0.88);
+  color: rgba(255,255,255,0.88);
+}
 
 .ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
+.ll:hover:not(.now) .lc { -webkit-text-fill-color: rgba(255,255,255,0.6) !important; color: rgba(255,255,255,0.6) !important; }
 
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
