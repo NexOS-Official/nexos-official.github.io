@@ -1,34 +1,17 @@
 importScripts('/active/uv/uv.bundle.js');
 importScripts('/active/uv/uv.config.js');
 
-const CACHE_VERSION = 'uv-core-v1';
-const CORE_ASSETS = [
-    '/active/uv/uv.bundle.js',
-    '/active/uv/uv.client.js',
-    '/active/uv/uv.handler.js',
-    '/active/uv/uv.config.js',
-];
-
-// ── Install: pre-cache core UV assets ─────────────────────────────────────────
-self.addEventListener('install', event => {
-    event.waitUntil(
-        caches.open(CACHE_VERSION).then(cache => cache.addAll(CORE_ASSETS))
-    );
-    // Take over immediately without waiting for old SW to die
-    self.skipWaiting();
-});
-
-// ── Activate: clean up old cache versions ─────────────────────────────────────
-self.addEventListener('activate', event => {
-    event.waitUntil(
-        caches.keys().then(keys =>
-            Promise.all(
-                keys
-                    .filter(key => key !== CACHE_VERSION)
-                    .map(key => caches.delete(key))
-            )
-        ).then(() => self.clients.claim())
-    );
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open("uv-core").then(cache =>
+      cache.addAll([
+        "/active/uv/uv.bundle.js",
+        "/active/uv/uv.client.js",
+        "/active/uv/uv.handler.js",
+        "/active/uv/uv.config.js"
+      ])
+    )
+  );
 });
 
 class UVServiceWorker extends EventEmitter {     
@@ -81,19 +64,12 @@ class UVServiceWorker extends EventEmitter {
             this.headers.forward.push('content-type');
         };
     };
-
     async fetch({ request }) {
-        // ── Serve core UV assets from cache ───────────────────────────────────
-        if (CORE_ASSETS.includes(new URL(request.url).pathname)) {
-            const cached = await caches.match(request);
-            if (cached) return cached;
-        }
-
         if (!request.url.startsWith(location.origin + (this.config.prefix || '/service/'))) {
             return fetch(request);
         };
-
         try {
+
             const ultraviolet = new Ultraviolet(this.config);
 
             if (typeof this.config.construct === 'function') {
@@ -137,13 +113,17 @@ class UVServiceWorker extends EventEmitter {
             if (cookieStr) requestCtx.headers.cookie = cookieStr;
             requestCtx.headers.Host = requestCtx.url.host;
 
+
             const reqEvent = new HookEvent(requestCtx, null, null);
             this.emit('request', reqEvent);
 
             if (reqEvent.intercepted) return reqEvent.returnValue;
 
-            // ── Fetch with bare server retry ───────────────────────────────────
-            let response = await this.fetchWithRetry(requestCtx);
+            const response = await fetch(requestCtx.send);
+
+            if (response.status === 500) {
+                return Promise.reject('');
+            };
 
             const responseCtx = new ResponseContext(requestCtx, response, this);
             const resEvent = new HookEvent(responseCtx, null, null);
@@ -187,13 +167,13 @@ class UVServiceWorker extends EventEmitter {
                             await response.text()
                         ); 
                         break;
-                    case 'iframe':
-                    case 'document':
+                case 'iframe':
+                case 'document':
                         if (isHtml(ultraviolet.meta.url, (responseCtx.headers['content-type'] || ''))) {
                             responseCtx.body = ultraviolet.rewriteHtml(
                                 await response.text(), 
                                 { 
-                                    document: true,
+                                    document: true ,
                                     injectHead: ultraviolet.createHtmlInject(
                                         this.config.handler, 
                                         this.config.bundle, 
@@ -221,39 +201,11 @@ class UVServiceWorker extends EventEmitter {
             });
 
         } catch(err) {
-            // ── Improved error response with actual message ────────────────────
-            console.error('[UV SW] Fetch error:', err);
-            return new Response(`UV Service Worker Error: ${err.message || err.toString()}`, {
+            return new Response(err.toString(), {
                 status: 500,
-                headers: { 'content-type': 'text/plain' },
             });
         };
     };
-
-    // ── Retry fetch across available bare servers on 500 ──────────────────────
-    async fetchWithRetry(requestCtx) {
-        const triedAddresses = new Set();
-        let lastError;
-
-        for (let attempt = 0; attempt < this.addresses.length; attempt++) {
-            const address = this.address;
-
-            // Avoid retrying the same address twice in a row if we have options
-            if (triedAddresses.has(address.href) && triedAddresses.size < this.addresses.length) continue;
-            triedAddresses.add(address.href);
-
-            try {
-                const response = await fetch(requestCtx.send);
-                if (response.status !== 500) return response;
-                lastError = new Error(`Bare server at ${address.href} returned 500`);
-            } catch (err) {
-                lastError = err;
-            }
-        }
-
-        throw lastError || new Error('All bare servers failed');
-    };
-
     getBarerResponse(response) {
         const headers = {};
         const raw = JSON.parse(response.headers.get('x-bare-headers'));
@@ -487,8 +439,11 @@ EventEmitter.prototype.emit = function emit(type) {
     if (args.length > 0)
       er = args[0];
     if (er instanceof Error) {
+      // Note: The comments on the `throw` lines are intentional, they show
+      // up in Node's output if this results in an unhandled exception.
       throw er; // Unhandled 'error' event
     }
+    // At least give some kind of context to the user
     var err = new Error('Unhandled error.' + (er ? ' (' + er.message + ')' : ''));
     err.context = er;
     throw err; // Unhandled 'error' event
@@ -523,30 +478,41 @@ function _addListener(target, type, listener, prepend) {
     events = target._events = Object.create(null);
     target._eventsCount = 0;
   } else {
+    // To avoid recursion in the case that type === "newListener"! Before
+    // adding it to the listeners, first emit "newListener".
     if (events.newListener !== undefined) {
       target.emit('newListener', type,
                   listener.listener ? listener.listener : listener);
+
+      // Re-assign `events` because a newListener handler could have caused the
+      // this._events to be assigned to a new object
       events = target._events;
     }
     existing = events[type];
   }
 
   if (existing === undefined) {
+    // Optimize the case of one listener. Don't need the extra array object.
     existing = events[type] = listener;
     ++target._eventsCount;
   } else {
     if (typeof existing === 'function') {
+      // Adding the second element, need to change to array.
       existing = events[type] =
         prepend ? [listener, existing] : [existing, listener];
+      // If we've already got an array, just append.
     } else if (prepend) {
       existing.unshift(listener);
     } else {
       existing.push(listener);
     }
 
+    // Check for listener leak
     m = _getMaxListeners(target);
     if (m > 0 && existing.length > m && !existing.warned) {
       existing.warned = true;
+      // No error code for this since it is a Warning
+      // eslint-disable-next-line no-restricted-syntax
       var w = new Error('Possible EventEmitter memory leak detected. ' +
                           existing.length + ' ' + String(type) + ' listeners ' +
                           'added. Use emitter.setMaxListeners() to ' +
@@ -604,6 +570,7 @@ EventEmitter.prototype.prependOnceListener =
       return this;
     };
 
+// Emits a 'removeListener' event if and only if the listener was removed.
 EventEmitter.prototype.removeListener =
     function removeListener(type, listener) {
       var list, events, position, i, originalListener;
@@ -666,6 +633,7 @@ EventEmitter.prototype.removeAllListeners =
       if (events === undefined)
         return this;
 
+      // not listening for removeListener, no need to emit
       if (events.removeListener === undefined) {
         if (arguments.length === 0) {
           this._events = Object.create(null);
@@ -679,6 +647,7 @@ EventEmitter.prototype.removeAllListeners =
         return this;
       }
 
+      // emit removeListener for all listeners on all events
       if (arguments.length === 0) {
         var keys = Object.keys(events);
         var key;
@@ -698,6 +667,7 @@ EventEmitter.prototype.removeAllListeners =
       if (typeof listeners === 'function') {
         this.removeListener(type, listeners);
       } else if (listeners !== undefined) {
+        // LIFO order
         for (i = listeners.length - 1; i >= 0; i--) {
           this.removeListener(type, listeners[i]);
         }
@@ -816,7 +786,11 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
       emitter.on(name, listener);
     }
   } else if (typeof emitter.addEventListener === 'function') {
+    // EventTarget does not have `error` event semantics like Node
+    // EventEmitters, we do not listen for `error` events here.
     emitter.addEventListener(name, function wrapListener(arg) {
+      // IE does not have builtin `{ once: true }` support so we
+      // have to do it manually.
       if (flags.once) {
         emitter.removeEventListener(name, wrapListener);
       }
