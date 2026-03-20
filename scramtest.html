@@ -2,161 +2,179 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>NexOS</title>
-</head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sea Bean</title>
 
-<body>
-<div id="status">Starting...</div>
-
-<script src="/ixlmath/baremux/index.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="/ixlmath/scram/scramjet.all.js"></script>
 
-<script>
-(async () => {
-
-const status = document.getElementById("status");
-
-try {
-
-    // -------------------------
-    // GET URL
-    // -------------------------
-    let target = location.hash.slice(1);
-
-    if (!target) {
-        status.innerText = "No URL.";
-        return;
-    }
-
-    if (!target.startsWith("http")) {
-        target = "https://" + target;
-    }
-
-    document.title = new URL(target).hostname;
-
-    // -------------------------
-    // WISP
-    // -------------------------
-    status.innerText = "Finding server...";
-
-    const wisps = [
-        atob("d3NzOi8vd2lzcC5yaHcub25lLw=="),
-        atob("d3NzOi8vczBsYWNlLWoybnAub25yZW5kZXIuY29tL3dpc3Av"),
-        atob("d3NzOi8vd2lzcC50ZXJiaXVtb24udG9wL3dpc3Av")
-    ];
-
-    async function getWisp() {
-        for (const url of wisps) {
-            try {
-                await new Promise((res, rej) => {
-                    const ws = new WebSocket(url);
-                    const t = setTimeout(() => rej(), 2000);
-
-                    ws.onopen = () => {
-                        clearTimeout(t);
-                        ws.close();
-                        res();
-                    };
-
-                    ws.onerror = rej;
-                });
-
-                return url;
-            } catch {}
-        }
-        return null;
-    }
-
-    const wisp = await getWisp();
-
-    if (!wisp) {
-        status.innerText = "No servers.";
-        return;
-    }
-
-    // -------------------------
-    // SERVICE WORKER
-    // -------------------------
-    status.innerText = "Starting engine...";
-
-    if ('serviceWorker' in navigator) {
-
-        await navigator.serviceWorker.register("/ixlmath/sw.js", {
-            scope: "/ixlmath/go/"
-        });
-
-        // if not controlling, reload ONCE
-        if (!navigator.serviceWorker.controller) {
-            location.reload();
-            return;
-        }
-    }
-
-    // -------------------------
-    // BAREMUX
-    // -------------------------
-    status.innerText = "Connecting...";
-
-    if (!window.BareMux) {
-        status.innerText = "BareMux missing.";
-        return;
-    }
-
-    const conn = new BareMux.BareMuxConnection("/ixlmath/baremux/worker.js");
-
-    await conn.setTransport("/ixlmath/libcurl/index.js", [
-        { websocket: wisp }
-    ]);
-
-    // -------------------------
-    // SCRAMJET
-    // -------------------------
-    status.innerText = "Routing...";
-
-    if (!window.$scramjetLoadController) {
-        status.innerText = "Scramjet missing.";
-        return;
-    }
-
-    const { ScramjetController } = window.$scramjetLoadController();
-
-    const scram = new ScramjetController({
-        files: {
-            all: "/ixlmath/scram/scramjet.all.js",
-            wasm: "/ixlmath/scram/scramjet.wasm.wasm",
-            sync: "/ixlmath/scram/scramjet.sync.js"
-        },
-        prefix: "/ixlmath/go/"
-    });
-
-    await scram.init();
-
-    // wait until encode works (important)
-    let final;
-    for (let i = 0; i < 10; i++) {
-        try {
-            final = scram.encodeUrl(target);
-            if (final) break;
-        } catch {}
-        await new Promise(r => setTimeout(r, 100));
-    }
-
-    if (!final) {
-        status.innerText = "Failed.";
-        return;
-    }
-
-    // -------------------------
-    // REDIRECT
-    // -------------------------
-    window.location.href = final;
-
-} catch (e) {
-    console.error(e);
-    status.innerText = "Error.";
+<style>
+:root{
+  --bg:#05080d;
+  --nav:rgba(8,16,28,0.92);
+  --accent:#22d3ee;
+  --accent-glow:rgba(34,211,238,0.45);
+  --border:#0f2238;
+  --input:#070e18;
+  --text:#e6f1ff;
 }
 
-})();
+html,body{
+  margin:0;
+  height:100%;
+  background:var(--bg);
+  font-family:Inter,sans-serif;
+  overflow:hidden;
+  color:var(--text);
+}
+
+iframe{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:calc(100% - 56px);
+  border:none;
+  background:black;
+}
+
+#bar{
+  position:absolute;
+  bottom:0;
+  left:0;
+  width:100%;
+  height:56px;
+  background:var(--nav);
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:0 16px;
+  box-sizing:border-box;
+  backdrop-filter:blur(12px);
+  border-top:1px solid var(--border);
+}
+
+#url{
+  flex:1;
+  height:38px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:var(--input);
+  color:white;
+  padding:0 14px;
+  outline:none;
+  font-size:14px;
+}
+
+#url:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-glow);
+}
+
+button{
+  height:38px;
+  border-radius:12px;
+  padding:0 16px;
+  border:none;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.go{
+  background:var(--accent);
+  color:black;
+}
+
+.full{
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--accent);
+}
+</style>
+</head>
+<body>
+
+<iframe id="frame"></iframe>
+
+<div id="bar">
+  <input id="url" placeholder="Enter URL or search">
+  <button class="go" onclick="go()">Go</button>
+  <button class="full" onclick="toggleFull()">⛶</button>
+</div>
+
+<script>
+let scramjet;
+
+/* REGISTER SERVICE WORKER */
+async function registerSW(){
+  await navigator.serviceWorker.register("/ixlmath/sw.js");
+  await navigator.serviceWorker.ready;
+}
+
+/* INIT SCRAMJET ONLY */
+async function initProxy(){
+
+  await registerSW();
+
+  const { ScramjetController } = $scramjetLoadController();
+
+  scramjet = new ScramjetController({
+    files:{
+      all:"/ixlmath/scram/scramjet.all.js",
+      wasm:"/ixlmath/scram/scramjet.wasm.wasm",
+      sync:"/ixlmath/scram/scramjet.sync.js"
+    },
+    prefix:"/ixlmath/go/"
+  });
+
+  await scramjet.init();
+}
+
+/* NAVIGATION */
+function load(url){
+  document.getElementById("url").value = url;
+  document.getElementById("frame").src = scramjet.encodeUrl(url);
+}
+
+function go(){
+  let val = document.getElementById("url").value.trim();
+  if(!val) return;
+
+  let url = (val.includes(".") && !val.includes(" "))
+    ? (val.startsWith("http") ? val : "https://" + val)
+    : "https://search.brave.com/search?q=" + encodeURIComponent(val);
+
+  load(url);
+}
+
+/* EMBED SUPPORT */
+function getEmbedURL(){
+  if(!window.location.search) return null;
+  return decodeURIComponent(window.location.search.slice(1));
+}
+
+/* FULLSCREEN */
+function toggleFull(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+/* START */
+window.onload = async () => {
+  await initProxy();
+
+  const embed = getEmbedURL();
+  if(embed){
+    load(embed);
+  }
+};
+
+document.getElementById("url").addEventListener("keydown", e=>{
+  if(e.key === "Enter") go();
+});
 </script>
 
 </body>
