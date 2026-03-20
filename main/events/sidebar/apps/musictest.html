@@ -393,64 +393,33 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 
 /* ── Per-letter / per-syllable lift ── */
+/* Key insight: background-clip:text on parent DOES paint through children
+   IF the children use position:relative + top (not transform, not inline-block).
+   We set .lc to display:inline with position:relative so they're in the text
+   flow and the parent gradient paints through them. Only `top` changes per letter. */
 
-/* has-splits: kill the parent gradient so .lc color values are visible */
 .ll.now .lw.has-splits,
-.ll.now .lw.has-splits.upcoming,
-.ll.now .lw.has-splits.now-word,
-.ll.now .lw.has-splits.done,
-.ll.now .lw.has-splits.word-enter {
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  -webkit-text-fill-color: transparent !important;
-  opacity: 1 !important;
-  animation: none !important;
-}
 .ll:not(.now) .lw.has-splits {
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  -webkit-text-fill-color: transparent !important;
+  /* No overrides — gradient stays exactly as normal .lw */
 }
 
-/* Each .lc is inline-block so transform works, and carries its own plain color */
 .lc {
-  display: inline-block;
-  will-change: transform, color;
-  transform: translateY(0px);
-  -webkit-text-fill-color: initial;
-  color: rgba(255,255,255,0.55);
-  transition:
-    transform     550ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    color         300ms ease-out,
-    -webkit-text-fill-color 300ms ease-out;
+  display: inline;
+  position: relative;
+  top: 0px;
+  transition: top 550ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-/* Non-active lines: no lift, match parent line brightness */
-.ll:not(.now) .lc { transform: none !important; transition: none !important; }
-.ll.past  .lc { color: rgba(255,255,255,0.06) !important; -webkit-text-fill-color: rgba(255,255,255,0.06) !important; }
-.ll.near  .lc { color: rgba(255,255,255,0.46) !important; -webkit-text-fill-color: rgba(255,255,255,0.46) !important; }
-.ll.near2 .lc { color: rgba(255,255,255,0.24) !important; -webkit-text-fill-color: rgba(255,255,255,0.24) !important; }
-
-/* Active line: upcoming = dim, now = full white peak, sung = bright settled */
-.ll.now .lc.lc-upcoming {
-  transform: translateY(0px);
-  color: rgba(255,255,255,0.55);
-  -webkit-text-fill-color: rgba(255,255,255,0.55);
-}
-.ll.now .lc.lc-now {
-  transform: translateY(-2px);
-  color: #ffffff;
-  -webkit-text-fill-color: #ffffff;
-}
-.ll.now .lc.lc-sung {
-  transform: translateY(-3px);
-  color: rgba(255,255,255,0.90);
-  -webkit-text-fill-color: rgba(255,255,255,0.90);
+.ll:not(.now) .lc {
+  top: 0px !important;
+  transition: none !important;
 }
 
-.ll:hover:not(.now) .lc { color: rgba(255,255,255,0.6) !important; -webkit-text-fill-color: rgba(255,255,255,0.6) !important; }
+.ll.now .lc.lc-upcoming { top: 0px; }
+.ll.now .lc.lc-now      { top: -2px; }
+.ll.now .lc.lc-sung     { top: -3px; }
+
+.ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
 
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
