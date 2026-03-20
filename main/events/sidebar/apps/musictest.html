@@ -394,7 +394,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 /* ── Per-letter / per-syllable lift ── */
 
-/* has-splits: parent .lw is just a container, segments handle everything */
 .lw.has-splits {
   background: none !important;
   -webkit-text-fill-color: unset !important;
@@ -404,27 +403,27 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   opacity: inherit !important;
 }
 
-/* Each segment is its own gradient-bearing span */
+/* Each segment: inline-block so top offset works, own gradient for background-clip:text */
 .ll.now .lw-seg {
   display: inline-block;
   position: relative;
   top: 0px;
   background: linear-gradient(to right,
-    #ffffff               calc(var(--pct, -20%) - 5%),
-    rgba(255,255,255,.85) calc(var(--pct, -20%) + 5%),
-    rgba(255,255,255,.80) calc(var(--pct, -20%) + 15%)
+    #ffffff               calc(var(--pct, -120%) - 2%),
+    rgba(255,255,255,.95) calc(var(--pct, -120%) + 5%),
+    rgba(255,255,255,.90) 200%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   transition:
-    top 500ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    --pct 120ms ease-out;
+    top 480ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    --pct 100ms linear;
 }
 
-/* Non-active lines: plain color, no gradient, no lift */
+/* Non-active lines: plain inherited color, no lift */
 .ll:not(.now) .lw-seg {
-  display: inline;
+  display: inline-block;
   top: 0px !important;
   background: none !important;
   -webkit-background-clip: unset !important;
@@ -434,14 +433,16 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   transition: none !important;
 }
 
-/* Upcoming: bright — nearly same as sung, just very slightly dimmer.
-   Done: fully bright, lifted. Now: JS drives --pct. */
-.ll.now .lw-seg.upcoming { top: 0px;  --pct: -120%; }
-.ll.now .lw-seg.done     { top: -4px; --pct: 120%; }
+/* upcoming: --pct far left so gradient tail (0.90) covers the letter = bright */
+.ll.now .lw-seg.upcoming { top: 0px;  --pct: -220%; }
+/* done: --pct far right, letter fully in the 0.90 tail = bright, lifted */
+.ll.now .lw-seg.done     { top: -4px; --pct:  220%; }
+/* now-seg: --pct driven by JS, letter gets the bright peak as sweep passes */
 .ll.now .lw-seg.now-seg  { top: -2px; }
 
-/* Reuse .lc class as alias in snap/reset functions */
 .lc { display: inline; }
+
+.ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
 
 .ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
 
@@ -2589,9 +2590,9 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
         sp.style.setProperty('--pct', '120%');
       }
     } else {
-      // Sweep from -120% to 120% across the segment window
+      // Sweep --pct from -220% to 220% — bright peak passes through the letter
       const raw = (t - segStart) / Math.max(1, segEnd - segStart);
-      const pct = (-120 + raw * 240).toFixed(1) + '%';
+      const pct = (-220 + raw * 440).toFixed(1) + '%';
       if (prev !== 'now-seg') { sp._segState = 'now-seg'; sp.className = 'lw-seg now-seg'; }
       sp.style.setProperty('--pct', pct);
     }
@@ -2673,7 +2674,7 @@ function _snapDone(lineIdx) {
     _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
     const lwEl = document.getElementById('lw'+lineIdx+'_'+wi);
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--pct','120%'); }
+      if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--pct','220%'); }
     });
   });
 }
@@ -2686,7 +2687,7 @@ function _resetUpcoming(lineIdx) {
     _setLwState(id, 'upcoming', '-20%');
     const lwEl = document.getElementById(id);
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-120%');
+      sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-220%');
     });
   });
 }
@@ -2702,7 +2703,7 @@ function _resetUpcomingSelective(lineIdx, t) {
       _setLwState(id, 'upcoming', '-20%');
       const lwEl = document.getElementById(id);
       if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-        sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-120%');
+        sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-220%');
       });
     }
   });
