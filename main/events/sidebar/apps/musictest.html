@@ -380,22 +380,29 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   white-space: nowrap;
 }
 
-/* Upcoming: dim, grounded, normal scale */
+/* Upcoming: MUST be dim - force with !important */
 .ll.now .lw-seg.upcoming {
-  color: rgba(255, 255, 255, 0.5);
-  transform: translateY(0px) scale(1);
+  color: rgba(255, 255, 255, 0.4) !important;
+  transform: translateY(0px) scale(1) !important;
+  --lift-opa: 0.4 !important;
+  --lift: 0px !important;
+  --lift-scale: 1 !important;
 }
 
 /* Active: bright white with lift + scale glow */
 .ll.now .lw-seg.now-seg {
-  color: #ffffff;
+  color: #ffffff !important;
   font-weight: 700;
+  --lift-opa: 1 !important;
 }
 
 /* Done: bright white, settled, normal scale */
 .ll.now .lw-seg.done {
-  color: rgba(255, 255, 255, 1);
-  transform: translateY(0px) scale(1);
+  color: rgba(255, 255, 255, 1) !important;
+  transform: translateY(0px) scale(1) !important;
+  --lift: 0px !important;
+  --lift-opa: 1 !important;
+  --lift-scale: 1 !important;
 }
 
 /* Basic word styling for .now lines */
@@ -2573,9 +2580,9 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
     if (sp._segState === undefined) {
       sp._segState = 'upcoming';
       sp.className = 'lw-seg upcoming';
-      sp.style.setProperty('--lift', '-14px');           // Off-screen
+      sp.style.setProperty('--lift', '-6px');            // Subtle: Off-screen, just below
       sp.style.setProperty('--lift-scale', '1');         // Normal size
-      sp.style.setProperty('--lift-opa', '0.5');         // Dim
+      sp.style.setProperty('--lift-opa', '0.4');         // Very dim
     }
   });
 
@@ -2601,9 +2608,9 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
       if (prev !== 'upcoming') {
         sp._segState = 'upcoming';
         sp.className = 'lw-seg upcoming';
-        sp.style.setProperty('--lift', '-14px');         // Off-screen
+        sp.style.setProperty('--lift', '-6px');          // Subtle: just below
         sp.style.setProperty('--lift-scale', '1');       // Normal size
-        sp.style.setProperty('--lift-opa', '0.5');       // Dim
+        sp.style.setProperty('--lift-opa', '0.4');       // Very dim
       }
     } else if (t >= segEnd) {
       // DONE: animation finished, letter is now visible
@@ -2615,11 +2622,11 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
         sp.style.setProperty('--lift-opa', '1');         // Full brightness
       }
     } else {
-      // NOW-SEG: actively animating — Apple Music style float + scale + glow
+      // NOW-SEG: actively animating — Apple Music style float + scale + glow (subtle)
       const progress = (t - segStart) / Math.max(1, segEnd - segStart); // 0 to 1
-      const liftY = -14 + (14 * progress);               // Start at -14px, animate to 0px (float UP)
-      const scale = 0.95 + (0.1 * progress);             // Start at 0.95, grow to 1.05 (scale glow)
-      const opacity = 0.5 + progress * 0.5;              // Fade in from 0.5 to 1.0
+      const liftY = -6 + (6 * progress);                   // SUBTLE: Start at -6px, animate to 0px
+      const scale = 0.98 + (0.04 * progress);              // Tiny scale glow (0.98 to 1.02)
+      const opacity = 0.4 + progress * 0.6;                // Fade in from 0.4 to 1.0
       
       sp._segState = 'now-seg';
       sp.className = 'lw-seg now-seg';
@@ -2754,8 +2761,9 @@ function _resetUpcoming(lineIdx) {
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
       sp._segState = 'upcoming';
       sp.className = 'lw-seg upcoming';
-      sp.style.setProperty('--lift', '-14px');      // Off-screen, ready to animate
-      sp.style.setProperty('--lift-opa', '0.5');
+      sp.style.setProperty('--lift', '-6px');            // Subtle
+      sp.style.setProperty('--lift-scale', '1');
+      sp.style.setProperty('--lift-opa', '0.4');
     });
   });
 }
@@ -2773,8 +2781,9 @@ function _resetUpcomingSelective(lineIdx, t) {
       if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
         sp._segState = 'upcoming';
         sp.className = 'lw-seg upcoming';
-        sp.style.setProperty('--lift', '-14px');      // Off-screen, ready to animate
-        sp.style.setProperty('--lift-opa', '0.5');
+        sp.style.setProperty('--lift', '-6px');          // Subtle
+        sp.style.setProperty('--lift-scale', '1');
+        sp.style.setProperty('--lift-opa', '0.4');
       });
     }
   });
