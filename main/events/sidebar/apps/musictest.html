@@ -2589,13 +2589,10 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
   // Each segment gets a FIXED animation duration for strict sequencing
   const PER_SEG_MS = 140; // milliseconds per letter to animate
   const spanMs = wEnd - wStart;
-  const totalSegMs = segs.length * PER_SEG_MS;
   
-  // Distribute animation time evenly across segments
-  let segMs = Math.max(PER_SEG_MS, spanMs / segs.length);
-  if (totalSegMs > spanMs) {
-    segMs = spanMs / segs.length;
-  }
+  // Simple: divide word duration evenly among segments
+  // wEnd is already extended by _tickWords to guarantee enough time for animation
+  const segMs = Math.max(PER_SEG_MS, spanMs / segs.length);
 
   for (let si = 0; si < segs.length; si++) {
     const segStart = wStart + si * segMs;
@@ -2705,7 +2702,7 @@ function _tickWords(lineIdx, t, nextBound) {
     // but cap bleed tightly so fast lines don't show multiple words lit
     const segsEl = document.getElementById('lw' + lineIdx + '_' + wi);
     const segCount = segsEl ? segsEl.querySelectorAll('.lw-seg').length : 1;
-    const MIN_SEG_MS = 45;
+    const MIN_SEG_MS = 140;  // IMPORTANT: must match PER_SEG_MS in _tickLetters, so single letters animate properly!
     const minWordMs  = segCount * MIN_SEG_MS;
     const rawWordMs  = wNext - wStart;
     // Bleed: only extend if we absolutely must, and cap at 25% of next word window
@@ -2759,11 +2756,14 @@ function _resetUpcoming(lineIdx) {
     _setLwState(id, 'upcoming', '-20%');
     const lwEl = document.getElementById(id);
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      sp._segState = 'upcoming';
-      sp.className = 'lw-seg upcoming';
-      sp.style.setProperty('--lift', '-6px');            // Subtle
-      sp.style.setProperty('--lift-scale', '1');
-      sp.style.setProperty('--lift-opa', '0.4');
+      // IMPORTANT: Only reset if NOT already done - keep done segments visible and settled!
+      if (sp._segState !== 'done') {
+        sp._segState = 'upcoming';
+        sp.className = 'lw-seg upcoming';
+        sp.style.setProperty('--lift', '-6px');            // Subtle
+        sp.style.setProperty('--lift-scale', '1');
+        sp.style.setProperty('--lift-opa', '0.4');
+      }
     });
   });
 }
@@ -2779,11 +2779,14 @@ function _resetUpcomingSelective(lineIdx, t) {
       _setLwState(id, 'upcoming', '-20%');
       const lwEl = document.getElementById(id);
       if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-        sp._segState = 'upcoming';
-        sp.className = 'lw-seg upcoming';
-        sp.style.setProperty('--lift', '-6px');          // Subtle
-        sp.style.setProperty('--lift-scale', '1');
-        sp.style.setProperty('--lift-opa', '0.4');
+        // IMPORTANT: Only reset if NOT already done - keep done segments visible and settled!
+        if (sp._segState !== 'done') {
+          sp._segState = 'upcoming';
+          sp.className = 'lw-seg upcoming';
+          sp.style.setProperty('--lift', '-6px');          // Subtle
+          sp.style.setProperty('--lift-scale', '1');
+          sp.style.setProperty('--lift-opa', '0.4');
+        }
       });
     }
   });
