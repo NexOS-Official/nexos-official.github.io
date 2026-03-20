@@ -10172,11 +10172,30 @@ setInterval(async () => {
             return false;
         }
 
+        function applyTabPrefsToMedia(tab) {
+            if (!tab || !tab.iframe) return;
+            var media = getMediaElements(tab.iframe);
+            var vol = tab._volume !== undefined ? tab._volume : 1;
+            var muted = tab._muted || false;
+            media.forEach(function(el) {
+                if (!el._nexosTracked) {
+                    el._nexosTracked = true;
+                    el.volume = vol;
+                    if (!muted) el.muted = false;
+                    else el.muted = true;
+                } else {
+                    if (el.muted !== muted) el.muted = muted;
+                    if (el.volume !== vol) el.volume = vol;
+                }
+            });
+        }
+
         function getTabVolume(tab) {
             if (!tab || !tab.iframe) return 1;
+            if (tab._volume !== undefined) return tab._volume;
             var media = getMediaElements(tab.iframe);
             if (media.length > 0) return media[0].volume;
-            return tab._volume !== undefined ? tab._volume : 1;
+            return 1;
         }
 
         function setTabVolume(tab, vol) {
@@ -10187,20 +10206,18 @@ setInterval(async () => {
                 el.volume = vol;
                 el.muted = (vol === 0);
             });
+            if (vol === 0) tab._muted = true;
         }
 
         function isTabMuted(tab) {
-            if (!tab || !tab.iframe) return false;
-            var media = getMediaElements(tab.iframe);
-            if (media.length > 0) return media[0].muted;
             return tab._muted || false;
         }
 
         function toggleTabMute(tab) {
             if (!tab || !tab.iframe) return;
-            var media = getMediaElements(tab.iframe);
             var newMuted = !isTabMuted(tab);
             tab._muted = newMuted;
+            var media = getMediaElements(tab.iframe);
             media.forEach(function(el) { el.muted = newMuted; });
         }
 
@@ -10393,8 +10410,23 @@ setInterval(async () => {
             if (window.lucide) lucide.createIcons();
         }
 
-        taskbarAudioBtn.addEventListener('click', function(e) {
+        taskbarAudioBtn.addEventListener('mousedown', function(e) {
             e.stopPropagation();
+            e.preventDefault();
+        });
+        taskbarAudioBtn.addEventListener('mouseup', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            if (audioPanel.classList.contains('visible')) {
+                audioPanel.classList.remove('visible');
+            } else {
+                renderAudioPanel();
+                audioPanel.classList.add('visible');
+            }
+        });
+        taskbarAudioBtn.addEventListener('touchend', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
             if (audioPanel.classList.contains('visible')) {
                 audioPanel.classList.remove('visible');
             } else {
@@ -10415,13 +10447,18 @@ setInterval(async () => {
             renderAudioPanel();
         });
 
-        document.addEventListener('click', function(e) {
+        document.addEventListener('mousedown', function(e) {
             if (!audioPanel.contains(e.target) && !taskbarAudioBtn.contains(e.target)) {
                 audioPanel.classList.remove('visible');
             }
         });
 
         setInterval(function() {
+            b.tabs.forEach(function(tab) {
+                if (isTabPlayingAudio(tab)) {
+                    applyTabPrefsToMedia(tab);
+                }
+            });
             updateAudioState();
             if (audioPanel.classList.contains('visible')) {
                 renderAudioPanel();
