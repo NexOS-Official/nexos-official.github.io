@@ -274,6 +274,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now{
   color:#ffffff;
   font-size:36px;
+  --ll-fs: 36px;
   opacity:1;
   letter-spacing:-0.025em;
   animation:ll-bounce 0.30s cubic-bezier(.34,1.56,.64,1) both;
@@ -401,6 +402,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   background-clip: unset !important;
   color: transparent !important;
   opacity: inherit !important;
+  font-size: 0; /* kill whitespace gaps between inline-block children */
+  letter-spacing: 0;
 }
 
 @property --spct {
@@ -414,10 +417,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   display: inline-block;
   position: relative;
   top: 0px;
-  /* Ensure it never collapses to zero width */
-  min-width: 0.01em;
   white-space: pre;
-  vertical-align: baseline;
+  font-size: var(--ll-fs, 36px); /* restored from parent */
+  letter-spacing: -0.025em;
 }
 
 /* Active line segments: gradient sweep */
@@ -436,8 +438,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     --spct 110ms linear;
 }
 
-/* Non-active lines: each segment uses its own explicit color
-   matching the parent .ll's dim level — no background-clip */
+/* Non-active lines: each segment explicit color */
 .ll:not(.now) .lw-seg {
   background: none !important;
   -webkit-background-clip: unset !important;
@@ -446,17 +447,15 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   transition: none !important;
   top: 0px !important;
 }
-/* Match exact brightness of parent .ll states */
 .ll.near  .lw-seg { color: rgba(255,255,255,0.46) !important; -webkit-text-fill-color: rgba(255,255,255,0.46) !important; }
 .ll.near2 .lw-seg { color: rgba(255,255,255,0.24) !important; -webkit-text-fill-color: rgba(255,255,255,0.24) !important; }
 .ll.past  .lw-seg { color: rgba(255,255,255,0.06) !important; -webkit-text-fill-color: rgba(255,255,255,0.06) !important; }
-/* Default (far future lines) */
 .ll:not(.now):not(.near):not(.near2):not(.past) .lw-seg {
   color: rgba(255,255,255,0.12) !important;
   -webkit-text-fill-color: rgba(255,255,255,0.12) !important;
 }
 
-/* Active line segment states */
+/* Active line states */
 .ll.now .lw-seg.upcoming { top: 0px;  --spct: -220%; }
 .ll.now .lw-seg.done     { top: -4px; --spct:  220%; }
 .ll.now .lw-seg.now-seg  { top: -2px; }
@@ -2464,10 +2463,8 @@ function _buildWordInner(wordText, mode, splits) {
 
   if (!segs || segs.length <= 1) return { html: x(wordText), hasSplits: false };
 
-  // Each segment is its own .lw-seg span with its own --pct.
-  // background-clip:text works perfectly here because text is each span's own content.
   const html = segs.map((seg, si) =>
-    `<span class="lw-seg upcoming" data-si="${si}" style="--pct:-20%">${x(seg)}</span>`
+    `<span class="lw-seg upcoming" data-si="${si}" style="--spct:-220%">${x(seg)}</span>`
   ).join('');
   return { html, hasSplits: true };
 }
