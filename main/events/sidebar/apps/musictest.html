@@ -396,10 +396,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 .lw.has-splits {
   background: none !important;
-  -webkit-text-fill-color: unset !important;
+  -webkit-text-fill-color: transparent !important;
   -webkit-background-clip: unset !important;
   background-clip: unset !important;
-  color: inherit !important;
+  color: transparent !important;
   opacity: inherit !important;
 }
 
@@ -409,16 +409,24 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   initial-value: -220%;
 }
 
-/* Each segment: its own gradient using --spct (separate from parent --pct) */
-.ll.now .lw-seg {
+/* Every .lw-seg always renders — active or not */
+.lw-seg {
   display: inline-block;
   position: relative;
   top: 0px;
+  /* Ensure it never collapses to zero width */
+  min-width: 0.01em;
+  white-space: pre;
+  vertical-align: baseline;
+}
+
+/* Active line segments: gradient sweep */
+.ll.now .lw-seg {
   background: linear-gradient(to right,
-    rgba(255,255,255,.88) 0%,
+    rgba(255,255,255,.92) 0%,
     #ffffff               calc(var(--spct) - 2%),
     #ffffff               calc(var(--spct) + 2%),
-    rgba(255,255,255,.88) 100%
+    rgba(255,255,255,.92) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
@@ -428,28 +436,35 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     --spct 110ms linear;
 }
 
-/* Non-active lines: plain inherited color, no lift */
+/* Non-active lines: each segment uses its own explicit color
+   matching the parent .ll's dim level — no background-clip */
 .ll:not(.now) .lw-seg {
-  display: inline-block;
-  top: 0px !important;
   background: none !important;
   -webkit-background-clip: unset !important;
   background-clip: unset !important;
-  -webkit-text-fill-color: unset !important;
-  color: inherit !important;
+  -webkit-text-fill-color: initial !important;
   transition: none !important;
+  top: 0px !important;
+}
+/* Match exact brightness of parent .ll states */
+.ll.near  .lw-seg { color: rgba(255,255,255,0.46) !important; -webkit-text-fill-color: rgba(255,255,255,0.46) !important; }
+.ll.near2 .lw-seg { color: rgba(255,255,255,0.24) !important; -webkit-text-fill-color: rgba(255,255,255,0.24) !important; }
+.ll.past  .lw-seg { color: rgba(255,255,255,0.06) !important; -webkit-text-fill-color: rgba(255,255,255,0.06) !important; }
+/* Default (far future lines) */
+.ll:not(.now):not(.near):not(.near2):not(.past) .lw-seg {
+  color: rgba(255,255,255,0.12) !important;
+  -webkit-text-fill-color: rgba(255,255,255,0.12) !important;
 }
 
-/* upcoming: peak far left = letter shows 0.88 base brightness */
+/* Active line segment states */
 .ll.now .lw-seg.upcoming { top: 0px;  --spct: -220%; }
-/* done: peak far right = letter shows 0.88 base brightness, lifted */
 .ll.now .lw-seg.done     { top: -4px; --spct:  220%; }
-/* now-seg: --spct driven per-frame by JS, bright peak sweeps through */
 .ll.now .lw-seg.now-seg  { top: -2px; }
 
 .lc { display: inline; }
 
-.ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
+.ll:hover:not(.now) .lw-seg { color: rgba(255,255,255,0.6) !important; -webkit-text-fill-color: rgba(255,255,255,0.6) !important; }
+.ll:hover:not(.now){ filter: none; }
 
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
