@@ -362,8 +362,9 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   background-clip:text;
   -webkit-text-fill-color:transparent;
   transition:
-    filter 120ms ease-out,
-    opacity 80ms ease-out;
+    --pct     200ms ease-out,
+    filter    120ms ease-out,
+    opacity    80ms ease-out;
   opacity:1;
 }
 .ll.now .lw.done,
@@ -393,32 +394,63 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 /* ── Per-letter / per-syllable lift ── */
 
-/* has-splits words use the SAME gradient as normal .lw — no overrides needed.
-   The parent .lw paints one gradient across all its text.
-   .lc children are display:inline so they're part of the parent text flow
-   and get clipped/painted by the parent's background-clip:text.
-   Only transform (lift) is applied per .lc — color/gradient comes from parent. */
+/* has-splits: kill the parent gradient so .lc color values are visible */
+.ll.now .lw.has-splits,
+.ll.now .lw.has-splits.upcoming,
+.ll.now .lw.has-splits.now-word,
+.ll.now .lw.has-splits.done,
+.ll.now .lw.has-splits.word-enter {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: transparent !important;
+  opacity: 1 !important;
+  animation: none !important;
+}
+.ll:not(.now) .lw.has-splits {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: transparent !important;
+}
 
+/* Each .lc is inline-block so transform works, and carries its own plain color */
 .lc {
-  display: inline;
-  will-change: transform;
+  display: inline-block;
+  will-change: transform, color;
   transform: translateY(0px);
-  transition: transform 550ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  /* No background, no color — parent gradient paints through us */
+  -webkit-text-fill-color: initial;
+  color: rgba(255,255,255,0.55);
+  transition:
+    transform     550ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    color         300ms ease-out,
+    -webkit-text-fill-color 300ms ease-out;
 }
 
-/* Non-active lines: no lift */
-.ll:not(.now) .lc {
-  transform: none !important;
-  transition: none !important;
+/* Non-active lines: no lift, match parent line brightness */
+.ll:not(.now) .lc { transform: none !important; transition: none !important; }
+.ll.past  .lc { color: rgba(255,255,255,0.06) !important; -webkit-text-fill-color: rgba(255,255,255,0.06) !important; }
+.ll.near  .lc { color: rgba(255,255,255,0.46) !important; -webkit-text-fill-color: rgba(255,255,255,0.46) !important; }
+.ll.near2 .lc { color: rgba(255,255,255,0.24) !important; -webkit-text-fill-color: rgba(255,255,255,0.24) !important; }
+
+/* Active line: upcoming = dim, now = full white peak, sung = bright settled */
+.ll.now .lc.lc-upcoming {
+  transform: translateY(0px);
+  color: rgba(255,255,255,0.55);
+  -webkit-text-fill-color: rgba(255,255,255,0.55);
+}
+.ll.now .lc.lc-now {
+  transform: translateY(-2px);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+.ll.now .lc.lc-sung {
+  transform: translateY(-3px);
+  color: rgba(255,255,255,0.90);
+  -webkit-text-fill-color: rgba(255,255,255,0.90);
 }
 
-/* Active line lift states */
-.ll.now .lc.lc-upcoming { transform: translateY(0px); }
-.ll.now .lc.lc-now      { transform: translateY(-2px); }
-.ll.now .lc.lc-sung     { transform: translateY(-3px); }
-
-.ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
+.ll:hover:not(.now) .lc { color: rgba(255,255,255,0.6) !important; -webkit-text-fill-color: rgba(255,255,255,0.6) !important; }
 
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
@@ -3073,4 +3105,3 @@ document.addEventListener('keydown', e => {
 </script>
 </body>
 </html>
-
