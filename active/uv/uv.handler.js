@@ -83,32 +83,6 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
         __uv.dispatchEvent = window.EventTarget.prototype.dispatchEvent;
     };
 
-    // ── URL rewrite/source caches for performance ──────────────────────────────
-    const rewriteUrlCache = new Map();
-    const sourceUrlCache = new Map();
-
-    const _originalRewriteUrl = __uv.rewriteUrl.bind(__uv);
-    __uv.rewriteUrl = (url, meta) => {
-        // Only cache simple string calls without a custom meta argument
-        if (meta !== undefined) return _originalRewriteUrl(url, meta);
-        if (rewriteUrlCache.has(url)) return rewriteUrlCache.get(url);
-        const result = _originalRewriteUrl(url);
-        // Keep the cache from growing unbounded
-        if (rewriteUrlCache.size > 500) rewriteUrlCache.clear();
-        rewriteUrlCache.set(url, result);
-        return result;
-    };
-
-    const _originalSourceUrl = __uv.sourceUrl.bind(__uv);
-    __uv.sourceUrl = (url) => {
-        if (sourceUrlCache.has(url)) return sourceUrlCache.get(url);
-        const result = _originalSourceUrl(url);
-        if (sourceUrlCache.size > 500) sourceUrlCache.clear();
-        sourceUrlCache.set(url, result);
-        return result;
-    };
-    // ──────────────────────────────────────────────────────────────────────────
-
     // Storage wrappers
     client.nativeMethods.defineProperty(client.storage.storeProto, '__uv$storageObj', {
         get() {
@@ -583,111 +557,6 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
         delete window.Navigator.prototype.serviceWorker;
     };
 
-    // ── Captcha & site compatibility fixes ────────────────────────────────────
-
-    // Domains whose scripts must NOT be JS-rewritten by UV. reCAPTCHA and
-    // hCaptcha do internal integrity checks on their own code — if UV rewrites
-    // them they fail silently and the widget never renders.
-    const captchaScriptDomains = [
-        'google.com/recaptcha',
-        'gstatic.com/recaptcha',
-        'recaptcha.net',
-        'hcaptcha.com',
-        'newassets.hcaptcha.com',
-        'js.hcaptcha.com',
-    ];
-
-    const isCaptchaScript = (url) => {
-        try {
-            const u = new URL(url);
-            return captchaScriptDomains.some(d => (u.hostname + u.pathname).includes(d.split('/')[0])
-                && (d.includes('/') ? u.pathname.startsWith('/' + d.split('/')[1]) : true));
-        } catch(e) { return false; }
-    };
-
-    // Skip JS rewriting for captcha scripts injected via innerHTML/textContent
-    const _origSetInner = client.element.on.bind(client.element);
-
-    // Hook the function rewriter to pass captcha scripts through untouched
-    const _originalRewriteJS = __uv.rewriteJS ? __uv.rewriteJS.bind(__uv) : null;
-    if (_originalRewriteJS) {
-        __uv.rewriteJS = (script, url) => {
-            if (url && isCaptchaScript(url)) return script;
-            return _originalRewriteJS(script, url);
-        };
-    };
-
-    // reCAPTCHA/hCaptcha check window.self — must equal window at the top level
-    try {
-        client.nativeMethods.defineProperty(window, 'self', {
-            get: () => window,
-            enumerable: true,
-            configurable: true,
-        });
-    } catch(e) {};
-
-    // window.top check — reCAPTCHA checks top === self to know it's not sandboxed
-    // Our existing __uv.methods.top handles most of this but we reinforce it here
-    try {
-        client.nativeMethods.defineProperty(window, 'top', {
-            get: () => window,
-            enumerable: true,
-            configurable: true,
-        });
-    } catch(e) {};
-
-    // Let non-UV-wrapped postMessages (from captcha iframes) pass through
-    // untouched. reCAPTCHA sends plain objects — UV's wrapper breaks them.
-    client.message.on('data', event => {
-        const { value: data } = event.data;
-        if (typeof data === 'object' && data !== null && !('__data' in data)) {
-            event.respondWith(data);
-        };
-    });
-
-    // reCAPTCHA reads document.referrer to validate the page it's embedded on.
-    // Make sure it gets the real source URL, not the proxied one.
-    client.document.on('referrer', event => {
-        if (__uv.referrer) {
-            try {
-                event.data.value = new URL(__uv.referrer).href;
-            } catch(e) {}
-        }
-    });
-
-    // Blooket, Gimkit etc. use BroadcastChannel for real-time game state sync.
-    if ('BroadcastChannel' in window) {
-        client.override(window, 'BroadcastChannel', (target, that, args) => {
-            return new target(...args);
-        });
-    };
-
-    // navigator.userAgent and platform are read by bot-detection on many sites.
-    // Pass the real values through so they match a normal browser fingerprint.
-    try {
-        client.nativeMethods.defineProperty(window.Navigator.prototype, 'userAgent', {
-            get: function() { return self.navigator.userAgent; },
-            enumerable: true,
-            configurable: true,
-        });
-        client.nativeMethods.defineProperty(window.Navigator.prototype, 'platform', {
-            get: function() { return self.navigator.platform; },
-            enumerable: true,
-            configurable: true,
-        });
-    } catch(e) {};
-
-    // Protect MutationObserver — Blooket, Kahoot etc. use it for anti-tamper.
-    if ('MutationObserver' in window) {
-        const _MutationObserver = window.MutationObserver;
-        client.nativeMethods.defineProperty(window, 'MutationObserver', {
-            get: () => _MutationObserver,
-            enumerable: true,
-            configurable: true,
-        });
-    };
-    // ──────────────────────────────────────────────────────────────────────────
-
     // Document
     client.document.on('getDomain', event => {
         event.data.value = __uv.domain;
@@ -1111,14 +980,14 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
     });
 
 
-    // ── Fix: preserve all window.open arguments (target, features) ────────────
     client.override(window, 'open', (target, that, args) => {
         if (!args.length) return target.apply(that, args);
-        let [url, name, features] = args;
+        let [url] = args;
+
         url = __uv.rewriteUrl(url);
-        return target.call(that, url, name, features);
+
+        return target.call(that, url);
     });
-    // ──────────────────────────────────────────────────────────────────────────
 
     __uv.$wrap = function(name) {
         if (name === 'location') return __uv.methods.location;
