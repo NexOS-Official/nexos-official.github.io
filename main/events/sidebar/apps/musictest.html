@@ -400,19 +400,39 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   initial-value: -220%;
 }
 
-/* Active line only: kill parent .lw gradient, segments take over visually */
-.ll.now .lw.has-splits {
+/* Active line: kill parent .lw rendering, segments own all visuals.
+   Lock opacity at 1 for ALL word states — no brightness jump when word is hit. */
+.ll.now .lw.has-splits,
+.ll.now .lw.has-splits.upcoming,
+.ll.now .lw.has-splits.now-word,
+.ll.now .lw.has-splits.done,
+.ll.now .lw.has-splits.word-enter {
   background: none !important;
   -webkit-background-clip: unset !important;
   background-clip: unset !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
+  opacity: 1 !important;
+  animation: none !important;
 }
 
-/* Segments: inline by default (non-active = invisible wrapper, inherits nothing visible) */
-.lw-seg { display: inline; position: relative; top: 0; }
+/* Non-active lines: parent is a transparent wrapper, segments inherit .ll color */
+.ll:not(.now) .lw.has-splits {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  color: inherit !important;
+}
 
-/* Active line segments get gradient + lift */
+/* Segments: inline by default so they inherit parent color on non-active lines */
+.lw-seg {
+  display: inline;
+  position: relative;
+  top: 0;
+}
+
+/* Active line segments: inline-block for lift, gradient for color */
 .ll.now .lw-seg {
   display: inline-block;
   vertical-align: baseline;
@@ -428,11 +448,15 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   transition: top 480ms cubic-bezier(0.22,0.61,0.36,1), --spct 110ms linear;
 }
 
-/* Non-active: no overrides at all — .lw.has-splits parent does NOT exist on non-active lines
-   because the override above is scoped to .ll.now only. Segments just sit as inline nothing. */
+/* Non-active: just inline text inheriting parent line color */
 .ll:not(.now) .lw-seg {
   display: inline !important;
   top: 0 !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  color: inherit !important;
   transition: none !important;
 }
 
