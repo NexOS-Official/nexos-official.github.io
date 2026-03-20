@@ -402,18 +402,20 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   color: transparent !important;
 }
 
-/* .lc base — each letter/syllable carries its own gradient */
+/* .lc base */
 .lc {
   display: inline-block;
-  will-change: transform;
+  will-change: transform, color;
   transform: translateY(0px);
-  transition: transform 150ms cubic-bezier(.34,1.56,.64,1);
-  /* Default color for non-active lines */
+  transition:
+    transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    color     400ms ease-out,
+    -webkit-text-fill-color 400ms ease-out;
   -webkit-text-fill-color: initial;
   color: inherit;
 }
 
-/* Non-active lines: no lift, just inherit line color normally */
+/* Non-active lines: no lift, inherit color */
 .ll:not(.now) .lc {
   transform: none !important;
   transition: none !important;
@@ -424,34 +426,25 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   background-clip: unset !important;
 }
 
-/* Active line — upcoming letters: bright, nearly white (Apple Music style) */
+/* Upcoming: base brightness, no lift */
 .ll.now .lc.lc-upcoming {
   transform: translateY(0px);
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
   -webkit-text-fill-color: rgba(255,255,255,0.75);
   color: rgba(255,255,255,0.75);
 }
 
-/* Active — currently singing letter: full white, lifted */
+/* Currently singing: same brightness as upcoming — no pop, just starting to lift */
 .ll.now .lc.lc-now {
-  transform: translateY(-5px);
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
-  -webkit-text-fill-color: #ffffff;
-  color: #ffffff;
+  transform: translateY(-2px);
+  -webkit-text-fill-color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.75);
 }
 
-/* Active — already sung letter: nearly as bright, lifted higher */
+/* Sung: slightly brighter and settled at lift position — the glow comes after */
 .ll.now .lc.lc-sung {
-  transform: translateY(-7px);
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
-  -webkit-text-fill-color: rgba(255,255,255,0.88);
-  color: rgba(255,255,255,0.88);
+  transform: translateY(-3px);
+  -webkit-text-fill-color: rgba(255,255,255,0.95);
+  color: rgba(255,255,255,0.95);
 }
 
 .ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
