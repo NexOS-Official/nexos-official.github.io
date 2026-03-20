@@ -254,7 +254,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     letter-spacing .38s cubic-bezier(.4,0,.2,1);
   will-change:color,opacity;
   position:relative;
-  clip-path:inset(-6px -10px round 12px);
+  word-break:break-word;
+  overflow-wrap:break-word;
 }
 .ll.past{
   color:rgba(255,255,255,0.06);
@@ -391,31 +392,58 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 
 /* ── Per-letter / per-syllable Apple Music lift ─────────────────────── */
+
+/* When a .lw contains .lc children, cancel the gradient-clip so kids can render */
+.ll.now .lw.has-splits {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  color: rgba(255,255,255,0.18);
+}
+.ll.now .lw.has-splits.upcoming { color: rgba(255,255,255,0.18); opacity: 0.55; }
+.ll.now .lw.has-splits.done     { color: rgba(255,255,255,0.50); opacity: 1; }
+.ll.now .lw.has-splits.now-word { color: rgba(255,255,255,0.22); opacity: 1; }
+/* Non-active lines: .lc children should be invisible, parent color shows through */
+.ll:not(.now) .lc {
+  transform: none !important;
+  opacity: 1 !important;
+  color: inherit !important;
+  transition: none !important;
+}
+.ll:not(.now) .lw.has-splits {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  color: inherit !important;
+}
+
+/* Individual letter/syllable segments */
 .lc {
   display: inline-block;
   transition:
-    transform 180ms cubic-bezier(.34,1.4,.64,1),
-    opacity   160ms ease-out,
-    color     160ms ease-out;
+    transform 200ms cubic-bezier(.34,1.45,.64,1),
+    opacity   170ms ease-out;
   will-change: transform, opacity;
   transform: translateY(0px);
-  color: inherit;
+  opacity: 0.18;
+  /* No color — inherits from parent, which has -webkit-text-fill-color cleared */
 }
-/* When a letter has been "sung" it lifts up */
+/* Sung: lifts up, dims slightly — the "already passed" state */
 .lc.lc-sung {
-  transform: translateY(-5px);
-  opacity: 0.55;
+  transform: translateY(-6px);
+  opacity: 0.45;
 }
-/* The currently singing letter pops up a touch more */
+/* Currently active letter — peaks at top of lift, full brightness */
 .lc.lc-now {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   opacity: 1;
-  color: #fff;
 }
-/* Upcoming letters sit neutral */
+/* Upcoming: sitting at baseline, dim */
 .lc.lc-upcoming {
   transform: translateY(0px);
-  opacity: inherit;
+  opacity: 0.18;
 }
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
@@ -2408,30 +2436,25 @@ function _buildWordInner(wordText, mode, splits) {
     if (clean.length <= 2 || FAST_WORDS.has(clean)) {
       mode = 'word';
     } else if (/(.)\1{1,}/.test(clean) || clean.length >= 6) {
-      // repeated chars (oooh, yeahh) or long words — use chars
       mode = 'chars';
     } else {
       mode = 'sylls';
     }
   }
 
-  // Determine segments
   let segs;
   if (mode === 'chars' && splits?.length) {
     segs = splits;
   } else if (mode === 'sylls' && splits?.length) {
     segs = splits;
   } else if (mode === 'chars') {
-    // Fallback: split to individual chars (strip trailing punct for clean rendering)
     const clean = wordText.replace(/[.,!?;:]+$/, '');
     const punct = wordText.slice(clean.length);
     segs = [...clean].concat(punct ? [punct] : []);
   } else if (mode === 'sylls') {
-    // Heuristic syllable split
     const clean = wordText.replace(/[^a-zA-Z']/g, '');
     const sc = syllableCount(clean);
-    if (sc <= 1) return x(wordText);
-    // Simple split: divide chars into sc roughly equal groups
+    if (sc <= 1) return { html: x(wordText), hasSplits: false };
     const chars = [...clean];
     const groupSize = chars.length / sc;
     segs = [];
@@ -2440,23 +2463,21 @@ function _buildWordInner(wordText, mode, splits) {
       const end   = Math.round((s + 1) * groupSize);
       segs.push(chars.slice(start, end).join(''));
     }
-    // Restore any trailing punctuation on last seg
     const punct = wordText.slice(clean.length);
     if (punct && segs.length) segs[segs.length - 1] += punct;
   } else {
-    // 'word' — no sub-word animation
-    return x(wordText);
+    return { html: x(wordText), hasSplits: false };
   }
 
-  if (!segs || segs.length <= 1) return x(wordText);
+  if (!segs || segs.length <= 1) return { html: x(wordText), hasSplits: false };
 
-  return segs.map((seg, si) =>
+  const html = segs.map((seg, si) =>
     `<span class="lc lc-upcoming" data-si="${si}">${x(seg)}</span>`
   ).join('');
+  return { html, hasSplits: true };
 }
 
 function renderLineHTML(line, i) {
-  
   if (line._skipDots) return '';
 
   const isNote = !line.words?.length &&
@@ -2468,31 +2489,29 @@ function renderLineHTML(line, i) {
     mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
   } else {
     if (line.words?.length) {
-      
-      
       const parts = [];
       for (let wi = 0; wi < line.words.length; wi++) {
         const w = line.words[wi];
         if (w._isPause) continue;
         if (w._isInlineParen) {
-          
           let nextWi = wi + 1;
           while (nextWi < line.words.length && (line.words[nextWi]._isPause || line.words[nextWi]._isInlineParen)) nextWi++;
           const nextW = line.words[nextWi];
           const ipSpan = `<span class="lw-ip-text lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`;
           if (nextW && !nextW._isPause && !nextW._isInlineParen) {
-            
-            const wordInner = _buildWordInner(nextW.word, nextW._mode, nextW._splits);
-            const wordSpan = `<span class="lw upcoming" id="lw${i}_${nextWi}" style="--pct:-20%">${wordInner}</span>`;
+            const { html: wInner, hasSplits } = _buildWordInner(nextW.word, nextW._mode, nextW._splits);
+            const splitCls = hasSplits ? ' has-splits' : '';
+            const wordSpan = `<span class="lw upcoming${splitCls}" id="lw${i}_${nextWi}" style="--pct:-20%">${wInner}</span>`;
             parts.push(`<span class="lw-inline-paren">${ipSpan}${wordSpan}</span>`);
-            wi = nextWi; 
+            wi = nextWi;
           } else {
             parts.push(ipSpan);
           }
           continue;
         }
-        const wordInner = _buildWordInner(w.word, w._mode, w._splits);
-        parts.push(`<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${wordInner}</span>`);
+        const { html: wInner, hasSplits } = _buildWordInner(w.word, w._mode, w._splits);
+        const splitCls = hasSplits ? ' has-splits' : '';
+        parts.push(`<span class="lw upcoming${splitCls}" id="lw${i}_${wi}" style="--pct:-20%">${wInner}</span>`);
       }
       mainHTML = parts.join(' ');
     } else {
@@ -2500,8 +2519,6 @@ function renderLineHTML(line, i) {
     }
   }
 
-  
-  
   const cls = 'll' + (line._isParen && !line._wholeLine ? ' ll-sub' : '');
   return `<div class="${cls}" id="ll${i}" onclick="seekLrc(${i},event)">${mainHTML}</div>`;
 }
