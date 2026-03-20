@@ -393,65 +393,30 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 /* ── Per-letter / per-syllable lift ── */
 
-/* Words with .lc children: parent shell handles opacity/state, lc handles color+lift */
-.ll.now .lw.has-splits {
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  /* Keep opacity neutral — no jump when word starts */
-  opacity: 1 !important;
-}
-/* Override the word-entry opacity animation for split words */
-.ll.now .lw.has-splits.upcoming { opacity: 1 !important; }
-.ll.now .lw.has-splits.now-word { opacity: 1 !important; }
-.ll.now .lw.has-splits.done     { opacity: 1 !important; }
+/* has-splits words use the SAME gradient as normal .lw — no overrides needed.
+   The parent .lw paints one gradient across all its text.
+   .lc children are display:inline so they're part of the parent text flow
+   and get clipped/painted by the parent's background-clip:text.
+   Only transform (lift) is applied per .lc — color/gradient comes from parent. */
 
-/* .lc base — each letter has its own gradient sweep */
 .lc {
-  display: inline-block;
+  display: inline;
   will-change: transform;
   transform: translateY(0px);
-  transition: transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  /* Gradient sweep — identical to the parent .lw sweep but per-letter */
-  background: linear-gradient(to right,
-    #ffffff calc(var(--lc-pct, -20%) - 10%),
-    rgba(255,255,255,0.92) calc(var(--lc-pct, -20%) - 2%),
-    rgba(255,255,255,0.25) calc(var(--lc-pct, -20%) + 8%),
-    rgba(255,255,255,0.05) calc(var(--lc-pct, -20%) + 18%)
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  /* Animate the gradient position */
-  transition:
-    transform 600ms cubic-bezier(0.25, 0.46, 0.45, 0.94),
-    --lc-pct  300ms ease-out;
+  transition: transform 550ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* No background, no color — parent gradient paints through us */
 }
 
-@property --lc-pct {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: -20%;
-}
-
-/* Non-active lines: plain color, no lift, no gradient */
+/* Non-active lines: no lift */
 .ll:not(.now) .lc {
   transform: none !important;
   transition: none !important;
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  -webkit-text-fill-color: initial !important;
-  color: inherit !important;
-  --lc-pct: -20%;
 }
 
-/* Active line states — translateY only, gradient position set via JS */
-.ll.now .lc.lc-upcoming { transform: translateY(0px);  --lc-pct: -20%; }
+/* Active line lift states */
+.ll.now .lc.lc-upcoming { transform: translateY(0px); }
 .ll.now .lc.lc-now      { transform: translateY(-2px); }
-.ll.now .lc.lc-sung     { transform: translateY(-3px); --lc-pct: 110%; }
+.ll.now .lc.lc-sung     { transform: translateY(-3px); }
 
 .ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
 
@@ -2575,7 +2540,6 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
   if (!lcSpans.length) return;
   const n = lcSpans.length;
 
-  // Weight each segment's duration by its character count
   const weights = Array.from(lcSpans).map(sp => Math.max(1, sp.textContent.replace(/\s/g,'').length));
   const totalWeight = weights.reduce((a, b) => a + b, 0);
   const spanMs = wEnd - wStart;
@@ -2597,17 +2561,6 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
     if (prev !== next) {
       sp._lcState = next;
       sp.className = 'lc ' + next;
-    }
-
-    // Animate --lc-pct for the gradient sweep within each letter's window
-    if (next === 'lc-now') {
-      const raw = (t - segStart) / Math.max(1, segEnd - segStart);
-      const pct = (-20 + raw * 130).toFixed(1) + '%';
-      if (sp._lcPct !== pct) { sp._lcPct = pct; sp.style.setProperty('--lc-pct', pct); }
-    } else if (next === 'lc-sung' && sp._lcPct !== '110%') {
-      sp._lcPct = '110%'; sp.style.setProperty('--lc-pct', '110%');
-    } else if (next === 'lc-upcoming' && sp._lcPct !== '-20%') {
-      sp._lcPct = '-20%'; sp.style.setProperty('--lc-pct', '-20%');
     }
   }
 }
@@ -2675,7 +2628,6 @@ function _snapDone(lineIdx) {
     const lwEl = document.getElementById('lw'+lineIdx+'_'+wi);
     if (lwEl) lwEl.querySelectorAll('.lc').forEach(sp => {
       if (sp._lcState !== 'lc-sung') { sp._lcState = 'lc-sung'; sp.className = 'lc lc-sung'; }
-      sp._lcPct = '110%'; sp.style.setProperty('--lc-pct', '110%');
     });
   });
 }
@@ -2689,7 +2641,6 @@ function _resetUpcoming(lineIdx) {
     const lwEl = document.getElementById(id);
     if (lwEl) lwEl.querySelectorAll('.lc').forEach(sp => {
       sp._lcState = 'lc-upcoming'; sp.className = 'lc lc-upcoming';
-      sp._lcPct = '-20%'; sp.style.setProperty('--lc-pct', '-20%');
     });
   });
 }
@@ -2706,7 +2657,6 @@ function _resetUpcomingSelective(lineIdx, t) {
       const lwEl = document.getElementById(id);
       if (lwEl) lwEl.querySelectorAll('.lc').forEach(sp => {
         sp._lcState = 'lc-upcoming'; sp.className = 'lc lc-upcoming';
-        sp._lcPct = '-20%'; sp.style.setProperty('--lc-pct', '-20%');
       });
     }
   });
