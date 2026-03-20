@@ -394,55 +394,58 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 /* ── Per-letter / per-syllable lift ── */
 
-/* has-splits: parent .lw must NOT use background-clip:text because inline-block
-   children break it. Disable gradient on split words, use plain color per .lc. */
+/* has-splits: parent .lw is just a container, segments handle everything */
 .lw.has-splits {
+  background: none !important;
+  -webkit-text-fill-color: unset !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  color: inherit !important;
+  opacity: inherit !important;
+}
+
+/* Each segment is its own gradient-bearing span — background-clip:text works
+   perfectly here because the text IS the span's own content, not a child. */
+.ll.now .lw-seg {
+  display: inline-block;
+  position: relative;
+  top: 0px;
+  background: linear-gradient(to right,
+    #ffffff              calc(var(--pct, -20%) - 10%),
+    rgba(255,255,255,.92) calc(var(--pct, -20%) -  2%),
+    rgba(255,255,255,.25) calc(var(--pct, -20%) +  8%),
+    rgba(255,255,255,.05) calc(var(--pct, -20%) + 18%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition:
+    top 500ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    --pct 180ms ease-out;
+}
+
+/* Non-active lines: plain color, no gradient, no lift */
+.ll:not(.now) .lw-seg {
+  display: inline;
+  top: 0px !important;
   background: none !important;
   -webkit-background-clip: unset !important;
   background-clip: unset !important;
   -webkit-text-fill-color: unset !important;
-  color: transparent !important;
+  color: inherit !important;
+  transition: none !important;
 }
 
-/* .lc spans are inline-block (needed for top offset to work visually),
-   each one renders its own color. Parent is transparent so only .lc is visible. */
-.lc {
-  display: inline-block;
-  position: relative;
-  top: 0px;
-  -webkit-text-fill-color: rgba(255,255,255,0.55);
-  color: rgba(255,255,255,0.55);
-  transition:
-    top  500ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    -webkit-text-fill-color 250ms ease-out,
-    color 250ms ease-out;
-}
+/* Segment states on active line */
+.ll.now .lw-seg.upcoming { top: 0px;  --pct: -20%; }
+.ll.now .lw-seg.done     { top: -4px; --pct: 110%; }
+/* 'now' state: --pct driven by JS each frame */
+.ll.now .lw-seg.now-seg  { top: -2px; }
 
-/* Non-active lines: no lift, match parent brightness */
-.ll:not(.now) .lc { top: 0px !important; transition: none !important; }
-.ll.past  .lc { -webkit-text-fill-color: rgba(255,255,255,0.06) !important; color: rgba(255,255,255,0.06) !important; }
-.ll.near  .lc { -webkit-text-fill-color: rgba(255,255,255,0.46) !important; color: rgba(255,255,255,0.46) !important; }
-.ll.near2 .lc { -webkit-text-fill-color: rgba(255,255,255,0.24) !important; color: rgba(255,255,255,0.24) !important; }
-
-/* Active line letter states */
-.ll.now .lc.lc-upcoming {
-  top: 0px;
-  -webkit-text-fill-color: rgba(255,255,255,0.55);
-  color: rgba(255,255,255,0.55);
-}
-.ll.now .lc.lc-now {
-  top: -3px;
-  -webkit-text-fill-color: #ffffff;
-  color: #ffffff;
-}
-.ll.now .lc.lc-sung {
-  top: -4px;
-  -webkit-text-fill-color: rgba(255,255,255,0.88);
-  color: rgba(255,255,255,0.88);
-}
+/* Reuse .lc class as alias in snap/reset functions */
+.lc { display: inline; }
 
 .ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
-.ll:hover:not(.now) .lc { -webkit-text-fill-color: rgba(255,255,255,0.6) !important; color: rgba(255,255,255,0.6) !important; }
 
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
@@ -2426,28 +2429,26 @@ function extractParens(text) {
 }
 
 function _buildWordInner(wordText, mode, splits) {
-  // Strip trailing punctuation for splitting, preserve it for last segment
   const trailPunct = wordText.match(/[.,!?;:'"]+$/)?.[0] ?? '';
   const base = trailPunct ? wordText.slice(0, -trailPunct.length) : wordText;
 
   let segs;
-
   if (mode === 'sylls' && splits?.length >= 1) {
-    // AI-provided syllable groupings — use exactly as given, reattach punct to last
     segs = splits.map((s, i) => i === splits.length - 1 ? s + trailPunct : s);
   } else if (mode === 'chars' && splits?.length >= 1) {
     segs = splits.map((s, i) => i === splits.length - 1 ? s + trailPunct : s);
   } else {
-    // Default: every word splits into individual characters
-    // The AI will later upgrade these to syllable groups when it responds
     const chars = [...base];
     if (!chars.length) return { html: x(wordText), hasSplits: false };
     segs = chars.map((c, i) => i === chars.length - 1 ? c + trailPunct : c);
   }
 
-  // Single-char words (or single-segment) still get a span so the lift works
+  if (!segs || segs.length <= 1) return { html: x(wordText), hasSplits: false };
+
+  // Each segment is its own .lw-seg span with its own --pct.
+  // background-clip:text works perfectly here because text is each span's own content.
   const html = segs.map((seg, si) =>
-    `<span class="lc lc-upcoming" data-si="${si}">${x(seg)}</span>`
+    `<span class="lw-seg upcoming" data-si="${si}" style="--pct:-20%">${x(seg)}</span>`
   ).join('');
   return { html, hasSplits: true };
 }
@@ -2560,31 +2561,33 @@ function _nextRealLineMs(fromIdx, fallback) {
 }
 
 function _tickLetters(lwEl, word, t, wStart, wEnd) {
-  const lcSpans = lwEl.querySelectorAll('.lc');
-  if (!lcSpans.length) return;
-  const n = lcSpans.length;
+  const segs = lwEl.querySelectorAll('.lw-seg');
+  if (!segs.length) return;
 
-  const weights = Array.from(lcSpans).map(sp => Math.max(1, sp.textContent.replace(/\s/g,'').length));
+  const weights = Array.from(segs).map(sp => Math.max(1, sp.textContent.replace(/\s/g,'').length));
   const totalWeight = weights.reduce((a, b) => a + b, 0);
   const spanMs = wEnd - wStart;
 
   let cursor = wStart;
-  for (let si = 0; si < n; si++) {
-    const segDur = (weights[si] / totalWeight) * spanMs;
+  for (let si = 0; si < segs.length; si++) {
+    const segDur   = (weights[si] / totalWeight) * spanMs;
     const segStart = cursor;
     const segEnd   = cursor + segDur;
     cursor += segDur;
 
-    const sp = lcSpans[si];
-    const prev = sp._lcState;
-    let next;
-    if (t < segStart)     next = 'lc-upcoming';
-    else if (t >= segEnd) next = 'lc-sung';
-    else                  next = 'lc-now';
+    const sp   = segs[si];
+    const prev = sp._segState;
 
-    if (prev !== next) {
-      sp._lcState = next;
-      sp.className = 'lc ' + next;
+    if (t < segStart) {
+      if (prev !== 'upcoming') { sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct', '-20%'); }
+    } else if (t >= segEnd) {
+      if (prev !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--pct', '110%'); }
+    } else {
+      // Actively singing this segment — sweep --pct from -20% to 110%
+      const raw = (t - segStart) / Math.max(1, segEnd - segStart);
+      const pct = (-20 + raw * 130).toFixed(1) + '%';
+      if (prev !== 'now-seg') { sp._segState = 'now-seg'; sp.className = 'lw-seg now-seg'; }
+      sp.style.setProperty('--pct', pct);
     }
   }
 }
@@ -2650,8 +2653,8 @@ function _snapDone(lineIdx) {
     if (w._isPause) return;
     _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
     const lwEl = document.getElementById('lw'+lineIdx+'_'+wi);
-    if (lwEl) lwEl.querySelectorAll('.lc').forEach(sp => {
-      if (sp._lcState !== 'lc-sung') { sp._lcState = 'lc-sung'; sp.className = 'lc lc-sung'; }
+    if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
+      if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--pct','110%'); }
     });
   });
 }
@@ -2663,8 +2666,8 @@ function _resetUpcoming(lineIdx) {
     delete _lwState[id];
     _setLwState(id, 'upcoming', '-20%');
     const lwEl = document.getElementById(id);
-    if (lwEl) lwEl.querySelectorAll('.lc').forEach(sp => {
-      sp._lcState = 'lc-upcoming'; sp.className = 'lc lc-upcoming';
+    if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
+      sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-20%');
     });
   });
 }
@@ -2679,8 +2682,8 @@ function _resetUpcomingSelective(lineIdx, t) {
     if (w.ms > t) {
       _setLwState(id, 'upcoming', '-20%');
       const lwEl = document.getElementById(id);
-      if (lwEl) lwEl.querySelectorAll('.lc').forEach(sp => {
-        sp._lcState = 'lc-upcoming'; sp.className = 'lc lc-upcoming';
+      if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
+        sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-20%');
       });
     }
   });
