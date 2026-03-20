@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -353,10 +354,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
-    #ffffff calc(var(--pct, -20%) - 10%),
-    rgba(255,255,255,0.92) calc(var(--pct, -20%) - 2%),
-    rgba(255,255,255,0.25) calc(var(--pct, -20%) + 8%),
-    rgba(255,255,255,0.05) calc(var(--pct, -20%) + 18%)
+    rgba(255,255,255,0.3) calc(var(--pct, -20%) - 10%),
+    rgba(255,255,255,0.15) calc(var(--pct, -20%) - 2%),
+    rgba(255,255,255,0.05) calc(var(--pct, -20%) + 8%),
+    rgba(255,255,255,0.02) calc(var(--pct, -20%) + 18%)
   );
   -webkit-background-clip:text;
   background-clip:text;
@@ -437,15 +438,28 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   display: inline-block;
   vertical-align: baseline;
   background: linear-gradient(to right,
-    rgba(255,255,255,.92) 0%,
+    rgba(255,255,255,.4) 0%,
     #ffffff calc(var(--spct) - 2%),
     #ffffff calc(var(--spct) + 2%),
-    rgba(255,255,255,.92) 100%
+    rgba(255,255,255,.4) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   transition: top 480ms cubic-bezier(0.22,0.61,0.36,1), --spct 110ms linear;
+}
+
+/* Make active segments BRIGHT WHITE with full glow */
+.ll.now .lw-seg.now-seg {
+  background: linear-gradient(to right,
+    rgba(255,255,255,.6) 0%,
+    #ffffff calc(var(--spct) - 3%),
+    #ffffff calc(var(--spct) + 3%),
+    rgba(255,255,255,.6) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Non-active: just inline text inheriting parent line color */
@@ -2597,22 +2611,25 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
     const prev = sp._segState;
 
     if (t < segStart) {
+      // UPCOMING: not yet hit
       if (prev !== 'upcoming') {
         sp._segState = 'upcoming';
         sp.className = 'lw-seg upcoming';
         sp.style.setProperty('--spct', '-220%');
       }
     } else if (t >= segEnd) {
+      // DONE: already finished
       if (prev !== 'done') {
         sp._segState = 'done';
         sp.className = 'lw-seg done';
         sp.style.setProperty('--spct', '220%');
       }
     } else {
-      // Sweep --pct from -220% to 220% — bright peak passes through the letter
+      // NOW-SEG: currently active — sweep from -220% to 220%
       const raw = (t - segStart) / Math.max(1, segEnd - segStart);
       const pct = (-220 + raw * 440).toFixed(1) + '%';
-      if (prev !== 'now-seg') { sp._segState = 'now-seg'; sp.className = 'lw-seg now-seg'; }
+      sp._segState = 'now-seg';
+      sp.className = 'lw-seg now-seg';
       sp.style.setProperty('--spct', pct);
     }
   }
