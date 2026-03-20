@@ -274,7 +274,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ll.now{
   color:#ffffff;
   font-size:36px;
-  --ll-fs: 36px;
   opacity:1;
   letter-spacing:-0.025em;
   animation:ll-bounce 0.30s cubic-bezier(.34,1.56,.64,1) both;
@@ -402,8 +401,6 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   background-clip: unset !important;
   color: transparent !important;
   opacity: inherit !important;
-  font-size: 0; /* kill whitespace gaps between inline-block children */
-  letter-spacing: 0;
 }
 
 @property --spct {
@@ -412,18 +409,15 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   initial-value: -220%;
 }
 
-/* Every .lw-seg always renders — active or not */
 .lw-seg {
-  display: inline-block;
+  display: inline;
   position: relative;
   top: 0px;
-  white-space: pre;
-  font-size: var(--ll-fs, 36px); /* restored from parent */
-  letter-spacing: -0.025em;
 }
 
 /* Active line segments: gradient sweep */
 .ll.now .lw-seg {
+  display: inline-block;
   background: linear-gradient(to right,
     rgba(255,255,255,.92) 0%,
     #ffffff               calc(var(--spct) - 2%),
@@ -438,32 +432,25 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     --spct 110ms linear;
 }
 
-/* Non-active lines: each segment explicit color */
+/* Non-active lines: inherit parent color exactly, no gradient */
 .ll:not(.now) .lw-seg {
+  display: inline !important;
   background: none !important;
   -webkit-background-clip: unset !important;
   background-clip: unset !important;
   -webkit-text-fill-color: initial !important;
+  color: inherit !important;
   transition: none !important;
   top: 0px !important;
 }
-.ll.near  .lw-seg { color: rgba(255,255,255,0.46) !important; -webkit-text-fill-color: rgba(255,255,255,0.46) !important; }
-.ll.near2 .lw-seg { color: rgba(255,255,255,0.24) !important; -webkit-text-fill-color: rgba(255,255,255,0.24) !important; }
-.ll.past  .lw-seg { color: rgba(255,255,255,0.06) !important; -webkit-text-fill-color: rgba(255,255,255,0.06) !important; }
-.ll:not(.now):not(.near):not(.near2):not(.past) .lw-seg {
-  color: rgba(255,255,255,0.12) !important;
-  -webkit-text-fill-color: rgba(255,255,255,0.12) !important;
-}
 
-/* Active line states */
 .ll.now .lw-seg.upcoming { top: 0px;  --spct: -220%; }
 .ll.now .lw-seg.done     { top: -4px; --spct:  220%; }
 .ll.now .lw-seg.now-seg  { top: -2px; }
 
 .lc { display: inline; }
 
-.ll:hover:not(.now) .lw-seg { color: rgba(255,255,255,0.6) !important; -webkit-text-fill-color: rgba(255,255,255,0.6) !important; }
-.ll:hover:not(.now){ filter: none; }
+.ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
 
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
