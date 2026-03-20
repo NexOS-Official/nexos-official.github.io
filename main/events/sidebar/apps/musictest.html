@@ -394,62 +394,53 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 /* ── Per-letter / per-syllable lift ── */
 
-.lw.has-splits {
-  background: none !important;
-  -webkit-text-fill-color: transparent !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  color: transparent !important;
-  opacity: inherit !important;
-}
-
 @property --spct {
   syntax: '<percentage>';
   inherits: false;
   initial-value: -220%;
 }
 
-.lw-seg {
-  display: inline;
-  position: relative;
-  top: 0px;
+/* Active line only: kill parent .lw gradient, segments take over visually */
+.ll.now .lw.has-splits {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
 }
 
-/* Active line segments: gradient sweep */
+/* Segments: inline by default (non-active = invisible wrapper, inherits nothing visible) */
+.lw-seg { display: inline; position: relative; top: 0; }
+
+/* Active line segments get gradient + lift */
 .ll.now .lw-seg {
   display: inline-block;
+  vertical-align: baseline;
   background: linear-gradient(to right,
     rgba(255,255,255,.92) 0%,
-    #ffffff               calc(var(--spct) - 2%),
-    #ffffff               calc(var(--spct) + 2%),
+    #ffffff calc(var(--spct) - 2%),
+    #ffffff calc(var(--spct) + 2%),
     rgba(255,255,255,.92) 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  transition:
-    top  480ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    --spct 110ms linear;
+  transition: top 480ms cubic-bezier(0.22,0.61,0.36,1), --spct 110ms linear;
 }
 
-/* Non-active lines: inherit parent color exactly, no gradient */
+/* Non-active: no overrides at all — .lw.has-splits parent does NOT exist on non-active lines
+   because the override above is scoped to .ll.now only. Segments just sit as inline nothing. */
 .ll:not(.now) .lw-seg {
   display: inline !important;
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  -webkit-text-fill-color: initial !important;
-  color: inherit !important;
+  top: 0 !important;
   transition: none !important;
-  top: 0px !important;
 }
 
-.ll.now .lw-seg.upcoming { top: 0px;  --spct: -220%; }
-.ll.now .lw-seg.done     { top: -4px; --spct:  220%; }
-.ll.now .lw-seg.now-seg  { top: -2px; }
+.ll.now .lw-seg.upcoming { top: 0;    --spct: -220%; }
+.ll.now .lw-seg.done     { top: -3px; --spct:  220%; }
+.ll.now .lw-seg.now-seg  { top: -1px; }
 
 .lc { display: inline; }
-
 .ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
 
 .beat-dots{
