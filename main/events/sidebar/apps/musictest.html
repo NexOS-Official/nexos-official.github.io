@@ -425,20 +425,20 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .lc {
   display: inline-block;
   -webkit-text-fill-color: initial;
-  color: rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.12);
   transition:
-    transform 200ms cubic-bezier(.34,1.45,.64,1),
-    opacity   170ms ease-out,
-    color     170ms ease-out;
+    transform 160ms cubic-bezier(.34,1.56,.64,1),
+    opacity   140ms ease-out,
+    color     140ms ease-out;
   will-change: transform, opacity;
   transform: translateY(0px);
-  opacity: 0.18;
+  opacity: 0.32;
 }
 
-/* Non-active line letters: inherit the line's color properly */
-.ll.past   .lc { color: rgba(255,255,255,0.06); opacity: 0.18; }
-.ll.near   .lc { color: rgba(255,255,255,0.46); opacity: 0.76; }
-.ll.near2  .lc { color: rgba(255,255,255,0.24); opacity: 0.46; }
+/* Non-active line letters: match parent .ll opacity levels */
+.ll.past   .lc { color: rgba(255,255,255,0.06);  opacity: 0.18; transition: none; }
+.ll.near   .lc { color: rgba(255,255,255,0.46);  opacity: 0.76; transition: none; }
+.ll.near2  .lc { color: rgba(255,255,255,0.24);  opacity: 0.46; transition: none; }
 
 /* Active line states */
 .ll.now .lc.lc-upcoming {
@@ -453,11 +453,11 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .ll.now .lc.lc-sung {
   transform: translateY(-7px);
-  opacity: 0.45;
-  color: rgba(255,255,255,0.65);
+  opacity: 0.5;
+  color: rgba(255,255,255,0.6);
 }
 
-.ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
+.ll:hover:not(.now) .lc { color: rgba(255,255,255,0.6) !important; transition: color .14s !important; }
 
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
@@ -2441,54 +2441,26 @@ function extractParens(text) {
 }
 
 function _buildWordInner(wordText, mode, splits) {
-  // If no AI mode, use heuristic fallback
-  // Only split words that are genuinely held/stretched — not normal content words
-  if (!mode) {
-    const clean = wordText.replace(/[^a-zA-Z']/g, '').toLowerCase();
-    // Fast/short/connector words → whole word
-    if (clean.length <= 3 || FAST_WORDS.has(clean)) {
-      mode = 'word';
-    // Repeated vowels/consonants = belted/held note (oooh, yeahh, ahhh, nooo)
-    } else if (/([aeiou])\1{1,}/i.test(clean) || /([^aeiou])\1{2,}/i.test(clean)) {
-      mode = 'chars';
-    // AI provided splits → use sylls
-    } else if (splits?.length) {
-      mode = 'sylls';
-    // Everything else: normal word, no split — gradient sweep handles it
-    } else {
-      mode = 'word';
-    }
-  }
+  // Strip trailing punctuation for splitting, preserve it for last segment
+  const trailPunct = wordText.match(/[.,!?;:'"]+$/)?.[0] ?? '';
+  const base = trailPunct ? wordText.slice(0, -trailPunct.length) : wordText;
 
   let segs;
-  if (mode === 'chars' && splits?.length) {
-    segs = splits;
-  } else if (mode === 'sylls' && splits?.length) {
-    segs = splits;
-  } else if (mode === 'chars') {
-    const clean = wordText.replace(/[.,!?;:]+$/, '');
-    const punct = wordText.slice(clean.length);
-    segs = [...clean].concat(punct ? [punct] : []);
-  } else if (mode === 'sylls') {
-    const clean = wordText.replace(/[^a-zA-Z']/g, '');
-    const sc = syllableCount(clean);
-    if (sc <= 1) return { html: x(wordText), hasSplits: false };
-    const chars = [...clean];
-    const groupSize = chars.length / sc;
-    segs = [];
-    for (let s = 0; s < sc; s++) {
-      const start = Math.round(s * groupSize);
-      const end   = Math.round((s + 1) * groupSize);
-      segs.push(chars.slice(start, end).join(''));
-    }
-    const punct = wordText.slice(clean.length);
-    if (punct && segs.length) segs[segs.length - 1] += punct;
+
+  if (mode === 'sylls' && splits?.length >= 1) {
+    // AI-provided syllable groupings — use exactly as given, reattach punct to last
+    segs = splits.map((s, i) => i === splits.length - 1 ? s + trailPunct : s);
+  } else if (mode === 'chars' && splits?.length >= 1) {
+    segs = splits.map((s, i) => i === splits.length - 1 ? s + trailPunct : s);
   } else {
-    return { html: x(wordText), hasSplits: false };
+    // Default: every word splits into individual characters
+    // The AI will later upgrade these to syllable groups when it responds
+    const chars = [...base];
+    if (!chars.length) return { html: x(wordText), hasSplits: false };
+    segs = chars.map((c, i) => i === chars.length - 1 ? c + trailPunct : c);
   }
 
-  if (!segs || segs.length <= 1) return { html: x(wordText), hasSplits: false };
-
+  // Single-char words (or single-segment) still get a span so the lift works
   const html = segs.map((seg, si) =>
     `<span class="lc lc-upcoming" data-si="${si}">${x(seg)}</span>`
   ).join('');
@@ -2603,34 +2575,37 @@ function _nextRealLineMs(fromIdx, fallback) {
 }
 
 function _tickLetters(lwEl, word, t, wStart, wEnd) {
-  // Only animate if the word element has .lc children
   const lcSpans = lwEl.querySelectorAll('.lc');
   if (!lcSpans.length) return;
   const n = lcSpans.length;
-  if (n <= 1) return;
 
-  // Distribute segment times across [wStart, wEnd] with slight ease-in (earlier segs faster)
-  // Use a slightly accelerating distribution so later chars linger a bit more
+  // Weight each segment's duration by its character count
+  // so syllable groups (longer) get more time than single letters
+  const weights = Array.from(lcSpans).map(sp => Math.max(1, sp.textContent.length));
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  const span = wEnd - wStart;
+
+  // Build cumulative time boundaries for each segment
+  let cursor = wStart;
+  const bounds = []; // [{start, end}]
   for (let si = 0; si < n; si++) {
-    // Slight ease: use sqrt distribution so earlier chars complete faster
-    const fracStart = si / n;
-    const fracEnd   = (si + 1) / n;
-    // Apply mild easing: t_i = wStart + eased_frac * span
-    const easedStart = Math.pow(fracStart, 0.85);
-    const easedEnd   = Math.pow(fracEnd,   0.85);
-    const segStart = wStart + easedStart * (wEnd - wStart);
-    const segEnd   = wStart + easedEnd   * (wEnd - wStart);
+    const segDur = (weights[si] / totalWeight) * span;
+    bounds.push({ start: cursor, end: cursor + segDur });
+    cursor += segDur;
+  }
 
-    const span = lcSpans[si];
-    const prev = span._lcState;
+  for (let si = 0; si < n; si++) {
+    const { start: segStart, end: segEnd } = bounds[si];
+    const sp = lcSpans[si];
+    const prev = sp._lcState;
     let next;
-    if (t < segStart)      next = 'lc-upcoming';
-    else if (t >= segEnd)  next = 'lc-sung';
-    else                   next = 'lc-now';
+    if (t < segStart)     next = 'lc-upcoming';
+    else if (t >= segEnd) next = 'lc-sung';
+    else                  next = 'lc-now';
 
     if (prev !== next) {
-      span._lcState = next;
-      span.className = 'lc ' + next;
+      sp._lcState = next;
+      sp.className = 'lc ' + next;
     }
   }
 }
