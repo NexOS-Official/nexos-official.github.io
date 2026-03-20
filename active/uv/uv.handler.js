@@ -585,8 +585,39 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
 
     // ── Captcha & site compatibility fixes ────────────────────────────────────
 
-    // reCAPTCHA/hCaptcha check window.self — make sure it always points to window
-    // so the captcha frame detection doesn't misfire inside the proxy context.
+    // Domains whose scripts must NOT be JS-rewritten by UV. reCAPTCHA and
+    // hCaptcha do internal integrity checks on their own code — if UV rewrites
+    // them they fail silently and the widget never renders.
+    const captchaScriptDomains = [
+        'google.com/recaptcha',
+        'gstatic.com/recaptcha',
+        'recaptcha.net',
+        'hcaptcha.com',
+        'newassets.hcaptcha.com',
+        'js.hcaptcha.com',
+    ];
+
+    const isCaptchaScript = (url) => {
+        try {
+            const u = new URL(url);
+            return captchaScriptDomains.some(d => (u.hostname + u.pathname).includes(d.split('/')[0])
+                && (d.includes('/') ? u.pathname.startsWith('/' + d.split('/')[1]) : true));
+        } catch(e) { return false; }
+    };
+
+    // Skip JS rewriting for captcha scripts injected via innerHTML/textContent
+    const _origSetInner = client.element.on.bind(client.element);
+
+    // Hook the function rewriter to pass captcha scripts through untouched
+    const _originalRewriteJS = __uv.rewriteJS ? __uv.rewriteJS.bind(__uv) : null;
+    if (_originalRewriteJS) {
+        __uv.rewriteJS = (script, url) => {
+            if (url && isCaptchaScript(url)) return script;
+            return _originalRewriteJS(script, url);
+        };
+    };
+
+    // reCAPTCHA/hCaptcha check window.self — must equal window at the top level
     try {
         client.nativeMethods.defineProperty(window, 'self', {
             get: () => window,
@@ -595,28 +626,44 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
         });
     } catch(e) {};
 
-    // Let non-UV-wrapped postMessages (e.g. from captcha iframes) pass through
-    // untouched. Without this, reCAPTCHA/hCaptcha messages get swallowed.
-    const _origMessageData = client.message.on.bind(client.message);
+    // window.top check — reCAPTCHA checks top === self to know it's not sandboxed
+    // Our existing __uv.methods.top handles most of this but we reinforce it here
+    try {
+        client.nativeMethods.defineProperty(window, 'top', {
+            get: () => window,
+            enumerable: true,
+            configurable: true,
+        });
+    } catch(e) {};
+
+    // Let non-UV-wrapped postMessages (from captcha iframes) pass through
+    // untouched. reCAPTCHA sends plain objects — UV's wrapper breaks them.
     client.message.on('data', event => {
         const { value: data } = event.data;
         if (typeof data === 'object' && data !== null && !('__data' in data)) {
-            // Not a UV-wrapped message — pass through as-is for captcha frames
             event.respondWith(data);
         };
     });
 
-    // Blooket, Gimkit etc. use BroadcastChannel for real-time game state.
-    // UV doesn't touch it, but some overrides can accidentally break the
-    // constructor. This ensures it always works as the native version.
+    // reCAPTCHA reads document.referrer to validate the page it's embedded on.
+    // Make sure it gets the real source URL, not the proxied one.
+    client.document.on('referrer', event => {
+        if (__uv.referrer) {
+            try {
+                event.data.value = new URL(__uv.referrer).href;
+            } catch(e) {}
+        }
+    });
+
+    // Blooket, Gimkit etc. use BroadcastChannel for real-time game state sync.
     if ('BroadcastChannel' in window) {
         client.override(window, 'BroadcastChannel', (target, that, args) => {
             return new target(...args);
         });
     };
 
-    // navigator.userAgent and platform are checked by bot-detection on many
-    // sites. Pass them through unmodified from the real navigator.
+    // navigator.userAgent and platform are read by bot-detection on many sites.
+    // Pass the real values through so they match a normal browser fingerprint.
     try {
         client.nativeMethods.defineProperty(window.Navigator.prototype, 'userAgent', {
             get: function() { return self.navigator.userAgent; },
@@ -630,8 +677,7 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
         });
     } catch(e) {};
 
-    // Protect MutationObserver from being accidentally clobbered — Blooket,
-    // Kahoot and others use it for anti-tamper checks.
+    // Protect MutationObserver — Blooket, Kahoot etc. use it for anti-tamper.
     if ('MutationObserver' in window) {
         const _MutationObserver = window.MutationObserver;
         client.nativeMethods.defineProperty(window, 'MutationObserver', {
