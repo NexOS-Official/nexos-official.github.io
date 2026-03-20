@@ -583,6 +583,65 @@ async function __uvHook(window, config = {}, bare = '/bare/') {
         delete window.Navigator.prototype.serviceWorker;
     };
 
+    // ── Captcha & site compatibility fixes ────────────────────────────────────
+
+    // reCAPTCHA/hCaptcha check window.self — make sure it always points to window
+    // so the captcha frame detection doesn't misfire inside the proxy context.
+    try {
+        client.nativeMethods.defineProperty(window, 'self', {
+            get: () => window,
+            enumerable: true,
+            configurable: true,
+        });
+    } catch(e) {};
+
+    // Let non-UV-wrapped postMessages (e.g. from captcha iframes) pass through
+    // untouched. Without this, reCAPTCHA/hCaptcha messages get swallowed.
+    const _origMessageData = client.message.on.bind(client.message);
+    client.message.on('data', event => {
+        const { value: data } = event.data;
+        if (typeof data === 'object' && data !== null && !('__data' in data)) {
+            // Not a UV-wrapped message — pass through as-is for captcha frames
+            event.respondWith(data);
+        };
+    });
+
+    // Blooket, Gimkit etc. use BroadcastChannel for real-time game state.
+    // UV doesn't touch it, but some overrides can accidentally break the
+    // constructor. This ensures it always works as the native version.
+    if ('BroadcastChannel' in window) {
+        client.override(window, 'BroadcastChannel', (target, that, args) => {
+            return new target(...args);
+        });
+    };
+
+    // navigator.userAgent and platform are checked by bot-detection on many
+    // sites. Pass them through unmodified from the real navigator.
+    try {
+        client.nativeMethods.defineProperty(window.Navigator.prototype, 'userAgent', {
+            get: function() { return self.navigator.userAgent; },
+            enumerable: true,
+            configurable: true,
+        });
+        client.nativeMethods.defineProperty(window.Navigator.prototype, 'platform', {
+            get: function() { return self.navigator.platform; },
+            enumerable: true,
+            configurable: true,
+        });
+    } catch(e) {};
+
+    // Protect MutationObserver from being accidentally clobbered — Blooket,
+    // Kahoot and others use it for anti-tamper checks.
+    if ('MutationObserver' in window) {
+        const _MutationObserver = window.MutationObserver;
+        client.nativeMethods.defineProperty(window, 'MutationObserver', {
+            get: () => _MutationObserver,
+            enumerable: true,
+            configurable: true,
+        });
+    };
+    // ──────────────────────────────────────────────────────────────────────────
+
     // Document
     client.document.on('getDomain', event => {
         event.data.value = __uv.domain;
