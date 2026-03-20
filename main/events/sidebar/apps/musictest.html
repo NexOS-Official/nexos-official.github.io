@@ -2526,17 +2526,66 @@ function _nextRealLineMs(fromIdx, fallback) {
   return fallback;
 }
 
+/**
+ * LYRIC TRACKING & LETTER ANIMATION SYSTEM
+ * 
+ * ARCHITECTURE:
+ * - tickLrc(posMs)           → Main entry: finds active line and calls _tickWords
+ * - _tickWords(lineIdx, t)   → Updates word states (.upcoming, .now-word, .done)
+ * - _tickLetters(lwEl, t)    → Updates individual letter states (.upcoming, .now-seg, .done)
+ * 
+ * LETTER ANIMATION DETAILS:
+ * Each word contains segments (letters/syllables) wrapped in .lw-seg elements
+ * When word is "active" (.now-word), segments animate sequentially:
+ * 
+ * SEGMENT STATES:
+ * 1. upcoming (-14px, 0.5 opacity) → waiting below, not yet animated
+ * 2. now-seg (animating) → actively floating up from -14px to 0px
+ * 3. done (0px, 1 opacity) → finished, settled in place
+ * 
+ * TIMING:
+ * - Each segment gets PER_SEG_MS (140ms) to animate
+ * - segStart = wStart + (segmentIndex * segMs)
+ * - Only ONE segment can be "now-seg" at a time (strict sequencing)
+ * - Progress tracked as: (currentTime - segStart) / segDuration → 0 to 1
+ * 
+ * ANIMATION VALUES:
+ * - Float position (--lift): -14px → 0px  (up motion)
+ * - Opacity (--lift-opa): 0.5 → 1.0  (fade in)
+ * - Transition: 140ms ease-out (must match PER_SEG_MS)
+ * 
+ * CSS CLASSES:
+ * - .lw-seg.upcoming → color:rgba(255,255,255,0.5), transform:translateY(-14px)
+ * - .lw-seg.now-seg  → color:#ffffff (bright), transform varies with progress
+ * - .lw-seg.done     → color:rgba(255,255,255,1), transform:translateY(0px)
+ * 
+ * FUTURE IMPROVEMENTS:
+ * - Add dynamic speed based on syllable count
+ * - Add bounce/spring easing for more character
+ * - Add per-syllable granularity instead of per-letter
+ * - Add stagger delay between segments for rhythm-aware animation
+ */
+
 function _tickLetters(lwEl, word, t, wStart, wEnd) {
   const segs = lwEl.querySelectorAll('.lw-seg');
   if (!segs.length) return;
 
-  // Each segment gets a FIXED animation duration
-  // This ensures strict sequencing: one letter at a time
-  const PER_SEG_MS = 140; // milliseconds per letter
+  // Initialize segments on first call
+  segs.forEach((sp, si) => {
+    if (!sp._segState) {
+      sp._segState = 'upcoming';
+      sp.className = 'lw-seg upcoming';
+      sp.style.setProperty('--lift', '-14px');  // Start OFF-SCREEN (floated down)
+      sp.style.setProperty('--lift-opa', '0.5');
+    }
+  });
+
+  // Each segment gets a FIXED animation duration for strict sequencing
+  const PER_SEG_MS = 140; // milliseconds per letter to animate
   const spanMs = wEnd - wStart;
   const totalSegMs = segs.length * PER_SEG_MS;
   
-  // If we have more time than segments need, distribute evenly
+  // Distribute animation time evenly across segments
   let segMs = Math.max(PER_SEG_MS, spanMs / segs.length);
   if (totalSegMs > spanMs) {
     segMs = spanMs / segs.length;
@@ -2549,34 +2598,58 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
     const prev = sp._segState;
 
     if (t < segStart) {
-      // UPCOMING: not yet animated
+      // UPCOMING: waiting to animate (offscreen below)
       if (prev !== 'upcoming') {
         sp._segState = 'upcoming';
         sp.className = 'lw-seg upcoming';
-        sp.style.setProperty('--lift', '0px');
+        sp.style.setProperty('--lift', '-14px');     // Off-screen
         sp.style.setProperty('--lift-opa', '0.5');
       }
     } else if (t >= segEnd) {
-      // DONE: animation finished
+      // DONE: animation finished, letter is now visible
       if (prev !== 'done') {
         sp._segState = 'done';
         sp.className = 'lw-seg done';
-        sp.style.setProperty('--lift', '0px');
-        sp.style.setProperty('--lift-opa', '1');
+        sp.style.setProperty('--lift', '0px');       // Back to normal position
+        sp.style.setProperty('--lift-opa', '1');     // Full brightness
       }
     } else {
-      // NOW-SEG: actively animating — float up
+      // NOW-SEG: actively animating — float UP from -14px to 0px
       const progress = (t - segStart) / Math.max(1, segEnd - segStart); // 0 to 1
-      const liftY = Math.max(0, -14 * (1 - progress)); // float from -14px to 0px
-      const opacity = 0.5 + progress * 0.5; // fade from 0.5 to 1
+      const liftY = -14 + (14 * progress); // Start at -14px, animate to 0px
+      const opacity = 0.5 + progress * 0.5; // Fade in from 0.5 to 1.0
       
       sp._segState = 'now-seg';
       sp.className = 'lw-seg now-seg';
-      sp.style.setProperty('--lift', liftY + 'px');
+      sp.style.setProperty('--lift', liftY.toFixed(1) + 'px');
       sp.style.setProperty('--lift-opa', opacity.toFixed(2));
     }
   }
 }
+
+/**
+ * WORD-LEVEL SYNCHRONIZATION
+ * Updates each word's state and triggers letter animation for active words
+ * 
+ * WORD STATES:
+ * - upcoming (-20%) → word not yet reached
+ * - now-word (0% → 100%) → word is being sung, letter animation active HERE
+ * - done (100%) → word finished
+ * 
+ * TIMING CALCULATION:
+ * - wStart: the time this word should start (from lyric data)
+ * - wEnd: calculated boundary accounting for segment animation needs
+ * - Ensures each letter has time to animate sequentially
+ * 
+ * LETTER ANIMATION TRIGGER (Line 2693):
+ * ```
+ * if (segsEl) _tickLetters(segsEl, w.word, t, wStart, wEnd);
+ * ```
+ * Called ONLY when word is in "now-word" state (currently being sung)
+ * Passes the exact time window (wStart → wEnd) for letter sequencing
+ * 
+ * This integrates the letter animation into the broader word timing system
+ */
 
 function _tickWords(lineIdx, t, nextBound) {
   const words = ST.lrc[lineIdx]?.words;
@@ -2636,7 +2709,12 @@ function _tickWords(lineIdx, t, nextBound) {
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
       if (segsEl) segsEl.querySelectorAll('.lw-seg').forEach(sp => {
-        if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--spct','220%'); }
+        if (sp._segState !== 'done') {
+          sp._segState = 'done';
+          sp.className = 'lw-seg done';
+          sp.style.setProperty('--lift', '0px');
+          sp.style.setProperty('--lift-opa', '1');
+        }
       });
     } else {
       const raw   = (t - wStart) / Math.max(1, wNext - wStart);
@@ -2653,7 +2731,12 @@ function _snapDone(lineIdx) {
     _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
     const lwEl = document.getElementById('lw'+lineIdx+'_'+wi);
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--spct','220%'); }
+      if (sp._segState !== 'done') {
+        sp._segState = 'done';
+        sp.className = 'lw-seg done';
+        sp.style.setProperty('--lift', '0px');
+        sp.style.setProperty('--lift-opa', '1');
+      }
     });
   });
 }
@@ -2666,7 +2749,10 @@ function _resetUpcoming(lineIdx) {
     _setLwState(id, 'upcoming', '-20%');
     const lwEl = document.getElementById(id);
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--spct','-220%');
+      sp._segState = 'upcoming';
+      sp.className = 'lw-seg upcoming';
+      sp.style.setProperty('--lift', '-14px');      // Off-screen, ready to animate
+      sp.style.setProperty('--lift-opa', '0.5');
     });
   });
 }
@@ -2682,11 +2768,38 @@ function _resetUpcomingSelective(lineIdx, t) {
       _setLwState(id, 'upcoming', '-20%');
       const lwEl = document.getElementById(id);
       if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-        sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--spct','-220%');
+        sp._segState = 'upcoming';
+        sp.className = 'lw-seg upcoming';
+        sp.style.setProperty('--lift', '-14px');      // Off-screen, ready to animate
+        sp.style.setProperty('--lift-opa', '0.5');
       });
     }
   });
 }
+
+/**
+ * MAIN LYRIC SYNCHRONIZATION ENTRY POINT
+ * Called every ~30ms by the player when song is playing
+ * 
+ * FLOW:
+ * 1. Find active lyric line based on current playback time
+ * 2. Classify lines as: .past (behind), .near (1-2 lines away), .now (active), .near2 (upcoming)
+ * 3. Blur non-active lines for focus effect
+ * 4. Call _tickWords() to update word states for active line
+ * 5. Call _tickWords() for paren/subtitle lines if present
+ * 
+ * LOOK-AHEAD:
+ * - Dynamically calculated based on song pace (50-150ms)
+ * - Faster songs: smaller look-ahead
+ * - Slower songs: larger look-ahead
+ * - Ensures letter animations feel synced to the actual lyrics being sung
+ * 
+ * LETTER ANIMATION INTEGRATION:
+ * - When _tickWords() finds a word in "active" state, it calls _tickLetters()
+ * - _tickLetters() handles the sequential letter float-up animation
+ * - Each letter animates one at a time within the word duration
+ * - Letters are timed to match the actual phoneme/syllable timing from the lyric data
+ */
 
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
