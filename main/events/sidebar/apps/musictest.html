@@ -391,73 +391,32 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   100% { opacity: 1; }
 }
 
-/* ── Per-letter / per-syllable Apple Music lift ─────────────────────── */
+/* ── Per-letter / per-syllable lift — layered ON TOP of the gradient sweep ── */
 
-/* Override the gradient-clip for split words: set fill to a real color (not unset/transparent) */
-.ll.now .lw.has-splits,
-.ll.now .lw.has-splits.upcoming,
-.ll.now .lw.has-splits.done,
-.ll.now .lw.has-splits.now-word,
-.ll.now .lw.has-splits.word-enter {
-  background: none !important;
-  -webkit-background-clip: border-box !important;
-  background-clip: border-box !important;
-  -webkit-text-fill-color: rgba(0,0,0,0) !important;
-  color: rgba(0,0,0,0) !important;
-  opacity: 1 !important;
-  filter: none !important;
+/* .lw.has-splits keeps the EXACT same gradient sweep as normal .lw */
+/* No color/background overrides — gradient-clip text still works on the parent */
+/* .lc children only control translateY lift, NOT color */
+
+.lc {
+  display: inline-block;
+  /* No color, no opacity — gradient clip on parent paints through us */
+  transition: transform 150ms cubic-bezier(.34,1.56,.64,1);
+  will-change: transform;
+  transform: translateY(0px);
 }
 
-/* Non-active lines with splits: just look like normal dimmed lines */
-.ll:not(.now) .lw.has-splits {
-  background: none !important;
-  -webkit-background-clip: border-box !important;
-  background-clip: border-box !important;
-  -webkit-text-fill-color: rgba(0,0,0,0) !important;
-  color: rgba(0,0,0,0) !important;
-}
+/* Lift states — translateY only, color comes from parent gradient */
+.ll.now .lc.lc-upcoming { transform: translateY(0px); }
+.ll.now .lc.lc-now      { transform: translateY(-5px); }
+.ll.now .lc.lc-sung     { transform: translateY(-7px); }
+
+/* Non-active lines: no lift at all */
 .ll:not(.now) .lc {
   transform: none !important;
   transition: none !important;
 }
 
-/* The .lc spans carry all the visible text for split words */
-.lc {
-  display: inline-block;
-  -webkit-text-fill-color: initial;
-  color: rgba(255,255,255,0.12);
-  transition:
-    transform 160ms cubic-bezier(.34,1.56,.64,1),
-    opacity   140ms ease-out,
-    color     140ms ease-out;
-  will-change: transform, opacity;
-  transform: translateY(0px);
-  opacity: 0.32;
-}
-
-/* Non-active line letters: match parent .ll opacity levels */
-.ll.past   .lc { color: rgba(255,255,255,0.06);  opacity: 0.18; transition: none; }
-.ll.near   .lc { color: rgba(255,255,255,0.46);  opacity: 0.76; transition: none; }
-.ll.near2  .lc { color: rgba(255,255,255,0.24);  opacity: 0.46; transition: none; }
-
-/* Active line states */
-.ll.now .lc.lc-upcoming {
-  transform: translateY(0px);
-  opacity: 0.18;
-  color: rgba(255,255,255,0.18);
-}
-.ll.now .lc.lc-now {
-  transform: translateY(-5px);
-  opacity: 1;
-  color: #ffffff;
-}
-.ll.now .lc.lc-sung {
-  transform: translateY(-7px);
-  opacity: 0.5;
-  color: rgba(255,255,255,0.6);
-}
-
-.ll:hover:not(.now) .lc { color: rgba(255,255,255,0.6) !important; transition: color .14s !important; }
+.ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
 
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
@@ -2579,23 +2538,18 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
   if (!lcSpans.length) return;
   const n = lcSpans.length;
 
-  // Weight each segment's duration by its character count
-  // so syllable groups (longer) get more time than single letters
-  const weights = Array.from(lcSpans).map(sp => Math.max(1, sp.textContent.length));
+  // Weight each segment's duration by its character count so syllable groups get more time
+  const weights = Array.from(lcSpans).map(sp => Math.max(1, sp.textContent.replace(/\s/g,'').length));
   const totalWeight = weights.reduce((a, b) => a + b, 0);
-  const span = wEnd - wStart;
+  const spanMs = wEnd - wStart;
 
-  // Build cumulative time boundaries for each segment
   let cursor = wStart;
-  const bounds = []; // [{start, end}]
   for (let si = 0; si < n; si++) {
-    const segDur = (weights[si] / totalWeight) * span;
-    bounds.push({ start: cursor, end: cursor + segDur });
+    const segDur = (weights[si] / totalWeight) * spanMs;
+    const segStart = cursor;
+    const segEnd   = cursor + segDur;
     cursor += segDur;
-  }
 
-  for (let si = 0; si < n; si++) {
-    const { start: segStart, end: segEnd } = bounds[si];
     const sp = lcSpans[si];
     const prev = sp._lcState;
     let next;
@@ -2652,18 +2606,14 @@ function _tickWords(lineIdx, t, nextBound) {
       _setLwState(id, 'upcoming', '-20%');
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
-      // Snap all letters to sung
       const lwEl = document.getElementById(id);
-      if (lwEl) {
-        lwEl.querySelectorAll('.lc').forEach(sp => {
-          if (sp._lcState !== 'lc-sung') { sp._lcState = 'lc-sung'; sp.className = 'lc lc-sung'; }
-        });
-      }
+      if (lwEl) lwEl.querySelectorAll('.lc').forEach(sp => {
+        if (sp._lcState !== 'lc-sung') { sp._lcState = 'lc-sung'; sp.className = 'lc lc-sung'; }
+      });
     } else {
       const raw   = (t - wStart) / Math.max(1, wEnd - wStart);
       const eased = raw < 0.25 ? raw * raw * 4 : 0.25 + (raw - 0.25);
       _setLwState(id, 'now-word', (Math.min(1, eased) * 100).toFixed(1) + '%');
-      // Tick per-letter/syllable animation
       const lwEl = document.getElementById(id);
       if (lwEl) _tickLetters(lwEl, w.word, t, wStart, wEnd);
     }
@@ -2676,7 +2626,7 @@ function _snapDone(lineIdx) {
     _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
     const lwEl = document.getElementById('lw'+lineIdx+'_'+wi);
     if (lwEl) lwEl.querySelectorAll('.lc').forEach(sp => {
-      sp._lcState = 'lc-sung'; sp.className = 'lc lc-sung';
+      if (sp._lcState !== 'lc-sung') { sp._lcState = 'lc-sung'; sp.className = 'lc lc-sung'; }
     });
   });
 }
