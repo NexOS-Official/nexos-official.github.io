@@ -391,29 +391,67 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   100% { opacity: 1; }
 }
 
-/* ── Per-letter / per-syllable lift — layered ON TOP of the gradient sweep ── */
+/* ── Per-letter / per-syllable lift ── */
 
-/* .lw.has-splits keeps the EXACT same gradient sweep as normal .lw */
-/* No color/background overrides — gradient-clip text still works on the parent */
-/* .lc children only control translateY lift, NOT color */
-
-.lc {
-  display: inline-block;
-  /* No color, no opacity — gradient clip on parent paints through us */
-  transition: transform 150ms cubic-bezier(.34,1.56,.64,1);
-  will-change: transform;
-  transform: translateY(0px);
+/* Words with .lc children: parent is transparent shell, gradient lives on each .lc */
+.ll.now .lw.has-splits {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
 }
 
-/* Lift states — translateY only, color comes from parent gradient */
-.ll.now .lc.lc-upcoming { transform: translateY(0px); }
-.ll.now .lc.lc-now      { transform: translateY(-5px); }
-.ll.now .lc.lc-sung     { transform: translateY(-7px); }
+/* .lc base — each letter/syllable carries its own gradient */
+.lc {
+  display: inline-block;
+  will-change: transform;
+  transform: translateY(0px);
+  transition: transform 150ms cubic-bezier(.34,1.56,.64,1);
+  /* Default color for non-active lines */
+  -webkit-text-fill-color: initial;
+  color: inherit;
+}
 
-/* Non-active lines: no lift at all */
+/* Non-active lines: no lift, just inherit line color normally */
 .ll:not(.now) .lc {
   transform: none !important;
   transition: none !important;
+  -webkit-text-fill-color: initial !important;
+  color: inherit !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+}
+
+/* Active line — upcoming letters: bright, nearly white (Apple Music style) */
+.ll.now .lc.lc-upcoming {
+  transform: translateY(0px);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: rgba(255,255,255,0.75);
+  color: rgba(255,255,255,0.75);
+}
+
+/* Active — currently singing letter: full white, lifted */
+.ll.now .lc.lc-now {
+  transform: translateY(-5px);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: #ffffff;
+  color: #ffffff;
+}
+
+/* Active — already sung letter: nearly as bright, lifted higher */
+.ll.now .lc.lc-sung {
+  transform: translateY(-7px);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  -webkit-text-fill-color: rgba(255,255,255,0.88);
+  color: rgba(255,255,255,0.88);
 }
 
 .ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
