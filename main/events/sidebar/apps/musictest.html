@@ -404,24 +404,22 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   opacity: inherit !important;
 }
 
-/* Each segment is its own gradient-bearing span — background-clip:text works
-   perfectly here because the text IS the span's own content, not a child. */
+/* Each segment is its own gradient-bearing span */
 .ll.now .lw-seg {
   display: inline-block;
   position: relative;
   top: 0px;
   background: linear-gradient(to right,
-    #ffffff              calc(var(--pct, -20%) - 10%),
-    rgba(255,255,255,.92) calc(var(--pct, -20%) -  2%),
-    rgba(255,255,255,.25) calc(var(--pct, -20%) +  8%),
-    rgba(255,255,255,.05) calc(var(--pct, -20%) + 18%)
+    #ffffff               calc(var(--pct, -20%) - 5%),
+    rgba(255,255,255,.85) calc(var(--pct, -20%) + 5%),
+    rgba(255,255,255,.80) calc(var(--pct, -20%) + 15%)
   );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   transition:
     top 500ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    --pct 180ms ease-out;
+    --pct 120ms ease-out;
 }
 
 /* Non-active lines: plain color, no gradient, no lift */
@@ -436,10 +434,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   transition: none !important;
 }
 
-/* Segment states on active line */
-.ll.now .lw-seg.upcoming { top: 0px;  --pct: -20%; }
-.ll.now .lw-seg.done     { top: -4px; --pct: 110%; }
-/* 'now' state: --pct driven by JS each frame */
+/* Upcoming: bright — nearly same as sung, just very slightly dimmer.
+   Done: fully bright, lifted. Now: JS drives --pct. */
+.ll.now .lw-seg.upcoming { top: 0px;  --pct: -120%; }
+.ll.now .lw-seg.done     { top: -4px; --pct: 120%; }
 .ll.now .lw-seg.now-seg  { top: -2px; }
 
 /* Reuse .lc class as alias in snap/reset functions */
@@ -2579,13 +2577,21 @@ function _tickLetters(lwEl, word, t, wStart, wEnd) {
     const prev = sp._segState;
 
     if (t < segStart) {
-      if (prev !== 'upcoming') { sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct', '-20%'); }
+      if (prev !== 'upcoming') {
+        sp._segState = 'upcoming';
+        sp.className = 'lw-seg upcoming';
+        sp.style.setProperty('--pct', '-120%');
+      }
     } else if (t >= segEnd) {
-      if (prev !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--pct', '110%'); }
+      if (prev !== 'done') {
+        sp._segState = 'done';
+        sp.className = 'lw-seg done';
+        sp.style.setProperty('--pct', '120%');
+      }
     } else {
-      // Actively singing this segment — sweep --pct from -20% to 110%
+      // Sweep from -120% to 120% across the segment window
       const raw = (t - segStart) / Math.max(1, segEnd - segStart);
-      const pct = (-20 + raw * 130).toFixed(1) + '%';
+      const pct = (-120 + raw * 240).toFixed(1) + '%';
       if (prev !== 'now-seg') { sp._segState = 'now-seg'; sp.className = 'lw-seg now-seg'; }
       sp.style.setProperty('--pct', pct);
     }
@@ -2633,14 +2639,16 @@ function _tickWords(lineIdx, t, nextBound) {
     }
 
     // Segment animation window: guarantee MIN_SEG_MS per segment,
-    // and let it bleed up to 60% into the next word's window for smooth finish
+    // but cap bleed tightly so fast lines don't show multiple words lit
     const segsEl = document.getElementById('lw' + lineIdx + '_' + wi);
     const segCount = segsEl ? segsEl.querySelectorAll('.lw-seg').length : 1;
-    const MIN_SEG_MS = 55;
+    const MIN_SEG_MS = 45;
     const minWordMs  = segCount * MIN_SEG_MS;
     const rawWordMs  = wNext - wStart;
-    const bleed      = Math.min(rawWordMs * 0.6, Math.max(0, minWordMs - rawWordMs));
-    const wEnd       = wNext + bleed;
+    // Bleed: only extend if we absolutely must, and cap at 25% of next word window
+    const needed = Math.max(0, minWordMs - rawWordMs);
+    const bleed  = Math.min(needed, rawWordMs * 0.25);
+    const wEnd   = wNext + bleed;
 
     const id = 'lw' + lineIdx + '_' + wi;
     if (t < wStart) {
@@ -2665,7 +2673,7 @@ function _snapDone(lineIdx) {
     _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
     const lwEl = document.getElementById('lw'+lineIdx+'_'+wi);
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--pct','110%'); }
+      if (sp._segState !== 'done') { sp._segState = 'done'; sp.className = 'lw-seg done'; sp.style.setProperty('--pct','120%'); }
     });
   });
 }
@@ -2678,7 +2686,7 @@ function _resetUpcoming(lineIdx) {
     _setLwState(id, 'upcoming', '-20%');
     const lwEl = document.getElementById(id);
     if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-20%');
+      sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-120%');
     });
   });
 }
@@ -2694,7 +2702,7 @@ function _resetUpcomingSelective(lineIdx, t) {
       _setLwState(id, 'upcoming', '-20%');
       const lwEl = document.getElementById(id);
       if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-        sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-20%');
+        sp._segState = 'upcoming'; sp.className = 'lw-seg upcoming'; sp.style.setProperty('--pct','-120%');
       });
     }
   });
