@@ -1,3 +1,9 @@
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -281,11 +287,6 @@
             padding: 0 6px !important;
             order: -1;
         }
-        
-        .tab.pinned .tab-audio-icon{
-            display: none;
-        }
-
 
         .tab.pinned .tab-close {
             display: none !important;
@@ -6345,6 +6346,8 @@ if (this.isBlockedUrl(url)) {
         window.browser = browser;
         lucide.createIcons();
 
+
+
         document.addEventListener("DOMContentLoaded", () => {
   window.lucide.createIcons()
 
@@ -8143,6 +8146,13 @@ menu.addEventListener('mouseleave', hideMenu);
             '</div>' +
             '</button>' +
             '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
+            '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Data</div>' +
+            '<button class="cc-settings-option" id="ccClearHistory" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Clear Browsing History</span>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccResetSettings" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Reset All Settings</span>' +
+            '</button>' +
             '</div>';
 
         function openSettingsPanel(e) {
@@ -10461,6 +10471,178 @@ setInterval(async () => {
 
         if (window.lucide) lucide.createIcons();
     });
+})();
+</script>
+<script>
+(function setupImageDragToTab() {
+    var tabBar = document.getElementById('tabBar');
+    var newTabBtn = document.getElementById('newTabBtn');
+    var imgDragHoverTimer = null;
+    var imgDragHoverTabId = null;
+    var currentArrow = null;
+    var currentHoverTab = null;
+
+    function hasImageData(e) {
+        if (!e.dataTransfer) return false;
+        var types = e.dataTransfer.types;
+        return types && Array.from(types).some(function(t) {
+            return t === 'Files' || t.startsWith('image/') || t === 'text/uri-list' || t === 'text/html';
+        });
+    }
+
+    function showArrowUnder(el) {
+        removeArrow();
+        var arrow = document.createElement('div');
+        arrow.className = '__img-drag-arrow';
+        arrow.innerHTML = '<svg width="10" height="8" viewBox="0 0 10 8"><path d="M5 0L0 6h3.5v2h3V6H10L5 0z" fill="#5f6368"/></svg>';
+        var rect = el.getBoundingClientRect();
+        Object.assign(arrow.style, {
+            position: 'fixed',
+            left: (rect.left + rect.width / 2 - 5) + 'px',
+            top: (rect.bottom + 3) + 'px',
+            zIndex: '100000',
+            pointerEvents: 'none',
+            lineHeight: '0'
+        });
+        document.body.appendChild(arrow);
+        currentArrow = arrow;
+    }
+
+    function removeArrow() {
+        if (currentArrow) {
+            currentArrow.remove();
+            currentArrow = null;
+        }
+    }
+
+    function clearHoverTimer() {
+        if (imgDragHoverTimer) {
+            clearTimeout(imgDragHoverTimer);
+            imgDragHoverTimer = null;
+        }
+        imgDragHoverTabId = null;
+        if (currentHoverTab) {
+            currentHoverTab.classList.remove('__img-drag-hover');
+            currentHoverTab = null;
+        }
+        removeArrow();
+    }
+
+    function getImageFromDrop(e) {
+        return new Promise(function(resolve) {
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                var file = e.dataTransfer.files[0];
+                if (file.type.startsWith('image/')) {
+                    var reader = new FileReader();
+                    reader.onload = function(ev) { resolve(ev.target.result); };
+                    reader.readAsDataURL(file);
+                    return;
+                }
+            }
+            var uriData = e.dataTransfer.getData('text/uri-list');
+            if (uriData && /\.(png|jpe?g|gif|webp|svg|bmp|ico)/i.test(uriData)) { resolve(uriData); return; }
+            var htmlData = e.dataTransfer.getData('text/html');
+            if (htmlData) {
+                var m = htmlData.match(/<img[^>]+src=["']([^"']+)["']/i);
+                if (m) { resolve(m[1]); return; }
+            }
+            var textData = e.dataTransfer.getData('text/plain');
+            if (textData && /\.(png|jpe?g|gif|webp|svg|bmp|ico)/i.test(textData)) { resolve(textData); return; }
+            resolve(null);
+        });
+    }
+
+    function openImageInNewTab(imgSrc) {
+        var tabId = window.browser.createNewTab();
+        if (tabId) {
+            var tab = window.browser.tabs.get(tabId);
+            if (tab && tab.iframe) {
+                tab.iframe.srcdoc = '<!DOCTYPE html><html><head><title>Dropped Image</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px;}</style></head><body><img src="' + imgSrc.replace(/"/g, '&quot;') + '" alt="Dropped image"></body></html>';
+                tab.title = 'Dropped Image';
+                if (tab.element) {
+                    var titleEl = tab.element.querySelector('.tab-title');
+                    if (titleEl) titleEl.textContent = 'Dropped Image';
+                }
+            }
+        }
+    }
+
+    newTabBtn.addEventListener('dragover', function(e) {
+        if (!hasImageData(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        newTabBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+        showArrowUnder(newTabBtn);
+    });
+
+    newTabBtn.addEventListener('dragleave', function(e) {
+        newTabBtn.style.background = '';
+        removeArrow();
+    });
+
+    newTabBtn.addEventListener('drop', function(e) {
+        e.preventDefault();
+        newTabBtn.style.background = '';
+        removeArrow();
+        getImageFromDrop(e).then(function(imgSrc) {
+            if (imgSrc) openImageInNewTab(imgSrc);
+        });
+    });
+
+    tabBar.addEventListener('dragover', function(e) {
+        if (!hasImageData(e)) return;
+        var tabEl = e.target.closest('.tab');
+        if (!tabEl) { clearHoverTimer(); return; }
+
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+
+        var tabId = parseInt(tabEl.dataset.tabId);
+        if (tabId === window.browser.activeTabId) { clearHoverTimer(); return; }
+
+        if (currentHoverTab && currentHoverTab !== tabEl) {
+            currentHoverTab.classList.remove('__img-drag-hover');
+        }
+        if (!tabEl.classList.contains('active')) {
+            tabEl.classList.add('__img-drag-hover');
+        }
+        currentHoverTab = tabEl;
+        showArrowUnder(tabEl);
+
+        if (imgDragHoverTabId !== tabId) {
+            if (imgDragHoverTimer) clearTimeout(imgDragHoverTimer);
+            imgDragHoverTabId = tabId;
+            imgDragHoverTimer = setTimeout(function() {
+                window.browser.switchToTab(tabId);
+                clearHoverTimer();
+            }, 1000);
+        }
+    });
+
+    tabBar.addEventListener('dragleave', function(e) {
+        var tabEl = e.target.closest('.tab');
+        if (!tabEl || !tabBar.contains(e.relatedTarget)) {
+            clearHoverTimer();
+        }
+    });
+
+    tabBar.addEventListener('drop', function(e) {
+        clearHoverTimer();
+        var tabEl = e.target.closest('.tab');
+        if (tabEl) {
+            e.preventDefault();
+            var tabId = parseInt(tabEl.dataset.tabId);
+            if (tabId !== window.browser.activeTabId) {
+                window.browser.switchToTab(tabId);
+            }
+        }
+    });
+
+    var style = document.createElement('style');
+    style.textContent = '.tab.__img-drag-hover:not(.active){background:#ffffffa5 !important;}' +
+        '.tab.__img-drag-hover:not(.active)::before{content:"";position:absolute;bottom:0;left:-11.5px;width:12px;height:12px;background:#ffffffa5;mask-image:radial-gradient(circle at 0 0,transparent 12px,black 0);-webkit-mask-image:radial-gradient(circle at 0 0,transparent 12px,black 0);}' +
+        '.tab.__img-drag-hover:not(.active)::after{content:"";position:absolute;bottom:0;right:-12px;width:12px;height:12px;background:#ffffffa5;mask-image:radial-gradient(circle at 12px 0,transparent 12px,black 0);-webkit-mask-image:radial-gradient(circle at 12px 0,transparent 12px,black 0);}';
+    document.head.appendChild(style);
 })();
 </script>
 </body>
