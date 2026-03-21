@@ -5749,9 +5749,7 @@ if (this.isBlockedUrl(url)) {
                         if (decoded !== iframeHref && decoded.startsWith('http')) {
                             return decoded;
                         }
-                        // If extractOriginalUrl couldn't decode it, the href is likely
-                        // a proxy-domain path (e.g. ghostinc.online/login). Ignore it
-                        // and fall back to extracting from iframe.src instead.
+
                         if (iframeHref === decoded) {
                             const fromSrc = this.extractOriginalUrl(tab.iframe.src || '');
                             if (fromSrc !== tab.iframe.src && fromSrc.startsWith('http')) {
@@ -10663,7 +10661,6 @@ setInterval(async () => {
 })();
 </script>
 
-<!-- Live Tab Title Polling (no tab-switch needed) -->
 <script>
 (function() {
     var TITLE_POLL_MS = 600;
@@ -10696,7 +10693,6 @@ setInterval(async () => {
 })();
 </script>
 
-<!-- Improved SPA URL detection for sites like TikTok, Snapchat -->
 <script>
 (function() {
     var SPA_POLL_MS = 500;
@@ -10720,15 +10716,13 @@ setInterval(async () => {
             var href = tab.iframe.contentWindow.location.href;
             if (href && href !== 'about:blank') {
                 var decoded = b.extractOriginalUrl(href);
-                // Only use decoded if it actually decoded to something different
-                // and is NOT on the host/proxy domain
+
                 if (decoded !== href && decoded.startsWith('http') && !isHostDomainUrl(decoded)) {
                     realUrl = decoded;
                 }
             }
         } catch(e) {}
 
-        // If we couldn't get a real URL from contentWindow, try from iframe.src
         if (!realUrl) {
             try {
                 var srcDecoded = b.extractOriginalUrl(tab.iframe.src || '');
@@ -10738,7 +10732,6 @@ setInterval(async () => {
             } catch(e) {}
         }
 
-        // Also try canonical link
         if (!realUrl) {
             try {
                 if (tab.iframe.contentWindow && tab.iframe.contentWindow.document) {
