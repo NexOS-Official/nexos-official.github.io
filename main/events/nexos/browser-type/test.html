@@ -3839,6 +3839,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.batteryNotificationShown = false;
                 this.battery = null;
                 this.toastTimeout = null;
+                this.toastShownUrls = new Set();
                 
                 this.initializeElements();
                 this.bindEvents();
@@ -5517,15 +5518,8 @@ if (this.isBlockedUrl(url)) {
                     return;
                 }
 
-                if (this.isUrl(url)) {
-                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                        url = 'https://' + url;
-                    }
-                    url = `/active/embed.html?url=${encodeURIComponent(url)}`;
-                } else {
-                    const searchUrl = `https://duckduckgo.com/?ia=web&origin=funnel_home_google&t=h_&q=${encodeURIComponent(url)}`;
-                    url = `/active/embed.html?url=${encodeURIComponent(searchUrl)}`;
-                }
+                url = this.smartURL(url);
+                url = `/active/embed.html?url=${encodeURIComponent(url)}`;
 
                 this.loadUrl(url);
             }
@@ -5551,6 +5545,18 @@ if (this.isBlockedUrl(url)) {
                 const urlPattern = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
                 const localhostPattern = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/;
                 return urlPattern.test(input) || localhostPattern.test(input) || input.includes('.');
+            }
+
+            smartURL(input) {
+                input = input.trim();
+                if (/^https?:\/\//i.test(input)) return input;
+                if (/^(localhost|\d{1,3}(\.\d{1,3}){3})(:\d+)?(\/.*)?$/i.test(input)) {
+                    return "http://" + input;
+                }
+                if (/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/\S*)?$/.test(input) && !/\s/.test(input)) {
+                    return "https://" + input;
+                }
+                return "https://www.google.com/search?q=" + encodeURIComponent(input);
             }
 
             loadUrl(url) {
@@ -6298,6 +6304,10 @@ if (this.isBlockedUrl(url)) {
                 }
             }
             showSiteToast(tab, url) {
+                const toastKey = (tab.id || '') + '::' + (url || '');
+                if (this.toastShownUrls.has(toastKey)) return;
+                this.toastShownUrls.add(toastKey);
+
                 const toast = document.getElementById('siteToast');
                 const toastIcon = document.getElementById('toastIcon');
                 const toastText = document.getElementById('toastText');
@@ -10641,6 +10651,92 @@ setInterval(async () => {
         '.tab.__img-drag-hover:not(.active)::before{content:"";position:absolute;bottom:0;left:-11.5px;width:12px;height:12px;background:#ffffffa5;mask-image:radial-gradient(circle at 0 0,transparent 12px,black 0);-webkit-mask-image:radial-gradient(circle at 0 0,transparent 12px,black 0);}' +
         '.tab.__img-drag-hover:not(.active)::after{content:"";position:absolute;bottom:0;right:-12px;width:12px;height:12px;background:#ffffffa5;mask-image:radial-gradient(circle at 12px 0,transparent 12px,black 0);-webkit-mask-image:radial-gradient(circle at 12px 0,transparent 12px,black 0);}';
     document.head.appendChild(style);
+})();
+</script>
+
+<!-- Live Tab Title Polling (no tab-switch needed) -->
+<script>
+(function() {
+    var TITLE_POLL_MS = 600;
+
+    function pollTitles() {
+        var b = window.browser;
+        if (!b || !b.tabs) return;
+
+        b.tabs.forEach(function(tab, tabId) {
+            if (!tab || !tab.iframe) return;
+            var newTitle = null;
+            try {
+                if (tab.iframe.contentDocument && tab.iframe.contentDocument.title) {
+                    newTitle = tab.iframe.contentDocument.title;
+                }
+            } catch(e) {}
+
+            if (newTitle && newTitle !== tab.title) {
+                tab.title = newTitle;
+                var titleEl = tab.element ? tab.element.querySelector('.tab-title') : null;
+                if (titleEl) {
+                    titleEl.textContent = newTitle;
+                    titleEl.title = newTitle;
+                }
+            }
+        });
+    }
+
+    setInterval(pollTitles, TITLE_POLL_MS);
+})();
+</script>
+
+<!-- Improved SPA URL detection for sites like TikTok, Snapchat -->
+<script>
+(function() {
+    var SPA_POLL_MS = 500;
+
+    function pollSpaUrls() {
+        var b = window.browser;
+        if (!b || !b.activeTabId) return;
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab || !tab.iframe) return;
+
+        var realUrl = null;
+        try {
+            var href = tab.iframe.contentWindow.location.href;
+            if (href && href !== 'about:blank') {
+                realUrl = b.extractOriginalUrl(href);
+            }
+        } catch(e) {}
+
+        if (!realUrl) {
+            try {
+                if (tab.iframe.contentWindow && tab.iframe.contentWindow.document) {
+                    var canonical = tab.iframe.contentWindow.document.querySelector('link[rel="canonical"]');
+                    if (canonical && canonical.href) {
+                        realUrl = canonical.href;
+                    }
+                }
+            } catch(e) {}
+        }
+
+        if (realUrl && realUrl !== 'about:blank' && realUrl !== tab.currentUrl) {
+            tab.currentUrl = realUrl;
+            tab.url = tab.iframe.src;
+            b.addressBar.value = realUrl;
+            b.updateFavicon(tab, realUrl);
+            b.updateTabTitle(tab, realUrl);
+
+            var isSecure = realUrl.startsWith('https://');
+            b.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+            var securityIcon = b.addressBar.parentElement.querySelector('.security-icon');
+            if (securityIcon) {
+                securityIcon.innerHTML = isSecure ?
+                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' :
+                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                lucide.createIcons();
+            }
+        }
+    }
+
+    setInterval(pollSpaUrls, SPA_POLL_MS);
 })();
 </script>
 </body>
