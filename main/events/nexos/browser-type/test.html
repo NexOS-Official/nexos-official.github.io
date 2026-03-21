@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3482,6 +3483,83 @@ body.reduce-motion *::after {
             width: auto;
             bottom: 52px;
         }
+    }
+    .window-switcher {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        background: #dadce0;
+        border-radius: 100px;
+        padding: 0;
+        margin-right: 6px;
+        user-select: none;
+        flex-shrink: 0;
+        height: 32px;
+        overflow: hidden;
+    }
+    .window-switcher-label {
+        font-size: 12px;
+        font-weight: 500;
+        font-family: 'google sans', sans-serif;
+        color: #3c4043;
+        padding: 0 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        min-width: 20px;
+        text-align: center;
+        transition: background 0.15s;
+        line-height: 32px;
+        height: 32px;
+        border-right: 1px solid rgba(0,0,0,0.12);
+        border-radius: 100px;
+    }
+  
+    .window-switcher-arrows {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        height: 32px;
+        border-radius: 100px;
+    }
+    .window-switcher-arrow {
+        background: none;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 32px;
+        border-radius: 0;
+        color: #5f6368;
+        padding: 0;        border-radius: 100px;
+
+        transition: background 0.15s, color 0.15s;
+        flex-shrink: 0;
+    }
+    .window-switcher-arrow:hover {
+        background: rgba(0,0,0,0.08);
+        color: #3c4043;
+    }
+    .window-switcher-arrow:active {
+        background: rgba(0,0,0,0.14);
+    }
+    .window-switcher-input {
+        font-size: 12px;
+        font-weight: 500;
+        font-family: 'google sans', sans-serif;
+        color: #3c4043;
+        background: #fff;
+        border: none;
+        border-radius: 0;
+        padding: 0 10px;
+        min-width: 20px;
+        max-width: 100px;
+        text-align: center;
+        outline: none;
+        height: 32px;
+        line-height: 32px;
+        border-right: 1px solid rgba(0,0,0,0.12);
     }
     </style>
 </head>
@@ -7374,6 +7452,18 @@ menu.addEventListener('mouseleave', hideMenu);
                 <span id="battery-level"></span>
             </span>
 
+            <div class="window-switcher" id="windowSwitcher">
+                <span class="window-switcher-label" id="wsLabel">Window 1</span>
+                <div class="window-switcher-arrows">
+                    <button class="window-switcher-arrow" id="wsPrevBtn" title="Previous window">
+                        <i data-lucide="chevron-left" width="13" height="13"></i>
+                    </button>
+                    <button class="window-switcher-arrow" id="wsNextBtn" title="Next window">
+                        <i data-lucide="chevron-right" width="13" height="13"></i>
+                    </button>
+                </div>
+            </div>
+
             <div class="focus-overlay" id="focusOverlay" hidden></div>
 
 
@@ -10770,6 +10860,175 @@ setInterval(async () => {
     }
 
     setInterval(pollSpaUrls, SPA_POLL_MS);
+})();
+</script>
+<script>
+(function() {
+    var TOTAL_WINDOWS = 5;
+    var WS_STORAGE_KEY = 'nexos_window_switcher';
+    var currentWindowIndex = 0;
+    var windowNames = [];
+    var windowTabs = {};
+
+    function loadState() {
+        try {
+            var saved = localStorage.getItem(WS_STORAGE_KEY);
+            if (saved) {
+                var parsed = JSON.parse(saved);
+                if (parsed.names && parsed.names.length === TOTAL_WINDOWS) {
+                    windowNames = parsed.names;
+                    currentWindowIndex = parsed.current || 0;
+                    windowTabs = parsed.tabs || {};
+                    return;
+                }
+            }
+        } catch(e) {}
+        windowNames = [];
+        for (var i = 0; i < TOTAL_WINDOWS; i++) {
+            windowNames.push('Window ' + (i + 1));
+        }
+        currentWindowIndex = 0;
+        windowTabs = {};
+    }
+
+    function saveState() {
+        try {
+            localStorage.setItem(WS_STORAGE_KEY, JSON.stringify({
+                names: windowNames,
+                current: currentWindowIndex,
+                tabs: windowTabs
+            }));
+        } catch(e) {}
+    }
+
+    function saveCurrentWindowTabs() {
+        var b = window.browser;
+        if (!b) return;
+        var tabData = [];
+        b.tabs.forEach(function(tab, id) {
+            var url = tab.currentUrl || tab.url || '';
+            tabData.push({ id: id, url: url, title: tab.title || '' });
+        });
+        windowTabs[currentWindowIndex] = {
+            tabs: tabData,
+            activeTabId: b.activeTabId
+        };
+        saveState();
+    }
+
+    function restoreWindowTabs(index) {
+        var b = window.browser;
+        if (!b) return;
+
+        var existingIds = [];
+        b.tabs.forEach(function(tab, id) { existingIds.push(id); });
+        existingIds.forEach(function(id) {
+            var tab = b.tabs.get(id);
+            if (tab) {
+                if (tab.element) tab.element.remove();
+                if (tab.iframe) tab.iframe.remove();
+                if (b.updateIntervals.has(id)) {
+                    clearInterval(b.updateIntervals.get(id));
+                    b.updateIntervals.delete(id);
+                }
+                b.tabs.delete(id);
+                delete b.history[id];
+                delete b.historyIndex[id];
+            }
+        });
+
+        var saved = windowTabs[index];
+        if (saved && saved.tabs && saved.tabs.length > 0) {
+            saved.tabs.forEach(function(t) {
+                var newId = b.createNewTab();
+                if (newId && t.url && t.url !== 'about:blank' && !t.url.startsWith('nexos://')) {
+                    b.navigate(t.url);
+                }
+            });
+        } else {
+            b.createNewTab();
+        }
+    }
+
+    function updateLabel() {
+        var label = document.getElementById('wsLabel');
+        if (label) label.textContent = windowNames[currentWindowIndex];
+    }
+
+    function switchWindow(newIndex) {
+        if (newIndex === currentWindowIndex) return;
+        if (newIndex < 0) newIndex = TOTAL_WINDOWS - 1;
+        if (newIndex >= TOTAL_WINDOWS) newIndex = 0;
+        saveCurrentWindowTabs();
+        currentWindowIndex = newIndex;
+        saveState();
+        updateLabel();
+        restoreWindowTabs(currentWindowIndex);
+    }
+
+    function startEditing() {
+        var label = document.getElementById('wsLabel');
+        if (!label) return;
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'window-switcher-input';
+        input.value = windowNames[currentWindowIndex];
+        input.maxLength = 20;
+        label.parentNode.replaceChild(input, label);
+        input.focus();
+        input.select();
+
+        function finish() {
+            var val = input.value.trim();
+            if (val) windowNames[currentWindowIndex] = val;
+            saveState();
+            var newLabel = document.createElement('span');
+            newLabel.className = 'window-switcher-label';
+            newLabel.id = 'wsLabel';
+            newLabel.textContent = windowNames[currentWindowIndex];
+            input.parentNode.replaceChild(newLabel, input);
+            newLabel.addEventListener('click', startEditing);
+        }
+
+        input.addEventListener('blur', finish);
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') { input.value = windowNames[currentWindowIndex]; input.blur(); }
+        });
+    }
+
+    function init() {
+        loadState();
+        updateLabel();
+
+        var prevBtn = document.getElementById('wsPrevBtn');
+        var nextBtn = document.getElementById('wsNextBtn');
+        var label = document.getElementById('wsLabel');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                switchWindow(currentWindowIndex - 1);
+            });
+        }
+        if (nextBtn) {
+            nextBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                switchWindow(currentWindowIndex + 1);
+            });
+        }
+        if (label) {
+            label.addEventListener('click', startEditing);
+        }
+
+        if (window.lucide) lucide.createIcons();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
 </script>
 </body>
