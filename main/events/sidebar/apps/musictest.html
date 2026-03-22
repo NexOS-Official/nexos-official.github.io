@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,7 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ghost | music</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #000000;
@@ -239,45 +239,46 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
 .ll{
-  font-size:27px;line-height:1.65;font-weight:700;
-  padding:5px 0 5px 4px;
-  margin-bottom:1px;
+  font-family:'Bricolage Grotesque',sans-serif;
+  font-size:28px;line-height:1.7;font-weight:700;
+  padding:6px 0 6px 4px;
+  margin-bottom:2px;
   border-radius:12px;cursor:pointer;
-  color:rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.11);
   filter:blur(0px);
-  opacity:.32;
+  opacity:.30;
   transform-origin:left center;
-  letter-spacing:-0.015em;
+  letter-spacing:-0.02em;
   transition:
     color .5s cubic-bezier(.4,0,.2,1),
     opacity .5s cubic-bezier(.4,0,.2,1),
-    font-size .38s cubic-bezier(.34,1.56,.64,1),
-    letter-spacing .38s cubic-bezier(.4,0,.2,1);
+    font-size .42s cubic-bezier(.34,1.56,.64,1),
+    letter-spacing .42s cubic-bezier(.4,0,.2,1);
   will-change:color,opacity;
   position:relative;
-  word-break:break-word;
-  overflow-wrap:break-word;
+  clip-path:inset(-6px -10px round 12px);
 }
 .ll.past{
-  color:rgba(255,255,255,0.06);
-  opacity:.18;
+  color:rgba(255,255,255,0.05);
+  opacity:.16;
 }
 .ll.near{
-  color:rgba(255,255,255,0.46);
-  opacity:.76;
-  font-size:26px;
+  color:rgba(255,255,255,0.44);
+  opacity:.72;
+  font-size:27px;
 }
 .ll.near2{
-  color:rgba(255,255,255,0.24);
-  opacity:.46;
-  font-size:24.5px;
+  color:rgba(255,255,255,0.22);
+  opacity:.42;
+  font-size:25px;
 }
 .ll.now{
   color:#ffffff;
-  font-size:36px;
+  font-size:38px;
   opacity:1;
-  letter-spacing:-0.025em;
-  animation:ll-bounce 0.30s cubic-bezier(.34,1.56,.64,1) both;
+  letter-spacing:-0.03em;
+  font-weight:800;
+  animation:ll-bounce 0.32s cubic-bezier(.34,1.56,.64,1) both;
 }
 .ll.now.ll-sung{
   opacity:0.50;
@@ -285,8 +286,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   transition:opacity 1.2s ease-out, color 1.2s ease-out !important;
 }
 @keyframes ll-bounce {
-  0%   { transform:scale(0.93); }
-  52%  { transform:scale(1.05); }
+  0%   { transform:scale(0.92); }
+  52%  { transform:scale(1.04); }
   100% { transform:scale(1.00); }
 }
 .ll-ripple {
@@ -310,7 +311,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   opacity:.55;
 }
 .ll.ll-sub.now{
-  font-size:20px;
+  font-size:22px;
   opacity:1;
 }
 .ll.ll-sub.near{
@@ -318,6 +319,31 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 .ll.ll-sub.near2{
   font-size:16px;
+}
+
+/* ── Syllable float ── */
+.lsyl {
+  display:inline-block;
+  vertical-align:bottom;
+  transform:translateY(0px);
+  transition:transform 0.44s cubic-bezier(.34,1.56,.64,1);
+  will-change:transform;
+}
+.lsyl.floated {
+  transform:translateY(-8px);
+}
+.lsyl.slow-syl {
+  transition:transform 0.72s cubic-bezier(.22,1,.36,1);
+}
+.lsyl.slow-syl.floated {
+  transform:translateY(-10px);
+}
+/* Un-floated state when line transitions away — instant snap back */
+.ll.past .lsyl,
+.ll.near .lsyl,
+.ll.near2 .lsyl {
+  transform:translateY(0px) !important;
+  transition:transform 0.3s ease !important;
 }
 .lw-inline-paren{
   display:inline-flex;
@@ -343,92 +369,61 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   opacity:0.80;
 }
 
-@property --lift {
-  syntax: '<length>';
+@property --pct {
+  syntax: '<percentage>';
   inherits: false;
-  initial-value: 0px;
-}
-
-@property --lift-scale {
-  syntax: '<number>';
-  inherits: false;
-  initial-value: 1;
-}
-
-@property --lift-opa {
-  syntax: '<number>';
-  inherits: false;
-  initial-value: 0.5;
-}
-
-/* Segment container: display inline, prevent wrapping */
-.lw-seg {
-  display: inline;
-  position: relative;
-  top: 0;
-  white-space: nowrap;
-}
-
-/* Active line segments: Apple Music style float (scale + lift + glow) */
-.ll.now .lw-seg {
-  display: inline-block;
-  position: relative;
-  color: rgba(255, 255, 255, var(--lift-opa, 0.5));
-  transform: translateY(calc(var(--lift, 0px))) scale(var(--lift-scale, 1));
-  transition: all 140ms ease-out;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-/* Upcoming: MUST be dim - force with !important */
-.ll.now .lw-seg.upcoming {
-  color: rgba(255, 255, 255, 0.4) !important;
-  transform: translateY(0px) scale(1) !important;
-  --lift-opa: 0.4 !important;
-  --lift: 0px !important;
-  --lift-scale: 1 !important;
-}
-
-/* Active: bright white with lift + scale glow */
-.ll.now .lw-seg.now-seg {
-  color: #ffffff !important;
-  font-weight: 700;
-  --lift-opa: 1 !important;
-}
-
-/* Done: bright white, settled, normal scale */
-.ll.now .lw-seg.done {
-  color: rgba(255, 255, 255, 1) !important;
-  transform: translateY(0px) scale(1) !important;
-  --lift: 0px !important;
-  --lift-opa: 1 !important;
-  --lift-scale: 1 !important;
-}
-
-/* Basic word styling for .now lines */
-.ll.now .lw {
-  color: #ffffff;
-  opacity: 1;
-}
-
-/* When word has segments, hide the parent word styling */
-.ll.now .lw.has-splits {
-  color: transparent;
-  opacity: 0 !important;
-}
-
-/* Non-active word styling */
-.ll:not(.now) .lw-seg {
-  display: inline !important;
-  color: inherit !important;
-  transform: none !important;
-  transition: none !important;
+  initial-value: -20%;
 }
 
 
 
-.lc { display: inline; }
-.ll:hover:not(.now){ filter:blur(0px); color:rgba(255,255,255,0.6); }
+.ll.now .lw{
+  display:inline-block;
+  background:linear-gradient(to right,
+    #ffffff calc(var(--pct, -20%) - 10%),
+    rgba(255,255,255,0.96) calc(var(--pct, -20%) - 2%),
+    rgba(255,255,255,0.22) calc(var(--pct, -20%) + 10%),
+    rgba(255,255,255,0.04) calc(var(--pct, -20%) + 22%)
+  );
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
+  transition:
+    filter 100ms ease-out,
+    opacity 80ms ease-out;
+  opacity:1;
+  vertical-align:bottom;
+}
+/* Syllable spans inherit the transparent fill from parent .lw */
+.ll.now .lsyl {
+  vertical-align:bottom;
+}
+.ll.now .lw.done,
+.ll.past .lw,
+.ll.near .lw,
+.ll.near2 .lw{
+  --pct:110%;
+  filter:none;
+  opacity:1;
+}
+.ll.now .lw.upcoming{
+  --pct:-20%;
+  filter:none;
+  opacity:0.55;
+}
+.ll.now .lw.now-word{
+  filter:none;
+  opacity:1;
+}
+.ll.now .lw.now-word.word-enter{
+  animation: word-entry-glow 220ms ease-out forwards;
+}
+@keyframes word-entry-glow {
+  0%   { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
 
 .beat-dots{
   display:inline-flex;align-items:flex-end;gap:7px;
@@ -682,8 +677,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   .vol-row{display:none}
   .right{flex:1;min-height:0}
   .content-area{border-radius:var(--r)}
-  .ll.now{font-size:22px}
-  .ll{font-size:18px}
+  .ll.now{font-size:24px}
+  .ll{font-size:19px}
 }
 @media(max-width:480px){
   .cover-wrap{width:110px;height:110px}
@@ -1748,9 +1743,9 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
     const prompt = `Lyrics sync engine for "${title}" by ${artist}.
 
 You receive LRC lines. Each has exact timestamps from the LRC file.
-Your job: distribute word start times within each line's window, decide when the singing ends, AND decide how each word should animate at the sub-word level.
+Your job: distribute word start times within each line's window, AND decide when the singing ends.
 
-Fields per line:
+Fields:
 - ms: line start
 - end: next line start (NO word may reach or exceed this)
 - singMs: end - ms (total window in ms)
@@ -1772,27 +1767,9 @@ TIMING RULES:
 
 SING_END: After placing all words, output singEnd = the ms when the LAST word finishes being sung (last word start + its natural hold duration). The line will sit highlighted at 100% from singEnd until end. singEnd must be <= end - 50.
 
-SUB-WORD ANIMATION (Apple Music letter-lift style):
-For each word, decide the sub-word animation mode:
-- "word": the whole word highlights at once (fast/connector words, very short words ≤2 chars)
-- "sylls": highlight one syllable at a time (normal content words, 2-4 syllables, moderate pace)
-- "chars": highlight one character at a time — use this for:
-  * Held/belted notes where a singer sustains a vowel or consonant (e.g. "OOOHH", "yeahhh", "noooo", words ending in doubled vowels/consonants)
-  * Long emotional holds on the LAST word of a line (mspsy > 350ms and word has > 2 chars)
-  * Any word where the singer audibly stretches individual sounds
-  * Slow ballad pace (mspsy > 600ms) for 3+ char content words
-  
-For "sylls" mode, provide "sp": array of syllable strings that make up the word (e.g. "beau-ti-ful" → ["beau","ti","ful"])
-For "chars" mode, provide "sp": array of individual characters (split the word into chars, ignore punctuation at end)
-For "word" mode, "sp" can be omitted or [].
-
-The "splits" (sp) for each word defines the visual segments. Their count determines the number of independent lift animations.
-Within each word's time window [w[i], w[i+1] or singEnd], distribute the sub-segments evenly with slight acceleration (earlier segments faster, later ones linger a bit longer on held notes).
-
-Return ONLY: [{"w":[ms,ms,...],"se":singEndMs,"m":[{"md":"word"|"sylls"|"chars","sp":[...]},...]}]
-- "w" array length MUST equal words array length
-- "m" array length MUST equal words array length
-- "se" = singEnd ms
+Return ONLY: [{"w":[ms,ms,...],"se":singEndMs},...]
+"w" array length MUST equal words array length.
+"se" = singEnd ms (when last word finishes, line sits done until "end")
 Raw JSON only. No markdown.
 
 ${JSON.stringify(payload)}`;
@@ -1807,11 +1784,11 @@ ${JSON.stringify(payload)}`;
       },
       body: JSON.stringify({
         model: AI_MODEL,
-        max_tokens: 5000,
+        max_tokens: 3000,
         temperature: 0.05,
         messages: [{ role: 'user', content: prompt }]
       }),
-      signal: AbortSignal.timeout(25000)
+      signal: AbortSignal.timeout(20000)
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -1839,9 +1816,7 @@ ${JSON.stringify(payload)}`;
       for (let j = 1; j < ai.w.length; j++) if (ai.w[j] <= ai.w[j-1]) return;
       const singEnd = (typeof ai.se === 'number' && ai.se > lp.ms && ai.se <= lp.end)
         ? ai.se : null;
-      // Store per-word mode data if present
-      const wordModes = (Array.isArray(ai.m) && ai.m.length === lp.words.length) ? ai.m : null;
-      refined.set(lp.i, { words: ai.w, singEnd, wordModes });
+      refined.set(lp.i, { words: ai.w, singEnd });
     });
   }
 
@@ -1939,7 +1914,6 @@ async function applyAIRefinements(lines, title, artist, preRefined) {
 
     const singEnd  = ai.singEnd ?? null;
     const rawTimes = ai.words ?? [];
-    const wordModes = ai.wordModes ?? null;
 
     let wordTimes = rawTimes;
     if (singEnd && rawTimes.length > 0) {
@@ -1956,10 +1930,8 @@ async function applyAIRefinements(lines, title, artist, preRefined) {
     const newWords = line.words.map((w) => {
       if (w._isPause || w._isInlineParen) return w;
       const newMs = wordTimes[realWordIdx] ?? w.ms;
-      // Attach AI-provided mode/splits data
-      const modeData = wordModes?.[realWordIdx] ?? null;
       realWordIdx++;
-      return { ...w, ms: newMs, _mode: modeData?.md ?? null, _splits: modeData?.sp ?? null };
+      return { ...w, ms: newMs };
     });
     return { ...line, words: newWords, _singEnd: singEnd };
   });
@@ -2109,6 +2081,62 @@ function syllableCount(word) {
   let count = vowels ? vowels.length : 1;
   if (word[0] === 'y') count = Math.max(1, count - 1);
   return Math.max(1, count);
+}
+
+/* ── Syllable splitter ─────────────────────────────────────────────── */
+function splitSyllables(word) {
+  // Preserve leading/trailing punctuation
+  const pre  = (word.match(/^[^a-zA-Z]*/) || [''])[0];
+  const suf  = (word.match(/[^a-zA-Z]*$/) || [''])[0];
+  const core = word.slice(pre.length, word.length - suf.length || undefined);
+
+  if (!core || core.length <= 3) return [word];
+
+  const alpha = core.toLowerCase().replace(/[^a-z]/g, '');
+  const cnt   = syllableCount(alpha);
+  if (cnt <= 1) return [word];
+
+  const isV  = c => 'aeiouy'.includes(c);
+  const splits = [];          // alpha-index split points
+
+  for (let i = 1; i < alpha.length - 1 && splits.length < cnt - 1; i++) {
+    const pv = isV(alpha[i-1]);
+    const cv = isV(alpha[i]);
+    const nv = isV(alpha[i+1]);
+
+    // VCV – split before consonant (sonorants l r m n w y split cleanly)
+    if (pv && !cv && nv) {
+      splits.push('lrmnwy'.includes(alpha[i]) ? i : i + 1);
+    }
+    // VCCV – split between the two consonants
+    else if (pv && !cv && !nv && i + 2 < alpha.length && isV(alpha[i+2])) {
+      splits.push(i + 1);
+    }
+  }
+
+  if (!splits.length) return [word];
+
+  // Map alpha-index splits back to original `core` char indices
+  const result = [];
+  let ai = 0, prev = 0;
+  for (let ci = 0; ci < core.length; ci++) {
+    if (/[a-zA-Z]/.test(core[ci])) {
+      if (splits.length > 0 && ai === splits[0]) {
+        result.push(core.slice(prev, ci));
+        prev = ci;
+        splits.shift();
+      }
+      ai++;
+    }
+  }
+  result.push(core.slice(prev));
+
+  const parts = result.filter(s => s.length > 0);
+  if (parts.length <= 1) return [word];
+
+  parts[0]               = pre + parts[0];
+  parts[parts.length - 1] = parts[parts.length - 1] + suf;
+  return parts;
 }
 
 const FAST_WORDS = new Set([
@@ -2411,30 +2439,8 @@ function extractParens(text) {
   return { mainText, parens };
 }
 
-function _buildWordInner(wordText, mode, splits) {
-  const trailPunct = wordText.match(/[.,!?;:'"]+$/)?.[0] ?? '';
-  const base = trailPunct ? wordText.slice(0, -trailPunct.length) : wordText;
-
-  let segs;
-  if (mode === 'sylls' && splits?.length >= 1) {
-    segs = splits.map((s, i) => i === splits.length - 1 ? s + trailPunct : s);
-  } else if (mode === 'chars' && splits?.length >= 1) {
-    segs = splits.map((s, i) => i === splits.length - 1 ? s + trailPunct : s);
-  } else {
-    const chars = [...base];
-    if (!chars.length) return { html: x(wordText), hasSplits: false };
-    segs = chars.map((c, i) => i === chars.length - 1 ? c + trailPunct : c);
-  }
-
-  if (!segs || segs.length <= 1) return { html: x(wordText), hasSplits: false };
-
-  const html = segs.map((seg, si) =>
-    `<span class="lw-seg upcoming" data-si="${si}" style="--spct:-220%">${x(seg)}</span>`
-  ).join('');
-  return { html, hasSplits: true };
-}
-
 function renderLineHTML(line, i) {
+  
   if (line._skipDots) return '';
 
   const isNote = !line.words?.length &&
@@ -2446,29 +2452,33 @@ function renderLineHTML(line, i) {
     mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
   } else {
     if (line.words?.length) {
+      
+      
       const parts = [];
       for (let wi = 0; wi < line.words.length; wi++) {
         const w = line.words[wi];
         if (w._isPause) continue;
         if (w._isInlineParen) {
+          
           let nextWi = wi + 1;
           while (nextWi < line.words.length && (line.words[nextWi]._isPause || line.words[nextWi]._isInlineParen)) nextWi++;
           const nextW = line.words[nextWi];
           const ipSpan = `<span class="lw-ip-text lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`;
           if (nextW && !nextW._isPause && !nextW._isInlineParen) {
-            const { html: wInner, hasSplits } = _buildWordInner(nextW.word, nextW._mode, nextW._splits);
-            const splitCls = hasSplits ? ' has-splits' : '';
-            const wordSpan = `<span class="lw upcoming${splitCls}" id="lw${i}_${nextWi}" style="--pct:-20%">${wInner}</span>`;
+            
+            const wordSpan = `<span class="lw upcoming" id="lw${i}_${nextWi}" style="--pct:-20%">${x(nextW.word)}</span>`;
             parts.push(`<span class="lw-inline-paren">${ipSpan}${wordSpan}</span>`);
-            wi = nextWi;
+            wi = nextWi; 
           } else {
             parts.push(ipSpan);
           }
           continue;
         }
-        const { html: wInner, hasSplits } = _buildWordInner(w.word, w._mode, w._splits);
-        const splitCls = hasSplits ? ' has-splits' : '';
-        parts.push(`<span class="lw upcoming${splitCls}" id="lw${i}_${wi}" style="--pct:-20%">${wInner}</span>`);
+        const syls = splitSyllables(w.word);
+        const sylHtml = syls.map((s, si) =>
+          `<span class="lsyl" id="lsyl${i}_${wi}_${si}">${x(s)}</span>`
+        ).join('');
+        parts.push(`<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${sylHtml}</span>`);
       }
       mainHTML = parts.join(' ');
     } else {
@@ -2476,6 +2486,8 @@ function renderLineHTML(line, i) {
     }
   }
 
+  
+  
   const cls = 'll' + (line._isParen && !line._wholeLine ? ' ll-sub' : '');
   return `<div class="${cls}" id="ll${i}" onclick="seekLrc(${i},event)">${mainHTML}</div>`;
 }
@@ -2483,6 +2495,7 @@ function renderLineHTML(line, i) {
 function renderSynced() {
   
   Object.keys(_lwState).forEach(k => delete _lwState[k]);
+  Object.keys(_sylState).forEach(k => delete _sylState[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
 
@@ -2503,6 +2516,47 @@ function seekLrc(i, evt) {
 }
 
 const _lwState = {};
+
+/* ── Syllable float state ────────────────────────────────────────────── */
+const _sylState = {};
+
+/** Float a syllable up permanently (or until reset). */
+function _setSylFloated(id, slow) {
+  const prev = _sylState[id];
+  if (prev?.f && prev.s === slow) return; // no change
+  _sylState[id] = { f: true, s: slow };
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (slow) el.classList.add('slow-syl'); else el.classList.remove('slow-syl');
+  el.classList.add('floated');
+}
+
+/** Un-float a syllable (e.g., on backward scrub). */
+function _setSylUnfloated(id) {
+  if (!_sylState[id]?.f) return;
+  delete _sylState[id];
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('floated', 'slow-syl');
+}
+
+/** Float all syllables for every word in a line. */
+function _floatAllSylsForLine(lineIdx) {
+  (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
+    if (w._isPause || w._isInlineParen) return;
+    splitSyllables(w.word).forEach((_, si) =>
+      _setSylFloated(`lsyl${lineIdx}_${wi}_${si}`, false));
+  });
+}
+
+/** Un-float all syllables for a line. */
+function _resetSylsForLine(lineIdx) {
+  (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
+    if (w._isPause || w._isInlineParen) return;
+    splitSyllables(w.word).forEach((_, si) =>
+      _setSylUnfloated(`lsyl${lineIdx}_${wi}_${si}`));
+  });
+}
 
 function _setLwState(id, cls, pct) {
   const prev = _lwState[id];
@@ -2541,123 +2595,6 @@ function _nextRealLineMs(fromIdx, fallback) {
   return fallback;
 }
 
-/**
- * LYRIC TRACKING & LETTER ANIMATION SYSTEM
- * 
- * ARCHITECTURE:
- * - tickLrc(posMs)           → Main entry: finds active line and calls _tickWords
- * - _tickWords(lineIdx, t)   → Updates word states (.upcoming, .now-word, .done)
- * - _tickLetters(lwEl, t)    → Updates individual letter states (.upcoming, .now-seg, .done)
- * 
- * LETTER ANIMATION (Apple Music Style):
- * Each word contains segments (letters/syllables) wrapped in .lw-seg elements
- * When word is "active" (.now-word), segments animate sequentially:
- * 
- * SEGMENT STATES:
- * 1. upcoming (-14px, scale 1, 0.5 opacity) → waiting below, dim, normal size
- * 2. now-seg (animating) → floating up from -14px to 0px, scale 0.95→1.05 (glow), opacity 0.5→1.0
- * 3. done (0px, scale 1, 1 opacity) → finished, settled in place
- * 
- * TIMING:
- * - Each segment gets PER_SEG_MS (140ms) to animate
- * - segStart = wStart + (segmentIndex * segMs)
- * - Only ONE segment can be "now-seg" at a time (strict sequencing)
- * - Progress tracked as: (currentTime - segStart) / segDuration → 0 to 1
- * 
- * ANIMATION VALUES:
- * - Float position (--lift): -14px → 0px  (up motion)
- * - Scale (--lift-scale): 0.95 → 1.05  (glow effect as it rises)
- * - Opacity (--lift-opa): 0.5 → 1.0  (fade in)
- * - Transition: 140ms ease-out (must match PER_SEG_MS)
- */
-
-function _tickLetters(lwEl, word, t, wStart, wEnd) {
-  const segs = lwEl.querySelectorAll('.lw-seg');
-  if (!segs.length) return;
-
-  // Initialize segments on first call - ensures they DON'T start highlighted
-  segs.forEach((sp, si) => {
-    if (sp._segState === undefined) {
-      sp._segState = 'upcoming';
-      sp.className = 'lw-seg upcoming';
-      sp.style.setProperty('--lift', '-6px');            // Subtle: Off-screen, just below
-      sp.style.setProperty('--lift-scale', '1');         // Normal size
-      sp.style.setProperty('--lift-opa', '0.4');         // Very dim
-    }
-  });
-
-  // Each segment gets a FIXED animation duration for strict sequencing
-  const PER_SEG_MS = 140; // milliseconds per letter to animate
-  const spanMs = wEnd - wStart;
-  
-  // Simple: divide word duration evenly among segments
-  // wEnd is already extended by _tickWords to guarantee enough time for animation
-  const segMs = Math.max(PER_SEG_MS, spanMs / segs.length);
-
-  for (let si = 0; si < segs.length; si++) {
-    const segStart = wStart + si * segMs;
-    const segEnd   = segStart + segMs;
-    const sp = segs[si];
-    const prev = sp._segState;
-
-    if (t < segStart) {
-      // UPCOMING: waiting to animate (offscreen below, dim)
-      if (prev !== 'upcoming') {
-        sp._segState = 'upcoming';
-        sp.className = 'lw-seg upcoming';
-        sp.style.setProperty('--lift', '-6px');          // Subtle: just below
-        sp.style.setProperty('--lift-scale', '1');       // Normal size
-        sp.style.setProperty('--lift-opa', '0.4');       // Very dim
-      }
-    } else if (t >= segEnd) {
-      // DONE: animation finished, letter is now visible
-      if (prev !== 'done') {
-        sp._segState = 'done';
-        sp.className = 'lw-seg done';
-        sp.style.setProperty('--lift', '0px');           // Back to normal position
-        sp.style.setProperty('--lift-scale', '1');       // Normal size
-        sp.style.setProperty('--lift-opa', '1');         // Full brightness
-      }
-    } else {
-      // NOW-SEG: actively animating — Apple Music style float + scale + glow (subtle)
-      const progress = (t - segStart) / Math.max(1, segEnd - segStart); // 0 to 1
-      const liftY = -6 + (6 * progress);                   // SUBTLE: Start at -6px, animate to 0px
-      const scale = 0.98 + (0.04 * progress);              // Tiny scale glow (0.98 to 1.02)
-      const opacity = 0.4 + progress * 0.6;                // Fade in from 0.4 to 1.0
-      
-      sp._segState = 'now-seg';
-      sp.className = 'lw-seg now-seg';
-      sp.style.setProperty('--lift', liftY.toFixed(1) + 'px');
-      sp.style.setProperty('--lift-scale', scale.toFixed(2));
-      sp.style.setProperty('--lift-opa', opacity.toFixed(2));
-    }
-  }
-}
-
-/**
- * WORD-LEVEL SYNCHRONIZATION
- * Updates each word's state and triggers letter animation for active words
- * 
- * WORD STATES:
- * - upcoming (-20%) → word not yet reached
- * - now-word (0% → 100%) → word is being sung, letter animation active HERE
- * - done (100%) → word finished
- * 
- * TIMING CALCULATION:
- * - wStart: the time this word should start (from lyric data)
- * - wEnd: calculated boundary accounting for segment animation needs
- * - Ensures each letter has time to animate sequentially
- * 
- * LETTER ANIMATION TRIGGER (Line 2693):
- * ```
- * if (segsEl) _tickLetters(segsEl, w.word, t, wStart, wEnd);
- * ```
- * Called ONLY when word is in "now-word" state (currently being sung)
- * Passes the exact time window (wStart → wEnd) for letter sequencing
- * 
- * This integrates the letter animation into the broader word timing system
- */
-
 function _tickWords(lineIdx, t, nextBound) {
   const words = ST.lrc[lineIdx]?.words;
   if (!words?.length) return;
@@ -2683,51 +2620,53 @@ function _tickWords(lineIdx, t, nextBound) {
   const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
   const lastWordEnd = Math.min(naturalEnd, nextBound - 160);
 
+  // Detect slow lines – syllables get a gentler float and longer easing
+  const isSlow = msPerSyl > 320;
+
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
     if (w._isPause) continue;
     const wStart = w.ms;
-
-    // Hard word boundary — when the next real word starts
-    let wNext = lastWordEnd;
+    let wEnd = lastWordEnd;
     if (wi < words.length - 1) {
       for (let ni = wi + 1; ni < words.length; ni++) {
         const nw = words[ni];
-        if (!nw._isPause && !nw._isInlineParen) { wNext = nw.ms; break; }
-        if (nw._isPause) { wNext = nw.ms; break; }
+        if (!nw._isPause && !nw._isInlineParen) { wEnd = nw.ms; break; }
+        if (nw._isPause) { wEnd = nw.ms; break; }
       }
     }
-
-    // Segment animation window: guarantee MIN_SEG_MS per segment,
-    // but cap bleed tightly so fast lines don't show multiple words lit
-    const segsEl = document.getElementById('lw' + lineIdx + '_' + wi);
-    const segCount = segsEl ? segsEl.querySelectorAll('.lw-seg').length : 1;
-    const MIN_SEG_MS = 140;  // IMPORTANT: must match PER_SEG_MS in _tickLetters, so single letters animate properly!
-    const minWordMs  = segCount * MIN_SEG_MS;
-    const rawWordMs  = wNext - wStart;
-    // Bleed: only extend if we absolutely must, and cap at 25% of next word window
-    const needed = Math.max(0, minWordMs - rawWordMs);
-    const bleed  = Math.min(needed, rawWordMs * 0.25);
-    const wEnd   = wNext + bleed;
-
     const id = 'lw' + lineIdx + '_' + wi;
+
     if (t < wStart) {
       _setLwState(id, 'upcoming', '-20%');
+      // Un-float all syls for this word if scrubbed back
+      splitSyllables(w.word).forEach((_, si) =>
+        _setSylUnfloated(`lsyl${lineIdx}_${wi}_${si}`));
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
-      if (segsEl) segsEl.querySelectorAll('.lw-seg').forEach(sp => {
-        if (sp._segState !== 'done') {
-          sp._segState = 'done';
-          sp.className = 'lw-seg done';
-          sp.style.setProperty('--lift', '0px');
-          sp.style.setProperty('--lift-opa', '1');
-        }
-      });
+      // Float all syls done
+      splitSyllables(w.word).forEach((_, si) =>
+        _setSylFloated(`lsyl${lineIdx}_${wi}_${si}`, isSlow));
     } else {
-      const raw   = (t - wStart) / Math.max(1, wNext - wStart);
+      // Active word — distribute float per syllable
+      const wSpan  = Math.max(1, wEnd - wStart);
+      const syls   = splitSyllables(w.word);
+      const nSyls  = syls.length;
+      const sylDur = wSpan / nSyls;
+
+      for (let si = 0; si < nSyls; si++) {
+        const sylStart = wStart + si * sylDur;
+        const sylId    = `lsyl${lineIdx}_${wi}_${si}`;
+        if (t >= sylStart) {
+          _setSylFloated(sylId, isSlow);
+        } else {
+          _setSylUnfloated(sylId);
+        }
+      }
+
+      const raw   = (t - wStart) / wSpan;
       const eased = raw < 0.25 ? raw * raw * 4 : 0.25 + (raw - 0.25);
       _setLwState(id, 'now-word', (Math.min(1, eased) * 100).toFixed(1) + '%');
-      if (segsEl) _tickLetters(segsEl, w.word, t, wStart, wEnd);
     }
   }
 }
@@ -2736,15 +2675,8 @@ function _snapDone(lineIdx) {
   (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
     if (w._isPause) return;
     _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
-    const lwEl = document.getElementById('lw'+lineIdx+'_'+wi);
-    if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      if (sp._segState !== 'done') {
-        sp._segState = 'done';
-        sp.className = 'lw-seg done';
-        sp.style.setProperty('--lift', '0px');
-        sp.style.setProperty('--lift-opa', '1');
-      }
-    });
+    splitSyllables(w.word).forEach((_, si) =>
+      _setSylFloated(`lsyl${lineIdx}_${wi}_${si}`, false));
   });
 }
 
@@ -2754,17 +2686,8 @@ function _resetUpcoming(lineIdx) {
     const id = 'lw'+lineIdx+'_'+wi;
     delete _lwState[id];
     _setLwState(id, 'upcoming', '-20%');
-    const lwEl = document.getElementById(id);
-    if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-      // IMPORTANT: Only reset if NOT already done - keep done segments visible and settled!
-      if (sp._segState !== 'done') {
-        sp._segState = 'upcoming';
-        sp.className = 'lw-seg upcoming';
-        sp.style.setProperty('--lift', '-6px');            // Subtle
-        sp.style.setProperty('--lift-scale', '1');
-        sp.style.setProperty('--lift-opa', '0.4');
-      }
-    });
+    splitSyllables(w.word).forEach((_, si) =>
+      _setSylUnfloated(`lsyl${lineIdx}_${wi}_${si}`));
   });
 }
 
@@ -2777,44 +2700,11 @@ function _resetUpcomingSelective(lineIdx, t) {
     delete _lwState[id];
     if (w.ms > t) {
       _setLwState(id, 'upcoming', '-20%');
-      const lwEl = document.getElementById(id);
-      if (lwEl) lwEl.querySelectorAll('.lw-seg').forEach(sp => {
-        // IMPORTANT: Only reset if NOT already done - keep done segments visible and settled!
-        if (sp._segState !== 'done') {
-          sp._segState = 'upcoming';
-          sp.className = 'lw-seg upcoming';
-          sp.style.setProperty('--lift', '-6px');          // Subtle
-          sp.style.setProperty('--lift-scale', '1');
-          sp.style.setProperty('--lift-opa', '0.4');
-        }
-      });
+      splitSyllables(w.word).forEach((_, si) =>
+        _setSylUnfloated(`lsyl${lineIdx}_${wi}_${si}`));
     }
   });
 }
-
-/**
- * MAIN LYRIC SYNCHRONIZATION ENTRY POINT
- * Called every ~30ms by the player when song is playing
- * 
- * FLOW:
- * 1. Find active lyric line based on current playback time
- * 2. Classify lines as: .past (behind), .near (1-2 lines away), .now (active), .near2 (upcoming)
- * 3. Blur non-active lines for focus effect
- * 4. Call _tickWords() to update word states for active line
- * 5. Call _tickWords() for paren/subtitle lines if present
- * 
- * LOOK-AHEAD:
- * - Dynamically calculated based on song pace (50-150ms)
- * - Faster songs: smaller look-ahead
- * - Slower songs: larger look-ahead
- * - Ensures letter animations feel synced to the actual lyrics being sung
- * 
- * LETTER ANIMATION INTEGRATION:
- * - When _tickWords() finds a word in "active" state, it calls _tickLetters()
- * - _tickLetters() handles the sequential letter float-up animation
- * - Each letter animates one at a time within the word duration
- * - Letters are timed to match the actual phoneme/syllable timing from the lyric data
- */
 
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
