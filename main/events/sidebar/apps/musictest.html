@@ -347,84 +347,47 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 }
 
 /* ──────────────────────────────────────────────────────────────────────
-   LYRIC LETTER ENGINE
-   • .lw = word wrapper (inline-block so gradient background can clip to it)
-   • .lch = individual letter/char (inline so gradient clips through it)
-   • Gradient handles colour for the ACTIVE word via --pct sweep
-   • top: handles lift — inline elements support position:relative + top
-   • Past lines do NOT forcibly reset top — letters stay lifted and fade naturally
+   LYRIC LETTER ENGINE — pure colour + top lift, no background-clip trickery
+   • .lw  = word wrapper, purely structural
+   • .lch = one span per letter; color and top controlled directly by JS classes
+   • "gradient" is emergent: letters light up one-by-one giving a sweep look
 ──────────────────────────────────────────────────────────────────────── */
 
-@property --pct {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: -20%;
-}
-
-/* Word container */
 .lw {
   display:inline-block;
   vertical-align:bottom;
 }
 
-/* Letter span — inline so background-clip:text flows through them */
+/* Base letter — always inline so word wrapping works */
 .lch {
   display:inline;
   position:relative;
   top:0;
-  transition:color 80ms ease-out, top 0.38s cubic-bezier(.34,1.56,.64,1);
+  color:inherit;
+  transition:color 70ms ease-out, top 0.38s cubic-bezier(.34,1.56,.64,1);
 }
 
-/* ── Active word: gradient sweep ── */
-.ll.now .lw.now-word {
-  background:linear-gradient(to right,
-    #ffffff              calc(var(--pct) - 8%),
-    rgba(255,255,255,.97) calc(var(--pct) + 0%),
-    rgba(255,255,255,.22) calc(var(--pct) + 14%),
-    rgba(255,255,255,.05) calc(var(--pct) + 28%)
-  );
-  -webkit-background-clip:text;
-  background-clip:text;
-  -webkit-text-fill-color:transparent;
-}
-/* letters inside active word: inherit transparent fill → show gradient.
-   Top controlled by .lch-up class */
-.ll.now .lw.now-word .lch {
-  -webkit-text-fill-color:inherit;
-  transition:top 0.38s cubic-bezier(.34,1.56,.64,1);
-}
-.ll.now .lw.now-word .lch.lch-up {
+/* Active line: upcoming letters are dim */
+.ll.now .lch          { color:rgba(255,255,255,0.17); }
+
+/* Fired letter: full white + lifted */
+.ll.now .lch.lch-up {
+  color:#ffffff;
   top:-3px;
 }
-.ll.now .lw.now-word .lch.lch-up-slow {
+
+/* Slow-word variant: taller lift, lazier spring */
+.ll.now .lch.lch-up-slow {
+  color:#ffffff;
   top:-4px;
-  transition:top 0.65s cubic-bezier(.22,1,.36,1) !important;
+  transition:color 70ms ease-out, top 0.66s cubic-bezier(.22,1,.36,1);
 }
 
-/* ── Done words in active line: stay lifted, solid colour ── */
-.ll.now .lw.done .lch {
-  color:rgba(255,255,255,.80);
-  -webkit-text-fill-color:rgba(255,255,255,.80);
-  top:-3px;
-}
-
-/* ── Upcoming words in active line: dim ── */
-.ll.now .lw.upcoming .lch {
-  color:rgba(255,255,255,.18);
-  -webkit-text-fill-color:rgba(255,255,255,.18);
-  top:0;
-}
-
-/* ── Non-active lines ──
-   Letters keep their top position (no forced reset) so they gently
-   fade in place as the line dims. Only snap on JS scrub-back. */
+/* Non-active lines: just inherit the line's colour, keep position as-is
+   (no top reset — lifted letters stay in place as line fades away) */
 .ll.past .lch,
 .ll.near .lch,
-.ll.near2 .lch {
-  color:inherit !important;
-  -webkit-text-fill-color:inherit !important;
-  text-shadow:none !important;
-}
+.ll.near2 .lch { color:inherit !important; }
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
 
@@ -2678,13 +2641,8 @@ function _tickWords(lineIdx, t, nextBound) {
       chars.forEach((_, ci) => _setLchUp(`lch${lineIdx}_${wi}_${ci}`, upState));
 
     } else {
-      // Active word — gradient sweep + per-letter lift
+      // Active word — per-letter lift (colour sweep is emergent from letter states)
       _setLwState(lwId, 'now-word');
-
-      const raw   = (t - wStart) / wSpan;
-      const eased = raw < 0.3 ? (raw * raw) / 0.3 : 0.09 + (raw - 0.3) * 0.91 / 0.7;
-      const pct   = (Math.min(1, eased) * 120 - 10).toFixed(1);
-      _setLwPct(lwId, pct);
 
       const ts = _letterTimestamps(w.word, wStart, wEnd, msPerSyl);
       chars.forEach((_, ci) => {
