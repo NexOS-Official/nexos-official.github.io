@@ -173,8 +173,23 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .lyrics-panel.active{opacity:1;pointer-events:auto}
 .lrc-scroll-outer{
   position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
-  padding:48px 28px 180px;
+  padding:52px 32px 200px;
   z-index:1;
+  scroll-behavior:smooth;
+  -webkit-mask-image:linear-gradient(to bottom,
+    transparent 0%,
+    rgba(0,0,0,0.6) 6%,
+    black 14%,
+    black 72%,
+    rgba(0,0,0,0.5) 85%,
+    transparent 100%);
+  mask-image:linear-gradient(to bottom,
+    transparent 0%,
+    rgba(0,0,0,0.6) 6%,
+    black 14%,
+    black 72%,
+    rgba(0,0,0,0.5) 85%,
+    transparent 100%);
 }
 .lrc-bg{
   position:absolute;inset:0;
@@ -240,55 +255,56 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 .ll{
   font-family:'Plus Jakarta Sans',sans-serif;
-  font-size:28px;line-height:1.7;font-weight:700;
+  font-size:26px;line-height:1.75;font-weight:600;
   padding:6px 0 6px 4px;
-  margin-bottom:2px;
+  margin-bottom:4px;
   border-radius:12px;cursor:pointer;
-  color:rgba(255,255,255,0.11);
-  filter:blur(0px);
-  opacity:.30;
+  color:rgba(255,255,255,0.10);
+  opacity:.28;
   transform-origin:left center;
-  letter-spacing:-0.02em;
+  letter-spacing:-0.01em;
   transition:
-    color .5s cubic-bezier(.4,0,.2,1),
-    opacity .5s cubic-bezier(.4,0,.2,1),
-    font-size .42s cubic-bezier(.34,1.56,.64,1),
-    letter-spacing .42s cubic-bezier(.4,0,.2,1);
-  will-change:color,opacity;
+    color .65s cubic-bezier(.4,0,.2,1),
+    opacity .65s cubic-bezier(.4,0,.2,1),
+    font-size .55s cubic-bezier(.34,1.3,.64,1),
+    font-weight .55s cubic-bezier(.4,0,.2,1),
+    letter-spacing .55s cubic-bezier(.4,0,.2,1),
+    filter .55s ease;
+  will-change:opacity,font-size;
   position:relative;
   clip-path:inset(-6px -10px round 12px);
 }
 .ll.past{
-  color:rgba(255,255,255,0.05);
-  opacity:.16;
+  color:rgba(255,255,255,0.04);
+  opacity:.14;
 }
 .ll.near{
-  color:rgba(255,255,255,0.44);
-  opacity:.72;
-  font-size:27px;
+  color:rgba(255,255,255,0.38);
+  opacity:.65;
+  font-size:26.5px;
 }
 .ll.near2{
-  color:rgba(255,255,255,0.22);
-  opacity:.42;
+  color:rgba(255,255,255,0.18);
+  opacity:.36;
   font-size:25px;
 }
 .ll.now{
   color:#ffffff;
-  font-size:38px;
-  opacity:1;
-  letter-spacing:-0.03em;
+  font-size:36px;
   font-weight:800;
-  animation:ll-bounce 0.32s cubic-bezier(.34,1.56,.64,1) both;
+  opacity:1;
+  letter-spacing:-0.025em;
+  animation:ll-pop 0.38s cubic-bezier(.34,1.4,.64,1) both;
 }
 .ll.now.ll-sung{
-  opacity:0.50;
-  color:rgba(255,255,255,0.50);
-  transition:opacity 1.2s ease-out, color 1.2s ease-out !important;
+  opacity:0.45;
+  color:rgba(255,255,255,0.45);
+  transition:opacity 1.4s ease-out, color 1.4s ease-out !important;
 }
-@keyframes ll-bounce {
-  0%   { transform:scale(0.92); }
-  52%  { transform:scale(1.04); }
-  100% { transform:scale(1.00); }
+@keyframes ll-pop {
+  0%   { transform:scale(0.94) translateY(2px); opacity:0.6; }
+  60%  { transform:scale(1.02) translateY(0px); opacity:1; }
+  100% { transform:scale(1.00) translateY(0px); opacity:1; }
 }
 .ll-ripple {
   position:absolute;
@@ -348,9 +364,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 
 /* ──────────────────────────────────────────────────────────────────────
    LYRIC LETTER ENGINE — pure colour + top lift, no background-clip trickery
-   • .lw  = word wrapper, purely structural
-   • .lch = one span per letter; color and top controlled directly by JS classes
-   • "gradient" is emergent: letters light up one-by-one giving a sweep look
+   Letters light up left→right giving a natural sweep effect
 ──────────────────────────────────────────────────────────────────────── */
 
 .lw {
@@ -358,36 +372,40 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   vertical-align:bottom;
 }
 
-/* Base letter — always inline so word wrapping works */
 .lch {
   display:inline;
   position:relative;
   top:0;
   color:inherit;
-  transition:color 70ms ease-out, top 0.38s cubic-bezier(.34,1.56,.64,1);
+  transition:color 90ms ease-out, top 0.45s cubic-bezier(.34,1.4,.64,1), text-shadow 200ms ease;
 }
 
 /* Active line: upcoming letters are dim */
-.ll.now .lch          { color:rgba(255,255,255,0.17); }
+.ll.now .lch { color:rgba(255,255,255,0.15); }
 
-/* Fired letter: full white + lifted */
+/* Letter just fired — bright white + lift + soft bloom */
 .ll.now .lch.lch-up {
   color:#ffffff;
   top:-3px;
+  text-shadow:0 0 20px rgba(255,255,255,0.5), 0 0 6px rgba(255,255,255,0.8);
+  transition:color 55ms ease-out, top 0.45s cubic-bezier(.34,1.4,.64,1), text-shadow 400ms ease;
 }
 
-/* Slow-word variant: taller lift, lazier spring */
+/* Slow word — lazier, taller spring */
 .ll.now .lch.lch-up-slow {
   color:#ffffff;
   top:-4px;
-  transition:color 70ms ease-out, top 0.66s cubic-bezier(.22,1,.36,1);
+  text-shadow:0 0 22px rgba(255,255,255,0.45), 0 0 6px rgba(255,255,255,0.75);
+  transition:color 55ms ease-out, top 0.72s cubic-bezier(.22,1,.36,1), text-shadow 500ms ease;
 }
 
-/* Non-active lines: just inherit the line's colour, keep position as-is
-   (no top reset — lifted letters stay in place as line fades away) */
+/* Non-active lines: letters just inherit dim line colour, keep their lifted position */
 .ll.past .lch,
 .ll.near .lch,
-.ll.near2 .lch { color:inherit !important; }
+.ll.near2 .lch {
+  color:inherit !important;
+  text-shadow:none !important;
+}
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
 
@@ -2479,6 +2497,7 @@ function renderLineHTML(line, i) {
 function renderSynced() {
   Object.keys(_lwState).forEach(k => delete _lwState[k]);
   Object.keys(_lchState).forEach(k => delete _lchState[k]);
+  if (_tickWords._tsCache) Object.keys(_tickWords._tsCache).forEach(k => delete _tickWords._tsCache[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
 }
 
@@ -2545,10 +2564,15 @@ function _nextRealLineMs(fromIdx, fallback) {
 }
 
 /*
-  Compute per-character fire timestamps within a word window.
-  Letters in the same syllable group are spaced by intraSylMs.
-  The gap BETWEEN syllable groups is interSylMs (wider).
-  Both scale with song tempo — fast songs get tighter spacing.
+  _letterTimestamps — compute when each character should light up.
+
+  Strategy:
+  - Spread letters proportionally: long syllables get more time, short ones less
+  - Within each syllable group, letters fire at intraSylMs intervals
+  - Between syllable groups, there's a natural pause (interSylMs)
+  - Single-letter words fire immediately
+  - Punctuation/space characters are skipped (non-alpha get same time as prev)
+  - All times clamped to [wStart, wEnd - 40ms]
 */
 function _letterTimestamps(word, wStart, wEnd, msPerSyl) {
   const chars = [...word];
@@ -2561,28 +2585,55 @@ function _letterTimestamps(word, wStart, wEnd, msPerSyl) {
   const nSyls   = syls.length;
   const wSpan   = Math.max(1, wEnd - wStart);
 
-  // Speed-aware gaps
-  const pace       = _paceFactor(msPerSyl);
-  const intraSylMs = _lerp(pace, 30, 10);  // 10–30ms per letter inside syllable
-  const interSylMs = _lerp(pace, 95, 32);  // 32–95ms gap between syllables
+  // Speed-adaptive gaps — scale with msPerSyl (ms per syllable tempo reference)
+  // Slow ballad (msPerSyl=400): intra=32ms, inter=110ms
+  // Fast rap   (msPerSyl=90):  intra=8ms,  inter=20ms
+  const pace       = _paceFactor(msPerSyl);          // 0 = fast, 1 = slow
+  const intraSylMs = _lerp(pace, 8,  32);
+  const interSylMs = _lerp(pace, 20, 110);
 
-  // Syllable group start times — spread across 70% of word window
-  const activeWindow = wSpan * 0.70;
-  const sylStarts = nSyls === 1
-    ? [wStart]
-    : syls.map((_, si) => wStart + si * (activeWindow / (nSyls - 1)));
+  // How much total time do the stagger delays themselves take?
+  // sylCharCounts: number of chars per syllable
+  const sylCharCounts = new Array(nSyls).fill(0);
+  chars.forEach((_, ci) => sylCharCounts[charMap[ci]]++);
 
-  // Build per-character timestamps
+  const totalStaggerMs = syls.reduce((acc, _, si) => {
+    const charDelay  = Math.max(0, sylCharCounts[si] - 1) * intraSylMs;
+    const sylDelay   = si < nSyls - 1 ? interSylMs : 0;
+    return acc + charDelay + sylDelay;
+  }, 0);
+
+  // Active window: 72% of word span for the stagger, last 28% = hold
+  // But never let stagger exceed the active window
+  const activeWindow = Math.min(wSpan * 0.72, wSpan - 40);
+  const scale        = totalStaggerMs > 0
+    ? Math.min(1, activeWindow / totalStaggerMs)
+    : 1;
+
+  const scaledIntra = intraSylMs * scale;
+  const scaledInter = interSylMs * scale;
+
+  // Build timestamps
   const ts = new Array(n);
+  let cursor = wStart;
   const sylCharIdx = new Array(nSyls).fill(0);
+
   for (let ci = 0; ci < n; ci++) {
     const si  = charMap[ci];
-    const idx = sylCharIdx[si]++;
-    ts[ci]    = sylStarts[si] + idx * intraSylMs;
+    const idx = sylCharIdx[si];
+
+    if (idx === 0 && si > 0) {
+      // First char of a new syllable — add inter-syl gap from previous char
+      cursor += scaledInter;
+    }
+
+    ts[ci] = cursor;
+    cursor += scaledIntra;
+    sylCharIdx[si]++;
   }
 
-  // Clamp to [wStart, wEnd - 50]
-  const cap = wEnd - 50;
+  // Hard clamp
+  const cap = wEnd - 40;
   for (let ci = 0; ci < n; ci++) ts[ci] = Math.min(ts[ci], cap);
   return ts;
 }
@@ -2591,28 +2642,35 @@ function _tickWords(lineIdx, t, nextBound) {
   const words = ST.lrc[lineIdx]?.words;
   if (!words?.length) return;
 
+  // ── Compute line-level tempo ─────────────────────────────────────────
   let lastRealIdx = words.length - 1;
   while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
 
   const lastW     = words[lastRealIdx];
   const lastSyls  = syllableCount(lastW.word);
-  const realWords = words.filter(w => !w._isPause);
+  const realWords = words.filter(w => !w._isPause && !w._isInlineParen);
   const totalSyls = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
 
   const lineSpanMs = realWords.length > 1
     ? realWords[realWords.length-1].ms - realWords[0].ms
     : Math.max(300, nextBound - words[0].ms - 80);
   const nonLastSyls = Math.max(1, totalSyls - lastSyls);
-  const spacingMs   = realWords.length > 1
+  const rawSpacingMs = realWords.length > 1
     ? lineSpanMs / nonLastSyls
-    : Math.max(95, (nextBound - words[0].ms) / totalSyls);
-  const msPerSyl    = Math.max(90, spacingMs);
-  const pace        = _paceFactor(msPerSyl);
-  const holdMul     = _lerp(pace, 1.20, 1.90);
-  const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
-  const lastWordEnd = Math.min(naturalEnd, nextBound - 160);
-  const isSlow      = msPerSyl > 280;
-  const upState     = isSlow ? 'up-slow' : 'up';
+    : (nextBound - words[0].ms) / totalSyls;
+  const msPerSyl   = Math.max(80, rawSpacingMs);
+  const pace       = _paceFactor(msPerSyl);
+  const holdMul    = _lerp(pace, 1.15, 2.10);
+  const naturalEnd = lastW.ms + lastSyls * msPerSyl * holdMul;
+  const lastWordEnd = Math.min(naturalEnd, nextBound - 120);
+
+  // isSlow: slow words get the lazier spring transition
+  const isSlow  = msPerSyl > 250;
+  const upState = isSlow ? 'up-slow' : 'up';
+
+  // ── Cache letter timestamps per word (avoid recompute every tick) ────
+  if (!_tickWords._tsCache) _tickWords._tsCache = {};
+  const lineCache = _tickWords._tsCache;
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
@@ -2620,6 +2678,8 @@ function _tickWords(lineIdx, t, nextBound) {
 
     const wStart = w.ms;
     let wEnd = lastWordEnd;
+
+    // Find next real word start for this word's end boundary
     if (wi < words.length - 1) {
       for (let ni = wi + 1; ni < words.length; ni++) {
         const nw = words[ni];
@@ -2627,10 +2687,11 @@ function _tickWords(lineIdx, t, nextBound) {
         if (nw._isPause) { wEnd = nw.ms; break; }
       }
     }
+    // Word end can't exceed lastWordEnd
+    wEnd = Math.min(wEnd, lastWordEnd);
 
     const lwId  = 'lw' + lineIdx + '_' + wi;
     const chars = [...w.word];
-    const wSpan = Math.max(1, wEnd - wStart);
 
     if (t < wStart) {
       _setLwState(lwId, 'upcoming');
@@ -2641,16 +2702,24 @@ function _tickWords(lineIdx, t, nextBound) {
       chars.forEach((_, ci) => _setLchUp(`lch${lineIdx}_${wi}_${ci}`, upState));
 
     } else {
-      // Active word — per-letter lift (colour sweep is emergent from letter states)
       _setLwState(lwId, 'now-word');
 
-      const ts = _letterTimestamps(w.word, wStart, wEnd, msPerSyl);
+      // Get or compute cached timestamps for this word
+      const cacheKey = `${lineIdx}_${wi}_${wStart}_${wEnd}`;
+      let ts = lineCache[cacheKey];
+      if (!ts) {
+        ts = _letterTimestamps(w.word, wStart, wEnd, msPerSyl);
+        lineCache[cacheKey] = ts;
+      }
+
       chars.forEach((_, ci) => {
         _setLchUp(`lch${lineIdx}_${wi}_${ci}`, t >= ts[ci] ? upState : 'down');
       });
     }
   }
 }
+// Clear cache on new song / re-render
+_tickWords._tsCache = {};
 
 function _snapDone(lineIdx) {
   const words = ST.lrc[lineIdx]?.words || [];
@@ -2690,7 +2759,10 @@ function _resetUpcomingSelective(lineIdx, t) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  let AHEAD = 50;
+  // AHEAD: how far ahead of posMs we look when picking the "active" line.
+  // Tuned to feel like letters light up right ON the beat.
+  // Fast songs (small msPerSyl) → small AHEAD; slow songs → slightly larger.
+  let AHEAD = 40;
   {
     let lo=0,hi=ST.lrc.length-1,a=0;
     while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
@@ -2699,8 +2771,9 @@ function tickLrc(posMs) {
       const realW = aLine.words.filter(w=>!w._isPause&&!w._isInlineParen);
       if (realW.length > 1) {
         const span = realW[realW.length-1].ms - realW[0].ms;
-        const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
-        AHEAD = Math.round(Math.max(30, Math.min(100, mps * 0.25)));
+        const mps  = span / (realW.reduce((s,w)=>s+syllableCount(w.word),0)||1);
+        // Scale: 40ms at fast tempo, up to 80ms at slow
+        AHEAD = Math.round(_lerp(_paceFactor(mps), 40, 80));
       }
     }
   }
