@@ -11283,7 +11283,7 @@ setInterval(async () => {
     // Init
     loadScripts();
 
-    document.addEventListener('DOMContentLoaded', function() {
+    function initUserscripts() {
         // Panel toggle
         var btn = document.getElementById('userscriptBtn');
         var panel = document.getElementById('userscriptPanel');
@@ -11329,7 +11329,14 @@ setInterval(async () => {
                 }
             }, 200);
         }
-    });
+    }
+
+    // Run immediately since script is at bottom of body (DOM is ready)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initUserscripts);
+    } else {
+        initUserscripts();
+    }
 })();
 </script>
 
