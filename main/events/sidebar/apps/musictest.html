@@ -8,7 +8,7 @@
 <title>Ghost | music</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #000000;
@@ -239,7 +239,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .qi-rm:hover{background:var(--s3);color:var(--red)}
 
 .ll{
-  font-family:'Bricolage Grotesque',sans-serif;
+  font-family:'Plus Jakarta Sans',sans-serif;
   font-size:28px;line-height:1.7;font-weight:700;
   padding:6px 0 6px 4px;
   margin-bottom:2px;
@@ -375,15 +375,16 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   initial-value: -20%;
 }
 
-
-
+/* Active word — gradient sweep applied to the word span itself.
+   .lsyl children MUST be display:inline (not inline-block) so
+   background-clip:text on .lw clips through them correctly. */
 .ll.now .lw{
   display:inline-block;
   background:linear-gradient(to right,
-    #ffffff calc(var(--pct, -20%) - 10%),
-    rgba(255,255,255,0.96) calc(var(--pct, -20%) - 2%),
-    rgba(255,255,255,0.22) calc(var(--pct, -20%) + 10%),
-    rgba(255,255,255,0.04) calc(var(--pct, -20%) + 22%)
+    #ffffff calc(var(--pct, -20%) - 8%),
+    rgba(255,255,255,0.97) calc(var(--pct, -20%) + 0%),
+    rgba(255,255,255,0.28) calc(var(--pct, -20%) + 14%),
+    rgba(255,255,255,0.06) calc(var(--pct, -20%) + 26%)
   );
   -webkit-background-clip:text;
   background-clip:text;
@@ -392,11 +393,30 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
     filter 100ms ease-out,
     opacity 80ms ease-out;
   opacity:1;
-  vertical-align:bottom;
 }
-/* Syllable spans inherit the transparent fill from parent .lw */
-.ll.now .lsyl {
-  vertical-align:bottom;
+/* Syllable spans: inline so gradient clips through them,
+   position:relative + top for the float effect */
+.lsyl {
+  display:inline;
+  position:relative;
+  top:0;
+  transition:top 0.38s cubic-bezier(.34,1.56,.64,1);
+}
+.lsyl.floated {
+  top:-4px;
+}
+.lsyl.slow-syl {
+  transition:top 0.65s cubic-bezier(.22,1,.36,1);
+}
+.lsyl.slow-syl.floated {
+  top:-5px;
+}
+/* Snap back when line leaves active state */
+.ll.past .lsyl,
+.ll.near .lsyl,
+.ll.near2 .lsyl {
+  top:0 !important;
+  transition:top 0.25s ease !important;
 }
 .ll.now .lw.done,
 .ll.past .lw,
@@ -2620,8 +2640,8 @@ function _tickWords(lineIdx, t, nextBound) {
   const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
   const lastWordEnd = Math.min(naturalEnd, nextBound - 160);
 
-  // Detect slow lines – syllables get a gentler float and longer easing
-  const isSlow = msPerSyl > 320;
+  // Slow line = syllables get gentler, taller float
+  const isSlow = msPerSyl > 300;
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
@@ -2639,28 +2659,36 @@ function _tickWords(lineIdx, t, nextBound) {
 
     if (t < wStart) {
       _setLwState(id, 'upcoming', '-20%');
-      // Un-float all syls for this word if scrubbed back
       splitSyllables(w.word).forEach((_, si) =>
         _setSylUnfloated(`lsyl${lineIdx}_${wi}_${si}`));
     } else if (t >= wEnd) {
       _setLwState(id, 'done', '100%');
-      // Float all syls done
       splitSyllables(w.word).forEach((_, si) =>
         _setSylFloated(`lsyl${lineIdx}_${wi}_${si}`, isSlow));
     } else {
-      // Active word — distribute float per syllable
+      // Active word — distribute syllable float with stress-weighted timing
       const wSpan  = Math.max(1, wEnd - wStart);
       const syls   = splitSyllables(w.word);
       const nSyls  = syls.length;
-      const sylDur = wSpan / nSyls;
 
-      for (let si = 0; si < nSyls; si++) {
-        const sylStart = wStart + si * sylDur;
-        const sylId    = `lsyl${lineIdx}_${wi}_${si}`;
-        if (t >= sylStart) {
-          _setSylFloated(sylId, isSlow);
-        } else {
-          _setSylUnfloated(sylId);
+      if (nSyls === 1) {
+        // Single-syllable word: float immediately when word starts
+        _setSylFloated(`lsyl${lineIdx}_${wi}_0`, isSlow);
+      } else {
+        // Multi-syllable: stagger floats — first syl fires at wStart,
+        // each subsequent syl fires at its proportional position.
+        // Weight: first syllable = 35% of duration, rest share remainder evenly.
+        const firstFrac = 0.30;
+        const firstDur  = wSpan * firstFrac;
+        const restDur   = (wSpan - firstDur) / Math.max(1, nSyls - 1);
+        for (let si = 0; si < nSyls; si++) {
+          const sylStart = si === 0 ? wStart : (wStart + firstDur + (si - 1) * restDur);
+          const sylId    = `lsyl${lineIdx}_${wi}_${si}`;
+          if (t >= sylStart) {
+            _setSylFloated(sylId, isSlow);
+          } else {
+            _setSylUnfloated(sylId);
+          }
         }
       }
 
@@ -2709,7 +2737,7 @@ function _resetUpcomingSelective(lineIdx, t) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  let AHEAD = 80;
+  let AHEAD = 50;
   {
     let lo=0,hi=ST.lrc.length-1,a=0;
     while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
@@ -2719,7 +2747,7 @@ function tickLrc(posMs) {
       if (realW.length > 1) {
         const span = realW[realW.length-1].ms - realW[0].ms;
         const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
-        AHEAD = Math.round(Math.max(50, Math.min(150, mps * 0.30)));
+        AHEAD = Math.round(Math.max(30, Math.min(100, mps * 0.25)));
       }
     }
   }
