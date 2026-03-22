@@ -3484,82 +3484,302 @@ body.reduce-motion *::after {
             bottom: 52px;
         }
     }
-    .window-switcher {
-        display: flex;
-        align-items: center;
-        gap: 0;
-        background: #dadce0;
-        border-radius: 100px;
-        padding: 0;
-        margin-right: 6px;
-        user-select: none;
-        flex-shrink: 0;
+    /* Userscript Manager Styles */
+    .userscript-btn {
+        width: 32px;
         height: 32px;
-        overflow: hidden;
-    }
-    .window-switcher-label {
-        font-size: 12px;
-        font-weight: 500;
-        font-family: 'google sans', sans-serif;
-        color: #3c4043;
-        padding: 0 12px;
-        cursor: pointer;
-        white-space: nowrap;
-        min-width: 20px;
-        text-align: center;
-        transition: background 0.15s;
-        line-height: 32px;
-        height: 32px;
-        border-right: 1px solid rgba(0,0,0,0.12);
-        border-radius: 100px;
-    }
-  
-    .window-switcher-arrows {
-        display: flex;
-        align-items: center;
-        gap: 0;
-        height: 32px;
-        border-radius: 100px;
-    }
-    .window-switcher-arrow {
-        background: none;
         border: none;
+        background: transparent;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0;
+        transition: background .2s ease, transform .15s ease;
+        flex-shrink: 0;
+        color: #5f6368;
+    }
+    .userscript-btn:hover {
+        background: rgba(0,0,0,0.06);
+        color: #202124;
+    }
+    .userscript-btn:active {
+        transform: scale(0.96);
+    }
+    .userscript-btn.has-active {
+        color: #1a73e8;
+    }
+
+    .userscript-panel {
+        position: fixed;
+        top: 50px;
+        right: 80px;
+        width: 420px;
+        max-height: 520px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.08);
+        z-index: 10002;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: google sans, sans-serif;
+    }
+    .userscript-panel.show {
+        display: flex;
+    }
+    .userscript-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e8eaed;
+    }
+    .userscript-panel-header h3 {
+        font-size: 15px;
+        font-weight: 500;
+        color: #202124;
+        margin: 0;
+    }
+    .userscript-panel-header button {
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        border-radius: 50%;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 28px;
-        height: 32px;
-        border-radius: 0;
         color: #5f6368;
-        padding: 0;        border-radius: 100px;
-
-        transition: background 0.15s, color 0.15s;
+        transition: background .15s;
+    }
+    .userscript-panel-header button:hover {
+        background: rgba(0,0,0,0.06);
+    }
+    .userscript-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 0;
+        max-height: 320px;
+    }
+    .userscript-list:empty::after {
+        content: 'No scripts yet. Click + to add one.';
+        display: block;
+        text-align: center;
+        padding: 32px 16px;
+        color: #999;
+        font-size: 13px;
+    }
+    .userscript-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 18px;
+        transition: background .12s;
+        cursor: pointer;
+    }
+    .userscript-item:hover {
+        background: #f6f8fa;
+    }
+    .userscript-item-toggle {
+        position: relative;
+        width: 36px;
+        height: 20px;
+        border-radius: 10px;
+        background: #dadce0;
+        border: none;
+        cursor: pointer;
+        transition: background .2s;
+        flex-shrink: 0;
+        padding: 0;
+    }
+    .userscript-item-toggle.on {
+        background: #1a73e8;
+    }
+    .userscript-item-toggle::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #fff;
+        transition: transform .2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .userscript-item-toggle.on::after {
+        transform: translateX(16px);
+    }
+    .userscript-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .userscript-item-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: #202124;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .userscript-item-match {
+        font-size: 11px;
+        color: #999;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .userscript-item-actions {
+        display: flex;
+        gap: 4px;
         flex-shrink: 0;
     }
-    .window-switcher-arrow:hover {
-        background: rgba(0,0,0,0.08);
-        color: #3c4043;
+    .userscript-item-actions button {
+        width: 26px;
+        height: 26px;
+        border: none;
+        background: transparent;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #5f6368;
+        transition: background .15s;
     }
-    .window-switcher-arrow:active {
-        background: rgba(0,0,0,0.14);
+    .userscript-item-actions button:hover {
+        background: rgba(0,0,0,0.06);
     }
-    .window-switcher-input {
+    .userscript-add-bar {
+        display: flex;
+        padding: 10px 14px;
+        border-top: 1px solid #e8eaed;
+        gap: 8px;
+    }
+    .userscript-add-bar button {
+        height: 34px;
+        padding: 0 16px;
+        border: none;
+        border-radius: 17px;
+        background: #1a73e8;
+        color: #fff;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: background .15s;
+        font-family: google sans, sans-serif;
+    }
+    .userscript-add-bar button:hover {
+        background: #1567d3;
+    }
+
+    /* Script editor modal */
+    .userscript-editor-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 10003;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    .userscript-editor-overlay.show {
+        display: flex;
+    }
+    .userscript-editor {
+        width: 520px;
+        max-width: 92vw;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.22);
+        overflow: hidden;
+        font-family: google sans, sans-serif;
+    }
+    .userscript-editor-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e8eaed;
+        font-size: 15px;
+        font-weight: 500;
+        color: #202124;
+    }
+    .userscript-editor-body {
+        padding: 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .userscript-editor-body label {
         font-size: 12px;
         font-weight: 500;
-        font-family: 'google sans', sans-serif;
-        color: #3c4043;
-        background: #fff;
-        border: none;
-        border-radius: 0;
-        padding: 0 10px;
-        min-width: 20px;
-        max-width: 100px;
-        text-align: center;
+        color: #5f6368;
+        margin-bottom: 2px;
+    }
+    .userscript-editor-body input,
+    .userscript-editor-body textarea {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: google sans, sans-serif;
+        color: #202124;
         outline: none;
-        height: 32px;
-        line-height: 32px;
-        border-right: 1px solid rgba(0,0,0,0.12);
+        box-sizing: border-box;
+        transition: border-color .15s;
+    }
+    .userscript-editor-body input:focus,
+    .userscript-editor-body textarea:focus {
+        border-color: #1a73e8;
+    }
+    .userscript-editor-body textarea {
+        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        font-size: 12px;
+        min-height: 160px;
+        resize: vertical;
+        line-height: 1.5;
+    }
+    .userscript-editor-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 20px;
+        border-top: 1px solid #e8eaed;
+    }
+    .userscript-editor-footer button {
+        height: 34px;
+        padding: 0 20px;
+        border: none;
+        border-radius: 17px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: google sans, sans-serif;
+        transition: background .15s;
+    }
+    .userscript-editor-footer .us-cancel {
+        background: #f1f3f4;
+        color: #5f6368;
+    }
+    .userscript-editor-footer .us-cancel:hover {
+        background: #e8eaed;
+    }
+    .userscript-editor-footer .us-save {
+        background: #1a73e8;
+        color: #fff;
+    }
+    .userscript-editor-footer .us-save:hover {
+        background: #1567d3;
+    }
+    .us-match-hint {
+        font-size: 11px;
+        color: #999;
+        margin-top: -8px;
     }
     </style>
 </head>
@@ -3614,6 +3834,9 @@ body.reduce-motion *::after {
             <div class="toolbar-icons">  
                 <button class="profile-pill-btn" id="profilePfpBtn" title="Open dashboard">
                     <img id="profilePfpImg" src="/ghost.svg" alt="Profile">
+                </button>
+                <button class="userscript-btn" id="userscriptBtn" title="Userscripts">
+                    <i data-lucide="code" width="16" height="16"></i>
                 </button>
               <button class="toolbar-btn cloak-btn" id="tcb" title="Tab Cloak">
   <i data-lucide="shield" width="16" height="16"></i>
@@ -5827,9 +6050,7 @@ if (this.isBlockedUrl(url)) {
                         if (decoded !== iframeHref && decoded.startsWith('http')) {
                             return decoded;
                         }
-                        // If extractOriginalUrl couldn't decode it, the href is likely
-                        // a proxy-domain path (e.g. ghostinc.online/login). Ignore it
-                        // and fall back to extracting from iframe.src instead.
+
                         if (iframeHref === decoded) {
                             const fromSrc = this.extractOriginalUrl(tab.iframe.src || '');
                             if (fromSrc !== tab.iframe.src && fromSrc.startsWith('http')) {
@@ -7451,18 +7672,6 @@ menu.addEventListener('mouseleave', hideMenu);
                 <i id="battery-icon" data-lucide="battery" class="icon" aria-label="Battery status"></i>
                 <span id="battery-level"></span>
             </span>
-
-            <div class="window-switcher" id="windowSwitcher">
-                <span class="window-switcher-label" id="wsLabel">Window 1</span>
-                <div class="window-switcher-arrows">
-                    <button class="window-switcher-arrow" id="wsPrevBtn" title="Previous window">
-                        <i data-lucide="chevron-left" width="13" height="13"></i>
-                    </button>
-                    <button class="window-switcher-arrow" id="wsNextBtn" title="Next window">
-                        <i data-lucide="chevron-right" width="13" height="13"></i>
-                    </button>
-                </div>
-            </div>
 
             <div class="focus-overlay" id="focusOverlay" hidden></div>
 
@@ -10753,7 +10962,6 @@ setInterval(async () => {
 })();
 </script>
 
-<!-- Live Tab Title Polling (no tab-switch needed) -->
 <script>
 (function() {
     var TITLE_POLL_MS = 600;
@@ -10786,7 +10994,6 @@ setInterval(async () => {
 })();
 </script>
 
-<!-- Improved SPA URL detection for sites like TikTok, Snapchat -->
 <script>
 (function() {
     var SPA_POLL_MS = 500;
@@ -10810,15 +11017,13 @@ setInterval(async () => {
             var href = tab.iframe.contentWindow.location.href;
             if (href && href !== 'about:blank') {
                 var decoded = b.extractOriginalUrl(href);
-                // Only use decoded if it actually decoded to something different
-                // and is NOT on the host/proxy domain
+
                 if (decoded !== href && decoded.startsWith('http') && !isHostDomainUrl(decoded)) {
                     realUrl = decoded;
                 }
             }
         } catch(e) {}
 
-        // If we couldn't get a real URL from contentWindow, try from iframe.src
         if (!realUrl) {
             try {
                 var srcDecoded = b.extractOriginalUrl(tab.iframe.src || '');
@@ -10828,7 +11033,6 @@ setInterval(async () => {
             } catch(e) {}
         }
 
-        // Also try canonical link
         if (!realUrl) {
             try {
                 if (tab.iframe.contentWindow && tab.iframe.contentWindow.document) {
@@ -10862,174 +11066,272 @@ setInterval(async () => {
     setInterval(pollSpaUrls, SPA_POLL_MS);
 })();
 </script>
+<!-- Userscript Manager Panel -->
+<div class="userscript-panel" id="userscriptPanel">
+    <div class="userscript-panel-header">
+        <h3>Userscripts</h3>
+        <button id="userscriptPanelClose"><i data-lucide="x" width="16" height="16"></i></button>
+    </div>
+    <div class="userscript-list" id="userscriptList"></div>
+    <div class="userscript-add-bar">
+        <button id="userscriptAddBtn"><i data-lucide="plus" width="14" height="14"></i> New Script</button>
+    </div>
+</div>
+
+<!-- Userscript Editor Overlay -->
+<div class="userscript-editor-overlay" id="userscriptEditorOverlay">
+    <div class="userscript-editor">
+        <div class="userscript-editor-header" id="userscriptEditorTitle">New Script</div>
+        <div class="userscript-editor-body">
+            <div>
+                <label>Name</label>
+                <input type="text" id="usEditorName" placeholder="My Script">
+            </div>
+            <div>
+                <label>URL Match Pattern</label>
+                <input type="text" id="usEditorMatch" placeholder="*://example.com/*">
+                <div class="us-match-hint">Use * as wildcard. e.g. *://youtube.com/* or * for all sites</div>
+            </div>
+            <div>
+                <label>JavaScript Code</label>
+                <textarea id="usEditorCode" placeholder="// Your code here&#10;document.body.style.background = 'red';"></textarea>
+            </div>
+        </div>
+        <div class="userscript-editor-footer">
+            <button class="us-cancel" id="usEditorCancel">Cancel</button>
+            <button class="us-save" id="usEditorSave">Save</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function() {
-    var TOTAL_WINDOWS = 5;
-    var WS_STORAGE_KEY = 'nexos_window_switcher';
-    var currentWindowIndex = 0;
-    var windowNames = [];
-    var windowTabs = {};
+    var STORAGE_KEY = 'nexos_userscripts';
+    var scripts = [];
+    var editingIndex = -1;
 
-    function loadState() {
+    function loadScripts() {
         try {
-            var saved = localStorage.getItem(WS_STORAGE_KEY);
-            if (saved) {
-                var parsed = JSON.parse(saved);
-                if (parsed.names && parsed.names.length === TOTAL_WINDOWS) {
-                    windowNames = parsed.names;
-                    currentWindowIndex = parsed.current || 0;
-                    windowTabs = parsed.tabs || {};
-                    return;
-                }
-            }
-        } catch(e) {}
-        windowNames = [];
-        for (var i = 0; i < TOTAL_WINDOWS; i++) {
-            windowNames.push('Window ' + (i + 1));
-        }
-        currentWindowIndex = 0;
-        windowTabs = {};
+            var saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) scripts = JSON.parse(saved);
+        } catch(e) { scripts = []; }
     }
 
-    function saveState() {
+    function saveScripts() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(scripts)); } catch(e) {}
+    }
+
+    function matchUrl(pattern, url) {
+        if (!pattern || pattern === '*') return true;
         try {
-            localStorage.setItem(WS_STORAGE_KEY, JSON.stringify({
-                names: windowNames,
-                current: currentWindowIndex,
-                tabs: windowTabs
-            }));
-        } catch(e) {}
+            var regex = pattern
+                .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+                .replace(/\\\*/g, '.*');
+            return new RegExp('^' + regex + '$', 'i').test(url);
+        } catch(e) { return false; }
     }
 
-    function saveCurrentWindowTabs() {
-        var b = window.browser;
-        if (!b) return;
-        var tabData = [];
-        b.tabs.forEach(function(tab, id) {
-            var url = tab.currentUrl || tab.url || '';
-            tabData.push({ id: id, url: url, title: tab.title || '' });
-        });
-        windowTabs[currentWindowIndex] = {
-            tabs: tabData,
-            activeTabId: b.activeTabId
-        };
-        saveState();
+    function updateBtnIndicator() {
+        var btn = document.getElementById('userscriptBtn');
+        if (!btn) return;
+        var hasActive = scripts.some(function(s) { return s.enabled; });
+        if (hasActive) btn.classList.add('has-active');
+        else btn.classList.remove('has-active');
     }
 
-    function restoreWindowTabs(index) {
-        var b = window.browser;
-        if (!b) return;
-
-        var existingIds = [];
-        b.tabs.forEach(function(tab, id) { existingIds.push(id); });
-        existingIds.forEach(function(id) {
-            var tab = b.tabs.get(id);
-            if (tab) {
-                if (tab.element) tab.element.remove();
-                if (tab.iframe) tab.iframe.remove();
-                if (b.updateIntervals.has(id)) {
-                    clearInterval(b.updateIntervals.get(id));
-                    b.updateIntervals.delete(id);
-                }
-                b.tabs.delete(id);
-                delete b.history[id];
-                delete b.historyIndex[id];
-            }
+    function renderList() {
+        var list = document.getElementById('userscriptList');
+        if (!list) return;
+        list.innerHTML = '';
+        scripts.forEach(function(s, i) {
+            var item = document.createElement('div');
+            item.className = 'userscript-item';
+            item.innerHTML =
+                '<button class="userscript-item-toggle ' + (s.enabled ? 'on' : '') + '" data-idx="' + i + '"></button>' +
+                '<div class="userscript-item-info">' +
+                    '<div class="userscript-item-name">' + escHtml(s.name || 'Untitled') + '</div>' +
+                    '<div class="userscript-item-match">' + escHtml(s.match || '*') + '</div>' +
+                '</div>' +
+                '<div class="userscript-item-actions">' +
+                    '<button data-edit="' + i + '" title="Edit"><i data-lucide="pencil" width="14" height="14"></i></button>' +
+                    '<button data-del="' + i + '" title="Delete"><i data-lucide="trash-2" width="14" height="14"></i></button>' +
+                '</div>';
+            list.appendChild(item);
         });
+        lucide.createIcons();
+        updateBtnIndicator();
 
-        var saved = windowTabs[index];
-        if (saved && saved.tabs && saved.tabs.length > 0) {
-            saved.tabs.forEach(function(t) {
-                var newId = b.createNewTab();
-                if (newId && t.url && t.url !== 'about:blank' && !t.url.startsWith('nexos://')) {
-                    b.navigate(t.url);
-                }
+        list.querySelectorAll('.userscript-item-toggle').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var idx = parseInt(this.getAttribute('data-idx'));
+                scripts[idx].enabled = !scripts[idx].enabled;
+                saveScripts();
+                renderList();
             });
+        });
+        list.querySelectorAll('[data-edit]').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openEditor(parseInt(this.getAttribute('data-edit')));
+            });
+        });
+        list.querySelectorAll('[data-del]').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var idx = parseInt(this.getAttribute('data-del'));
+                scripts.splice(idx, 1);
+                saveScripts();
+                renderList();
+            });
+        });
+    }
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function openEditor(idx) {
+        editingIndex = idx;
+        var overlay = document.getElementById('userscriptEditorOverlay');
+        var title = document.getElementById('userscriptEditorTitle');
+        var nameInput = document.getElementById('usEditorName');
+        var matchInput = document.getElementById('usEditorMatch');
+        var codeInput = document.getElementById('usEditorCode');
+        if (idx >= 0 && idx < scripts.length) {
+            title.textContent = 'Edit Script';
+            nameInput.value = scripts[idx].name || '';
+            matchInput.value = scripts[idx].match || '';
+            codeInput.value = scripts[idx].code || '';
         } else {
-            b.createNewTab();
+            title.textContent = 'New Script';
+            nameInput.value = '';
+            matchInput.value = '';
+            codeInput.value = '';
         }
+        overlay.classList.add('show');
     }
 
-    function updateLabel() {
-        var label = document.getElementById('wsLabel');
-        if (label) label.textContent = windowNames[currentWindowIndex];
+    function closeEditor() {
+        document.getElementById('userscriptEditorOverlay').classList.remove('show');
+        editingIndex = -1;
     }
 
-    function switchWindow(newIndex) {
-        if (newIndex === currentWindowIndex) return;
-        if (newIndex < 0) newIndex = TOTAL_WINDOWS - 1;
-        if (newIndex >= TOTAL_WINDOWS) newIndex = 0;
-        saveCurrentWindowTabs();
-        currentWindowIndex = newIndex;
-        saveState();
-        updateLabel();
-        restoreWindowTabs(currentWindowIndex);
-    }
-
-    function startEditing() {
-        var label = document.getElementById('wsLabel');
-        if (!label) return;
-        var input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'window-switcher-input';
-        input.value = windowNames[currentWindowIndex];
-        input.maxLength = 20;
-        label.parentNode.replaceChild(input, label);
-        input.focus();
-        input.select();
-
-        function finish() {
-            var val = input.value.trim();
-            if (val) windowNames[currentWindowIndex] = val;
-            saveState();
-            var newLabel = document.createElement('span');
-            newLabel.className = 'window-switcher-label';
-            newLabel.id = 'wsLabel';
-            newLabel.textContent = windowNames[currentWindowIndex];
-            input.parentNode.replaceChild(newLabel, input);
-            newLabel.addEventListener('click', startEditing);
+    function saveEditor() {
+        var name = document.getElementById('usEditorName').value.trim() || 'Untitled';
+        var match = document.getElementById('usEditorMatch').value.trim() || '*';
+        var code = document.getElementById('usEditorCode').value;
+        if (editingIndex >= 0 && editingIndex < scripts.length) {
+            scripts[editingIndex].name = name;
+            scripts[editingIndex].match = match;
+            scripts[editingIndex].code = code;
+        } else {
+            scripts.push({ name: name, match: match, code: code, enabled: true });
         }
+        saveScripts();
+        renderList();
+        closeEditor();
+    }
 
-        input.addEventListener('blur', finish);
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
-            if (e.key === 'Escape') { input.value = windowNames[currentWindowIndex]; input.blur(); }
+    // Inject matching scripts into an iframe
+    function injectUserscripts(iframe, url) {
+        if (!url || url === 'about:blank') return;
+        scripts.forEach(function(s) {
+            if (!s.enabled) return;
+            if (!matchUrl(s.match, url)) return;
+            try {
+                var doc = iframe.contentDocument || iframe.contentWindow.document;
+                var script = doc.createElement('script');
+                script.textContent = s.code;
+                (doc.head || doc.documentElement).appendChild(script);
+            } catch(e) {
+                console.warn('[Userscripts] Could not inject into', url, e);
+            }
         });
     }
 
-    function init() {
-        loadState();
-        updateLabel();
+    // Hook into Browser's setupIframeLoadHandling
+    function hookBrowser() {
+        var b = window.browser;
+        if (!b) return;
 
-        var prevBtn = document.getElementById('wsPrevBtn');
-        var nextBtn = document.getElementById('wsNextBtn');
-        var label = document.getElementById('wsLabel');
+        var origSetup = b.setupIframeLoadHandling.bind(b);
+        b.setupIframeLoadHandling = function(tabId) {
+            origSetup(tabId);
+            var tab = b.tabs.get(tabId);
+            if (!tab || !tab.iframe) return;
+            var iframe = tab.iframe;
+            var origHandler = tab.loadHandler;
+            tab.loadHandler = function() {
+                if (origHandler) origHandler();
+                var realUrl = b.getIframeCurrentUrl ? b.getIframeCurrentUrl(tab) : null;
+                var originalUrl = realUrl || (b.extractOriginalUrl ? b.extractOriginalUrl(tab.url) : tab.url);
+                setTimeout(function() { injectUserscripts(iframe, originalUrl); }, 50);
+            };
+            iframe.removeEventListener('load', origHandler);
+            iframe.addEventListener('load', tab.loadHandler);
+        };
 
-        if (prevBtn) {
-            prevBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                switchWindow(currentWindowIndex - 1);
-            });
-        }
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                switchWindow(currentWindowIndex + 1);
-            });
-        }
-        if (label) {
-            label.addEventListener('click', startEditing);
-        }
-
-        if (window.lucide) lucide.createIcons();
+        // Re-setup existing tabs
+        b.tabs.forEach(function(tab, tabId) {
+            b.setupIframeLoadHandling(tabId);
+        });
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    // Init
+    loadScripts();
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Panel toggle
+        var btn = document.getElementById('userscriptBtn');
+        var panel = document.getElementById('userscriptPanel');
+        if (btn && panel) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                panel.classList.toggle('show');
+                if (panel.classList.contains('show')) renderList();
+            });
+        }
+        document.getElementById('userscriptPanelClose').addEventListener('click', function() {
+            panel.classList.remove('show');
+        });
+        document.addEventListener('click', function(e) {
+            if (panel.classList.contains('show') && !panel.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+                panel.classList.remove('show');
+            }
+        });
+
+        // Add button
+        document.getElementById('userscriptAddBtn').addEventListener('click', function() {
+            openEditor(-1);
+        });
+
+        // Editor
+        document.getElementById('usEditorCancel').addEventListener('click', closeEditor);
+        document.getElementById('usEditorSave').addEventListener('click', saveEditor);
+        document.getElementById('userscriptEditorOverlay').addEventListener('click', function(e) {
+            if (e.target === this) closeEditor();
+        });
+
+        renderList();
+        updateBtnIndicator();
+
+        // Hook browser after it's ready
+        if (window.browser) {
+            hookBrowser();
+        } else {
+            var checkInterval = setInterval(function() {
+                if (window.browser) {
+                    clearInterval(checkInterval);
+                    hookBrowser();
+                }
+            }, 200);
+        }
+    });
 })();
 </script>
+
 </body>
 </html>
