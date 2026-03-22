@@ -346,54 +346,84 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
   opacity:0.80;
 }
 
-/* ── Per-letter lyric engine ───────────────────────────────────────────
-   Each .lch span tracks its own state: dim → on (bright+float) → done
+/* ──────────────────────────────────────────────────────────────────────
+   LYRIC LETTER ENGINE
+   • .lw = word wrapper (inline-block so gradient background can clip to it)
+   • .lch = individual letter/char (inline so gradient clips through it)
+   • Gradient handles colour for the ACTIVE word via --pct sweep
+   • top: handles lift — inline elements support position:relative + top
+   • Past lines do NOT forcibly reset top — letters stay lifted and fade naturally
 ──────────────────────────────────────────────────────────────────────── */
 
-/* Word wrapper — inline structural only */
-.lw { display:inline; }
+@property --pct {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: -20%;
+}
 
-/* Individual letter/syllable span */
+/* Word container */
+.lw {
+  display:inline-block;
+  vertical-align:bottom;
+}
+
+/* Letter span — inline so background-clip:text flows through them */
 .lch {
   display:inline;
   position:relative;
   top:0;
+  transition:color 80ms ease-out, top 0.38s cubic-bezier(.34,1.56,.64,1);
 }
 
-/* ── Active line letter states ── */
-/* Default: unsung — very dim */
-.ll.now .lch {
-  color:rgba(255,255,255,0.18);
-  transition:color 60ms ease-out, top 0.42s cubic-bezier(.34,1.56,.64,1);
+/* ── Active word: gradient sweep ── */
+.ll.now .lw.now-word {
+  background:linear-gradient(to right,
+    #ffffff              calc(var(--pct) - 8%),
+    rgba(255,255,255,.97) calc(var(--pct) + 0%),
+    rgba(255,255,255,.22) calc(var(--pct) + 14%),
+    rgba(255,255,255,.05) calc(var(--pct) + 28%)
+  );
+  -webkit-background-clip:text;
+  background-clip:text;
+  -webkit-text-fill-color:transparent;
 }
-/* Currently singing — full white, soft halo */
-.ll.now .lch.lch-on {
-  color:#ffffff;
-  text-shadow:0 0 14px rgba(255,255,255,0.40), 0 0 3px rgba(255,255,255,0.60);
-  transition:color 40ms ease-out, top 0.42s cubic-bezier(.34,1.56,.64,1);
+/* letters inside active word: inherit transparent fill → show gradient.
+   Top controlled by .lch-up class */
+.ll.now .lw.now-word .lch {
+  -webkit-text-fill-color:inherit;
+  transition:top 0.38s cubic-bezier(.34,1.56,.64,1);
+}
+.ll.now .lw.now-word .lch.lch-up {
   top:-3px;
 }
-/* Already sung — stays floated, slightly less bright */
-.ll.now .lch.lch-done {
-  color:rgba(255,255,255,0.78);
-  text-shadow:none;
-  transition:color 200ms ease-out, top 0.42s cubic-bezier(.34,1.56,.64,1);
-  top:-3px;
-}
-/* Slow word variant — slightly taller lift, lazier spring */
-.ll.now .lch.lch-up-slow {
-  transition:color 60ms ease-out, top 0.70s cubic-bezier(.22,1,.36,1) !important;
-  top:-4px !important;
+.ll.now .lw.now-word .lch.lch-up-slow {
+  top:-4px;
+  transition:top 0.65s cubic-bezier(.22,1,.36,1) !important;
 }
 
-/* Non-active lines: snap back instantly, inherit line color */
+/* ── Done words in active line: stay lifted, solid colour ── */
+.ll.now .lw.done .lch {
+  color:rgba(255,255,255,.80);
+  -webkit-text-fill-color:rgba(255,255,255,.80);
+  top:-3px;
+}
+
+/* ── Upcoming words in active line: dim ── */
+.ll.now .lw.upcoming .lch {
+  color:rgba(255,255,255,.18);
+  -webkit-text-fill-color:rgba(255,255,255,.18);
+  top:0;
+}
+
+/* ── Non-active lines ──
+   Letters keep their top position (no forced reset) so they gently
+   fade in place as the line dims. Only snap on JS scrub-back. */
 .ll.past .lch,
 .ll.near .lch,
 .ll.near2 .lch {
   color:inherit !important;
+  -webkit-text-fill-color:inherit !important;
   text-shadow:none !important;
-  top:0 !important;
-  transition:top 0.20s ease !important;
 }
 
 .ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
@@ -2505,37 +2535,43 @@ function seekLrc(i, evt) {
   YT_player.seekTo(ST.lrc[i].ms / 1000);
 }
 
-const _lwState = {};
+const _lwState  = {};   // wordId → 'upcoming'|'now-word'|'done'
+const _lchState = {};   // charId → 'down'|'up'|'up-slow'
 
-/* ── Per-letter (lch) state engine ─────────────────────────────────────
-   Each .lch span tracks: 'upcoming' | 'on' | 'done'
-   Classes on .lch: lch-on (bright+float), lch-done (bright done+float)
-──────────────────────────────────────────────────────────────────────── */
-const _lchState = {};
+/* Update .lw className */
+function _setLwState(id, cls) {
+  if (_lwState[id] === cls) return;
+  _lwState[id] = cls;
+  const el = document.getElementById(id);
+  if (el) el.className = 'lw ' + cls;
+}
 
-function _setLchState(id, state, isSlow) {
+/* Update --pct sweep percentage on active word */
+function _setLwPct(id, pct) {
+  const el = document.getElementById(id);
+  if (el) el.style.setProperty('--pct', pct + '%');
+}
+
+/* Update per-letter lift: 'down' | 'up' | 'up-slow' */
+function _setLchUp(id, state) {
   if (_lchState[id] === state) return;
   _lchState[id] = state;
   const el = document.getElementById(id);
   if (!el) return;
-  el.classList.remove('lch-on','lch-done','lch-up-slow');
-  if (state === 'on') {
-    el.classList.add('lch-on');
-    if (isSlow) el.classList.add('lch-up-slow');
-  } else if (state === 'done') {
-    el.classList.add('lch-done');
-    if (isSlow) el.classList.add('lch-up-slow');
-  }
-  // 'upcoming' = no extra classes, inherits dim color from .ll.now .lch
+  el.classList.remove('lch-up', 'lch-up-slow');
+  if (state === 'up')      el.classList.add('lch-up');
+  if (state === 'up-slow') el.classList.add('lch-up-slow');
 }
 
-function _setLwState(id, cls) {
-  const prev = _lwState[id];
-  if (prev === cls) return;
-  _lwState[id] = cls;
+/* Instant snap to down without triggering transition (for scrub-back) */
+function _lchSnapDown(id) {
+  if (_lchState[id] === 'down') return;
+  delete _lchState[id];
   const el = document.getElementById(id);
   if (!el) return;
-  el.className = 'lw ' + cls;
+  el.style.transition = 'none';
+  el.classList.remove('lch-up','lch-up-slow');
+  requestAnimationFrame(() => { el.style.transition = ''; });
 }
 
 function _nextRealLineMs(fromIdx, fallback) {
@@ -2545,16 +2581,47 @@ function _nextRealLineMs(fromIdx, fallback) {
   return fallback;
 }
 
-/* Get syllable groupings for a word as [{sylIdx, chars:[ci,...]}] */
-function _wordSylGroups(word) {
-  const syls = splitSyllables(word);
+/*
+  Compute per-character fire timestamps within a word window.
+  Letters in the same syllable group are spaced by intraSylMs.
+  The gap BETWEEN syllable groups is interSylMs (wider).
+  Both scale with song tempo — fast songs get tighter spacing.
+*/
+function _letterTimestamps(word, wStart, wEnd, msPerSyl) {
+  const chars = [...word];
+  const n     = chars.length;
+  if (n === 0) return [];
+  if (n === 1) return [wStart];
+
+  const syls    = splitSyllables(word);
   const charMap = mapCharsToSyls(word, syls);
-  const groups = [];
-  charMap.forEach((si, ci) => {
-    if (!groups[si]) groups[si] = { sylIdx: si, chars: [] };
-    groups[si].chars.push(ci);
-  });
-  return groups.filter(Boolean);
+  const nSyls   = syls.length;
+  const wSpan   = Math.max(1, wEnd - wStart);
+
+  // Speed-aware gaps
+  const pace       = _paceFactor(msPerSyl);
+  const intraSylMs = _lerp(pace, 30, 10);  // 10–30ms per letter inside syllable
+  const interSylMs = _lerp(pace, 95, 32);  // 32–95ms gap between syllables
+
+  // Syllable group start times — spread across 70% of word window
+  const activeWindow = wSpan * 0.70;
+  const sylStarts = nSyls === 1
+    ? [wStart]
+    : syls.map((_, si) => wStart + si * (activeWindow / (nSyls - 1)));
+
+  // Build per-character timestamps
+  const ts = new Array(n);
+  const sylCharIdx = new Array(nSyls).fill(0);
+  for (let ci = 0; ci < n; ci++) {
+    const si  = charMap[ci];
+    const idx = sylCharIdx[si]++;
+    ts[ci]    = sylStarts[si] + idx * intraSylMs;
+  }
+
+  // Clamp to [wStart, wEnd - 50]
+  const cap = wEnd - 50;
+  for (let ci = 0; ci < n; ci++) ts[ci] = Math.min(ts[ci], cap);
+  return ts;
 }
 
 function _tickWords(lineIdx, t, nextBound) {
@@ -2564,10 +2631,11 @@ function _tickWords(lineIdx, t, nextBound) {
   let lastRealIdx = words.length - 1;
   while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
 
-  const lastW    = words[lastRealIdx];
-  const lastSyls = syllableCount(lastW.word);
-  const realWords  = words.filter(w => !w._isPause);
-  const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+  const lastW     = words[lastRealIdx];
+  const lastSyls  = syllableCount(lastW.word);
+  const realWords = words.filter(w => !w._isPause);
+  const totalSyls = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
+
   const lineSpanMs = realWords.length > 1
     ? realWords[realWords.length-1].ms - realWords[0].ms
     : Math.max(300, nextBound - words[0].ms - 80);
@@ -2575,16 +2643,18 @@ function _tickWords(lineIdx, t, nextBound) {
   const spacingMs   = realWords.length > 1
     ? lineSpanMs / nonLastSyls
     : Math.max(95, (nextBound - words[0].ms) / totalSyls);
-  const msPerSyl  = Math.max(90, spacingMs);
-  const pace      = _paceFactor(msPerSyl);
-  const holdMul   = _lerp(pace, 1.20, 1.90);
+  const msPerSyl    = Math.max(90, spacingMs);
+  const pace        = _paceFactor(msPerSyl);
+  const holdMul     = _lerp(pace, 1.20, 1.90);
   const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
   const lastWordEnd = Math.min(naturalEnd, nextBound - 160);
-  const isSlow      = msPerSyl > 300;
+  const isSlow      = msPerSyl > 280;
+  const upState     = isSlow ? 'up-slow' : 'up';
 
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
     if (w._isPause) continue;
+
     const wStart = w.ms;
     let wEnd = lastWordEnd;
     if (wi < words.length - 1) {
@@ -2595,49 +2665,31 @@ function _tickWords(lineIdx, t, nextBound) {
       }
     }
 
+    const lwId  = 'lw' + lineIdx + '_' + wi;
     const chars = [...w.word];
-    const nChars = chars.length;
-    const wSpan  = Math.max(1, wEnd - wStart);
+    const wSpan = Math.max(1, wEnd - wStart);
 
     if (t < wStart) {
-      // Whole word upcoming — reset all letters
-      _setLwState('lw'+lineIdx+'_'+wi, 'upcoming');
-      chars.forEach((_, ci) => _setLchState(`lch${lineIdx}_${wi}_${ci}`, 'upcoming', isSlow));
+      _setLwState(lwId, 'upcoming');
+      chars.forEach((_, ci) => _setLchUp(`lch${lineIdx}_${wi}_${ci}`, 'down'));
+
     } else if (t >= wEnd) {
-      // Whole word done — all letters done
-      _setLwState('lw'+lineIdx+'_'+wi, 'done');
-      chars.forEach((_, ci) => _setLchState(`lch${lineIdx}_${wi}_${ci}`, 'done', isSlow));
+      _setLwState(lwId, 'done');
+      chars.forEach((_, ci) => _setLchUp(`lch${lineIdx}_${wi}_${ci}`, upState));
+
     } else {
-      // Word is active — tick per syllable group
-      _setLwState('lw'+lineIdx+'_'+wi, 'now-word');
+      // Active word — gradient sweep + per-letter lift
+      _setLwState(lwId, 'now-word');
 
-      const groups = _wordSylGroups(w.word);
-      const nGroups = groups.length;
+      const raw   = (t - wStart) / wSpan;
+      const eased = raw < 0.3 ? (raw * raw) / 0.3 : 0.09 + (raw - 0.3) * 0.91 / 0.7;
+      const pct   = (Math.min(1, eased) * 120 - 10).toFixed(1);
+      _setLwPct(lwId, pct);
 
-      // Syllable timing: first syl fires immediately at wStart,
-      // subsequent syls spread evenly, last syl gets extra hold time (30% of span)
-      // For single-letter words: just one group, fires immediately
-      const sylStarts = [];
-      if (nGroups === 1) {
-        sylStarts.push(wStart);
-      } else {
-        // First 70% of word window = where all syllables start
-        // Last 30% = hold time for final syllable
-        const activeWindow = wSpan * 0.72;
-        const step = activeWindow / (nGroups - 1);
-        for (let gi = 0; gi < nGroups; gi++) {
-          sylStarts.push(wStart + gi * step);
-        }
-      }
-
-      // Tick each syllable group
-      for (let gi = 0; gi < nGroups; gi++) {
-        const fired = t >= sylStarts[gi];
-        const isCurrentSyl = fired && (gi === nGroups - 1 || t < sylStarts[gi + 1]);
-        const state = !fired ? 'upcoming' : (isCurrentSyl ? 'on' : 'done');
-        groups[gi].chars.forEach(ci =>
-          _setLchState(`lch${lineIdx}_${wi}_${ci}`, state, isSlow));
-      }
+      const ts = _letterTimestamps(w.word, wStart, wEnd, msPerSyl);
+      chars.forEach((_, ci) => {
+        _setLchUp(`lch${lineIdx}_${wi}_${ci}`, t >= ts[ci] ? upState : 'down');
+      });
     }
   }
 }
@@ -2647,8 +2699,7 @@ function _snapDone(lineIdx) {
   words.forEach((w, wi) => {
     if (w._isPause) return;
     _setLwState('lw'+lineIdx+'_'+wi, 'done');
-    [...w.word].forEach((_, ci) =>
-      _setLchState(`lch${lineIdx}_${wi}_${ci}`, 'done', false));
+    [...w.word].forEach((_, ci) => _setLchUp(`lch${lineIdx}_${wi}_${ci}`, 'up'));
   });
 }
 
@@ -2656,14 +2707,10 @@ function _resetUpcoming(lineIdx) {
   const words = ST.lrc[lineIdx]?.words || [];
   words.forEach((w, wi) => {
     if (w._isPause) return;
-    const id = 'lw'+lineIdx+'_'+wi;
-    delete _lwState[id];
-    _setLwState(id, 'upcoming');
-    [...w.word].forEach((_, ci) => {
-      const lid = `lch${lineIdx}_${wi}_${ci}`;
-      delete _lchState[lid];
-      _setLchState(lid, 'upcoming', false);
-    });
+    const lwId = 'lw'+lineIdx+'_'+wi;
+    delete _lwState[lwId];
+    _setLwState(lwId, 'upcoming');
+    [...w.word].forEach((_, ci) => _lchSnapDown(`lch${lineIdx}_${wi}_${ci}`));
   });
 }
 
@@ -2673,17 +2720,14 @@ function _resetUpcomingSelective(lineIdx, t) {
   words.forEach((w, wi) => {
     if (w._isPause) return;
     if (w.ms > t) {
-      const id = 'lw'+lineIdx+'_'+wi;
-      delete _lwState[id];
-      _setLwState(id, 'upcoming');
-      [...w.word].forEach((_, ci) => {
-        const lid = `lch${lineIdx}_${wi}_${ci}`;
-        delete _lchState[lid];
-        _setLchState(lid, 'upcoming', false);
-      });
+      const lwId = 'lw'+lineIdx+'_'+wi;
+      delete _lwState[lwId];
+      _setLwState(lwId, 'upcoming');
+      [...w.word].forEach((_, ci) => _lchSnapDown(`lch${lineIdx}_${wi}_${ci}`));
     }
   });
 }
+
 
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
