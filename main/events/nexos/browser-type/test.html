@@ -3248,6 +3248,142 @@ body.reduce-motion *::after {
   display:block;
   background:#e5e7eb;
 }
+    /* Shield / Redirect Blocker */
+    .shield-btn {
+        position: absolute;
+        right: 34px;
+        width: 24px;
+        height: 24px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: #5f6368;
+        border-radius: 50%;
+        z-index: 2;
+        transition: background 0.15s ease, color 0.15s ease;
+    }
+    .shield-btn.visible {
+        display: flex;
+    }
+    .shield-btn:hover {
+        background: rgba(0,0,0,0.08);
+        color: #202124;
+    }
+    .shield-btn.blocking svg {
+        color: #e34040;
+    }
+    .shield-btn.allowing svg {
+        color: #10b981;
+    }
+
+    .shield-popup {
+        position: absolute;
+        top: 100%;
+        right: 30px;
+        width: 320px;
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 14px;
+        box-shadow: 0 8px 28px rgba(0,0,0,0.15);
+        z-index: 10000;
+        display: none;
+        margin-top: 6px;
+        overflow: hidden;
+        font-family: 'google sans', sans-serif;
+    }
+    .shield-popup.visible {
+        display: block;
+    }
+    .shield-popup-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px 10px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .shield-popup-favicon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        object-fit: cover;
+        background: #f0f0f0;
+    }
+    .shield-popup-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .shield-popup-title {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1a1a1a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .shield-popup-url {
+        font-size: 11px;
+        color: #888;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .shield-popup-body {
+        padding: 12px 16px 14px;
+    }
+    .shield-popup-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 0;
+    }
+    .shield-popup-row-label {
+        font-size: 13px;
+        color: #1d1d1f;
+    }
+    .shield-popup-row-desc {
+        font-size: 11px;
+        color: #888;
+        margin-top: 2px;
+    }
+    .shield-toggle {
+        width: 40px;
+        height: 22px;
+        border-radius: 12px;
+        background: #ccc;
+        position: relative;
+        transition: background 0.2s;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .shield-toggle.on {
+        background: #10b981;
+    }
+    .shield-toggle .shield-toggle-knob {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #fff;
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        transition: left 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .shield-toggle.on .shield-toggle-knob {
+        left: 20px;
+    }
+    .shield-popup-stats {
+        font-size: 11px;
+        color: #aaa;
+        padding: 6px 0 0;
+        border-top: 1px solid #f0f0f0;
+        margin-top: 6px;
+    }
+
     .tab-audio-icon {
         display: none;
         align-items: center;
@@ -3484,312 +3620,6 @@ body.reduce-motion *::after {
             bottom: 52px;
         }
     }
-    /* Userscript Button */
-    .userscript-btn {
-        width: 32px;
-        height: 32px;
-        border: none;
-        background: transparent;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        padding: 0;
-        transition: background .2s ease, transform .15s ease;
-        flex-shrink: 0;
-        color: #5f6368;
-    }
-    .userscript-btn:hover { background: rgba(0,0,0,0.06); color: #202124; }
-    .userscript-btn:active { transform: scale(0.96); }
-    .userscript-btn.has-active { color: #1a73e8; }
-
-    /* === DevTools Console Panel === */
-    .devtools-panel {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 280px;
-        background: #1e1e1e;
-        border-top: 2px solid #007acc;
-        z-index: 600;
-        display: none;
-        flex-direction: column;
-        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-        font-size: 12px;
-        color: #d4d4d4;
-        overflow: hidden;
-    }
-    .devtools-panel.open { display: flex; }
-    .devtools-resize-handle {
-        height: 4px;
-        background: transparent;
-        cursor: ns-resize;
-        flex-shrink: 0;
-    }
-    .devtools-resize-handle:hover { background: #007acc; }
-    .devtools-panel-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: #252526;
-        border-bottom: 1px solid #3c3c3c;
-        height: 30px;
-        flex-shrink: 0;
-        user-select: none;
-    }
-    .devtools-tabs {
-        display: flex;
-        align-items: stretch;
-        height: 100%;
-    }
-    .devtools-tab {
-        padding: 0 14px;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        font-size: 11px;
-        color: #969696;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        border-bottom: 2px solid transparent;
-        transition: color .12s;
-    }
-    .devtools-tab:hover { color: #d4d4d4; }
-    .devtools-tab.active { color: #fff; border-bottom-color: #007acc; background: #1e1e1e; }
-    .devtools-header-actions {
-        display: flex;
-        align-items: center;
-        gap: 2px;
-        padding-right: 6px;
-    }
-    .devtools-header-btn {
-        width: 24px;
-        height: 24px;
-        border: none;
-        background: transparent;
-        border-radius: 3px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #969696;
-        transition: background .12s, color .12s;
-    }
-    .devtools-header-btn:hover { background: #3c3c3c; color: #fff; }
-
-    /* Console tab */
-    .devtools-console-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-    .devtools-console-view.hidden { display: none; }
-    .devtools-console-output {
-        flex: 1;
-        overflow-y: auto;
-        padding: 4px 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-    }
-    .devtools-console-output::-webkit-scrollbar { width: 8px; }
-    .devtools-console-output::-webkit-scrollbar-track { background: transparent; }
-    .devtools-console-output::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 4px; }
-    .devtools-log-line {
-        padding: 2px 0;
-        border-bottom: 1px solid #2a2a2a;
-        display: flex;
-        align-items: flex-start;
-        gap: 8px;
-        line-height: 1.5;
-        word-break: break-all;
-    }
-    .devtools-log-line.log-info { color: #d4d4d4; }
-    .devtools-log-line.log-warn { color: #cca700; background: rgba(204,167,0,0.08); }
-    .devtools-log-line.log-error { color: #f44747; background: rgba(244,71,71,0.08); }
-    .devtools-log-line.log-result { color: #4fc1ff; }
-    .devtools-log-line.log-input { color: #9cdcfe; }
-    .devtools-log-line .log-prefix { color: #569cd6; flex-shrink: 0; user-select: none; }
-    .devtools-log-line.log-input .log-prefix { color: #dcdcaa; }
-    .devtools-log-line.log-result .log-prefix { color: #4ec9b0; }
-    .devtools-console-input-row {
-        display: flex;
-        align-items: center;
-        background: #1e1e1e;
-        border-top: 1px solid #3c3c3c;
-        padding: 0 12px;
-        height: 28px;
-        flex-shrink: 0;
-        gap: 6px;
-    }
-    .devtools-console-input-row .prompt-arrow { color: #569cd6; font-weight: bold; flex-shrink: 0; }
-    .devtools-console-input {
-        flex: 1;
-        background: transparent;
-        border: none;
-        outline: none;
-        color: #d4d4d4;
-        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-        font-size: 12px;
-        caret-color: #fff;
-    }
-    .devtools-console-input::placeholder { color: #555; }
-
-    /* Scripts tab */
-    .devtools-scripts-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-    .devtools-scripts-view.hidden { display: none; }
-    .devtools-scripts-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 12px;
-        border-bottom: 1px solid #3c3c3c;
-        background: #252526;
-        flex-shrink: 0;
-    }
-    .devtools-scripts-toolbar span { font-size: 11px; color: #888; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
-    .devtools-add-script-btn {
-        height: 22px;
-        padding: 0 10px;
-        border: 1px solid #007acc;
-        border-radius: 3px;
-        background: transparent;
-        color: #007acc;
-        font-size: 11px;
-        cursor: pointer;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        transition: background .12s;
-    }
-    .devtools-add-script-btn:hover { background: rgba(0,122,204,0.15); }
-    .devtools-scripts-list { flex: 1; overflow-y: auto; padding: 2px 0; }
-    .devtools-scripts-list::-webkit-scrollbar { width: 8px; }
-    .devtools-scripts-list::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 4px; }
-    .devtools-script-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 5px 12px;
-        transition: background .1s;
-    }
-    .devtools-script-row:hover { background: #2a2a2a; }
-    .devtools-script-toggle {
-        position: relative;
-        width: 30px;
-        height: 16px;
-        border-radius: 8px;
-        background: #555;
-        border: none;
-        cursor: pointer;
-        transition: background .2s;
-        flex-shrink: 0;
-        padding: 0;
-    }
-    .devtools-script-toggle.on { background: #007acc; }
-    .devtools-script-toggle::after {
-        content: '';
-        position: absolute;
-        top: 2px; left: 2px;
-        width: 12px; height: 12px;
-        border-radius: 50%;
-        background: #fff;
-        transition: transform .2s;
-    }
-    .devtools-script-toggle.on::after { transform: translateX(14px); }
-    .devtools-script-info { flex: 1; min-width: 0; }
-    .devtools-script-name {
-        font-size: 12px;
-        color: #d4d4d4;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .devtools-script-match { font-size: 10px; color: #666; }
-    .devtools-script-actions { display: flex; gap: 2px; flex-shrink: 0; }
-    .devtools-script-actions button {
-        width: 22px; height: 22px;
-        border: none; background: transparent; border-radius: 3px;
-        cursor: pointer; display: flex; align-items: center; justify-content: center;
-        color: #888; transition: background .12s, color .12s;
-    }
-    .devtools-script-actions button:hover { background: #3c3c3c; color: #fff; }
-    .devtools-empty-msg {
-        text-align: center; padding: 20px;
-        color: #666; font-size: 12px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-
-    /* Script editor modal (dark) */
-    .devtools-editor-overlay {
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.55);
-        z-index: 10003;
-        display: none;
-        align-items: center;
-        justify-content: center;
-    }
-    .devtools-editor-overlay.show { display: flex; }
-    .devtools-editor-modal {
-        width: 520px;
-        max-width: 92vw;
-        background: #1e1e1e;
-        border: 1px solid #3c3c3c;
-        border-radius: 8px;
-        box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-        overflow: hidden;
-    }
-    .devtools-editor-modal-header {
-        padding: 14px 18px;
-        border-bottom: 1px solid #3c3c3c;
-        font-size: 14px;
-        font-weight: 500;
-        color: #d4d4d4;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    .devtools-editor-modal-body {
-        padding: 14px 18px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    .devtools-editor-modal-body label {
-        font-size: 10px; font-weight: 600; color: #888;
-        text-transform: uppercase; letter-spacing: 0.5px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    .devtools-editor-modal-body input,
-    .devtools-editor-modal-body textarea {
-        width: 100%; padding: 7px 10px;
-        border: 1px solid #3c3c3c; border-radius: 4px;
-        background: #2d2d2d; font-size: 13px; color: #d4d4d4;
-        outline: none; box-sizing: border-box; transition: border-color .15s;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    .devtools-editor-modal-body input:focus,
-    .devtools-editor-modal-body textarea:focus { border-color: #007acc; }
-    .devtools-editor-modal-body textarea {
-        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-        font-size: 12px; min-height: 170px; resize: vertical; line-height: 1.6;
-    }
-    .devtools-editor-modal-body .match-hint { font-size: 10px; color: #555; margin-top: -8px; }
-    .devtools-editor-modal-footer {
-        display: flex; justify-content: flex-end; gap: 8px;
-        padding: 10px 18px; border-top: 1px solid #3c3c3c;
-    }
-    .devtools-editor-modal-footer button {
-        height: 28px; padding: 0 14px; border: none; border-radius: 4px;
-        font-size: 12px; font-weight: 500; cursor: pointer;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        transition: background .12s;
-    }
-    .devtools-editor-modal-footer .dt-cancel { background: #3c3c3c; color: #ccc; }
-    .devtools-editor-modal-footer .dt-cancel:hover { background: #4a4a4a; }
-    .devtools-editor-modal-footer .dt-save { background: #007acc; color: #fff; }
-    .devtools-editor-modal-footer .dt-save:hover { background: #006bb3; }
     </style>
 </head>
 <body>
@@ -3830,6 +3660,30 @@ body.reduce-motion *::after {
             
             <div class="address-bar-wrapper" style="position:relative;">
                 <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off" spellcheck="false">
+                <button class="shield-btn" id="shieldBtn" title="Redirect & Ad Blocker">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </button>
+                <div class="shield-popup" id="shieldPopup">
+                    <div class="shield-popup-header">
+                        <img class="shield-popup-favicon" id="shieldFavicon" src="/ghost.svg" alt="">
+                        <div class="shield-popup-info">
+                            <div class="shield-popup-title" id="shieldTitle">Page Title</div>
+                            <div class="shield-popup-url" id="shieldUrl">https://example.com</div>
+                        </div>
+                    </div>
+                    <div class="shield-popup-body">
+                        <div class="shield-popup-row">
+                            <div>
+                                <div class="shield-popup-row-label">Allow new tab redirects</div>
+                                <div class="shield-popup-row-desc">Let this page open links in new tabs</div>
+                            </div>
+                            <div class="shield-toggle" id="shieldRedirectToggle">
+                                <div class="shield-toggle-knob"></div>
+                            </div>
+                        </div>
+                        <div class="shield-popup-stats" id="shieldStats">0 redirects blocked on this page</div>
+                    </div>
+                </div>
                 <button class="bookmark-star" id="bookmarkStarBtn" title="Bookmark this page">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 </button>
@@ -3843,9 +3697,6 @@ body.reduce-motion *::after {
             <div class="toolbar-icons">  
                 <button class="profile-pill-btn" id="profilePfpBtn" title="Open dashboard">
                     <img id="profilePfpImg" src="/ghost.svg" alt="Profile">
-                </button>
-                <button class="userscript-btn" id="userscriptBtn" title="Userscripts">
-                    <i data-lucide="code" width="16" height="16"></i>
                 </button>
               <button class="toolbar-btn cloak-btn" id="tcb" title="Tab Cloak">
   <i data-lucide="shield" width="16" height="16"></i>
@@ -8449,6 +8300,7 @@ menu.addEventListener('mouseleave', hideMenu);
             '<svg class="s-check" viewBox="0 0 14 14" fill="none" width="14" height="14" style="opacity:0;transition:opacity 0.15s;"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
             '</button>' +
             '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
+
             '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Clock</div>' +
             '<button class="cc-settings-option" id="ccClock12" data-clock="12" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
             '<span>12-hour</span>' +
@@ -8464,6 +8316,9 @@ menu.addEventListener('mouseleave', hideMenu);
             '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
             '</div>' +
             '</button>' +
+            '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
+
+            '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Browser</div>' +
             '<button class="cc-settings-option" id="ccShowBookmarks" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
             '<span>Show Bookmarks</span>' +
             '<div class="cc-toggle" id="ccShowBookmarksToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
@@ -8471,6 +8326,22 @@ menu.addEventListener('mouseleave', hideMenu);
             '</div>' +
             '</button>' +
             '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
+
+            '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Protection</div>' +
+            '<button class="cc-settings-option" id="ccAdBlockToggle" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Ad Blocker</span>' +
+            '<div class="cc-toggle" id="ccAdBlockToggleSwitch" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
+            '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
+            '</div>' +
+            '</button>' +
+            '<button class="cc-settings-option" id="ccRedirectWarningsToggle" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
+            '<span>Redirect Warnings</span>' +
+            '<div class="cc-toggle" id="ccRedirectWarningsToggleSwitch" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
+            '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
+            '</div>' +
+            '</button>' +
+            '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
+
             '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Data</div>' +
             '<button class="cc-settings-option" id="ccClearHistory" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
             '<span>Clear Browsing History</span>' +
@@ -8482,7 +8353,7 @@ menu.addEventListener('mouseleave', hideMenu);
 
         function openSettingsPanel(e) {
             e.stopPropagation();
-            openSubPanel(settingsContent, 380, initAllSettings);
+            openSubPanel(settingsContent, 460, initAllSettings);
         }
 
         if (settingsBtn2) settingsBtn2.addEventListener('click', openSettingsPanel);
@@ -11075,398 +10946,369 @@ setInterval(async () => {
     setInterval(pollSpaUrls, SPA_POLL_MS);
 })();
 </script>
-<!-- DevTools Console Panel (inside content-area would be ideal but placing here for z-index) -->
-<div class="devtools-panel" id="devtoolsPanel">
-    <div class="devtools-resize-handle" id="devtoolsResizeHandle"></div>
-    <div class="devtools-panel-header">
-        <div class="devtools-tabs">
-            <button class="devtools-tab active" data-dt-tab="console">Console</button>
-            <button class="devtools-tab" data-dt-tab="scripts">Scripts</button>
-        </div>
-        <div class="devtools-header-actions">
-            <button class="devtools-header-btn" id="dtClearBtn" title="Clear console"><i data-lucide="ban" width="14" height="14"></i></button>
-            <button class="devtools-header-btn" id="dtCloseBtn" title="Close"><i data-lucide="x" width="14" height="14"></i></button>
-        </div>
-    </div>
-    <!-- Console View -->
-    <div class="devtools-console-view" id="dtConsoleView">
-        <div class="devtools-console-output" id="dtConsoleOutput">
-            <div class="devtools-log-line log-info"><span class="log-prefix">ℹ</span> Nexos DevTools — execute JS in the active tab</div>
-        </div>
-        <div class="devtools-console-input-row">
-            <span class="prompt-arrow">❯</span>
-            <input type="text" class="devtools-console-input" id="dtConsoleInput" placeholder="Type JavaScript and press Enter..." autocomplete="off" spellcheck="false">
-        </div>
-    </div>
-    <!-- Scripts View -->
-    <div class="devtools-scripts-view hidden" id="dtScriptsView">
-        <div class="devtools-scripts-toolbar">
-            <span>Persistent scripts — auto-injected on matching pages</span>
-            <button class="devtools-add-script-btn" id="dtAddScriptBtn">+ New Script</button>
-        </div>
-        <div class="devtools-scripts-list" id="dtScriptsList"></div>
-    </div>
-</div>
-
-<!-- Script Editor Overlay -->
-<div class="devtools-editor-overlay" id="dtEditorOverlay">
-    <div class="devtools-editor-modal">
-        <div class="devtools-editor-modal-header" id="dtEditorTitle">New Script</div>
-        <div class="devtools-editor-modal-body">
-            <div>
-                <label>Name</label>
-                <input type="text" id="dtEditorName" placeholder="My Script">
-            </div>
-            <div>
-                <label>URL Match</label>
-                <input type="text" id="dtEditorMatch" placeholder="*://example.com/*">
-                <div class="match-hint">Use * as wildcard. * = all sites. *://youtube.com/* = only YouTube</div>
-            </div>
-            <div>
-                <label>JavaScript</label>
-                <textarea id="dtEditorCode" placeholder="// Your code runs inside the page&#10;document.title = 'hacked lol';"></textarea>
-            </div>
-        </div>
-        <div class="devtools-editor-modal-footer">
-            <button class="dt-cancel" id="dtEditorCancel">Cancel</button>
-            <button class="dt-save" id="dtEditorSave">Save</button>
-        </div>
-    </div>
-</div>
 
 <script>
+/* ============================================
+   Shield: Redirect Blocker + Ad Blocker
+   ============================================ */
 (function() {
-    var STORAGE_KEY = 'nexos_userscripts';
-    var scripts = [];
-    var editingIndex = -1;
-    var cmdHistory = [];
-    var cmdHistoryIdx = -1;
+    var REDIRECT_PREFS_KEY = 'nexos_redirect_prefs';
+    var AD_BLOCK_KEY = 'nexos_adblock_enabled';
+    var REDIRECT_WARNINGS_KEY = 'nexos_redirect_warnings';
 
-    function loadScripts() {
-        try { var s = localStorage.getItem(STORAGE_KEY); if (s) scripts = JSON.parse(s); } catch(e) { scripts = []; }
-    }
-    function saveScripts() {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(scripts)); } catch(e) {}
+    // Per-domain redirect preferences: { "domain.com": { allowed: true/false, shownOnce: true } }
+    var redirectPrefs = {};
+    try { redirectPrefs = JSON.parse(localStorage.getItem(REDIRECT_PREFS_KEY)) || {}; } catch(e) {}
+
+    function saveRedirectPrefs() {
+        try { localStorage.setItem(REDIRECT_PREFS_KEY, JSON.stringify(redirectPrefs)); } catch(e) {}
     }
 
-    function matchUrl(pattern, url) {
-        if (!pattern || pattern === '*') return true;
+    function isAdBlockEnabled() {
+        try { var v = localStorage.getItem(AD_BLOCK_KEY); return v === null ? true : v === 'true'; } catch(e) { return true; }
+    }
+
+    function isRedirectWarningsEnabled() {
+        try { var v = localStorage.getItem(REDIRECT_WARNINGS_KEY); return v === null ? true : v === 'true'; } catch(e) { return true; }
+    }
+
+    // Ad blocking patterns
+    var adPatterns = [
+        /doubleclick\.net/i, /googlesyndication\.com/i, /googleadservices\.com/i,
+        /google-analytics\.com\/analytics/i, /adservice\.google/i,
+        /facebook\.com\/tr/i, /connect\.facebook\.net.*fbevents/i,
+        /ads\.yahoo\.com/i, /adnxs\.com/i, /adsrvr\.org/i,
+        /outbrain\.com/i, /taboola\.com/i, /revcontent\.com/i,
+        /popads\.net/i, /popcash\.net/i, /propellerads\.com/i,
+        /adsterra\.com/i, /exoclick\.com/i, /trafficjunky\.com/i,
+        /amazon-adsystem\.com/i, /media\.net\/dmedianet/i,
+        /pagead2\.googlesyndication/i, /tpc\.googlesyndication/i,
+        /moatads\.com/i, /serving-sys\.com/i, /smartadserver\.com/i,
+        /pubmatic\.com/i, /rubiconproject\.com/i, /openx\.net/i,
+        /criteo\.com/i, /casalemedia\.com/i, /indexww\.com/i,
+        /advertising\.com/i, /adform\.net/i, /bidswitch\.net/i
+    ];
+
+    var adElementSelectors = [
+        'ins.adsbygoogle', 'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]',
+        'div[id*="google_ads"]', 'div[class*="ad-container"]', 'div[class*="ad-wrapper"]',
+        'div[id*="ad-slot"]', 'div[data-ad]', '.advertisement', '.ad-banner',
+        'iframe[src*="ads"]', 'div[aria-label="advertisement"]'
+    ];
+
+    // Blocked redirect counter per domain
+    var blockedCounts = {};
+
+    function getDomainFromUrl(url) {
         try {
-            var regex = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '.*');
-            return new RegExp('^' + regex + '$', 'i').test(url);
-        } catch(e) { return false; }
+            var u = new URL(url.startsWith('http') ? url : 'https://' + url);
+            return u.hostname.replace(/^www\./, '');
+        } catch(e) { return null; }
     }
 
-    function escHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-    // Position panel inside content area
-    function positionPanel() {
-        var panel = document.getElementById('devtoolsPanel');
-        var contentArea = document.getElementById('contentArea');
-        if (!panel || !contentArea) return;
-        var rect = contentArea.getBoundingClientRect();
-        panel.style.position = 'fixed';
-        panel.style.left = rect.left + 'px';
-        panel.style.right = (window.innerWidth - rect.right) + 'px';
-        panel.style.bottom = (window.innerHeight - rect.bottom) + 'px';
+    function waitForBrowser(cb) {
+        if (window.browser) return cb(window.browser);
+        setTimeout(function() { waitForBrowser(cb); }, 300);
     }
 
-    // Console logging
-    function logToConsole(text, type) {
-        var output = document.getElementById('dtConsoleOutput');
-        if (!output) return;
-        var line = document.createElement('div');
-        line.className = 'devtools-log-line ' + (type || 'log-info');
-        var prefix = '›';
-        if (type === 'log-input') prefix = '❯';
-        else if (type === 'log-result') prefix = '←';
-        else if (type === 'log-error') prefix = '✕';
-        else if (type === 'log-warn') prefix = '⚠';
-        line.innerHTML = '<span class="log-prefix">' + prefix + '</span> ' + escHtml(String(text));
-        output.appendChild(line);
-        output.scrollTop = output.scrollHeight;
-    }
+    waitForBrowser(function(b) {
+        var shieldBtn = document.getElementById('shieldBtn');
+        var shieldPopup = document.getElementById('shieldPopup');
+        var shieldFavicon = document.getElementById('shieldFavicon');
+        var shieldTitle = document.getElementById('shieldTitle');
+        var shieldUrl = document.getElementById('shieldUrl');
+        var shieldRedirectToggle = document.getElementById('shieldRedirectToggle');
+        var shieldStats = document.getElementById('shieldStats');
 
-    function executeInActiveTab(code) {
-        var b = window.browser;
-        if (!b || !b.activeTabId) {
-            logToConsole('No active tab', 'log-error');
-            return;
+        function getCurrentDomain() {
+            var tab = b.tabs.get(b.activeTabId);
+            if (!tab) return null;
+            var url = tab.currentUrl || b.extractOriginalUrl(tab.url);
+            return getDomainFromUrl(url);
         }
-        var tab = b.tabs.get(b.activeTabId);
-        if (!tab || !tab.iframe) {
-            logToConsole('No iframe for active tab', 'log-error');
-            return;
+
+        function isRedirectAllowed(domain) {
+            if (!domain) return true;
+            if (!isRedirectWarningsEnabled()) return true;
+            var pref = redirectPrefs[domain];
+            if (!pref) return true; // default allow until shown
+            return pref.allowed !== false;
         }
-        logToConsole(code, 'log-input');
-        try {
-            var win = tab.iframe.contentWindow;
-            var result = win.eval(code);
-            if (result !== undefined) {
-                var display;
-                try { display = JSON.stringify(result, null, 2); } catch(e) { display = String(result); }
-                logToConsole(display, 'log-result');
+
+        function updateShieldIcon() {
+            var domain = getCurrentDomain();
+            var tab = b.tabs.get(b.activeTabId);
+            if (!tab || !domain || !tab.currentUrl || tab.currentUrl === 'about:blank' ||
+                tab.currentUrl.includes('/new-tab/') || tab.currentUrl.includes('welcomer')) {
+                shieldBtn.classList.remove('visible');
+                return;
+            }
+            shieldBtn.classList.add('visible');
+
+            if (isRedirectAllowed(domain)) {
+                shieldBtn.classList.remove('blocking');
+                shieldBtn.classList.add('allowing');
             } else {
-                logToConsole('undefined', 'log-result');
+                shieldBtn.classList.add('blocking');
+                shieldBtn.classList.remove('allowing');
             }
-        } catch(e) {
-            logToConsole(e.toString(), 'log-error');
         }
-    }
 
-    // Scripts list
-    function renderScriptsList() {
-        var list = document.getElementById('dtScriptsList');
-        if (!list) return;
-        if (scripts.length === 0) {
-            list.innerHTML = '<div class="devtools-empty-msg">No scripts yet. Add one to auto-inject JS on matching pages.</div>';
-            return;
+        function updateShieldPopup() {
+            var tab = b.tabs.get(b.activeTabId);
+            var domain = getCurrentDomain();
+            if (!tab || !domain) return;
+
+            var faviconImg = tab.element.querySelector('.tab-favicon img');
+            shieldFavicon.src = (faviconImg && faviconImg.src) ? faviconImg.src : '/ghost.svg';
+            shieldTitle.textContent = tab.title || domain;
+            shieldUrl.textContent = tab.currentUrl || '';
+
+            var allowed = isRedirectAllowed(domain);
+            if (allowed) {
+                shieldRedirectToggle.classList.add('on');
+            } else {
+                shieldRedirectToggle.classList.remove('on');
+            }
+
+            var count = blockedCounts[domain] || 0;
+            shieldStats.textContent = count + ' redirect' + (count !== 1 ? 's' : '') + ' blocked on this page';
         }
-        list.innerHTML = '';
-        scripts.forEach(function(s, i) {
-            var row = document.createElement('div');
-            row.className = 'devtools-script-row';
-            row.innerHTML =
-                '<button class="devtools-script-toggle ' + (s.enabled ? 'on' : '') + '" data-idx="' + i + '"></button>' +
-                '<div class="devtools-script-info">' +
-                    '<div class="devtools-script-name">' + escHtml(s.name || 'Untitled') + '</div>' +
-                    '<div class="devtools-script-match">' + escHtml(s.match || '*') + '</div>' +
-                '</div>' +
-                '<div class="devtools-script-actions">' +
-                    '<button data-edit="' + i + '" title="Edit"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>' +
-                    '<button data-del="' + i + '" title="Delete"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></button>' +
-                '</div>';
-            list.appendChild(row);
-        });
-        updateBtnIndicator();
-        bindScriptListEvents(list);
-    }
 
-    function bindScriptListEvents(list) {
-        list.querySelectorAll('.devtools-script-toggle').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                var idx = parseInt(this.getAttribute('data-idx'));
-                scripts[idx].enabled = !scripts[idx].enabled;
-                saveScripts(); renderScriptsList();
-            });
-        });
-        list.querySelectorAll('[data-edit]').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                openEditor(parseInt(this.getAttribute('data-edit')));
-            });
-        });
-        list.querySelectorAll('[data-del]').forEach(function(btn) {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                scripts.splice(parseInt(this.getAttribute('data-del')), 1);
-                saveScripts(); renderScriptsList();
-            });
-        });
-    }
+        // Shield button click
+        shieldBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var domain = getCurrentDomain();
+            if (!domain) return;
 
-    function updateBtnIndicator() {
-        var btn = document.getElementById('userscriptBtn');
-        if (!btn) return;
-        var hasActive = scripts.some(function(s) { return s.enabled; });
-        if (hasActive) btn.classList.add('has-active'); else btn.classList.remove('has-active');
-    }
+            // Auto-create pref if first time
+            if (!redirectPrefs[domain]) {
+                redirectPrefs[domain] = { allowed: true, shownOnce: true };
+                saveRedirectPrefs();
+            }
 
-    // Editor
-    function openEditor(idx) {
-        editingIndex = idx;
-        var n = document.getElementById('dtEditorName');
-        var m = document.getElementById('dtEditorMatch');
-        var c = document.getElementById('dtEditorCode');
-        var t = document.getElementById('dtEditorTitle');
-        if (idx >= 0 && idx < scripts.length) {
-            t.textContent = 'Edit Script';
-            n.value = scripts[idx].name || '';
-            m.value = scripts[idx].match || '';
-            c.value = scripts[idx].code || '';
-        } else {
-            t.textContent = 'New Script';
-            n.value = ''; m.value = ''; c.value = '';
-        }
-        document.getElementById('dtEditorOverlay').classList.add('show');
-    }
-    function closeEditor() {
-        document.getElementById('dtEditorOverlay').classList.remove('show');
-        editingIndex = -1;
-    }
-    function saveEditor() {
-        var name = document.getElementById('dtEditorName').value.trim() || 'Untitled';
-        var match = document.getElementById('dtEditorMatch').value.trim() || '*';
-        var code = document.getElementById('dtEditorCode').value;
-        if (editingIndex >= 0 && editingIndex < scripts.length) {
-            scripts[editingIndex].name = name;
-            scripts[editingIndex].match = match;
-            scripts[editingIndex].code = code;
-        } else {
-            scripts.push({ name: name, match: match, code: code, enabled: true });
-        }
-        saveScripts(); renderScriptsList(); closeEditor();
-    }
-
-    // Inject scripts into iframe
-    function injectUserscripts(iframe, url) {
-        if (!url || url === 'about:blank') return;
-        scripts.forEach(function(s) {
-            if (!s.enabled || !matchUrl(s.match, url)) return;
-            try {
-                var doc = iframe.contentDocument || iframe.contentWindow.document;
-                var el = doc.createElement('script');
-                el.textContent = s.code;
-                (doc.head || doc.documentElement).appendChild(el);
-            } catch(e) { console.warn('[Userscripts] inject fail', url, e); }
+            updateShieldPopup();
+            shieldPopup.classList.toggle('visible');
         });
-    }
 
-    // Hook browser load handler
-    function hookBrowser() {
-        var b = window.browser;
-        if (!b) return;
-        var origSetup = b.setupIframeLoadHandling.bind(b);
-        b.setupIframeLoadHandling = function(tabId) {
-            origSetup(tabId);
-            var tab = b.tabs.get(tabId);
-            if (!tab || !tab.iframe) return;
-            var iframe = tab.iframe;
-            var origHandler = tab.loadHandler;
-            tab.loadHandler = function() {
-                if (origHandler) origHandler();
-                var realUrl = b.getIframeCurrentUrl ? b.getIframeCurrentUrl(tab) : null;
-                var originalUrl = realUrl || (b.extractOriginalUrl ? b.extractOriginalUrl(tab.url) : tab.url);
-                setTimeout(function() { injectUserscripts(iframe, originalUrl); }, 80);
-            };
-            iframe.removeEventListener('load', origHandler);
-            iframe.addEventListener('load', tab.loadHandler);
+        // Toggle redirect allow
+        shieldRedirectToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var domain = getCurrentDomain();
+            if (!domain) return;
+            if (!redirectPrefs[domain]) {
+                redirectPrefs[domain] = { allowed: true, shownOnce: true };
+            }
+            redirectPrefs[domain].allowed = !redirectPrefs[domain].allowed;
+            saveRedirectPrefs();
+            updateShieldPopup();
+            updateShieldIcon();
+        });
+
+        // Close popup on outside click
+        document.addEventListener('click', function(e) {
+            if (!shieldPopup.contains(e.target) && e.target !== shieldBtn && !shieldBtn.contains(e.target)) {
+                shieldPopup.classList.remove('visible');
+            }
+        });
+
+        // Intercept new tab creation - check if redirect is allowed
+        var origCreateNewTabWithUrl = b.createNewTabWithUrl.bind(b);
+        b.createNewTabWithUrl = function(url) {
+            var domain = getCurrentDomain();
+            if (!domain || !isRedirectWarningsEnabled()) return origCreateNewTabWithUrl(url);
+
+            // First time seeing this domain try to open a new tab?
+            if (!redirectPrefs[domain]) {
+                // Show the shield popup automatically
+                redirectPrefs[domain] = { allowed: true, shownOnce: true };
+                saveRedirectPrefs();
+                updateShieldIcon();
+
+                // Auto-open shield popup
+                setTimeout(function() {
+                    updateShieldPopup();
+                    shieldPopup.classList.add('visible');
+                }, 200);
+
+                return origCreateNewTabWithUrl(url);
+            }
+
+            // If blocked
+            if (!redirectPrefs[domain].allowed) {
+                blockedCounts[domain] = (blockedCounts[domain] || 0) + 1;
+                updateShieldIcon();
+                if (shieldPopup.classList.contains('visible')) updateShieldPopup();
+                console.log('[Shield] Blocked redirect from ' + domain + ' to ' + url);
+                return null;
+            }
+
+            return origCreateNewTabWithUrl(url);
         };
-        b.tabs.forEach(function(tab, tabId) { b.setupIframeLoadHandling(tabId); });
-    }
 
-    // Resize handle
-    function initResize() {
-        var handle = document.getElementById('devtoolsResizeHandle');
-        var panel = document.getElementById('devtoolsPanel');
-        if (!handle || !panel) return;
-        var startY, startH;
-        handle.addEventListener('mousedown', function(e) {
-            e.preventDefault();
-            startY = e.clientY;
-            startH = panel.offsetHeight;
-            function onMove(e2) {
-                var newH = startH + (startY - e2.clientY);
-                if (newH < 120) newH = 120;
-                if (newH > window.innerHeight - 100) newH = window.innerHeight - 100;
-                panel.style.height = newH + 'px';
-            }
-            function onUp() {
-                document.removeEventListener('mousemove', onMove);
-                document.removeEventListener('mouseup', onUp);
-            }
-            document.addEventListener('mousemove', onMove);
-            document.addEventListener('mouseup', onUp);
-        });
-    }
+        // Also intercept the message-based new tab open
+        var origSetupNewTabInterception = b.setupNewTabInterception;
+        // We already intercepted createNewTabWithUrl which is called by the message handler
 
-    // Init
-    loadScripts();
+        // Update shield on tab switch
+        var origSwitchToTab = b.switchToTab.bind(b);
+        b.switchToTab = function(tabId) {
+            origSwitchToTab(tabId);
+            setTimeout(updateShieldIcon, 100);
+            shieldPopup.classList.remove('visible');
+        };
 
-    function init() {
-        var panel = document.getElementById('devtoolsPanel');
-        var btn = document.getElementById('userscriptBtn');
+        // Update shield periodically
+        setInterval(updateShieldIcon, 1500);
 
-        // Toggle panel
-        if (btn) {
-            btn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                panel.classList.toggle('open');
-                if (panel.classList.contains('open')) {
-                    positionPanel();
-                    renderScriptsList();
-                    document.getElementById('dtConsoleInput').focus();
+        // ==================
+        // Ad Blocker
+        // ==================
+        function injectAdBlocker(iframe) {
+            if (!isAdBlockEnabled()) return;
+            try {
+                var iframeWin = iframe.contentWindow;
+                var iframeDoc = iframeWin.document;
+                if (!iframeDoc) return;
+                if (iframeWin._nexosAdBlockInjected) return;
+                iframeWin._nexosAdBlockInjected = true;
+
+                // Remove ad elements
+                function removeAds() {
+                    adElementSelectors.forEach(function(sel) {
+                        try {
+                            var els = iframeDoc.querySelectorAll(sel);
+                            els.forEach(function(el) {
+                                el.style.display = 'none';
+                                el.remove();
+                            });
+                        } catch(e) {}
+                    });
                 }
-            });
+
+                removeAds();
+                setTimeout(removeAds, 1000);
+                setTimeout(removeAds, 3000);
+                setTimeout(removeAds, 6000);
+
+                // Observe for dynamically added ads
+                try {
+                    var adObserver = new iframeWin.MutationObserver(function() {
+                        removeAds();
+                    });
+                    adObserver.observe(iframeDoc.body || iframeDoc.documentElement, {
+                        childList: true, subtree: true
+                    });
+                } catch(e) {}
+
+                // Block ad network requests via XHR/Fetch override
+                try {
+                    var origFetch = iframeWin.fetch;
+                    iframeWin.fetch = function(url) {
+                        var urlStr = typeof url === 'string' ? url : (url && url.url ? url.url : '');
+                        for (var i = 0; i < adPatterns.length; i++) {
+                            if (adPatterns[i].test(urlStr)) {
+                                return Promise.resolve(new Response('', { status: 200 }));
+                            }
+                        }
+                        return origFetch.apply(this, arguments);
+                    };
+                } catch(e) {}
+
+                try {
+                    var OrigXHR = iframeWin.XMLHttpRequest;
+                    var origOpen = OrigXHR.prototype.open;
+                    OrigXHR.prototype.open = function(method, url) {
+                        this._nexosUrl = url;
+                        return origOpen.apply(this, arguments);
+                    };
+                    var origSend = OrigXHR.prototype.send;
+                    OrigXHR.prototype.send = function() {
+                        if (this._nexosUrl) {
+                            for (var i = 0; i < adPatterns.length; i++) {
+                                if (adPatterns[i].test(this._nexosUrl)) {
+                                    return;
+                                }
+                            }
+                        }
+                        return origSend.apply(this, arguments);
+                    };
+                } catch(e) {}
+
+                // Block ad iframes from loading nested
+                try {
+                    var nestedIframes = iframeDoc.querySelectorAll('iframe');
+                    nestedIframes.forEach(function(nf) {
+                        try { injectAdBlocker(nf); } catch(e) {}
+                    });
+                } catch(e) {}
+
+            } catch(e) {}
         }
 
-        // Close
-        document.getElementById('dtCloseBtn').addEventListener('click', function() { panel.classList.remove('open'); });
+        // Patch iframe load to inject ad blocker
+        var origInjectNewTabInterceptor = b.injectNewTabInterceptor.bind(b);
+        b.injectNewTabInterceptor = function(iframe) {
+            origInjectNewTabInterceptor(iframe);
+            if (isAdBlockEnabled()) {
+                try { injectAdBlocker(iframe); } catch(e) {}
+            }
+        };
 
-        // Clear console
-        document.getElementById('dtClearBtn').addEventListener('click', function() {
-            document.getElementById('dtConsoleOutput').innerHTML = '';
-        });
+        // ==================
+        // Settings integration for ad blocker & redirect warnings
+        // ==================
+        var origInitToggleSettings = null;
 
-        // Tabs
-        document.querySelectorAll('.devtools-tab').forEach(function(tab) {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.devtools-tab').forEach(function(t) { t.classList.remove('active'); });
-                this.classList.add('active');
-                var which = this.getAttribute('data-dt-tab');
-                document.getElementById('dtConsoleView').classList.toggle('hidden', which !== 'console');
-                document.getElementById('dtScriptsView').classList.toggle('hidden', which !== 'scripts');
-                if (which === 'scripts') renderScriptsList();
-            });
-        });
+        // Patch initToggleSettings to add our new toggles
+        var checkInterval = setInterval(function() {
+            var adBlockBtn = document.getElementById('ccAdBlockToggle');
+            var redirectWarningsBtn = document.getElementById('ccRedirectWarningsToggle');
+            if (!adBlockBtn && !redirectWarningsBtn) return;
+            clearInterval(checkInterval);
 
-        // Console input
-        var input = document.getElementById('dtConsoleInput');
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && this.value.trim()) {
-                cmdHistory.unshift(this.value);
-                cmdHistoryIdx = -1;
-                executeInActiveTab(this.value);
-                this.value = '';
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                if (cmdHistoryIdx < cmdHistory.length - 1) {
-                    cmdHistoryIdx++;
-                    this.value = cmdHistory[cmdHistoryIdx];
-                }
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                if (cmdHistoryIdx > 0) {
-                    cmdHistoryIdx--;
-                    this.value = cmdHistory[cmdHistoryIdx];
+            function setToggleState(toggleEl, on) {
+                if (!toggleEl) return;
+                var knob = toggleEl.querySelector('.cc-toggle-knob');
+                if (on) {
+                    toggleEl.style.background = '#007aff';
+                    if (knob) knob.style.left = '16px';
                 } else {
-                    cmdHistoryIdx = -1;
-                    this.value = '';
+                    toggleEl.style.background = '#ccc';
+                    if (knob) knob.style.left = '2px';
                 }
             }
-        });
 
-        // Add script
-        document.getElementById('dtAddScriptBtn').addEventListener('click', function() { openEditor(-1); });
+            if (adBlockBtn) {
+                var adBlockSwitch = document.getElementById('ccAdBlockToggleSwitch');
+                setToggleState(adBlockSwitch, isAdBlockEnabled());
+                adBlockBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var current = isAdBlockEnabled();
+                    var next = !current;
+                    try { localStorage.setItem(AD_BLOCK_KEY, String(next)); } catch(e) {}
+                    setToggleState(adBlockSwitch, next);
+                });
+            }
 
-        // Editor
-        document.getElementById('dtEditorCancel').addEventListener('click', closeEditor);
-        document.getElementById('dtEditorSave').addEventListener('click', saveEditor);
-        document.getElementById('dtEditorOverlay').addEventListener('click', function(e) { if (e.target === this) closeEditor(); });
+            if (redirectWarningsBtn) {
+                var redirectSwitch = document.getElementById('ccRedirectWarningsToggleSwitch');
+                setToggleState(redirectSwitch, isRedirectWarningsEnabled());
+                redirectWarningsBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var current = isRedirectWarningsEnabled();
+                    var next = !current;
+                    try { localStorage.setItem(REDIRECT_WARNINGS_KEY, String(next)); } catch(e) {}
+                    setToggleState(redirectSwitch, next);
+                    updateShieldIcon();
+                });
+            }
+        }, 500);
 
-        initResize();
-        updateBtnIndicator();
-
-        // Reposition on window resize
-        window.addEventListener('resize', function() { if (panel.classList.contains('open')) positionPanel(); });
-
-        // Hook browser
-        if (window.browser) hookBrowser();
-        else {
-            var iv = setInterval(function() {
-                if (window.browser) { clearInterval(iv); hookBrowser(); }
-            }, 200);
-        }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+        // Run initial update
+        setTimeout(updateShieldIcon, 1000);
+    });
 })();
 </script>
-
 </body>
 </html>
