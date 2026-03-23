@@ -173,9 +173,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
 .lyrics-panel.active{opacity:1;pointer-events:auto}
 .lrc-scroll-outer{
   position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
-  padding:56px 36px 200px;
+  padding:60px 80px 220px 52px;
   z-index:1;
-  text-align:center;
+  text-align:left;
 }
 .lrc-bg{
   position:absolute;inset:0;
@@ -241,16 +241,19 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
 
 /* ── Lyric line (Apple Music style) ── */
 .ll{
-  font-size:26px;line-height:1.55;font-weight:800;
-  padding:6px 0 6px 0;
-  margin-bottom:2px;
+  font-size:26px;line-height:1.6;font-weight:800;
+  padding:5px 0;
+  margin-bottom:4px;
   border-radius:14px;cursor:pointer;
   color:rgba(255,255,255,0.13);
   filter:blur(0px);
   opacity:.30;
-  transform-origin:center center;
+  transform-origin:left center;
   letter-spacing:-0.018em;
-  text-align:center;
+  text-align:left;
+  word-break:keep-all;
+  overflow-wrap:normal;
+  hyphens:none;
   transition:
     color .45s cubic-bezier(.4,0,.2,1),
     opacity .45s cubic-bezier(.4,0,.2,1),
@@ -309,7 +312,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
   padding-left:0;
   margin-top:-2px;
   opacity:.50;
-  text-align:center;
+  text-align:left;
 }
 .ll.ll-sub.now{
   font-size:19px;
@@ -324,7 +327,7 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
 .lw-inline-paren{
   display:inline-flex;
   flex-direction:column;
-  align-items:center;
+  align-items:flex-start;
   vertical-align:baseline;
   line-height:1;
   gap:0;
@@ -352,15 +355,22 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
 }
 
 /* ── Syllable spans (letter-level sync) ── */
-.lsyl {
+
+/* Each word's syllables wrapped — NEVER break across lines */
+.lword {
   display:inline-block;
-  position:relative;
-  transform:translateY(0px);
-  transition:transform 0.30s cubic-bezier(.34,1.56,.64,1);
-  will-change:transform;
-  /* default color inherited from .ll */
+  white-space:nowrap;
+  word-break:keep-all;
 }
-/* Non-active lines: no float, no gradient */
+
+.lsyl {
+  display:inline;
+  position:relative;
+  transition:transform 0.26s cubic-bezier(.34,1.56,.64,1),
+             -webkit-text-fill-color 0.12s ease;
+  will-change:transform;
+}
+/* Non-active lines: no float */
 .ll:not(.now) .lsyl {
   transform:translateY(0px) !important;
   transition:none !important;
@@ -372,33 +382,30 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
   -webkit-text-fill-color:rgba(255,255,255,0.22);
 }
 
-/* ── Currently being sung ── */
+/* ── Currently being sung — gradient sweep + lift ── */
 .ll.now .lsyl.syl-now {
   background:linear-gradient(to right,
     #ffffff        calc(var(--pct,0%) - 8%),
-    #f0f0ff        calc(var(--pct,0%) + 0%),
-    rgba(255,255,255,0.45) calc(var(--pct,0%) + 14%),
-    rgba(255,255,255,0.14) calc(var(--pct,0%) + 26%)
+    #f4f4ff        calc(var(--pct,0%) + 0%),
+    rgba(255,255,255,0.45) calc(var(--pct,0%) + 16%),
+    rgba(255,255,255,0.12) calc(var(--pct,0%) + 28%)
   );
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
-  transform:translateY(-5px);
+  display:inline-block;
+  transform:translateY(-4px);
 }
 
-/* Slow syllable: soft glow while singing */
-.ll.now .lsyl.syl-now.syl-slow {
-  filter:drop-shadow(0 0 7px rgba(255,255,255,0.35));
-}
-
-/* ── Sung (past within active line) — stays floated ── */
+/* ── Sung — stays lifted ── */
 .ll.now .lsyl.syl-done {
   -webkit-text-fill-color:rgba(255,255,255,0.90);
   color:rgba(255,255,255,0.90);
-  transform:translateY(-5px);
+  display:inline-block;
+  transform:translateY(-4px);
 }
 
-/* Word space preserving */
+/* Word space between lword blocks */
 .lspc { display:inline; user-select:none; }
 
 /* Legacy .lw kept for inline-paren edge cases */
@@ -1702,62 +1709,153 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
   if (!realLines.length) return null;
 
   function buildPayload(batch) {
-    return batch.map((line, li) => {
-      const globalLi = realLines.indexOf(line);
+    return batch.map((line) => {
+      const globalLi  = realLines.indexOf(line);
       const nextReal  = realLines[globalLi + 1];
       const rw        = line.words.filter(w => !w._isPause && !w._isInlineParen && w.word?.trim());
-      const lineEnd   = nextReal?.ms ?? (line.ms + 5000);
+      const lineEnd   = nextReal?.ms ?? (line.ms + 6000);
       const singMs    = lineEnd - line.ms;
       const syls      = rw.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
-      const prevReal  = realLines[globalLi - 1];
-      const prevSyls  = prevReal
-        ? prevReal.words.filter(w=>!w._isPause&&!w._isInlineParen&&w.word?.trim()).reduce((a,w)=>a+syllableCount(w.word),0)||1
-        : null;
-      const prevMsps  = prevReal ? Math.round((line.ms - prevReal.ms) / prevSyls) : null;
+      const mspsy     = Math.round(singMs / syls);
+
+      // ── tempo trend: look back 3 lines ──
+      const prev1 = realLines[globalLi - 1];
+      const prev2 = realLines[globalLi - 2];
+      const prev3 = realLines[globalLi - 3];
+      const _lineMsps = (l, lNext) => {
+        if (!l || !lNext) return null;
+        const s = l.words.filter(w=>!w._isPause&&!w._isInlineParen&&w.word?.trim()).reduce((a,w)=>a+syllableCount(w.word),0)||1;
+        return Math.round((lNext.ms - l.ms) / s);
+      };
+      const prevMsps  = _lineMsps(prev1, line);
+      const prevMsps2 = _lineMsps(prev2, prev1);
+      const prevMsps3 = _lineMsps(prev3, prev2);
+
+      // ── gap after this line ──
+      const gapAfter = nextReal ? nextReal.ms - lineEnd : 3000;
+
+      // ── lookahead: next 4 lines ──
+      const next1 = realLines[globalLi + 1];
+      const next2 = realLines[globalLi + 2];
+      const next3 = realLines[globalLi + 3];
+      const next4 = realLines[globalLi + 4];
+
+      // ── section detection ──
+      const totalLines = realLines.length;
+      const progress   = totalLines > 0 ? (globalLi / totalLines) : 0;
+      const section    = progress < 0.10 ? 'intro'
+                       : progress < 0.42 ? 'verse'
+                       : progress < 0.62 ? 'chorus'
+                       : progress < 0.82 ? 'bridge'
+                       : 'outro';
+
+      // ── melisma flag: few words but long line window ──
+      const melisma = rw.length <= 2 && mspsy > 480;
+
+      // ── word-level syllable counts for AI reference ──
+      const wordSyls = rw.map(w => syllableCount(w.word));
+
       return {
-        i:       lrcLines.indexOf(line),
-        ms:      line.ms,
-        end:     lineEnd,
+        i:        lrcLines.indexOf(line),
+        ms:       line.ms,
+        end:      lineEnd,
         singMs,
-        mspsy:   Math.round(singMs / syls),
+        mspsy,
         prevMsps,
-        words:   rw.map(w => w.word),
+        tempoTrend: [prevMsps3, prevMsps2, prevMsps].filter(Boolean),
+        gapAfter,
+        section,
+        melisma,
+        words:    rw.map(w => w.word),
+        wordSyls,
+        ctx: [
+          prev2 ? { ms: prev2.ms, t: prev2.text?.slice(0,35), role:'prev2' } : null,
+          prev1 ? { ms: prev1.ms, t: prev1.text?.slice(0,35), role:'prev1' } : null,
+          next1 ? { ms: next1.ms, t: next1.text?.slice(0,35), role:'next1' } : null,
+          next2 ? { ms: next2.ms, t: next2.text?.slice(0,35), role:'next2' } : null,
+          next3 ? { ms: next3.ms, t: next3.text?.slice(0,35), role:'next3' } : null,
+          next4 ? { ms: next4.ms, t: next4.text?.slice(0,35), role:'next4' } : null,
+        ].filter(Boolean),
       };
     });
   }
 
   async function callAI(payload) {
-    const prompt = `Lyrics sync engine for "${title}" by ${artist}.
+    const prompt = `You are an elite vocal timing engine trained on thousands of songs. Your job: place EXACT word start timestamps so lyric highlighting feels telepathic — matching what the listener hears with < 50ms error.
 
-You receive LRC lines. Each has exact timestamps from the LRC file.
-Your job: distribute word start times within each line's window, AND decide when the singing ends.
+Song: "${title}" by ${artist}
 
-Fields:
-- ms: line start
-- end: next line start (NO word may reach or exceed this)
-- singMs: end - ms (total window in ms)
-- mspsy: ms-per-syllable tempo reference
-- prevMsps: previous line's tempo
-- words: the words to time
+━━ INPUT ━━
+Each item: {i, ms, end, singMs, mspsy, prevMsps, section, words, ctx}
+• ms      = LRC line start (where singer begins, from the LRC file — trust it)
+• end     = next line start (hard ceiling — no word ≥ end)
+• mspsy   = ms per syllable (tempo fingerprint for THIS line)
+• prevMsps= previous line's mspsy
+• section = intro/verse/chorus/bridge/outro
+• words   = array of words to timestamp
+• ctx     = [{ms, t}] nearby line snippets for musical phrasing context
 
-TIMING RULES:
-1. First word starts at ms (or up to 80ms after for breath)
-2. Connector words (a, the, and, to, of, in, I, my, you, it, was, is, be, do): duration = 0.4 × mspsy
-3. Content words: duration = 0.9 × mspsy × syllables
-4. Emotionally stressed words (death, love, hate, never, always, etc): 1.2 × mspsy × syllables
-5. Last word gets a natural hold — singer holds the note
-6. Punctuation pause: comma=+0.25×mspsy, period/!/?=+0.5×mspsy — shift NEXT word later
-7. If mspsy < prevMsps: speeding up — shrink connectors to 0.3×
-8. If mspsy > prevMsps: slowing down — stretch last word hold more
-9. All word times strictly increasing
-10. All word times within [ms, end-60]
+━━ MUSIC THEORY & TEMPO ━━
+SPEED CATEGORIES (use mspsy):
+• Ultra-fast / rap (< 100ms/syl): words fire like bullets. Connectors 25–35ms, content ~60–80ms × syls. No pauses.
+• Fast / uptempo (100–160ms): connectors ~50ms, content ~100ms × syls, minimal gaps.
+• Mid-tempo (160–260ms): standard pop. Connectors ~90ms, content ~170ms × syls.
+• Slow / ballad (260–420ms): connectors ~160ms, content ~260ms × syls. Big holds on emotional words.
+• Very slow / torch (> 420ms): near-spoken. Each syllable fully voiced. Connectors ~200ms, holds huge.
 
-SING_END: After placing all words, output singEnd = the ms when the LAST word finishes being sung (last word start + its natural hold duration). The line will sit highlighted at 100% from singEnd until end. singEnd must be <= end - 50.
+PICKUP NOTES (anacrusis): Many lines start with an unstressed syllable BEFORE the beat. If first word is [a, the, and, but, oh, I, you, it, so, in, of] AND mspsy < 200, it may fire 0–30ms after ms and take only 35–50% of mspsy.
 
-Return ONLY: [{"w":[ms,ms,...],"se":singEndMs},...]
-"w" array length MUST equal words array length.
-"se" = singEnd ms (when last word finishes, line sits done until "end")
-Raw JSON only. No markdown.
+DOWNBEAT EMPHASIS: The 2nd or 3rd word of a line is often ON the downbeat. After a fast pickup, leave a micro-gap (30–60ms) before the downbeat word.
+
+━━ WORD CATEGORIES (critical — get these right) ━━
+CONNECTORS (shrink these): a, an, the, and, or, but, in, on, at, to, for, of, by, up, so, my, me, we, he, she, it, I, is, as, be, do, go, no, if, oh, ah, its, I'm, I've, I'll, I'd, our, are, was, were, had, has, that, this, with, from, not, can, will, just, your, her, his, their, they, who, what, when, then, than, there, here, were, been, into
+
+FILLER / VOCAL WARMERS (stretch these — they're held notes): oh, ooh, ah, ahh, yeah, yea, hey, mm, mmm, hmm, na, la, da, woah, whoa, oo, woo, no (when sung), baby (when sung), come, go (when emphasized)
+
+SLANG & CONTRACTIONS (use spoken syllable count):
+• gonna (2), wanna (2), gotta (2), tryna (2), kinda (2), outta (2), lotta (2), sorta (2)
+• 'cause / cuz (1), 'bout (1), 'em (1), y'all (1), ain't (1), don't (1), can't (1), won't (1)
+• ima / i'ma (2), lemme (2), gimme (2), betcha (2), getcha (2), whatcha (2), atcha (2)
+• babe (1), 'til (1), till (1), 'fore (1), over (2), under (2), into (2), even (2)
+• These are CONTENT words — give them their full syllable timing, not connector timing
+
+EMOTIONALLY STRESSED WORDS (extra hold — 1.2–1.5× normal content duration):
+love, hate, heart, soul, pain, tears, hurt, break, lost, gone, free, real, truth, lie, stay, leave, hold, fall, rise, feel, need, want, dream, hope, fear, cry, die, live, fight, right, wrong, mine, yours, home, alone, forever, never, always, again, tonight, away, together, apart, beautiful, remember, forget, everything, nothing
+
+MELISMA / RUNS (single word held across many beats): If a word has very few syllables but a BIG mspsy (> 500ms), the singer is probably doing a run or hold on one vowel. Give it the full window; don't rush past it.
+
+━━ MUSICAL PHRASING RULES ━━
+1. FIRST WORD: starts at ms + 0–60ms (breath/pickup). NEVER before ms.
+2. LAST WORD: always stretched — holdMul = 1.4–2.5× depending on pace and emotion. Last word of a section (chorus, verse end) gets maximum hold.
+3. PUNCTUATION DELAYS (shift NEXT word later):
+   • comma (,): +0.20 × mspsy
+   • semicolon (;) or colon (:): +0.28 × mspsy
+   • period (.) exclamation (!) question (?): +0.38 × mspsy
+   • em-dash (—) ellipsis (…): +0.55 × mspsy
+4. SPEED CHANGES:
+   • mspsy < prevMsps × 0.80 → accelerating: crush connectors to 30%, content 70%
+   • mspsy > prevMsps × 1.25 → decelerating: spread content words, triple last word hold
+5. SECTION BEHAVIOR:
+   • intro: often speech-like or rubato — spread words naturally
+   • verse: conversational pacing, moderate holds at line ends
+   • chorus: punchy, on-the-beat, consistent spacing, strong downbeats
+   • bridge: wide holds, very emotional, space each word deliberately
+   • outro: relaxed, fading, loose timing
+6. CONTEXT LOOKAHEAD: Use ctx (nearby lines) to understand phrasing. If the next line starts immediately (< 800ms gap), the current line's last word should NOT hold too long. If there's a gap (> 1200ms), let the last word trail.
+7. ALL TIMES: strictly increasing. All in range [ms, end−60]. NO time may equal or exceed end.
+8. singEnd (se): the ms the LAST word FINISHES being sung (= last word start + its natural hold duration), clamped to end − 50. This controls when the line "settles" to fully-lit. Set it accurately — too early = flash at 100% too soon; too late = line seems unfinished.
+
+━━ VALIDATION ━━
+Before outputting, mentally verify for each line:
+• words[0].ms ≥ ms (first word not before line start)
+• words is strictly increasing
+• words[last] < end − 60
+• se ≤ end − 50
+• word count matches input
+
+Return ONLY a JSON array, same order as input:
+[{"w":[ms,ms,...],"se":singEndMs},...]
+"w" length MUST equal words length exactly. Raw JSON only — no markdown, no commentary.
 
 ${JSON.stringify(payload)}`;
 
@@ -1771,11 +1869,11 @@ ${JSON.stringify(payload)}`;
       },
       body: JSON.stringify({
         model: AI_MODEL,
-        max_tokens: 3000,
-        temperature: 0.05,
+        max_tokens: 6000,
+        temperature: 0.03,
         messages: [{ role: 'user', content: prompt }]
       }),
-      signal: AbortSignal.timeout(20000)
+      signal: AbortSignal.timeout(28000)
     });
     if (!res.ok) return null;
     const data = await res.json();
@@ -1787,10 +1885,19 @@ ${JSON.stringify(payload)}`;
     return parsed;
   }
 
-  const BATCH = 30;
+  // First batch: tiny (10 lines) for immediate result.
+  // Second batch: next 20 lines (comes in fast while song plays).
+  // Rest: parallel 20-line chunks covering the full song.
+  const FIRST_BATCH  = 10;
+  const SECOND_BATCH = 20;
+  const REST_BATCH   = 20;
   const batches = [];
-  for (let i = 0; i < Math.min(realLines.length, 90); i += BATCH) {
-    batches.push(realLines.slice(i, i + BATCH));
+  const firstSlice = realLines.slice(0, Math.min(realLines.length, FIRST_BATCH));
+  if (firstSlice.length) batches.push(firstSlice);
+  const secondSlice = realLines.slice(FIRST_BATCH, Math.min(realLines.length, FIRST_BATCH + SECOND_BATCH));
+  if (secondSlice.length) batches.push(secondSlice);
+  for (let i = FIRST_BATCH + SECOND_BATCH; i < Math.min(realLines.length, 160); i += REST_BATCH) {
+    batches.push(realLines.slice(i, i + REST_BATCH));
   }
 
   const refined = new Map();
@@ -1807,34 +1914,49 @@ ${JSON.stringify(payload)}`;
     });
   }
 
+  // Helper: push refined results and re-render if track is still playing
+  function pushRefined(ck) {
+    const track = ST.queue[ST.idx];
+    if (!track) return;
+    const curCk = (track.title + '||' + track.artist).toLowerCase();
+    if (curCk !== ck) return;
+    applyAIRefinements(ST.lrc, track.title, track.artist, refined).then(reRefined => {
+      if (reRefined !== ST.lrc) {
+        ST.lrc = reRefined;
+        ST.lrcActive = -1;
+        ST._parenActive = -1;
+        Object.keys(_sylState).forEach(k => delete _sylState[k]);
+        renderSynced();
+      }
+    });
+  }
+
   try {
+    // Batch 0: first 10 lines — applied immediately for fast start
     const p1 = buildPayload(batches[0]);
     const r1 = await callAI(p1);
     if (r1) applyBatch(p1, r1);
-
     _aiTimingCache[ck] = refined;
 
-    const remaining = batches.slice(1).map(batch => {
+    // Batch 1: next 20 lines — fire right away, re-render when done
+    if (batches[1]) {
+      const p2 = buildPayload(batches[1]);
+      callAI(p2).then(r => {
+        if (r) { applyBatch(p2, r); pushRefined(ck); }
+      });
+    }
+
+    // Remaining batches: all in parallel, each triggers its own re-render
+    const remaining = batches.slice(2).map(batch => {
       const p = buildPayload(batch);
-      return callAI(p).then(r => { if (r) applyBatch(p, r); });
+      return callAI(p).then(r => {
+        if (r) { applyBatch(p, r); pushRefined(ck); }
+      });
     });
 
+    // Final sweep after everything settles
     if (remaining.length > 0) {
-      Promise.all(remaining).then(() => {
-        const track = ST.queue[ST.idx];
-        if (!track) return;
-        const curCk = (track.title + '||' + track.artist).toLowerCase();
-        if (curCk !== ck) return;
-        applyAIRefinements(ST.lrc, track.title, track.artist, refined).then(reRefined => {
-          if (reRefined !== ST.lrc) {
-            ST.lrc = reRefined;
-            ST.lrcActive = -1;
-            ST._parenActive = -1;
-            Object.keys(_sylState).forEach(k => delete _sylState[k]);
-            renderSynced();
-          }
-        });
-      });
+      Promise.all(remaining).then(() => pushRefined(ck));
     }
   } catch { return refined.size ? refined : null; }
 
@@ -2054,27 +2176,73 @@ function parseLRC(rawStr) {
   }).filter(Boolean);
 }
 
+// Slang/contraction syllable overrides — spoken syllable count in music
+const SYL_OVERRIDES = {
+  'gonna':2,'wanna':2,'gotta':2,'kinda':2,'sorta':2,'outta':2,'lotta':2,
+  'tryna':2,'finna':2,'ima':2,'imma':2,'lemme':2,'gimme':2,'getcha':2,
+  'gotcha':2,'watcha':2,'whatcha':2,'coulda':2,'woulda':2,'shoulda':2,
+  'mighta':2,'hafta':2,'oughta':2,'prolly':2,'kinda':2,'sorta':2,
+  'yeah':1,'yea':1,'yah':1,'nah':1,'mmm':1,'hmm':1,'uhh':1,'ohh':1,
+  'ain\'t':1,'y\'all':1,'dem':1,'da':1,"i'm":1,"i've":1,"i'll":1,"i'd":1,
+  "don't":1,"won't":1,"can't":1,"isn't":1,"aren't":1,"let's":1,
+  "you're":1,"we're":1,"they're":1,"that's":1,"it's":1,"there's":1,
+  'beautiful':4,'everything':4,'everybody':4,'everyone':4,
+  'something':2,'nothing':2,'anything':2,'everything':3,
+  'together':3,'forever':3,'whatever':3,'whenever':3,'wherever':3,
+  'remember':3,'another':3,'between':2,'because':2,'before':2,
+  'tonight':2,'inside':2,'outside':2,'without':2,'throughout':2,
+  'okay':2,'ok':2,
+};
+
 function syllableCount(word) {
-  word = word.toLowerCase().replace(/[^a-z']/g,'').replace(/'/g,'');
-  if (!word) return 1;
-  word = word
+  const clean = word.toLowerCase().replace(/[^a-z']/g,'');
+  if (!clean) return 1;
+  if (SYL_OVERRIDES[clean]) return SYL_OVERRIDES[clean];
+
+  let w = clean.replace(/'/g,'');
+  if (!w) return 1;
+  w = w
     .replace(/tion$/,'shun').replace(/sion$/,'shun')
     .replace(/cious$/,'shus').replace(/tious$/,'shus')
     .replace(/eous$/,'us').replace(/geous$/,'jus').replace(/ious$/,'yus')
     .replace(/ued$/,'ude').replace(/ves$/,'ve');
-  if (word.length > 2 && word.endsWith('e') && !/[aeiou]e$/.test(word)) word = word.slice(0,-1);
-  if (word.endsWith('ed') && !/[dt]ed$/.test(word)) word = word.slice(0,-1);
-  const vowels = word.match(/[aeiouy]+/g);
+  if (w.length > 2 && w.endsWith('e') && !/[aeiou]e$/.test(w)) w = w.slice(0,-1);
+  if (w.endsWith('ed') && !/[dt]ed$/.test(w)) w = w.slice(0,-1);
+  const vowels = w.match(/[aeiouy]+/g);
   let count = vowels ? vowels.length : 1;
-  if (word[0] === 'y') count = Math.max(1, count - 1);
+  if (w[0] === 'y') count = Math.max(1, count - 1);
   return Math.max(1, count);
 }
 
 const FAST_WORDS = new Set([
-  'a','an','the','and','or','but','in','on','at','to','for','of','by','up',
-  'so','my','me','we','he','she','it','i','is','as','be','do','go','no','if',
-  'oh','ah','mm','mmm','its','im','ive','ill','id','our','are','was','were',
-  'had','has','have','that','this','with','from','not','can','will','just','your',
+  // Articles / prepositions / conjunctions
+  'a','an','the','and','or','but','in','on','at','to','for','of','by','up','so',
+  'if','as','nor','yet','both','not','nor','via','vs',
+  // Pronouns
+  'i','me','my','we','us','our','you','your','he','she','it','they','them','their',
+  'his','her','its','this','that','these','those','who','whom','whose',
+  // Common verbs / aux
+  'is','are','was','were','be','been','being','am','have','has','had','do','does',
+  'did','will','would','could','should','may','might','must','shall','go','got',
+  'get','got','let','set','put','say','said','make','made',
+  // Contractions (spoken as fast connector)
+  "i'm","i've","i'll","i'd","you're","you've","you'll","you'd",
+  "he's","she's","it's","we're","we've","we'll","we'd",
+  "they're","they've","they'll","they'd","that's","there's","here's",
+  "don't","doesn't","didn't","won't","wouldn't","can't","couldn't",
+  "shouldn't","isn't","aren't","wasn't","weren't","what's","who's",
+  "let's","he'd","she'd","we'd","they'd","how's","when's","where's",
+  "ain't","y'all",
+  // Slang / contractions that sound fast in music
+  "gonna","wanna","gotta","kinda","sorta","outta","lotta","tryna","finna",
+  "ima","imma","lemme","gimme","getcha","gotcha","watcha","whatcha",
+  "coulda","woulda","shoulda","mighta","hafta","oughta",
+  "em","'em","dem","da","de","d'","ta","na","nah","ya","yah","yer",
+  "til","till","bout","outta","lotsa","kinda","sorta","prolly","prob",
+  "cmon","c'mon","bout","just","like","even","only","still",
+  // Musical filler / warmers (short)
+  'oh','ah','mm','mmm','hmm','hm','uh','um','er',
+  'hey','yo','no','yes','yep','nope','now','then',
 ]);
 
 const VOWELS = new Set(['a','e','i','o','u']);
@@ -2432,13 +2600,13 @@ function splitWordSyllables(word) {
 /* ── syllable state store ── */
 const _sylState = {};
 
-function _setSylState(id, state, pct, isSlow) {
+function _setSylState(id, state, pct, _isSlow) {
   const prev = _sylState[id];
-  if (prev && prev.state === state && prev.pct === pct && prev.slow === isSlow) return;
-  _sylState[id] = { state, pct, slow: isSlow };
+  if (prev && prev.state === state && prev.pct === pct) return;
+  _sylState[id] = { state, pct };
   const el = document.getElementById(id);
   if (!el) return;
-  el.className = 'lsyl ' + state + (isSlow && state === 'syl-now' ? ' syl-slow' : '');
+  el.className = 'lsyl ' + state;
   if (state === 'syl-now') el.style.setProperty('--pct', pct.toFixed(1) + '%');
   else el.style.removeProperty('--pct');
 }
@@ -2588,9 +2756,11 @@ function renderLineHTML(line, i) {
 
 function buildSylSpans(word, lineIdx, wi) {
   const syls = splitWordSyllables(word);
-  return syls.map((syl, si) =>
+  const inner = syls.map((syl, si) =>
     `<span class="lsyl syl-pre" id="lsyl${lineIdx}_${wi}_${si}">${x(syl)}</span>`
   ).join('');
+  // wrap in inline-block so syllables of the same word never break across lines
+  return `<span class="lword">${inner}</span>`;
 }
 
 function renderSynced() {
