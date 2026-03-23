@@ -3251,7 +3251,7 @@ body.reduce-motion *::after {
     /* Shield / Redirect Blocker */
     .shield-btn {
         position: absolute;
-        right: 34px;
+        right: 60px;
         width: 24px;
         height: 24px;
         border: none;
@@ -3660,6 +3660,9 @@ body.reduce-motion *::after {
             
             <div class="address-bar-wrapper" style="position:relative;">
                 <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off" spellcheck="false">
+                <button class="bookmark-star" id="bookmarkStarBtn" title="Bookmark this page">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                </button>
                 <button class="shield-btn" id="shieldBtn" title="Redirect & Ad Blocker">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 </button>
@@ -3684,9 +3687,6 @@ body.reduce-motion *::after {
                         <div class="shield-popup-stats" id="shieldStats">0 redirects blocked on this page</div>
                     </div>
                 </div>
-                <button class="bookmark-star" id="bookmarkStarBtn" title="Bookmark this page">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                </button>
                 <button class="open-external-btn" id="openExternalBtn" title="Open in new browser tab">
                     <i data-lucide="external-link" width="14" height="14"></i>
                 </button>
@@ -10972,28 +10972,100 @@ setInterval(async () => {
         try { var v = localStorage.getItem(REDIRECT_WARNINGS_KEY); return v === null ? true : v === 'true'; } catch(e) { return true; }
     }
 
-    // Ad blocking patterns
+    // Ad blocking patterns - comprehensive list
     var adPatterns = [
+        // Google
         /doubleclick\.net/i, /googlesyndication\.com/i, /googleadservices\.com/i,
-        /google-analytics\.com\/analytics/i, /adservice\.google/i,
+        /google-analytics\.com/i, /adservice\.google/i, /pagead2\.googlesyndication/i,
+        /tpc\.googlesyndication/i, /googletagmanager\.com/i, /googletagservices\.com/i,
+        /google\.com\/ads/i, /google\.com\/adsense/i, /googleads\.g\.doubleclick/i,
+        /fundingchoicesmessages\.google/i, /contributor\.google/i,
+        // Facebook/Meta
         /facebook\.com\/tr/i, /connect\.facebook\.net.*fbevents/i,
+        /facebook\.net\/signals/i, /facebook\.com\/audience_network/i,
+        // Major ad networks
         /ads\.yahoo\.com/i, /adnxs\.com/i, /adsrvr\.org/i,
         /outbrain\.com/i, /taboola\.com/i, /revcontent\.com/i,
         /popads\.net/i, /popcash\.net/i, /propellerads\.com/i,
         /adsterra\.com/i, /exoclick\.com/i, /trafficjunky\.com/i,
-        /amazon-adsystem\.com/i, /media\.net\/dmedianet/i,
-        /pagead2\.googlesyndication/i, /tpc\.googlesyndication/i,
+        /amazon-adsystem\.com/i, /media\.net/i,
         /moatads\.com/i, /serving-sys\.com/i, /smartadserver\.com/i,
         /pubmatic\.com/i, /rubiconproject\.com/i, /openx\.net/i,
         /criteo\.com/i, /casalemedia\.com/i, /indexww\.com/i,
-        /advertising\.com/i, /adform\.net/i, /bidswitch\.net/i
+        /advertising\.com/i, /adform\.net/i, /bidswitch\.net/i,
+        // Tracking & analytics
+        /scorecardresearch\.com/i, /quantserve\.com/i, /bluekai\.com/i,
+        /krxd\.net/i, /eyeota\.net/i, /agkn\.com/i,
+        /rlcdn\.com/i, /demdex\.net/i, /crwdcntrl\.net/i,
+        /segment\.io/i, /segment\.com\/analytics/i, /hotjar\.com/i,
+        /mouseflow\.com/i, /fullstory\.com/i, /clarity\.ms/i,
+        // More ad networks
+        /adcolony\.com/i, /unity3d\.com\/ads/i, /unityads\.unity3d/i,
+        /inmobi\.com/i, /vungle\.com/i, /chartboost\.com/i,
+        /applovin\.com/i, /mopub\.com/i, /fyber\.com/i,
+        /smaato\.com/i, /startapp\.com/i, /ironsrc\.com/i,
+        /admob\.com/i, /flurry\.com/i, /adjust\.com/i,
+        /appsflyer\.com/i, /branch\.io/i, /kochava\.com/i,
+        // Popup/redirect ad networks
+        /adf\.ly/i, /sh\.st/i, /linkbucks\.com/i,
+        /adcash\.com/i, /juicyads\.com/i, /clickadu\.com/i,
+        /hilltopads\.net/i, /richpush\.com/i, /pushground\.com/i,
+        /evadav\.com/i, /galaksion\.com/i, /mondiad\.com/i,
+        // Generic patterns
+        /\.ads\./i, /\/ads\//i, /\/adserv/i, /\/advert/i,
+        /\/ad_/i, /\/ad\?/i, /\/ad\.js/i, /\/ads\.js/i,
+        /banner.*\.js/i, /sponsor/i, /prebid/i,
+        /\/pagead\//i, /\/adview/i, /\/adclick/i,
+        /2mdn\.net/i, /admeld\.com/i, /adnxs\.net/i,
+        /adzerk\.net/i, /ad\.turn\.com/i, /ml314\.com/i,
+        /zedo\.com/i, /zemanta\.com/i, /sharethrough\.com/i,
+        /sovrn\.com/i, /lijit\.com/i, /districtm\.io/i,
+        /33across\.com/i, /spotxchange\.com/i, /springserve\.com/i,
+        /yieldmo\.com/i, /triplelift\.com/i, /teads\.tv/i,
+        /connatix\.com/i, /nativo\.com/i, /mgid\.com/i
     ];
 
     var adElementSelectors = [
+        // Google ads
         'ins.adsbygoogle', 'iframe[src*="doubleclick"]', 'iframe[src*="googlesyndication"]',
-        'div[id*="google_ads"]', 'div[class*="ad-container"]', 'div[class*="ad-wrapper"]',
-        'div[id*="ad-slot"]', 'div[data-ad]', '.advertisement', '.ad-banner',
-        'iframe[src*="ads"]', 'div[aria-label="advertisement"]'
+        'div[id*="google_ads"]', 'div[id*="div-gpt-ad"]', 'div[class*="google-ad"]',
+        // Generic ad containers
+        'div[class*="ad-container"]', 'div[class*="ad-wrapper"]', 'div[class*="ad-slot"]',
+        'div[class*="ad-unit"]', 'div[class*="ad-block"]', 'div[class*="ad-banner"]',
+        'div[class*="ad-holder"]', 'div[class*="ad-placement"]', 'div[class*="ad-zone"]',
+        'div[class*="ad-space"]', 'div[class*="adbox"]', 'div[class*="advert"]',
+        'div[id*="ad-slot"]', 'div[id*="ad-container"]', 'div[id*="ad-wrapper"]',
+        'div[id*="ad-banner"]', 'div[id*="advert"]',
+        'div[data-ad]', 'div[data-ad-slot]', 'div[data-ad-unit]',
+        'div[data-adunit]', 'div[data-google-query-id]',
+        '.advertisement', '.ad-banner', '.ad-leaderboard', '.ad-sidebar',
+        '.ad-footer', '.ad-top', '.ad-bottom', '.ad-header',
+        '.sponsored-content', '.sponsored', '.promoted-content',
+        // Iframe ads
+        'iframe[src*="ads"]', 'iframe[src*="ad."]', 'iframe[src*="adserv"]',
+        'iframe[src*="banner"]', 'iframe[src*="sponsor"]',
+        'iframe[id*="google_ads"]', 'iframe[id*="aswift"]',
+        'iframe[name*="google_ads"]',
+        // Aria-labeled ads
+        'div[aria-label="advertisement"]', 'div[aria-label="Advertisements"]',
+        'aside[aria-label="advertisement"]',
+        // Common ad classes/IDs
+        '#ad-wrapper', '#ad-container', '#sidebar-ad', '#banner-ad',
+        '#leaderboard-ad', '#footer-ad', '#ad-header',
+        '.adsbygoogle', '.dfp-ad', '.gpt-ad',
+        // Taboola/Outbrain
+        'div[id*="taboola"]', 'div[class*="taboola"]',
+        'div[id*="outbrain"]', 'div[class*="outbrain"]',
+        'div[data-widget-id*="taboola"]',
+        // MGID
+        'div[id*="mgid"]', 'div[class*="mgid"]',
+        // Popups and overlays
+        'div[class*="popup-ad"]', 'div[class*="interstitial"]',
+        'div[class*="overlay-ad"]', 'div[id*="popup-ad"]',
+        // Cookie consent / GDPR (optional aggressive)
+        // Video ads
+        'div[class*="video-ad"]', 'div[class*="preroll"]',
+        'div[class*="midroll"]', 'div[class*="postroll"]'
     ];
 
     // Blocked redirect counter per domain
@@ -11059,10 +11131,21 @@ setInterval(async () => {
             var domain = getCurrentDomain();
             if (!tab || !domain) return;
 
-            var faviconImg = tab.element.querySelector('.tab-favicon img');
-            shieldFavicon.src = (faviconImg && faviconImg.src) ? faviconImg.src : '/ghost.svg';
-            shieldTitle.textContent = tab.title || domain;
-            shieldUrl.textContent = tab.currentUrl || '';
+            // Get info from the active tab's IFRAME content, not the host page
+            var iframe = tab.iframe;
+            var pageTitle = tab.title || domain;
+            var pageUrl = tab.currentUrl || '';
+            var pageFavicon = '/ghost.svg';
+
+            // Try to get favicon from tab element
+            var faviconImg = tab.element ? tab.element.querySelector('.tab-favicon img') : null;
+            if (faviconImg && faviconImg.src) {
+                pageFavicon = faviconImg.src;
+            }
+
+            shieldFavicon.src = pageFavicon;
+            shieldTitle.textContent = pageTitle;
+            shieldUrl.textContent = pageUrl;
 
             var allowed = isRedirectAllowed(domain);
             if (allowed) {
@@ -11173,7 +11256,29 @@ setInterval(async () => {
                 if (iframeWin._nexosAdBlockInjected) return;
                 iframeWin._nexosAdBlockInjected = true;
 
-                // Remove ad elements
+                // Inject CSS-based ad hiding for instant effect
+                try {
+                    var adCss = document.createElement('style');
+                    adCss.id = 'nexos-adblock-css';
+                    adCss.textContent = adElementSelectors.map(function(sel) {
+                        return sel + ' { display: none !important; visibility: hidden !important; height: 0 !important; width: 0 !important; overflow: hidden !important; position: absolute !important; left: -9999px !important; }';
+                    }).join('\n') + '\n' +
+                    // Extra CSS rules for common ad patterns
+                    '[class*="ad-"] { display: none !important; }\n' +
+                    '[id*="ad-"] { display: none !important; }\n' +
+                    '[class*="Ad-"] { display: none !important; }\n' +
+                    '[class*="advert"] { display: none !important; }\n' +
+                    '[class*="sponsor"] { display: none !important; }\n' +
+                    'iframe[src*="ad"] { display: none !important; }\n' +
+                    'a[href*="doubleclick.net"] { display: none !important; }\n' +
+                    'a[href*="googleadservices"] { display: none !important; }\n' +
+                    'div[data-google-query-id] { display: none !important; }\n' +
+                    '.adsbygoogle { display: none !important; }\n' +
+                    '#google_ads_frame1, #google_ads_frame2, #google_ads_frame3, #google_ads_frame4 { display: none !important; }';
+                    (iframeDoc.head || iframeDoc.documentElement).appendChild(adCss);
+                } catch(e) {}
+
+                // Remove ad elements from DOM
                 function removeAds() {
                     adElementSelectors.forEach(function(sel) {
                         try {
@@ -11184,16 +11289,44 @@ setInterval(async () => {
                             });
                         } catch(e) {}
                     });
+                    // Also remove iframes that load ad domains
+                    try {
+                        var allIframes = iframeDoc.querySelectorAll('iframe');
+                        allIframes.forEach(function(f) {
+                            var src = f.src || '';
+                            for (var i = 0; i < adPatterns.length; i++) {
+                                if (adPatterns[i].test(src)) {
+                                    f.style.display = 'none';
+                                    f.remove();
+                                    break;
+                                }
+                            }
+                        });
+                    } catch(e) {}
+                    // Remove scripts loading from ad domains
+                    try {
+                        var allScripts = iframeDoc.querySelectorAll('script[src]');
+                        allScripts.forEach(function(s) {
+                            for (var i = 0; i < adPatterns.length; i++) {
+                                if (adPatterns[i].test(s.src)) {
+                                    s.remove();
+                                    break;
+                                }
+                            }
+                        });
+                    } catch(e) {}
                 }
 
                 removeAds();
-                setTimeout(removeAds, 1000);
+                setTimeout(removeAds, 500);
+                setTimeout(removeAds, 1500);
                 setTimeout(removeAds, 3000);
                 setTimeout(removeAds, 6000);
+                setTimeout(removeAds, 10000);
 
                 // Observe for dynamically added ads
                 try {
-                    var adObserver = new iframeWin.MutationObserver(function() {
+                    var adObserver = new iframeWin.MutationObserver(function(mutations) {
                         removeAds();
                     });
                     adObserver.observe(iframeDoc.body || iframeDoc.documentElement, {
@@ -11201,7 +11334,7 @@ setInterval(async () => {
                     });
                 } catch(e) {}
 
-                // Block ad network requests via XHR/Fetch override
+                // Block ad network requests via Fetch override
                 try {
                     var origFetch = iframeWin.fetch;
                     iframeWin.fetch = function(url) {
@@ -11215,6 +11348,7 @@ setInterval(async () => {
                     };
                 } catch(e) {}
 
+                // Block ad network requests via XHR override
                 try {
                     var OrigXHR = iframeWin.XMLHttpRequest;
                     var origOpen = OrigXHR.prototype.open;
@@ -11232,6 +11366,21 @@ setInterval(async () => {
                             }
                         }
                         return origSend.apply(this, arguments);
+                    };
+                } catch(e) {}
+
+                // Block window.open popups from ad scripts
+                try {
+                    var origWindowOpen = iframeWin.open;
+                    iframeWin.open = function(url) {
+                        if (url) {
+                            for (var i = 0; i < adPatterns.length; i++) {
+                                if (adPatterns[i].test(url)) {
+                                    return null;
+                                }
+                            }
+                        }
+                        return origWindowOpen.apply(this, arguments);
                     };
                 } catch(e) {}
 
