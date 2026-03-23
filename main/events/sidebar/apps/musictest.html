@@ -1752,8 +1752,11 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
       // ── melisma flag: few words but long line window ──
       const melisma = rw.length <= 2 && mspsy > 480;
 
-      // ── word-level syllable counts for AI reference ──
-      const wordSyls = rw.map(w => syllableCount(w.word));
+      // ── Per-word syllable breakdown — AI timestamps EACH syllable ──
+      const wordBreakdown = rw.map(w => ({
+        w: w.word,
+        s: splitWordSyllables(w.word),   // e.g. ["beau","ti","ful"]
+      }));
 
       return {
         i:        lrcLines.indexOf(line),
@@ -1761,13 +1764,11 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
         end:      lineEnd,
         singMs,
         mspsy,
-        prevMsps,
         tempoTrend: [prevMsps3, prevMsps2, prevMsps].filter(Boolean),
         gapAfter,
         section,
         melisma,
-        words:    rw.map(w => w.word),
-        wordSyls,
+        words:    wordBreakdown,   // [{w:"beautiful", s:["beau","ti","ful"]}, ...]
         ctx: [
           prev2 ? { ms: prev2.ms, t: prev2.text?.slice(0,35), role:'prev2' } : null,
           prev1 ? { ms: prev1.ms, t: prev1.text?.slice(0,35), role:'prev1' } : null,
@@ -1781,81 +1782,77 @@ async function aiRefineWordTimings(lrcLines, title, artist) {
   }
 
   async function callAI(payload) {
-    const prompt = `You are an elite vocal timing engine trained on thousands of songs. Your job: place EXACT word start timestamps so lyric highlighting feels telepathic — matching what the listener hears with < 50ms error.
+    const prompt = `You are a precision syllable-timing engine for music lyric sync. Your output directly drives visual highlighting — each syllable lights up EXACTLY when sung. Errors > 60ms will be visible and feel wrong. Be a real music producer who has listened to this exact song.
 
 Song: "${title}" by ${artist}
 
-━━ INPUT ━━
-Each item: {i, ms, end, singMs, mspsy, prevMsps, section, words, ctx}
-• ms      = LRC line start (where singer begins, from the LRC file — trust it)
-• end     = next line start (hard ceiling — no word ≥ end)
-• mspsy   = ms per syllable (tempo fingerprint for THIS line)
-• prevMsps= previous line's mspsy
-• section = intro/verse/chorus/bridge/outro
-• words   = array of words to timestamp
-• ctx     = [{ms, t}] nearby line snippets for musical phrasing context
+━━ YOUR JOB ━━
+For each lyric line, output the START timestamp (ms) for EVERY syllable of EVERY word.
+Input words already broken into syllables: words: [{w:"beautiful", s:["beau","ti","ful"]}, ...]
+You MUST output one timestamp per syllable — so if s has 3 syllables, output 3 timestamps.
 
-━━ MUSIC THEORY & TEMPO ━━
-SPEED CATEGORIES (use mspsy):
-• Ultra-fast / rap (< 100ms/syl): words fire like bullets. Connectors 25–35ms, content ~60–80ms × syls. No pauses.
-• Fast / uptempo (100–160ms): connectors ~50ms, content ~100ms × syls, minimal gaps.
-• Mid-tempo (160–260ms): standard pop. Connectors ~90ms, content ~170ms × syls.
-• Slow / ballad (260–420ms): connectors ~160ms, content ~260ms × syls. Big holds on emotional words.
-• Very slow / torch (> 420ms): near-spoken. Each syllable fully voiced. Connectors ~200ms, holds huge.
+━━ INPUT FIELDS ━━
+ms          = LRC line start — the EXACT ms the singer opens their mouth. Trust this.
+end         = hard ceiling — NO syllable start may reach or exceed this.
+mspsy       = avg ms per syllable for this line (your tempo reference).
+tempoTrend  = [mspsy 3 lines ago, 2 ago, 1 ago] — use this to detect tempo drift.
+gapAfter    = ms of silence after this line ends. If > 1200ms, last syllable can trail long.
+section     = song position (intro/verse/chorus/bridge/outro)
+melisma     = true if singer likely holds/runs on a single syllable for many beats
+words       = [{w: word, s: [syl1, syl2, ...]}]  ← you timestamp each syl
+ctx         = nearby line snippets for phrasing reference
 
-PICKUP NOTES (anacrusis): Many lines start with an unstressed syllable BEFORE the beat. If first word is [a, the, and, but, oh, I, you, it, so, in, of] AND mspsy < 200, it may fire 0–30ms after ms and take only 35–50% of mspsy.
+━━ SYLLABLE TIMING RULES ━━
 
-DOWNBEAT EMPHASIS: The 2nd or 3rd word of a line is often ON the downbeat. After a fast pickup, leave a micro-gap (30–60ms) before the downbeat word.
+SPEED TIERS (use mspsy):
+• Rap/fast < 110ms: syllables are rapid-fire. Connectors 20–40ms. Content 55–85ms. No pauses.
+• Pop/uptempo 110–180ms: connectors 55–75ms. Content 100–130ms. Tight.
+• Mid-tempo 180–280ms: connectors 80–110ms. Content 150–200ms.
+• Ballad 280–420ms: connectors 120–170ms. Content 220–300ms. Let vowels breathe.
+• Torch/slow > 420ms: every syllable is voiced fully. Connectors 160–220ms. Huge holds.
 
-━━ WORD CATEGORIES (critical — get these right) ━━
-CONNECTORS (shrink these): a, an, the, and, or, but, in, on, at, to, for, of, by, up, so, my, me, we, he, she, it, I, is, as, be, do, go, no, if, oh, ah, its, I'm, I've, I'll, I'd, our, are, was, were, had, has, that, this, with, from, not, can, will, just, your, her, his, their, they, who, what, when, then, than, there, here, were, been, into
+WITHIN A WORD — syllable weight:
+• Stressed syllable (usually first syl of content words): 40–50% of word duration
+• Unstressed syllables: remaining duration divided evenly
+• Final syllable of the LAST word: add hold — 1.3× to 2.8× depending on tempo + emotion
+• Vowel-heavy syllables (containing a,e,i,o,u,oo,ee,ay) last longer than consonant clusters
 
-FILLER / VOCAL WARMERS (stretch these — they're held notes): oh, ooh, ah, ahh, yeah, yea, hey, mm, mmm, hmm, na, la, da, woah, whoa, oo, woo, no (when sung), baby (when sung), come, go (when emphasized)
+WORD ROLES:
+• Connectors (a/the/and/to/of/in/I/my/you/it/or/but/so/we/he/she/was/are/be/that/this/with/from/not/can/will/just/your/they/then/there/have/had/its): compress — entire word 30–65% of mspsy
+• Fillers/held (oh/ooh/ah/yeah/hey/mm/na/la/woah/oo/woo): expand — entire word 130–250% of mspsy
+• Slang contractions (gonna/wanna/gotta/tryna/kinda/outta/ima/y'all/ain't/cuz): treat as content, use spoken syl count
+• Emotional content (love/heart/soul/pain/tears/stay/leave/hold/fall/rise/need/want/dream/cry/free/gone/lost/home/alone/forever/never/always/remember/everything/nothing/beautiful/tonight): 1.2–1.5× normal content duration
 
-SLANG & CONTRACTIONS (use spoken syllable count):
-• gonna (2), wanna (2), gotta (2), tryna (2), kinda (2), outta (2), lotta (2), sorta (2)
-• 'cause / cuz (1), 'bout (1), 'em (1), y'all (1), ain't (1), don't (1), can't (1), won't (1)
-• ima / i'ma (2), lemme (2), gimme (2), betcha (2), getcha (2), whatcha (2), atcha (2)
-• babe (1), 'til (1), till (1), 'fore (1), over (2), under (2), into (2), even (2)
-• These are CONTENT words — give them their full syllable timing, not connector timing
+PICKUP / ANACRUSIS:
+If the first word is a short connector AND mspsy < 200 → that word fires quickly (20–40% of mspsy) right at ms, leaving room for the downbeat on word 2 or 3.
 
-EMOTIONALLY STRESSED WORDS (extra hold — 1.2–1.5× normal content duration):
-love, hate, heart, soul, pain, tears, hurt, break, lost, gone, free, real, truth, lie, stay, leave, hold, fall, rise, feel, need, want, dream, hope, fear, cry, die, live, fight, right, wrong, mine, yours, home, alone, forever, never, always, again, tonight, away, together, apart, beautiful, remember, forget, everything, nothing
+PUNCTUATION: shift the first syllable of the NEXT word:
+• comma → +0.18 × mspsy
+• period/!/? → +0.32 × mspsy  
+• — / … → +0.48 × mspsy
 
-MELISMA / RUNS (single word held across many beats): If a word has very few syllables but a BIG mspsy (> 500ms), the singer is probably doing a run or hold on one vowel. Give it the full window; don't rush past it.
+MELISMA: if melisma=true, the last word may span most of the line window. Space its syllables across the full available time.
 
-━━ MUSICAL PHRASING RULES ━━
-1. FIRST WORD: starts at ms + 0–60ms (breath/pickup). NEVER before ms.
-2. LAST WORD: always stretched — holdMul = 1.4–2.5× depending on pace and emotion. Last word of a section (chorus, verse end) gets maximum hold.
-3. PUNCTUATION DELAYS (shift NEXT word later):
-   • comma (,): +0.20 × mspsy
-   • semicolon (;) or colon (:): +0.28 × mspsy
-   • period (.) exclamation (!) question (?): +0.38 × mspsy
-   • em-dash (—) ellipsis (…): +0.55 × mspsy
-4. SPEED CHANGES:
-   • mspsy < prevMsps × 0.80 → accelerating: crush connectors to 30%, content 70%
-   • mspsy > prevMsps × 1.25 → decelerating: spread content words, triple last word hold
-5. SECTION BEHAVIOR:
-   • intro: often speech-like or rubato — spread words naturally
-   • verse: conversational pacing, moderate holds at line ends
-   • chorus: punchy, on-the-beat, consistent spacing, strong downbeats
-   • bridge: wide holds, very emotional, space each word deliberately
-   • outro: relaxed, fading, loose timing
-6. CONTEXT LOOKAHEAD: Use ctx (nearby lines) to understand phrasing. If the next line starts immediately (< 800ms gap), the current line's last word should NOT hold too long. If there's a gap (> 1200ms), let the last word trail.
-7. ALL TIMES: strictly increasing. All in range [ms, end−60]. NO time may equal or exceed end.
-8. singEnd (se): the ms the LAST word FINISHES being sung (= last word start + its natural hold duration), clamped to end − 50. This controls when the line "settles" to fully-lit. Set it accurately — too early = flash at 100% too soon; too late = line seems unfinished.
+CHORUSES: tighter syllable spacing, stronger downbeats, punchy attacks on stressed syllables.
+BRIDGES: wider spacing, emotional, let words resonate.
 
-━━ VALIDATION ━━
-Before outputting, mentally verify for each line:
-• words[0].ms ≥ ms (first word not before line start)
-• words is strictly increasing
-• words[last] < end − 60
-• se ≤ end − 50
-• word count matches input
+━━ CONSTRAINTS (violations will break sync) ━━
+1. First syllable of line ≥ ms (never before it), and ≤ ms + 80ms
+2. ALL syllable times strictly increasing across the ENTIRE line
+3. ALL syllable times < end − 50
+4. singEnd (se) = the ms the LAST syllable FINISHES sounding. Must be ≤ end − 40.
+   se = (last syllable start) + (duration of last syllable with hold), clamped to end − 40.
+5. Total syllable count in output MUST match total syllable count in input (sum of s.length for each word)
 
-Return ONLY a JSON array, same order as input:
-[{"w":[ms,ms,...],"se":singEndMs},...]
-"w" length MUST equal words length exactly. Raw JSON only — no markdown, no commentary.
+━━ OUTPUT FORMAT ━━
+Return a JSON array, one entry per input line, SAME ORDER:
+[
+  {"s": [[sylMs, sylMs, ...], [sylMs, ...], ...], "se": singEndMs},
+  ...
+]
+Where s[wordIndex] = array of ms timestamps, one per syllable in that word.
+s[0].length MUST equal words[0].s.length, etc.
+Raw JSON only. No markdown. No explanation.
 
 ${JSON.stringify(payload)}`;
 
@@ -1905,12 +1902,40 @@ ${JSON.stringify(payload)}`;
   function applyBatch(payload, results) {
     payload.forEach((lp, si) => {
       const ai = results[si];
-      if (!ai?.w || ai.w.length !== lp.words.length) return;
-      if (!ai.w.every(t => typeof t==='number' && t >= lp.ms - 100 && t < lp.end)) return;
-      for (let j = 1; j < ai.w.length; j++) if (ai.w[j] <= ai.w[j-1]) return;
-      const singEnd = (typeof ai.se === 'number' && ai.se > lp.ms && ai.se <= lp.end)
-        ? ai.se : null;
-      refined.set(lp.i, { words: ai.w, singEnd });
+      if (!ai) return;
+
+      // ── New format: {s: [[sylMs,...], ...], se: ms} ──
+      if (ai.s && Array.isArray(ai.s)) {
+        // Validate: s.length must match words.length
+        if (ai.s.length !== lp.words.length) return;
+        // Validate each word's syllable count
+        for (let wi = 0; wi < lp.words.length; wi++) {
+          const expected = lp.words[wi].s.length;
+          if (!Array.isArray(ai.s[wi]) || ai.s[wi].length !== expected) return;
+        }
+        // Flatten to check all times are valid & strictly increasing
+        const flat = ai.s.flat();
+        if (!flat.every(t => typeof t === 'number' && t >= lp.ms - 100 && t < lp.end)) return;
+        for (let j = 1; j < flat.length; j++) if (flat[j] <= flat[j-1]) return;
+
+        const singEnd = (typeof ai.se === 'number' && ai.se > lp.ms && ai.se <= lp.end)
+          ? ai.se : null;
+
+        // word start = first syllable of that word
+        const wordStarts = ai.s.map(sylArr => sylArr[0]);
+        refined.set(lp.i, { words: wordStarts, sylTimes: ai.s, singEnd });
+        return;
+      }
+
+      // ── Legacy fallback: {w: [wordMs,...], se: ms} ──
+      if (ai.w && Array.isArray(ai.w)) {
+        if (ai.w.length !== lp.words.length) return;
+        if (!ai.w.every(t => typeof t==='number' && t >= lp.ms - 100 && t < lp.end)) return;
+        for (let j = 1; j < ai.w.length; j++) if (ai.w[j] <= ai.w[j-1]) return;
+        const singEnd = (typeof ai.se === 'number' && ai.se > lp.ms && ai.se <= lp.end)
+          ? ai.se : null;
+        refined.set(lp.i, { words: ai.w, sylTimes: null, singEnd });
+      }
     });
   }
 
@@ -2021,26 +2046,46 @@ async function applyAIRefinements(lines, title, artist, preRefined) {
     const ai = refined.get(i);
     if (!ai || !line.words?.length) return line;
 
-    const singEnd  = ai.singEnd ?? null;
-    const rawTimes = ai.words ?? [];
+    const singEnd     = ai.singEnd ?? null;
+    const rawTimes    = ai.words ?? [];
+    const sylTimesArr = ai.sylTimes ?? null;   // [[sylMs,...], ...] per word, or null
 
+    // Scale word times so they fit within singEnd if provided
     let wordTimes = rawTimes;
     if (singEnd && rawTimes.length > 0) {
-      const origFirst = rawTimes[0];
-      const origLast  = rawTimes[rawTimes.length - 1];
-      const origSpan  = Math.max(1, origLast - origFirst);
-      const targetEnd = singEnd - 60;
+      const origFirst  = rawTimes[0];
+      const origLast   = rawTimes[rawTimes.length - 1];
+      const origSpan   = Math.max(1, origLast - origFirst);
+      const targetEnd  = singEnd - 60;
       const targetSpan = Math.max(1, targetEnd - line.ms);
-      const scale = Math.min(1, targetSpan / origSpan);
+      const scale      = Math.min(1, targetSpan / origSpan);
       wordTimes = rawTimes.map(ms => Math.round(line.ms + (ms - origFirst) * scale));
     }
 
     let realWordIdx = 0;
     const newWords = line.words.map((w) => {
       if (w._isPause || w._isInlineParen) return w;
-      const newMs = wordTimes[realWordIdx] ?? w.ms;
+      const wi     = realWordIdx;
+      const newMs  = wordTimes[wi] ?? w.ms;
+
+      // Attach per-syllable timestamps if available
+      let newSylTimes = null;
+      if (sylTimesArr?.[wi]) {
+        // If we scaled word times, scale syl times proportionally too
+        if (singEnd && rawTimes.length > 0) {
+          const origFirst = rawTimes[0];
+          const origSpan  = Math.max(1, rawTimes[rawTimes.length-1] - origFirst);
+          const targetEnd = singEnd - 60;
+          const targetSpan = Math.max(1, targetEnd - line.ms);
+          const scale = Math.min(1, targetSpan / origSpan);
+          newSylTimes = sylTimesArr[wi].map(t => Math.round(line.ms + (t - origFirst) * scale));
+        } else {
+          newSylTimes = sylTimesArr[wi];
+        }
+      }
+
       realWordIdx++;
-      return { ...w, ms: newMs };
+      return { ...w, ms: newMs, _sylTimes: newSylTimes };
     });
     return { ...line, words: newWords, _singEnd: singEnd };
   });
@@ -2615,60 +2660,98 @@ function _tickSyls(lineIdx, t, nextBound) {
   const words = ST.lrc[lineIdx]?.words;
   if (!words?.length) return;
 
-  /* compute lastWordEnd (same logic as old _tickWords) */
+  // ── compute lastWordEnd for fallback ──
   let lastRealIdx = words.length - 1;
   while (lastRealIdx > 0 && (words[lastRealIdx]._isPause || words[lastRealIdx]._isInlineParen)) lastRealIdx--;
-  const lastW    = words[lastRealIdx];
-  const lastSyls = syllableCount((lastW?.word || '').replace(/[^a-zA-Z']/g,'').toLowerCase() || 'a');
+  const lastW      = words[lastRealIdx];
+  const lastSylCnt = syllableCount((lastW?.word || '').replace(/[^a-zA-Z']/g,'').toLowerCase() || 'a');
   const realWords  = words.filter(w => !w._isPause && !w._isInlineParen);
   const totalSyls  = realWords.reduce((a,w) => a + syllableCount((w.word||'').replace(/[^a-zA-Z']/g,'').toLowerCase()||'a'), 0) || 1;
-  const lineSpanMs = realWords.length > 1 ? realWords[realWords.length-1].ms - realWords[0].ms : Math.max(300, nextBound - (words[0]?.ms||0) - 80);
-  const nonLastSyls = Math.max(1, totalSyls - lastSyls);
-  const spacingMs   = realWords.length > 1 ? lineSpanMs / nonLastSyls : Math.max(95, (nextBound - (words[0]?.ms||0)) / totalSyls);
+  const lineSpanMs = realWords.length > 1
+    ? realWords[realWords.length-1].ms - realWords[0].ms
+    : Math.max(300, nextBound - (words[0]?.ms||0) - 80);
+  const nonLastSyls = Math.max(1, totalSyls - lastSylCnt);
+  const spacingMs   = realWords.length > 1
+    ? lineSpanMs / nonLastSyls
+    : Math.max(95, (nextBound - (words[0]?.ms||0)) / totalSyls);
   const msPerSyl    = Math.max(90, spacingMs);
   const pace        = _paceFactor(msPerSyl);
-  const holdMul     = _lerp(pace, 1.20, 1.90);
-  const naturalEnd  = (lastW?.ms || 0) + lastSyls * msPerSyl * holdMul;
-  const lastWordEnd = Math.min(naturalEnd, nextBound - 160);
+  const holdMul     = _lerp(pace, 1.25, 2.0);
+  const naturalEnd  = (lastW?.ms || 0) + lastSylCnt * msPerSyl * holdMul;
+  const lastWordEnd = Math.min(naturalEnd, nextBound - 140);
 
+  // ── Collect ALL syllable timestamps into a flat list for cross-word strict ordering ──
+  // First pass: gather wStart/wEnd for each real word
+  const wordBounds = [];
   for (let wi = 0; wi < words.length; wi++) {
     const w = words[wi];
     if (w._isPause || w._isInlineParen) continue;
-
     const wStart = w.ms;
     let wEnd = lastWordEnd;
-    if (wi < words.length - 1) {
-      for (let ni = wi + 1; ni < words.length; ni++) {
-        const nw = words[ni];
-        if (!nw._isPause && !nw._isInlineParen) { wEnd = nw.ms; break; }
-        if (nw._isPause) { wEnd = nw.ms; break; }
-      }
+    for (let ni = wi + 1; ni < words.length; ni++) {
+      const nw = words[ni];
+      if (!nw._isPause && !nw._isInlineParen) { wEnd = nw.ms; break; }
+      if (nw._isPause) { wEnd = nw.ms; break; }
     }
+    wordBounds.push({ wi, w, wStart, wEnd });
+  }
 
-    const wDur = Math.max(1, wEnd - wStart);
+  for (const { wi, w, wStart, wEnd } of wordBounds) {
     const syls = splitWordSyllables(w.word);
-    /* compute per-syllable letter-count fractions */
-    const coreLen = syls.reduce((a,s) => a + Math.max(1, s.replace(/[^a-zA-Z']/g,'').length), 0) || 1;
-    const isSlow  = (wDur / (syls.length || 1)) > 280;
+    const wDur = Math.max(1, wEnd - wStart);
 
-    let charCursor = 0;
-    for (let si = 0; si < syls.length; si++) {
-      const sylCharLen = Math.max(1, syls[si].replace(/[^a-zA-Z']/g,'').length);
-      const frac0 = charCursor / coreLen;
-      const frac1 = (charCursor + sylCharLen) / coreLen;
-      const sylStart = wStart + wDur * frac0;
-      const sylEnd   = wStart + wDur * frac1;
-      charCursor += sylCharLen;
+    if (w._sylTimes?.length === syls.length) {
+      // ━━ AI-PROVIDED syllable timestamps — USE DIRECTLY ━━
+      for (let si = 0; si < syls.length; si++) {
+        const sylStart = w._sylTimes[si];
+        // End of this syllable = start of next syl, or wEnd for last
+        const sylEnd = si < syls.length - 1
+          ? w._sylTimes[si + 1]
+          : wEnd;
 
-      const id = `lsyl${lineIdx}_${wi}_${si}`;
-      if (t < sylStart) {
-        _setSylState(id, 'syl-pre', 0, false);
-      } else if (t >= sylEnd) {
-        _setSylState(id, 'syl-done', 100, false);
-      } else {
-        const raw   = (t - sylStart) / Math.max(1, sylEnd - sylStart);
-        const eased = raw < 0.25 ? raw * raw * 4 : 0.25 + (raw - 0.25);
-        _setSylState(id, 'syl-now', Math.min(100, eased * 100), isSlow);
+        const id = `lsyl${lineIdx}_${wi}_${si}`;
+        if (t < sylStart) {
+          _setSylState(id, 'syl-pre', 0, false);
+        } else if (t >= sylEnd) {
+          _setSylState(id, 'syl-done', 100, false);
+        } else {
+          const raw   = (t - sylStart) / Math.max(1, sylEnd - sylStart);
+          const eased = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
+          _setSylState(id, 'syl-now', Math.min(100, eased * 100), false);
+        }
+      }
+    } else {
+      // ━━ FALLBACK: distribute syllables by stress-weighted fractions ━━
+      // Stressed syllables (first syl of content words) get more time
+      const sylWeights = syls.map((syl, si) => {
+        const hasVowel = /[aeiou]/i.test(syl);
+        const isFirst  = si === 0;
+        const isLast   = si === syls.length - 1;
+        let weight = hasVowel ? 1.1 : 0.85;
+        if (isFirst && syls.length > 1) weight *= 1.15;  // stressed opening
+        if (isLast)  weight *= 1.3;                       // trailing hold on final syl
+        return weight;
+      });
+      const totalWeight = sylWeights.reduce((a, b) => a + b, 0) || 1;
+
+      let cursor = 0;
+      for (let si = 0; si < syls.length; si++) {
+        const frac0    = cursor / totalWeight;
+        const frac1    = (cursor + sylWeights[si]) / totalWeight;
+        const sylStart = wStart + wDur * frac0;
+        const sylEnd   = wStart + wDur * frac1;
+        cursor        += sylWeights[si];
+
+        const id = `lsyl${lineIdx}_${wi}_${si}`;
+        if (t < sylStart) {
+          _setSylState(id, 'syl-pre', 0, false);
+        } else if (t >= sylEnd) {
+          _setSylState(id, 'syl-done', 100, false);
+        } else {
+          const raw   = (t - sylStart) / Math.max(1, sylEnd - sylStart);
+          const eased = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
+          _setSylState(id, 'syl-now', Math.min(100, eased * 100), false);
+        }
       }
     }
   }
@@ -2788,17 +2871,25 @@ function seekLrc(i, evt) {
 function tickLrc(posMs) {
   if (!ST.lrc.length) return;
 
-  let AHEAD = 80;
+  // AHEAD: how far into the future to look when deciding which line/syllable is "active".
+  // With AI syllable timestamps, we need less lookahead (they're already precise).
+  // With fallback word-timing, we need slightly more to compensate for estimation drift.
+  let AHEAD = 55;  // base: modest lookahead for AI-timed songs
   {
     let lo=0,hi=ST.lrc.length-1,a=0;
     while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
     const aLine = ST.lrc[a];
-    if (aLine?.words?.length > 1) {
+    if (aLine?.words?.length > 0) {
       const realW = aLine.words.filter(w=>!w._isPause&&!w._isInlineParen);
-      if (realW.length > 1) {
+      const hasSylTimes = realW.some(w => w._sylTimes?.length);
+      if (hasSylTimes) {
+        // AI timestamps: tight lookahead, trust the data
+        AHEAD = 40;
+      } else if (realW.length > 1) {
         const span = realW[realW.length-1].ms - realW[0].ms;
         const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
-        AHEAD = Math.round(Math.max(50, Math.min(150, mps * 0.30)));
+        // Fallback: small fraction of ms-per-syllable
+        AHEAD = Math.round(Math.max(35, Math.min(100, mps * 0.22)));
       }
     }
   }
