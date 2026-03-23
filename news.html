@@ -1,368 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NexOS || News</title>
-    <meta name="description" content="Breaking news and current events delivered daily">
-    <meta name="theme-color" content="#ffffff">
-
-    <link rel="icon" href="/ghost.svg"/>
-    <link rel="apple-touch-icon" href="/ghost.svg"/>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com"/>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet"/>
-
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      body {
-        color: #1a1a1a;
-        background-color: #ffffff;
-        font-family: 'Google Sans', sans-serif;
-        line-height: 1.6;
-      }
-
-      header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #e5e7eb;
-        padding: 20px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        position: sticky;
-        top: 0;
-        z-index: 100;
-      }
-
-      .logo {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .logo img {
-        width: 36px;
-        height: 36px;
-        object-fit: contain;
-      }
-
-      .logo h1 {
-        font-size: 28px;
-        font-weight: 700;
-        font-family: 'Google Sans', sans-serif;
-        color: #1a1a1a;
-      }
-
-      .logo a {
-        color: #1a1a1a;
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .logo a:hover {
-        color: #4f46e5;
-      }
-
-      main {
-        padding: 40px 20px;
-        max-width: 1200px;
-        margin: 0 auto;
-      }
-
-      #videoGrid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 24px;
-        margin-top: 20px;
-      }
-
-      @media (max-width: 768px) {
-        #videoGrid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      .videoItem {
-        background-color: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        overflow: hidden;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .videoItem:hover {
-        transform: translateY(-4px);
-        border-color: #d1d5db;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      }
-
-      .thumbnail {
-        width: 100%;
-        height: 0;
-        padding-bottom: 56.25%;
-        position: relative;
-        overflow: hidden;
-        background-color: #f3f4f6;
-      }
-
-      .thumbnail img {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-
-      .dateOverlay {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        background-color: #4f46e5;
-        color: #ffffff;
-        padding: 6px 12px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 600;
-      }
-
-      .timeOverlay {
-        position: absolute;
-        bottom: 10px;
-        right: 10px;
-        background-color: rgba(0, 0, 0, 0.5);
-        color: #ffffff;
-        padding: 6px 12px;
-        border-radius: 4px;
-        font-size: 12px;
-      }
-
-      .playIcon {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 56px;
-        height: 56px;
-        background-color: rgba(79, 70, 229, 0.9);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        font-size: 24px;
-      }
-
-      .videoItem:hover .playIcon {
-        opacity: 1;
-      }
-
-      .content {
-        padding: 16px;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-      }
-
-      h3 {
-        font-size: 18px;
-        font-weight: 700;
-        color: #1a1a1a;
-        line-height: 1.4;
-        margin-bottom: 8px;
-        font-family: 'Google Sans', sans-serif;
-      }
-
-      p {
-        color: #666666;
-        font-size: 14px;
-        margin-bottom: 12px;
-        flex: 1;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-      }
-
-      .meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 12px;
-        color: #999999;
-        margin-top: auto;
-        padding-top: 12px;
-        border-top: 1px solid #f0f0f0;
-      }
-
-      a {
-        color: #4f46e5;
-        text-decoration: none;
-      }
-
-      a:hover {
-        text-decoration: underline;
-      }
-
-      .thumbnail a {
-        color: inherit;
-      }
-
-      .section-title {
-        font-size: 32px;
-        font-weight: 700;
-        font-family: 'Google Sans', sans-serif;
-        color: #1a1a1a;
-        margin-bottom: 10px;
-      }
-
-      .section-subtitle {
-        color: #666666;
-        font-size: 16px;
-        margin-bottom: 30px;
-      }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>News Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    header {
+      background: #111;
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-size: 1.5rem;
+    }
+    .container {
+      padding: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+    }
+    .card img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+    }
+    .card-content {
+      padding: 15px;
+      flex: 1;
+    }
+    .card-content h3 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+    }
+    .card-content p {
+      font-size: 0.9rem;
+      color: #555;
+    }
+    .card-content a {
+      display: inline-block;
+      margin-top: 10px;
+      color: #007bff;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .error {
+      text-align: center;
+      font-size: 1.2rem;
+      color: red;
+    }
+  </style>
 </head>
 <body>
-    <header>
-        <div class="logo">
-            <a href="/">
-                <img src="/ghost.svg" alt="NexOS Logo">
-                <h1>NexOS || News</h1>
-            </a>
-        </div>
-    </header>
-    
-    <main>
-        <div>
-            <h2 class="section-title">Latest News</h2>
-            <p class="section-subtitle">Breaking news and stories from around the world</p>
-        </div>
-        <div id="videoGrid"></div>
-    </main>
+  <header>Latest News</header>
+  <div class="container" id="news-container"></div>
 
-    <script>
-      let videoGrid = document.getElementById("videoGrid");
-      
-      const articles = [
-        {
-          source: "TechNews Daily",
-          title: "Revolutionary AI Breakthrough Transforms Industry Standards",
-          poster: "https://images.unsplash.com/photo-1677442d019e157be52e69b7ed2ff2f6-640x360?w=640&h=360&fit=crop",
-          published: "Mar 23, 2026",
-          reference: "#",
-          content: "Scientists announce major breakthrough in artificial intelligence that could reshape how we work and live in the modern world."
-        },
-        {
-          source: "Global Economics",
-          title: "Markets Rally on Economic Growth Forecast",
-          poster: "https://images.unsplash.com/photo-1642543348222-7d93c4f87d51-640x360?w=640&h=360&fit=crop",
-          published: "Mar 22, 2026",
-          reference: "#",
-          content: "Global stock markets experienced significant gains today as investors respond positively to new economic data and growth projections."
-        },
-        {
-          source: "Climate Report",
-          title: "New Climate Initiative Shows Promising Results",
-          poster: "https://images.unsplash.com/photo-1611273426858-450d8e3c9fce-640x360?w=640&h=360&fit=crop",
-          published: "Mar 22, 2026",
-          reference: "#",
-          content: "International climate coalition reports major progress in reducing carbon emissions through innovative green technology implementations."
-        },
-        {
-          source: "World Politics",
-          title: "Global Leaders Summit Concludes with Historic Agreement",
-          poster: "https://images.unsplash.com/photo-1554224311-beee415c15abb-640x360?w=640&h=360&fit=crop",
-          published: "Mar 21, 2026",
-          reference: "#",
-          content: "Representatives from over 150 nations reach consensus on trade and security measures affecting global economic development."
-        },
-        {
-          source: "Space Exploration",
-          title: "First Mission to Mars Successfully Launches",
-          poster: "https://images.unsplash.com/photo-1419242902214-272b3f66ee7a-640x360?w=640&h=360&fit=crop",
-          published: "Mar 21, 2026",
-          reference: "#",
-          content: "Historic space mission blasts off on ambitious journey to establish human presence on the red planet within the decade."
-        },
-        {
-          source: "Health & Science",
-          title: "New Medical Treatment Offers Hope for Rare Diseases",
-          poster: "https://images.unsplash.com/photo-1576091160550-112173f31c77-640x360?w=640&h=360&fit=crop",
-          published: "Mar 20, 2026",
-          reference: "#",
-          content: "Researchers unveil groundbreaking therapy that has shown remarkable effectiveness in treating previously incurable genetic conditions."
+  <script>
+    const API_KEY = "c26424bb346f40f9800f7e188210d7a5";
+    const url = `https://newsapi.org/v2/top-headlines?country=us&pageSize=20&apiKey=${API_KEY}`;
+
+    async function fetchNews() {
+      const container = document.getElementById("news-container");
+      container.innerHTML = "Loading...";
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!res.ok || data.status !== "ok") {
+          throw new Error(data.message || "API error");
         }
-      ];
-      
-      articles.forEach(article => {
-        const item = document.createElement("div");
-        item.classList.add("videoItem");
-        
-        const thumbnailLink = document.createElement("a");
-        thumbnailLink.classList.add("thumbnail");
-        thumbnailLink.target = "_blank";
-        thumbnailLink.rel = "noopener noreferrer";
-        thumbnailLink.href = article.reference;
-        
-        const img = document.createElement("img");
-        img.loading = "lazy";
-        img.src = article.poster;
-        img.addEventListener("error", () => {
-          img.src = "https://via.placeholder.com/640x360?text=News+Image";
+
+        container.innerHTML = "";
+
+        data.articles.forEach(article => {
+          const card = document.createElement("div");
+          card.className = "card";
+
+          card.innerHTML = `
+            <img src="${article.urlToImage || 'https://via.placeholder.com/300x180'}" />
+            <div class="card-content">
+              <h3>${article.title}</h3>
+              <p>${article.description || 'No description available.'}</p>
+              <a href="${article.url}" target="_blank">Read more →</a>
+            </div>
+          `;
+
+          container.appendChild(card);
         });
-        thumbnailLink.appendChild(img);
-        
-        const playIcon = document.createElement("div");
-        playIcon.classList.add("playIcon");
-        playIcon.innerHTML = "<i class='fas fa-arrow-up-right-from-square'></i>";
-        thumbnailLink.appendChild(playIcon);
-        
-        const sourceOverlay = document.createElement("div");
-        sourceOverlay.classList.add("dateOverlay");
-        sourceOverlay.innerText = article.source;
-        thumbnailLink.appendChild(sourceOverlay);
-        
-        const dateOverlay = document.createElement("div");
-        dateOverlay.classList.add("timeOverlay");
-        dateOverlay.innerText = article.published;
-        thumbnailLink.appendChild(dateOverlay);
-        
-        item.appendChild(thumbnailLink);
-        
-        const content = document.createElement("div");
-        content.classList.add("content");
-        
-        const title = document.createElement("h3");
-        title.innerText = article.title;
-        
-        const description = document.createElement("p");
-        description.innerText = article.content;
-        
-        const meta = document.createElement("div");
-        meta.classList.add("meta");
-        meta.innerHTML = `<span>${article.source}</span>`;
-        
-        content.appendChild(title);
-        content.appendChild(description);
-        content.appendChild(meta);
-        
-        item.appendChild(content);
-        videoGrid.appendChild(item);
-      });
-    </script>
+      } catch (err) {
+        console.error("FULL ERROR:", err);
+        container.innerHTML = `<div class="error">Failed to load news.<br>${err.message}</div>`;
+      }
+    }
+
+    fetchNews();
+  </script>
 </body>
 </html>
