@@ -1,1 +1,3 @@
-
+export const DEFAULT_VOLUME = 1;
+export const LATENCY_UPDATE_INTERVAL = 5000;
+export const CLOCK_UPDATE_INTERVAL = 1000;
