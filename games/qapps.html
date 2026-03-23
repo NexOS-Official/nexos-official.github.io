@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apps | Ghost</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+<header>
+    <div class="ghostgames">
+        <img src="/ghost.svg" alt="ghostybuns">
+        <h3>Apps</h3>
+    </div>
+    <div class="header-forsearchbar">
+        <div class="thegamesearchinputthing">
+            <i class="bi bi-search"></i>
+            <input type="text" id="searchforthejstofindwithtitle" placeholder="Search games">
+        </div>
+    </div>
+</header>
+
+    <div class="allcontentmain">
+
+        <div class="top-banners">
+            <div class="top-banner" onclick="window.location.href='index.html'">
+                <img src="/images/loader/games.png" alt="More Games">
+                <span class="banner-label">← Back to games</span>
+            </div>
+        </div>
+
+        <div class="allgames">
+            <div class="foldarcads" data-tags="social" data-url="/active/embed.html?url=https://tiktok.com/">
+                <img src="/images/games/coverart/tiktok.png" alt="Tiktok" title="Tiktok">
+            </div>
+            <div class="foldarcads" data-tags="social" data-url="/active/embed.html?url=https://snapchat.com/">
+                <img src="/images/games/coverart/snapchat.png" alt="Snap" title="Snapchat">
+            </div>
+            <div class="foldarcads" data-tags="games" data-url="/active/embed.html?url=https://play.geforcenow.com/">
+                <img src="/images/games/coverart/geforcenow.png" alt="Geforce" title="Geforce NOW">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="main.js"></script>
+<script>
+const gameGrid = document.querySelector(".allgames");
+const searchInput = document.getElementById("searchforthejstofindwithtitle");
+const COVER_URL = "https://cdn.jsdelivr.net/gh/gn-math/covers@main";
+const HTML_URL = "https://cdn.jsdelivr.net/gh/gn-math/html@main";
+const POP_URL = "https://data.jsdelivr.net/v1/stats/packages/gh/gn-math/html@main/files?period=year";
+
+let allGames = [];
+let popularityMap = {};
+
+fetch(POP_URL)
+  .then(r => r.json())
+  .then(data => {
+    data.forEach(file => {
+      const id = parseInt(file.name.replace("/", "").replace(".html", ""));
+      popularityMap[id] = file.hits?.total || 0;
+    });
+  })
+  .catch(() => console.warn("Popularity stats unavailable"));
+
+fetch("zones.json")
+  .then(r => r.json())
+  .then(data => {
+    allGames = data.map(g => ({
+      ...g,
+      cover: g.cover.replace("{COVER_URL}", COVER_URL),
+      url: g.url.replace("{HTML_URL}", HTML_URL),
+      popularity: popularityMap[g.id] || 0
+    })).sort((a,b) => b.popularity - a.popularity);
+
+    allGames.forEach(game => {
+      const card = document.createElement("div");
+      card.className = "foldarcads";
+      card.dataset.tags = (game.tags || []).join(", ");
+      card.dataset.url = game.url;
+      card.innerHTML = `<img src="${game.cover}" alt="${game.name}" title="${game.name}">`;
+      card.onclick = () => window.location.href = game.url;
+      gameGrid.appendChild(card);
+    });
+  })
+  .catch(err => console.error("Failed to load CDN games: ", err));
+
+searchInput.addEventListener("input", e => {
+  const q = e.target.value.toLowerCase();
+  const cards = Array.from(gameGrid.querySelectorAll(".foldarcads"));
+  cards.forEach(c => {
+    const title = c.querySelector("img")?.alt.toLowerCase() || "";
+    c.style.display = title.includes(q) ? "" : "none";
+  });
+});
+</script>
+
+</body>
+</html>
