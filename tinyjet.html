@@ -1,0 +1,429 @@
+
+<head>
+  <title>Loading...</title>
+  <link rel="icon" href="https://cdn.jsdelivr.net/gh/mercuryworkshop/scramjet-app@latest/public/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@100..800&display=swap" rel="stylesheet">
+</head>
+<body class="default">
+  <header>
+    <form id="search"><input id="url" type="text" class="search-input search" placeholder="Search the web or enter URL"></form>
+    <span id="gear"><i class="fa">&#xf013;</i></span>
+  </header>
+  <div id="overlay">
+    <div id="settings">
+      <h3 style="margin:auto;">Settings</h3>
+      <br>
+        <h4 style="margin:auto;">WISP Server</h4>
+        <br>
+        <form style="margin:auto;"id="wispInput">
+          <input id="websocket" type="text" placeholder="wss://gointospace.app/wisp/" value="wss://gointospace.app/wisp/">
+          <button type="submit">Set WISP</button>
+        </form>
+      <br>
+      <h4 style="margin:auto;">Transport Protocol</h4>
+      <br>
+      <div style="text-align:center;">
+        <ul style="display:inline-block; text-align:left; list-style-type:none; padding:0; margin:0;">
+          <li><input type="radio" name="transport" value="epoxy" checked> Epoxy (Default)</li>
+          <li><input type="radio" name="transport" value="libcurl"> Libcurl</li>
+        </ul>
+      </div>
+      <br>
+      <h4 style="margin:auto;">Search Engine</h4>
+      <br>
+      <select id="searchEnginePicker">
+        <option value="google">Google</option>
+        <option value="bing">Bing</option>
+        <option value="duckduckgo">DuckDuckGo</option>
+        <option value="brave">Brave (default)</option>
+        <option value="custom">Custom</option>
+      </select>
+      <input id="customSearch" type="text" placeholder="https://search.example.com/search?q=%s" style="display:none; width:100%; margin-top:8px;" />
+      <br>
+      <h4 style="margin:auto;">Tab Cloaking</h4>
+      <br>
+      <label for="tabCloak">Title</label>
+      <input id="tabCloak" type="text" placeholder="Khan Academy" style="width:100%; margin-bottom:8px;" />
+      <label for="tabCloakIcon">Icon (URL)</label>
+      <input id="tabCloakIcon" type="text" placeholder="https://khanacademy.org/favicon.ico" style="width:100%; margin-bottom:8px;" />
+      <div class="flex-row" style="margin:auto; margin-bottom:12px;">
+        <button id="saveTabCloakBtn" type="button">Save Settings</button>
+        <button id="clearTabCloakBtn" type="button">Clear Settings</button>
+        <button id="previewTabCloakBtn" type="button">Preview</button>
+      </div>
+      <br>
+      <h4 style="margin:auto;">Theme</h4>
+      <br>
+      <select id="themePicker">
+        <option value="default">Default</option>
+        <option value="latte">Catppuccin Latte</option>
+        <option value="frappe">Catppuccin Frappe</option>
+        <option value="macchiato">Catppuccin Macchiato</option>
+        <option value="mocha">Catppuccin Mocha</option>
+        <option value="mrworkshop">Mr. Workshop</option>
+        <option value="aerialite">Aerialite Labs</option>
+      </select>
+      <div id="customThemeSection" style="margin-top:12px;">
+        <br>
+        <h4 class="flex-row" style="margin:auto;">Custom Themes</h4> <!--not even supposed to be a flex row i'm just lazy-->
+        <br>
+        <input id="customThemeName" type="text" placeholder="Theme name" style="width:100%; margin-bottom:6px;" />
+        <label style="display:block; font-size:12px; margin-bottom:4px;">Base color</label>
+        <input id="customThemeBase" type="color" value="#ffffff" style="width:100%; height:30px; margin-bottom:6px;" />
+        <label style="display:block; font-size:12px; margin-bottom:4px;">Surface color</label>
+        <input id="customThemeSurface" type="color" value="#f6f6f6" style="width:100%; height:30px; margin-bottom:6px;" />
+        <label style="display:block; font-size:12px; margin-bottom:4px;">Text color</label>
+        <input id="customThemeText" type="color" value="#111111" style="width:100%; height:30px; margin-bottom:8px;" />
+        <div class="flex-row" style="margin:auto; margin-bottom:12px;">
+          <button id="saveCustomThemeBtn" type="button">Save Theme</button>
+          <button id="applyCustomThemePreviewBtn" type="button">Preview</button>
+        </div>
+        <label style="display:block; font-size:12px; margin-bottom:4px;">Saved themes</label>
+        <select id="customThemesList" style="width:100%; margin-bottom:8px;"></select>
+        <div class="flex-row" style="margin:auto; margin-bottom:12px;">
+          <button id="applyCustomThemeBtn" type="button">Apply</button>
+          <button id="deleteCustomThemeBtn" type="button">Delete</button>
+        </div>
+      </div>
+      <br>
+      <h3 style="margin:auto;">TinyJet</h3>
+      <p style="text-align:center;" id="version">Unable to retrieve version.</p>
+      <h6 style="margin:auto; font-weight:normal; text-align:center;">A teeny-tiny simple Scramjet implementation and frontend that can be statically hosted.</h6>
+      <br>
+      <h4 style="margin:auto;">Credits</h4>
+      <div style="text-align:center;">
+        <ul style="display:inline-block; text-align:left; list-style-type:none; padding:0;">
+          <li><a href="https://github.com/Sophie">Sophie:</a> Maintainer</li>
+          <li><a href="https://github.com/xmb9">xmb9:</a> Co-maintainer</li>
+          <li><a href="https://github.com/MercuryWorkshop">Mercury Workshop:</a> <a href="https://github.com/MercuryWorkshop/scramjet">Scramjet</a>, <a href="https://github.com/MercuryWorkshop/wisp-protocol">WISP</a></li>
+        </ul>
+      </div>
+      <p style="margin:auto; text-align:center;">Developed by <a href="https://aerialite.dev">Aerialite Labs</a></p>
+    </div>
+  </div>
+  <iframe id="iframe" width="100%"></iframe>
+
+  <script src="https://cdn.jsdelivr.net/gh/AerialiteLabs/tinyjet-frontend@latest/tinyjet/scramjet.all.js" defer></script>
+  <script type="module" defer>
+    import * as BareMux from "https://cdn.jsdelivr.net/gh/AerialiteLabs/tinyjet-frontend@latest/tinyjet/index.mjs";
+
+    let version = "";
+
+    (async function fetchVersion() {
+      try {
+        const resp = await fetch('https://api.github.com/repos/AerialiteLabs/tinyjet-frontend/commits?per_page=1');
+        if (!resp.ok) console.error(`github api returned ${resp.status}`);
+        const data = await resp.json();
+        const sha = Array.isArray(data) && data[0] && data[0].sha ? data[0].sha : (data.sha || '');
+        if (sha) {
+          version = sha.slice(0, 7);
+          document.getElementById('version').textContent = version;
+        }
+      } catch (e) {
+        console.debug('could not fetch version from github:', e.message);
+        version = "Unable to retrieve version info.";
+      }
+    })();
+
+    const { ScramjetController } = $scramjetLoadController();
+    const scramjet = new ScramjetController({ 
+      files: { 
+        wasm: "https://cdn.jsdelivr.net/gh/AerialiteLabs/tinyjet-frontend@latest/tinyjet/wasm.wasm", 
+        all: "https://cdn.jsdelivr.net/gh/AerialiteLabs/tinyjet-frontend@latest/tinyjet/scramjet.all.js", 
+        sync: "https://cdn.jsdelivr.net/gh/AerialiteLabs/tinyjet-frontend@latest/tinyjet/scramjet.sync.js" 
+      } 
+    });
+
+    try {
+      scramjet.init();
+      navigator.serviceWorker.register("./sw.js");
+    } catch (e) { console.error("scramjet failed to initialize;", e); }
+
+    const bareworker = `data:application/javascript;base64,IWZ1bmN0aW9uKCl7InVzZSBzdHJpY3QiO2NvbnN0IGU9TWVzc2FnZVBvcnQucHJvdG90eXBlLnBvc3RNZXNzYWdlO2xldCB0PW51bGw7ZnVuY3Rpb24gYShlLHQsYSl7Y29uc29sZS5lcnJvcihgZXJyb3Igd2hpbGUgcHJvY2Vzc2luZyAnJHthfSc6IGAsdCksZS5wb3N0TWVzc2FnZSh7dHlwZToiZXJyb3IiLGVycm9yOnR9KX1hc3luYyBmdW5jdGlvbiBuKGEsbixzKXtjb25zdCBvPWF3YWl0IHMucmVxdWVzdChuZXcgVVJMKGEuZmV0Y2gucmVtb3RlKSxhLmZldGNoLm1ldGhvZCxhLmZldGNoLmJvZHksYS5mZXRjaC5oZWFkZXJzLG51bGwpO2lmKCFmdW5jdGlvbigpe2lmKG51bGw9PT10KXtjb25zdCBhPW5ldyBNZXNzYWdlQ2hhbm5lbCxuPW5ldyBSZWFkYWJsZVN0cmVhbTtsZXQgczt0cnl7ZS5jYWxsKGEucG9ydDEsbixbbl0pLHM9ITB9Y2F0Y2goZSl7cz0hMX1yZXR1cm4gdD1zLHN9cmV0dXJuIHR9KCkmJm8uYm9keSBpbnN0YW5jZW9mIFJlYWRhYmxlU3RyZWFtKXtjb25zdCBlPW5ldyBSZXNwb25zZShvLmJvZHkpO28uYm9keT1hd2FpdCBlLmFycmF5QnVmZmVyKCl9by5ib2R5IGluc3RhbmNlb2YgUmVhZGFibGVTdHJlYW18fG8uYm9keSBpbnN0YW5jZW9mIEFycmF5QnVmZmVyP2UuY2FsbChuLHt0eXBlOiJmZXRjaCIsZmV0Y2g6b30sW28uYm9keV0pOmUuY2FsbChuLHt0eXBlOiJmZXRjaCIsZmV0Y2g6b30pfWxldCBzPW51bGwsbz0iIjtmdW5jdGlvbiBjKCl7cmV0dXJuIG5ldyBFcnJvcigidGhlcmUgYXJlIG5vIGJhcmUgY2xpZW50cyIse2NhdXNlOiJObyBCYXJlVHJhbnNwb3J0IHdhcyBzZXQuIFRyeSBjcmVhdGluZyBhIEJhcmVNdXhDb25uZWN0aW9uIGFuZCBjYWxsaW5nIHNldFRyYW5zcG9ydCgpIG9yIHNldE1hbnVhbFRyYW5zcG9ydCgpIG9uIGl0IGJlZm9yZSB1c2luZyBCYXJlQ2xpZW50LiJ9KX1mdW5jdGlvbiByKHQsYSl7Y29uc3Qgbj1zO2xldCBvPVthXTt0LmZldGNoPy5ib2R5JiZvLnB1c2godC5mZXRjaC5ib2R5KSx0LndlYnNvY2tldD8uY2hhbm5lbCYmby5wdXNoKHQud2Vic29ja2V0LmNoYW5uZWwpLGUuY2FsbChuLHttZXNzYWdlOnQscG9ydDphfSxvKX1mdW5jdGlvbiBsKHQpe3Qub25tZXNzYWdlPWFzeW5jIHQ9Pntjb25zdCBsPXQuZGF0YS5wb3J0LGk9dC5kYXRhLm1lc3NhZ2U7aWYoInBpbmciPT09aS50eXBlKWUuY2FsbChsLHt0eXBlOiJwb25nIn0pO2Vsc2UgaWYoInNldCI9PT1pLnR5cGUpdHJ5e2NvbnN0IHQ9YXN5bmMgZnVuY3Rpb24oKXt9LmNvbnN0cnVjdG9yO2lmKCJiYXJlLW11eC1yZW1vdGUiPT09aS5jbGllbnQuZnVuY3Rpb24pcz1pLmNsaWVudC5hcmdzWzBdLG89YGJhcmUtbXV4LXJlbW90ZSAoJHtpLmNsaWVudC5hcmdzWzFdfSlgO2Vsc2V7Y29uc3QgZT1uZXcgdChpLmNsaWVudC5mdW5jdGlvbiksW2Esbl09YXdhaXQgZSgpO3M9bmV3IGEoLi4uaS5jbGllbnQuYXJncyksbz1ufWNvbnNvbGUubG9nKCJzZXQgdHJhbnNwb3J0IHRvICIscyxvKSxlLmNhbGwobCx7dHlwZToic2V0In0pfWNhdGNoKGUpe2EobCxlLCJzZXQiKX1lbHNlIGlmKCJnZXQiPT09aS50eXBlKWwucG9zdE1lc3NhZ2Uoe3R5cGU6ImdldCIsbmFtZTpvfSk7ZWxzZSBpZigiZmV0Y2giPT09aS50eXBlKXRyeXtpZighcyl0aHJvdyBjKCk7aWYocyBpbnN0YW5jZW9mIE1lc3NhZ2VQb3J0KXJldHVybiB2b2lkIHIoaSxsKTtzLnJlYWR5fHxhd2FpdCBzLmluaXQoKSxhd2FpdCBuKGksbCxzKX1jYXRjaChlKXthKGwsZSwiZmV0Y2giKX1lbHNlIGlmKCJ3ZWJzb2NrZXQiPT09aS50eXBlKXRyeXtpZighcyl0aHJvdyBjKCk7aWYocyBpbnN0YW5jZW9mIE1lc3NhZ2VQb3J0KXJldHVybiB2b2lkIHIoaSxsKTtzLnJlYWR5fHxhd2FpdCBzLmluaXQoKSxhd2FpdCBhc3luYyBmdW5jdGlvbih0LGEsbil7Y29uc3RbcyxvXT1uLmNvbm5lY3QobmV3IFVSTCh0LndlYnNvY2tldC51cmwpLHQud2Vic29ja2V0LnByb3RvY29scyx0LndlYnNvY2tldC5yZXF1ZXN0SGVhZGVycywoYT0+e2UuY2FsbCh0LndlYnNvY2tldC5jaGFubmVsLHt0eXBlOiJvcGVuIixhcmdzOlthXX0pfSksKGE9PnthIGluc3RhbmNlb2YgQXJyYXlCdWZmZXI/ZS5jYWxsKHQud2Vic29ja2V0LmNoYW5uZWwse3R5cGU6Im1lc3NhZ2UiLGFyZ3M6W2FdfSxbYV0pOmUuY2FsbCh0LndlYnNvY2tldC5jaGFubmVsLHt0eXBlOiJtZXNzYWdlIixhcmdzOlthXX0pfSksKChhLG4pPT57ZS5jYWxsKHQud2Vic29ja2V0LmNoYW5uZWwse3R5cGU6ImNsb3NlIixhcmdzOlthLG5dfSl9KSwoYT0+e2UuY2FsbCh0LndlYnNvY2tldC5jaGFubmVsLHt0eXBlOiJlcnJvciIsYXJnczpbYV19KX0pKTt0LndlYnNvY2tldC5jaGFubmVsLm9ubWVzc2FnZT1lPT57ImRhdGEiPT09ZS5kYXRhLnR5cGU/cyhlLmRhdGEuZGF0YSk6ImNsb3NlIj09PWUuZGF0YS50eXBlJiZvKGUuZGF0YS5jbG9zZUNvZGUsZS5kYXRhLmNsb3NlUmVhc29uKX0sZS5jYWxsKGEse3R5cGU6IndlYnNvY2tldCJ9KX0oaSxsLHMpfWNhdGNoKGUpe2EobCxlLCJ3ZWJzb2NrZXQiKX19fW5ldyBCcm9hZGNhc3RDaGFubmVsKCJiYXJlLW11eCIpLnBvc3RNZXNzYWdlKHt0eXBlOiJyZWZyZXNoUG9ydCJ9KSxzZWxmLm9uY29ubmVjdD1lPT57bChlLnBvcnRzWzBdKX0sY29uc29sZS5kZWJ1ZygiYmFyZS1tdXg6IHJ1bm5pbmcgdjIuMS43IChidWlsZCBjNTZkMjg2KSIpfSgpOwovLyMgc291cmNlTWFwcGluZ1VSTD13b3JrZXIuanMubWFw`;
+    const connection = new BareMux.BareMuxConnection(bareworker);
+
+    const settings = document.getElementById("settings");
+    const gear = document.getElementById("gear");
+    const overlay = document.getElementById("overlay"); 
+    const wispInput = document.getElementById("wispInput");
+    const transports = document.querySelectorAll('input[name="transport"]');
+    const themePicker = document.getElementById('themePicker');
+    const searchEnginePicker = document.getElementById('searchEnginePicker');
+    const customSearchInput = document.getElementById('customSearch');
+    const customThemeName = document.getElementById('customThemeName');
+    const customThemeBase = document.getElementById('customThemeBase');
+    const customThemeSurface = document.getElementById('customThemeSurface');
+    const customThemeText = document.getElementById('customThemeText');
+    const saveCustomThemeBtn = document.getElementById('saveCustomThemeBtn');
+    const applyCustomThemePreviewBtn = document.getElementById('applyCustomThemePreviewBtn');
+    const customThemesList = document.getElementById('customThemesList');
+    const applyCustomThemeBtn = document.getElementById('applyCustomThemeBtn');
+    const deleteCustomThemeBtn = document.getElementById('deleteCustomThemeBtn');
+    const tabCloakInput = document.getElementById('tabCloak');
+    const tabCloakIconInput = document.getElementById('tabCloakIcon');
+    const saveTabCloakBtn = document.getElementById('saveTabCloakBtn');
+    const previewTabCloakBtn = document.getElementById('previewTabCloakBtn');
+    const clearTabCloakBtn = document.getElementById('clearTabCloakBtn');
+
+    const originalTitle = "TinyJet Proxy";
+    function getFaviconElement() {
+      return document.querySelector('link[rel~="icon"]');
+    }
+    const originalFavicon = getFaviconElement() ? getFaviconElement().getAttribute('href') : null;
+
+    gear.onclick = () => { overlay.classList.toggle("active"); settings.classList.toggle("open") }
+    overlay.onclick = e => { if (e.target === overlay) overlay.classList.remove("active"); settings.classList.remove("open") }
+    document.onkeydown = e => { if (e.key === "Escape") { overlay.classList.remove("active"); settings.classList.remove("open") } }
+
+    function getWispUrl() {
+      const wisp = document.getElementById("websocket").value.trim();
+      const defaultWisp = "wss://gointospace.app/wisp/";
+      return wisp || defaultWisp;
+    }
+
+    async function setTransport(transportsel) {
+      const wispUrl = getWispUrl();
+      localStorage.setItem('selectedTransport', transportsel);
+      switch (transportsel) {
+        case "epoxy":
+          await connection.setTransport("https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport/dist/index.mjs", [{ wisp: wispUrl }]);
+          break;
+        case "libcurl":
+          await connection.setTransport("https://cdn.jsdelivr.net/npm/@mercuryworkshop/libcurl-transport/dist/index.mjs", [{ websocket: wispUrl }]);
+          break;
+        default:
+          await connection.setTransport("https://cdn.jsdelivr.net/npm/@mercuryworkshop/epoxy-transport/dist/index.mjs", [{ wisp: wispUrl }]);
+          break;
+      }
+    }
+
+    const searchTemplates = {
+      google: "https://www.google.com/search?q=%s",
+      bing: "https://www.bing.com/search?q=%s",
+      duckduckgo: "https://duckduckgo.com/?q=%s",
+      brave: "https://search.brave.com/search?q=%s"
+    };
+
+    function search(input) {
+      try {
+        return new URL(input).toString();
+      } catch (err) {}
+
+      try {
+        let url = new URL(`http://${input}`);
+        if (url.hostname.includes(".")) return url.toString();
+      } catch (err) {}
+
+      const engine = (localStorage.getItem('selectedSearchEngine') || 'brave');
+      let template;
+      if (engine === 'custom') {
+        template = (customSearchInput.value && customSearchInput.value.trim()) || localStorage.getItem('customSearchTemplate') || "";
+      } else {
+        template = searchTemplates[engine] || searchTemplates.brave;
+      }
+
+      if (!template) template = searchTemplates.brave;
+      return template.replace("%s", encodeURIComponent(input));
+    }
+
+    const currentWisp = localStorage.getItem('selectedWisp') || "wss://gointospace.app/wisp/";
+    const currentTransport = localStorage.getItem('selectedTransport') || "epoxy";
+    const currentTheme = localStorage.getItem('selectedTheme') || "default";
+    const currentSearchEngine = localStorage.getItem('selectedSearchEngine') || "brave";
+    const currentCustomTemplate = localStorage.getItem('customSearchTemplate') || "";
+    const savedCustomThemes = JSON.parse(localStorage.getItem('customThemes') || '{}');
+
+    document.getElementById("websocket").value = currentWisp;
+    document.querySelector(`input[value="${currentTransport}"]`).checked = true;
+    themePicker.value = currentTheme;
+    document.body.className = currentTheme;
+    searchEnginePicker.value = currentSearchEngine;
+    customSearchInput.value = currentCustomTemplate;
+    customSearchInput.style.display = (currentSearchEngine === 'custom') ? 'block' : 'none';
+
+    function applyThemeVariables(base, surface, text) {
+      const root = document.documentElement.style;
+      root.setProperty('--base', base);
+      root.setProperty('--surface', surface);
+      root.setProperty('--text-color', text);
+    }
+
+    function populateCustomThemes() {
+      customThemesList.innerHTML = '';
+      const themes = JSON.parse(localStorage.getItem('customThemes') || '{}');
+      Object.keys(themes).forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        customThemesList.appendChild(opt);
+      });
+    }
+
+    function applyFavicon(url) {
+      if (!url) return;
+      let link = getFaviconElement();
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = url;
+    }
+
+    function applyTabCloak(title, iconUrl) {
+      if (title) document.title = title;
+      if (iconUrl) applyFavicon(iconUrl);
+    }
+
+    function restoreOriginalTab() {
+      document.title = originalTitle;
+      if (originalFavicon) applyFavicon(originalFavicon);
+    }
+
+    function initTabCloak() {
+      const savedTitle = localStorage.getItem('cloakedTitle');
+      const savedIcon = localStorage.getItem('cloakedIcon');
+      if (savedTitle || savedIcon) {
+        applyTabCloak(savedTitle, savedIcon);
+        tabCloakInput.value = savedTitle || '';
+        tabCloakIconInput.value = savedIcon || '';
+      } else {
+        document.title = originalTitle;
+      }
+    }
+
+    saveTabCloakBtn.addEventListener('click', () => {
+      const title = tabCloakInput.value.trim();
+      const icon = tabCloakIconInput.value.trim();
+      if (!title && !icon) return alert('Enter a title or icon URL to save.');
+      if (title) localStorage.setItem('cloakedTitle', title); else localStorage.removeItem('cloakedTitle');
+      if (icon) localStorage.setItem('cloakedIcon', icon); else localStorage.removeItem('cloakedIcon');
+      applyTabCloak(title, icon);
+    });
+
+    previewTabCloakBtn.addEventListener('click', () => {
+      const title = tabCloakInput.value.trim();
+      const icon = tabCloakIconInput.value.trim();
+      applyTabCloak(title || originalTitle, icon || originalFavicon);
+    });
+
+    clearTabCloakBtn.addEventListener('click', () => {
+      localStorage.removeItem('cloakedTitle');
+      localStorage.removeItem('cloakedIcon');
+      tabCloakInput.value = '';
+      tabCloakIconInput.value = '';
+      restoreOriginalTab();
+    });
+
+
+    saveCustomThemeBtn.addEventListener('click', () => {
+      const name = customThemeName.value.trim();
+      if (!name) return alert('Please enter a theme name.');
+      const themes = JSON.parse(localStorage.getItem('customThemes') || '{}');
+      themes[name] = {
+        base: customThemeBase.value,
+        surface: customThemeSurface.value,
+        text: customThemeText.value
+      };
+      localStorage.setItem('customThemes', JSON.stringify(themes));
+      populateCustomThemes();
+      customThemeName.value = '';
+    });
+
+    applyCustomThemePreviewBtn.addEventListener('click', () => {
+      applyThemeVariables(customThemeBase.value, customThemeSurface.value, customThemeText.value);
+    });
+
+    applyCustomThemeBtn.addEventListener('click', () => {
+      const sel = customThemesList.value;
+      if (!sel) return alert('Select a saved theme.');
+      const themes = JSON.parse(localStorage.getItem('customThemes') || '{}');
+      const t = themes[sel];
+      if (!t) return alert('Theme not found.');
+      applyThemeVariables(t.base, t.surface, t.text);
+      localStorage.setItem('selectedTheme', `custom:${sel}`);
+      document.body.className = `custom:${sel}`;
+    });
+
+    deleteCustomThemeBtn.addEventListener('click', () => {
+      const sel = customThemesList.value;
+      if (!sel) return alert('Select a saved theme to delete.');
+      const themes = JSON.parse(localStorage.getItem('customThemes') || '{}');
+      if (!themes[sel]) return alert('Theme not found');
+      delete themes[sel];
+      localStorage.setItem('customThemes', JSON.stringify(themes));
+      populateCustomThemes();
+    });
+
+    function initSelectedTheme() {
+      const sel = localStorage.getItem('selectedTheme') || currentTheme;
+      if (sel && sel.startsWith('custom:')) {
+        const name = sel.split(':')[1];
+        const themes = JSON.parse(localStorage.getItem('customThemes') || '{}');
+        if (themes[name]) {
+          applyThemeVariables(themes[name].base, themes[name].surface, themes[name].text);
+          document.body.className = sel;
+        }
+      } else {
+        document.body.className = sel || 'default';
+      }
+    }
+
+    populateCustomThemes();
+    initSelectedTheme();
+    initTabCloak();
+
+    setTransport(currentTransport); 
+        
+    wispInput.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const newWisp = document.getElementById("websocket").value.trim();
+      localStorage.setItem('selectedWisp', newWisp);
+      const currentTransport = document.querySelector('input[name="transport"]:checked').value;
+      await setTransport(currentTransport);
+    });
+
+    transports.forEach(radio => {
+      radio.addEventListener('change', async (event) => {
+        await setTransport(event.target.value);
+      });
+    });
+
+    searchEnginePicker.addEventListener('change', (event) => {
+      const engine = event.target.value;
+      localStorage.setItem('selectedSearchEngine', engine);
+      if (engine === 'custom') {
+        customSearchInput.style.display = 'block';
+      } else {
+        customSearchInput.style.display = 'none';
+      }
+    });
+
+    customSearchInput.addEventListener('blur', (e) => {
+      const val = e.target.value.trim();
+      localStorage.setItem('customSearchTemplate', val);
+    });
+    customSearchInput.addEventListener('change', (e) => {
+      const val = e.target.value.trim();
+      localStorage.setItem('customSearchTemplate', val);
+    });
+
+    themePicker.addEventListener('change', (event) => {
+      const selectedTheme = event.target.value;
+      document.body.className = selectedTheme;
+      localStorage.setItem('selectedTheme', selectedTheme);
+    });
+    
+    document.getElementById("search").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      let fixedurl = search(document.getElementById("url").value);
+      let src;
+      src = scramjet.encodeUrl(fixedurl);
+      document.getElementById("iframe").src = src;
+    });
+  </script>
+</body>
