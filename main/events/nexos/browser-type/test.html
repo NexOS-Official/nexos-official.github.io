@@ -8136,7 +8136,7 @@ menu.addEventListener('mouseleave', hideMenu);
         var settingsBtn1 = document.getElementById('ccSettingsBtn1');
         var settingsBtn2 = document.getElementById('ccSettingsBtn2');
         
-        var settingsContent = '<div style="padding:8px 0;max-height:320px;overflow-y:auto;">' +
+        var settingsContent = '<div style="padding:8px 0;max-height:420px;overflow-y:auto;">' +
             
             '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:10px 12px 6px;">Tab Style</div>' +
             '<button class="cc-settings-option" id="ccTabStyleRounded" data-style="rounded" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
@@ -8191,7 +8191,7 @@ menu.addEventListener('mouseleave', hideMenu);
 
         function openSettingsPanel(e) {
             e.stopPropagation();
-            openSubPanel(settingsContent, 380, initAllSettings);
+            openSubPanel(settingsContent, 460, initAllSettings);
         }
 
         if (settingsBtn2) settingsBtn2.addEventListener('click', openSettingsPanel);
@@ -8410,19 +8410,29 @@ menu.addEventListener('mouseleave', hideMenu);
         function initProxyEngineButtons() {
             var uvBtn = document.getElementById('ccProxyUV');
             var sjBtn = document.getElementById('ccProxySJ');
+            console.log('[ProxyEngine] Init buttons:', uvBtn, sjBtn);
             if (!uvBtn || !sjBtn) return;
 
             var current = 'uv';
             try { current = localStorage.getItem(PROXY_ENGINE_KEY) || 'uv'; } catch(e) {}
             updateProxyChecks(current);
 
-            uvBtn.addEventListener('click', function() { setProxyEngine('uv'); });
-            sjBtn.addEventListener('click', function() { setProxyEngine('scramjet'); });
+            uvBtn.onclick = function(e) {
+                e.stopPropagation();
+                console.log('[ProxyEngine] Set to UV');
+                setProxyEngine('uv');
+            };
+            sjBtn.onclick = function(e) {
+                e.stopPropagation();
+                console.log('[ProxyEngine] Set to Scramjet');
+                setProxyEngine('scramjet');
+            };
         }
 
         function setProxyEngine(engine) {
             try { localStorage.setItem(PROXY_ENGINE_KEY, engine); } catch(e) {}
             updateProxyChecks(engine);
+            console.log('[ProxyEngine] Saved:', engine, 'Verify:', localStorage.getItem(PROXY_ENGINE_KEY));
         }
 
         function updateProxyChecks(engine) {
