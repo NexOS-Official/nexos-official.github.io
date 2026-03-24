@@ -8410,40 +8410,41 @@ menu.addEventListener('mouseleave', hideMenu);
         function initProxyEngineButtons() {
             var uvBtn = document.getElementById('ccProxyUV');
             var sjBtn = document.getElementById('ccProxySJ');
-            console.log('[ProxyEngine] Init buttons:', uvBtn, sjBtn);
-            if (!uvBtn || !sjBtn) return;
+            if (!uvBtn || !sjBtn) { console.warn('[ProxyEngine] Buttons not found'); return; }
 
             var current = 'uv';
             try { current = localStorage.getItem(PROXY_ENGINE_KEY) || 'uv'; } catch(e) {}
-            updateProxyChecks(current);
+            applyProxyCheck(current);
 
-            uvBtn.onclick = function(e) {
+            uvBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                console.log('[ProxyEngine] Set to UV');
-                setProxyEngine('uv');
-            };
-            sjBtn.onclick = function(e) {
-                e.stopPropagation();
-                console.log('[ProxyEngine] Set to Scramjet');
-                setProxyEngine('scramjet');
-            };
-        }
-
-        function setProxyEngine(engine) {
-            try { localStorage.setItem(PROXY_ENGINE_KEY, engine); } catch(e) {}
-            updateProxyChecks(engine);
-            console.log('[ProxyEngine] Saved:', engine, 'Verify:', localStorage.getItem(PROXY_ENGINE_KEY));
-        }
-
-        function updateProxyChecks(engine) {
-            ['ccProxyUV', 'ccProxySJ'].forEach(function(id) {
-                var btn = document.getElementById(id);
-                if (!btn) return;
-                var check = btn.querySelector('.s-check');
-                var isActive = btn.dataset.proxy === engine;
-                if (check) check.style.opacity = isActive ? '1' : '0';
-                btn.style.color = isActive ? '#007aff' : '#1d1d1f';
+                try { localStorage.setItem(PROXY_ENGINE_KEY, 'uv'); } catch(e) {}
+                applyProxyCheck('uv');
             });
+            sjBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                try { localStorage.setItem(PROXY_ENGINE_KEY, 'scramjet'); } catch(e) {}
+                applyProxyCheck('scramjet');
+            });
+        }
+
+        function applyProxyCheck(engine) {
+            var uvBtn = document.getElementById('ccProxyUV');
+            var sjBtn = document.getElementById('ccProxySJ');
+            if (!uvBtn || !sjBtn) return;
+            var uvCheck = uvBtn.querySelector('.s-check');
+            var sjCheck = sjBtn.querySelector('.s-check');
+            if (engine === 'scramjet') {
+                if (sjCheck) sjCheck.style.opacity = '1';
+                if (uvCheck) uvCheck.style.opacity = '0';
+                sjBtn.style.color = '#007aff';
+                uvBtn.style.color = '#1d1d1f';
+            } else {
+                if (uvCheck) uvCheck.style.opacity = '1';
+                if (sjCheck) sjCheck.style.opacity = '0';
+                uvBtn.style.color = '#007aff';
+                sjBtn.style.color = '#1d1d1f';
+            }
         }
 
         function initDataButtons() {
