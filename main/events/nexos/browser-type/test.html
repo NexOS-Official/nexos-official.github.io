@@ -657,20 +657,29 @@
         }
 
         .ai-menu-btn {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border: none;
             background: transparent;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.2s;
+            border-radius: 8px;
+            transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+            position: relative;
+        }
+
+        .ai-menu-btn:hover {
+            background: rgba(0, 0, 0, 0.06);
+            transform: scale(1.08);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         .ai-menu-btn:active {
             background: rgba(0, 0, 0, 0.1);
-            border-radius: 50px;
+            transform: scale(0.96);
+            box-shadow: none;
         }
 
         .ai-menu-modal {
@@ -3905,8 +3914,8 @@ body.reduce-motion *::after {
                 <button class="zoom-btn" id="zoomInBtn" title="">
                     <i data-lucide="zoom-in" width="16" height="16"></i>
                 </button>
-                <button class="ai-menu-btn" id="aiMenuBtn" title="">
-                    <i data-lucide="diamond" width="16" height="16"></i>
+                <button class="ai-menu-btn" id="aiMenuBtn" title="Ghost AI">
+                    <i data-lucide="sparkles" width="16" height="16"></i>
                 </button>
                 <button class="menu-btn" id="menuBtn" title="">
                     <i data-lucide="more-vertical" width="16" height="16"></i>
@@ -4059,11 +4068,9 @@ document.addEventListener("DOMContentLoaded", () => {
             </button>
         </div>
     </div>
-    <div class="ai-chat-model-bar">
+    <div class="ai-chat-model-bar" style="display:none;">
         <select id="aiChatModel">
-            <option value="openai/gpt-4o-mini">openai/gpt-4o-mini</option>
-            <option value="openai/gpt-4.1-mini">openai/gpt-4.1-mini</option>
-            <option value="anthropic/claude-3.5-sonnet">anthropic/claude-3.5-sonnet</option>
+            <option value="openai/gpt-4o-mini" selected>openai/gpt-4o-mini</option>
         </select>
     </div>
     <div class="ai-chat-messages" id="aiChatMessages">
@@ -4077,25 +4084,50 @@ document.addEventListener("DOMContentLoaded", () => {
                 <button class="ai-suggestion-btn" data-prompt="Help me write this better: ">
                     <strong>Write better</strong><span>Polish your text</span>
                 </button>
-                <button class="ai-suggestion-btn" data-prompt="Analyze this image: ">
+                <button class="ai-suggestion-btn" data-prompt="Analyze this image in detail: ">
                     <strong>Analyze image</strong><span>Upload & describe</span>
                 </button>
                 <button class="ai-suggestion-btn" data-prompt="Give me ideas for: ">
                     <strong>Brainstorm</strong><span>Creative ideas</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Write code for: ">
+                    <strong>Write code</strong><span>Any language</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Debug this code and explain the fix: ">
+                    <strong>Debug code</strong><span>Find & fix bugs</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Explain this concept simply: ">
+                    <strong>Explain</strong><span>Like I'm a beginner</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Translate this to ">
+                    <strong>Translate</strong><span>Any language</span>
                 </button>
             </div>
         </div>
     </div>
     <div class="ai-chat-composer">
         <div class="ai-chat-input-shell">
+            <div id="aiChatImagePreview" style="display:none;padding-bottom:8px;">
+                <div style="position:relative;display:inline-block;">
+                    <img id="aiChatPreviewImg" style="max-width:100%;max-height:120px;border-radius:8px;border:1px solid #e4e4e4;" alt="Preview">
+                    <button id="aiChatRemoveFile" type="button" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;line-height:1;">&times;</button>
+                </div>
+            </div>
+            <div id="aiChatFilePreview" style="display:none;padding-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f5f5f5;border-radius:8px;border:1px solid #e4e4e4;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span id="aiChatFileLabel" style="font-size:12px;color:#555;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                    <button id="aiChatRemoveTextFile" type="button" style="border:none;background:none;cursor:pointer;color:#999;font-size:14px;">&times;</button>
+                </div>
+            </div>
             <textarea id="aiChatPrompt" placeholder="Message Ghost AI..." rows="1"></textarea>
             <div class="ai-chat-bottom-bar">
                 <div class="ai-left-dock">
-                    <button class="ai-chat-icon-btn" id="aiChatUploadBtn" title="Upload image">
+                    <button class="ai-chat-icon-btn" id="aiChatUploadBtn" title="Upload file">
                         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                     </button>
                     <span class="ai-file-name" id="aiChatFileName"></span>
-                    <input type="file" id="aiChatFileInput" accept="image/*,*/*" style="display:none">
+                    <input type="file" id="aiChatFileInput" accept="image/*,.txt,.md,.js,.ts,.jsx,.tsx,.py,.css,.html,.json,.xml,.csv,.yaml,.yml,.log,.sql,.sh,.c,.cpp,.java,.rb,.go,.rs,.php,.swift,.kt,.dart,.r,.lua,.pl,.m,.h,.cs,.scala,.toml,.ini,.cfg,.env,.dockerfile,.makefile,.gitignore,.bat,.ps1,.pdf,.doc,.docx" style="display:none">
                 </div>
                 <button class="ai-chat-icon-btn ai-chat-send-btn" id="aiChatSendBtn" title="Send">
                     <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
@@ -11198,6 +11230,28 @@ setInterval(async () => {
     var fileNameEl = document.getElementById('aiChatFileName');
     var suggestionsBox = document.getElementById('aiSuggestionsBox');
     var modal = document.getElementById('aiMenuModal');
+    var imagePreviewContainer = document.getElementById('aiChatImagePreview');
+    var previewImg = document.getElementById('aiChatPreviewImg');
+    var removeFileBtn = document.getElementById('aiChatRemoveFile');
+    var filePreviewContainer = document.getElementById('aiChatFilePreview');
+    var fileLabel = document.getElementById('aiChatFileLabel');
+    var removeTextFileBtn = document.getElementById('aiChatRemoveTextFile');
+
+    var conversationHistory = [];
+    var currentUserAvatar = '/ghost.svg';
+    var pendingFileContent = null;
+    var pendingFileName = null;
+
+    (async function() {
+        try {
+            var res = await fetch('/auth/session', { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            var data = await res.json();
+            if (data && data.logged_in && data.avatar_url) {
+                currentUserAvatar = data.avatar_url;
+            }
+        } catch(e) {}
+    })();
 
     function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -11207,6 +11261,15 @@ setInterval(async () => {
             r.onload = function() { resolve(r.result); };
             r.onerror = reject;
             r.readAsDataURL(file);
+        });
+    }
+
+    function fileToText(file) {
+        return new Promise(function(resolve, reject) {
+            var r = new FileReader();
+            r.onload = function() { resolve(r.result); };
+            r.onerror = reject;
+            r.readAsText(file);
         });
     }
 
@@ -11272,7 +11335,19 @@ setInterval(async () => {
 
         var avatar = document.createElement('div');
         avatar.className = 'ai-msg-avatar';
-        avatar.textContent = role === 'user' ? 'You' : 'AI';
+        if (role === 'user') {
+            var userImg = document.createElement('img');
+            userImg.src = currentUserAvatar;
+            userImg.alt = 'You';
+            userImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+            avatar.appendChild(userImg);
+        } else {
+            var aiImg = document.createElement('img');
+            aiImg.src = '/ghost.svg';
+            aiImg.alt = 'Ghost AI';
+            aiImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+            avatar.appendChild(aiImg);
+        }
 
         var card = document.createElement('div');
         card.className = 'ai-msg-card';
@@ -11312,46 +11387,103 @@ setInterval(async () => {
         scrollBottom();
     }
 
+    var defaultWelcomeHTML = '<div class="ai-chat-welcome"><h3>Ghost AI</h3><p>Chat with AI right here on Ghost!</p><div class="ai-suggestions-grid" id="aiSuggestionsBox">' +
+        '<button class="ai-suggestion-btn" data-prompt="Summarize this topic clearly: "><strong>Summarize</strong><span>Clean explanations</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Help me write this better: "><strong>Write better</strong><span>Polish your text</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Analyze this image in detail: "><strong>Analyze image</strong><span>Upload & describe</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Give me ideas for: "><strong>Brainstorm</strong><span>Creative ideas</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Write code for: "><strong>Write code</strong><span>Any language</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Debug this code and explain the fix: "><strong>Debug code</strong><span>Find & fix bugs</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Explain this concept simply: "><strong>Explain</strong><span>Like I\'m a beginner</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Translate this to "><strong>Translate</strong><span>Any language</span></button>' +
+        '</div></div>';
+
     function resetChat() {
-        messagesEl.innerHTML = '<div class="ai-chat-welcome"><h3>Ghost AI</h3><p>Chat with AI right here on Ghost!</p><div class="ai-suggestions-grid" id="aiSuggestionsBox"><button class="ai-suggestion-btn" data-prompt="Summarize this topic clearly: "><strong>Summarize</strong><span>Clean explanations</span></button><button class="ai-suggestion-btn" data-prompt="Help me write this better: "><strong>Write better</strong><span>Polish your text</span></button><button class="ai-suggestion-btn" data-prompt="Analyze this image: "><strong>Analyze image</strong><span>Upload & describe</span></button><button class="ai-suggestion-btn" data-prompt="Give me ideas for: "><strong>Brainstorm</strong><span>Creative ideas</span></button></div></div>';
+        conversationHistory = [];
+        messagesEl.innerHTML = defaultWelcomeHTML;
         promptEl.value = '';
         promptEl.style.height = 'auto';
+        clearFileState();
+        bindSuggestions();
+    }
+
+    function clearFileState() {
         fileInput.value = '';
         fileNameEl.textContent = '';
-        bindSuggestions();
+        pendingFileContent = null;
+        pendingFileName = null;
+        imagePreviewContainer.style.display = 'none';
+        filePreviewContainer.style.display = 'none';
+        previewImg.src = '';
     }
 
     async function sendMessage() {
         var prompt = promptEl.value.trim();
         var file = fileInput.files[0];
-        if (!prompt && !file) return;
+        if (!prompt && !file && !pendingFileContent) return;
 
-        var userHtml = esc(prompt).replace(/\n/g, '<br>') || '[Image uploaded]';
-        if (file && file.type.startsWith('image/')) {
-            var preview = await fileToDataURL(file);
-            userHtml += '<img class="ai-user-image" src="' + preview + '" alt="Uploaded">';
+        var userHtml = esc(prompt).replace(/\n/g, '<br>') || '';
+        var imageDataUrl = '';
+        var fileTextContent = pendingFileContent || '';
+        var fileName = pendingFileName || '';
+
+        if (file) {
+            if (file.type.startsWith('image/')) {
+                imageDataUrl = await fileToDataURL(file);
+                userHtml += '<img class="ai-user-image" src="' + imageDataUrl + '" alt="Uploaded">';
+            } else {
+                try {
+                    fileTextContent = await fileToText(file);
+                    fileName = file.name;
+                    userHtml += '<div style="margin-top:6px;padding:6px 10px;background:#f5f5f5;border-radius:8px;border:1px solid #e4e4e4;font-size:11px;color:#555;">📄 ' + esc(file.name) + ' (' + formatFileSize(file.size) + ')</div>';
+                } catch(e) {
+                    userHtml += '<div style="margin-top:4px;font-size:11px;color:#c00;">Failed to read file</div>';
+                }
+            }
+        } else if (pendingFileContent) {
+            if (previewImg.src && imagePreviewContainer.style.display !== 'none') {
+                imageDataUrl = previewImg.src;
+                userHtml += '<img class="ai-user-image" src="' + imageDataUrl + '" alt="Uploaded">';
+                fileTextContent = '';
+            } else {
+                userHtml += '<div style="margin-top:6px;padding:6px 10px;background:#f5f5f5;border-radius:8px;border:1px solid #e4e4e4;font-size:11px;color:#555;">📄 ' + esc(pendingFileName) + '</div>';
+            }
         }
+
+        if (!userHtml && !imageDataUrl && !fileTextContent) userHtml = '[File uploaded]';
+
         addMessage('user', userHtml, false);
+
+        var userContent = prompt || '';
+        if (fileTextContent) {
+            userContent += (userContent ? '\n\n' : '') + '--- FILE: ' + fileName + ' ---\n' + fileTextContent + '\n--- END FILE ---';
+        }
+
+        conversationHistory.push({ role: 'user', content: userContent, image: imageDataUrl || '' });
 
         sendBtn.disabled = true;
         var typing = addTyping();
 
         try {
-            var imageDataUrl = '';
-            if (file) imageDataUrl = await fileToDataURL(file);
-
             var res = await fetch('/api/ai/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: modelEl.value,
-                    prompt: prompt,
-                    image: imageDataUrl
+                    model: 'openai/gpt-4o-mini',
+                    prompt: userContent,
+                    image: imageDataUrl,
+                    history: conversationHistory.slice(0, -1).map(function(m) {
+                        return { role: m.role, content: m.content };
+                    }),
+                    systemPrompt: "You are Ghost AI, an expert coding assistant and general-purpose AI built into the Ghost browser. You have deep expertise in JavaScript, TypeScript, Python, React, Node.js, HTML, CSS, SQL, and all major programming languages and frameworks. You write clean, efficient, well-commented code. You can debug complex issues, explain algorithms, review code, suggest improvements, refactor code, and build full applications. You also excel at: writing essays, summarizing content, translating text, analyzing images in detail (describe every element you see), brainstorming ideas, solving math problems, explaining concepts simply, and helping with research. When analyzing images, be extremely thorough - describe colors, text, layout, objects, people, context, and any relevant details. When writing code, always include comments and explain your approach. Keep responses clear, well-formatted with markdown, and helpful."
                 })
             });
 
             var data = await res.json();
             var reply = data.reply || data.error || 'No response.';
+
+            conversationHistory.push({ role: 'assistant', content: reply });
+
             typing.bubble.innerHTML = '<div class="ai-md"></div>';
             await typewriter(typing.bubble, reply, 6);
         } catch (err) {
@@ -11360,10 +11492,15 @@ setInterval(async () => {
             sendBtn.disabled = false;
             promptEl.value = '';
             promptEl.style.height = 'auto';
-            fileInput.value = '';
-            fileNameEl.textContent = '';
+            clearFileState();
             promptEl.focus();
         }
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
     }
 
     function bindSuggestions() {
@@ -11376,10 +11513,6 @@ setInterval(async () => {
         });
     }
 
-    modelEl.addEventListener('change', function() {
-        modelLabel.textContent = modelEl.value.split('/').pop();
-    });
-
     sendBtn.addEventListener('click', sendMessage);
     clearBtn.addEventListener('click', resetChat);
     newBtn.addEventListener('click', resetChat);
@@ -11388,9 +11521,37 @@ setInterval(async () => {
         if (window.browser) window.browser._updateContentAreaForAi(false);
     });
     uploadBtn.addEventListener('click', function() { fileInput.click(); });
-    fileInput.addEventListener('change', function() {
-        fileNameEl.textContent = fileInput.files[0] ? fileInput.files[0].name : '';
+
+    fileInput.addEventListener('change', async function() {
+        var file = fileInput.files[0];
+        if (!file) { clearFileState(); return; }
+        fileNameEl.textContent = file.name;
+
+        if (file.type.startsWith('image/')) {
+            var dataUrl = await fileToDataURL(file);
+            previewImg.src = dataUrl;
+            imagePreviewContainer.style.display = 'block';
+            filePreviewContainer.style.display = 'none';
+            pendingFileContent = dataUrl;
+            pendingFileName = file.name;
+        } else {
+            try {
+                var text = await fileToText(file);
+                pendingFileContent = text;
+                pendingFileName = file.name;
+                fileLabel.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
+                filePreviewContainer.style.display = 'block';
+                imagePreviewContainer.style.display = 'none';
+            } catch(e) {
+                fileLabel.textContent = 'Could not read file';
+                filePreviewContainer.style.display = 'block';
+            }
+        }
     });
+
+    removeFileBtn.addEventListener('click', clearFileState);
+    removeTextFileBtn.addEventListener('click', clearFileState);
+
     promptEl.addEventListener('input', autoGrow);
     promptEl.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
