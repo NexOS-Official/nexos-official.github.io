@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -421,6 +422,46 @@
             display: block;
         }
 
+        .tab-favicon.loading img {
+            width: 12px !important;
+            height: 12px !important;
+            transition: width 0.2s ease, height 0.2s ease;
+        }
+        
+        .tab-favicon.loading i {
+            width: 12px !important;
+            height: 12px !important;
+            transform: scale(0.6);
+            transition: transform 0.2s ease;
+        }
+        
+        .tab-favicon.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin-top: -10px;
+            margin-left: -10px;
+            border: 2px solid transparent;
+            border-top-color: #4285f4;
+            border-right-color: #4285f4;
+            border-radius: 50%;
+            animation: favicon-spinner 0.8s linear infinite;
+            z-index: 10;
+            box-sizing: border-box;
+        }
+        
+        .tab-favicon.loading .favicon-glow {
+            display: none !important;
+        }
+        
+        @keyframes favicon-spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .tab-title {
            flex: 1;
            font-size: 14px;          
@@ -656,44 +697,388 @@
         }
 
         .ai-menu-btn {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border: none;
             background: transparent;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.2s;
+            border-radius: 8px;
+            transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+            position: relative;
+        }
+
+        .ai-menu-btn:hover {
+            background: rgba(0, 0, 0, 0.06);
+            transform: scale(1.08);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         .ai-menu-btn:active {
             background: rgba(0, 0, 0, 0.1);
-            border-radius: 50px;
+            transform: scale(0.96);
+            box-shadow: none;
         }
 
         .ai-menu-modal {
+            position: fixed;
+            top: calc(92px + var(--bookmark-bar-offset, 0px));
+            right: -400px;
+            width: 400px;
+            height: calc(100vh - 92px - var(--bookmark-bar-offset, 0px) - 50px);
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            z-index: 500;
+            opacity: 0;
+            transition: right 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .ai-menu-modal::before {
+            content: '';
             position: absolute;
-            top: 40px;
-            right: 50px;
-            width: 300px;
-            height: 400px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            display: none;
-            z-index: 1001;
-            overflow: hidden;
+            top: 0;
+            left: -12px;
+            width: 12px;
+            height: 12px;
+            background: #ffffff;
+            mask-image: radial-gradient(circle at 0% 100%, transparent 12px, black 12.5px);
+            -webkit-mask-image: radial-gradient(circle at 0% 100%, transparent 12px, black 12.5px);
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            opacity: 0;
+            transform: scale(0.8);
+            z-index: 1;
         }
 
         .ai-menu-modal.show {
-            display: block;
+            right: 0;
+            opacity: 1;
+            display: flex;
         }
 
-        .ai-menu-iframe {
-            width: 100%;
-            height: 100%;
+        .ai-menu-modal.show::before {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .ai-chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #e9ecef;
+            min-height: 60px;
+            flex-shrink: 0;
+        }
+
+        .ai-chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .ai-chat-header-left strong {
+            font-size: 16px;
+            font-weight: normal;
+            font-family: google sans;
+            color: #1a1a1a;
+        }
+
+        .ai-chat-header-left span {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .ai-chat-header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .ai-chat-header-actions button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
             border: none;
+            border-radius: 6px;
+            background: #ffffff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .ai-chat-header-actions button:hover {
+            background: #f1f3f4;
+            transform: translateY(-1px);
+        }
+
+        .ai-chat-header-actions button:active {
+            transform: translateY(0);
+        }
+
+        .ai-chat-header-actions button svg {
+            width: 16px;
+            height: 16px;
+            stroke: #000000;
+        }
+
+        .ai-chat-model-bar {
+            padding: 10px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            flex-shrink: 0;
+        }
+
+        .ai-chat-model-bar select {
+            width: 100%;
+            border: 1px solid #e4e4e4;
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 13px;
+            font-family: google sans, sans-serif;
+            background: #fff;
+            outline: none;
+            color: #333;
+        }
+
+        .ai-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 0;
+        }
+
+        .ai-chat-messages::-webkit-scrollbar { width: 4px; }
+        .ai-chat-messages::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+
+        .ai-chat-welcome {
+            text-align: center;
+            padding: 30px 16px;
+            color: #999;
+            font-size: 13px;
+        }
+
+        .ai-chat-welcome h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        .ai-suggestions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .ai-suggestion-btn {
+            border: 1px solid #e8e8e8;
+            background: #fff;
+            border-radius: 12px;
+            padding: 10px;
+            text-align: left;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            font-family: google sans, sans-serif;
+        }
+
+        .ai-suggestion-btn:hover {
+            border-color: #ccc;
+            background: #fafafa;
+        }
+
+        .ai-suggestion-btn strong {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 3px;
+            color: #333;
+        }
+
+        .ai-suggestion-btn span {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.3;
+        }
+
+        .ai-msg-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        .ai-msg-row.user {
+            justify-content: flex-end;
+        }
+
+        .ai-msg-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 800;
+            overflow: hidden;
+            background: #f0f0f0;
+        }
+
+        .ai-msg-row.user .ai-msg-avatar { order: 2; background: #333; color: #fff; }
+        .ai-msg-row.user .ai-msg-card { order: 1; }
+
+        .ai-msg-card {
+            max-width: 85%;
+            min-width: 0;
+        }
+
+        .ai-msg-meta {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 3px;
+        }
+
+        .ai-msg-bubble {
+            border: 1px solid #e7e7e7;
+            border-radius: 12px;
+            background: #fff;
+            padding: 8px 12px;
+            font-size: 13px;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .ai-msg-row.user .ai-msg-bubble {
+            background: #f8f8f8;
+            border-color: #e0e0e0;
+        }
+
+        .ai-msg-bubble .ai-md > *:first-child { margin-top: 0; }
+        .ai-msg-bubble .ai-md > *:last-child { margin-bottom: 0; }
+        .ai-msg-bubble .ai-md p { margin: 0 0 8px; }
+        .ai-msg-bubble .ai-md ul, .ai-msg-bubble .ai-md ol { padding-left: 18px; margin: 0 0 8px; }
+        .ai-msg-bubble .ai-md li + li { margin-top: 4px; }
+        .ai-msg-bubble .ai-md blockquote { border-left: 3px solid #ddd; padding-left: 10px; color: #666; margin: 0 0 8px; }
+        .ai-msg-bubble .ai-md code.inline { padding: 1px 5px; border-radius: 4px; background: #f3f3f3; border: 1px solid #eee; font-family: Consolas, monospace; font-size: 0.9em; }
+        .ai-msg-bubble .ai-md .ai-code-block { border: 1px solid #eee; background: #fafafa; border-radius: 10px; overflow: hidden; margin: 8px 0; }
+        .ai-msg-bubble .ai-md .ai-code-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid #eee; font-size: 11px; }
+        .ai-msg-bubble .ai-md .ai-code-head button { border: 1px solid #eee; background: #fff; border-radius: 6px; padding: 3px 8px; font-size: 11px; cursor: pointer; }
+        .ai-msg-bubble .ai-md .ai-code-block pre { margin: 0; padding: 10px; overflow-x: auto; }
+        .ai-msg-bubble .ai-md .ai-code-block code { font-family: Consolas, monospace; font-size: 12px; white-space: pre; }
+
+        .ai-msg-bubble img.ai-user-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 6px;
+        }
+
+        .ai-typing-dots { display: inline-flex; gap: 3px; align-items: center; }
+        .ai-typing-dots span { width: 5px; height: 5px; border-radius: 50%; background: #aaa; display: inline-block; animation: ai-bounce 1s infinite ease-in-out; }
+        .ai-typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+        .ai-typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes ai-bounce { 0%,80%,100%{transform:translateY(0);opacity:.35} 40%{transform:translateY(-3px);opacity:1} }
+
+        .ai-chat-composer {
+            padding: 12px;
+            border-top: 1px solid #e8e8e8;
+            flex-shrink: 0;
+            background: #fff;
+        }
+
+        .ai-chat-input-shell {
+            border: 1px solid #e4e4e4;
+            border-radius: 18px;
+            background: #fff;
+            padding: 12px 12px 44px;
+            position: relative;
+            min-height: 80px;
+        }
+
+        .ai-chat-input-shell:focus-within {
+            border-color: #ccc;
+        }
+
+        .ai-chat-input-shell textarea {
+            width: 100%;
+            min-height: 36px;
+            resize: none;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 14px;
+            line-height: 1.5;
+            font-family: google sans, sans-serif;
+            color: #333;
+            overflow: hidden;
+        }
+
+        .ai-chat-bottom-bar {
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .ai-chat-bottom-bar .ai-left-dock {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-chat-icon-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid #e4e4e4;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .ai-chat-icon-btn svg { width: 16px; height: 16px; stroke: #555; }
+
+        .ai-chat-send-btn {
+            background: #000;
+            border-color: #000;
+            color: #fff;
+        }
+
+        .ai-chat-send-btn svg { stroke: #fff; }
+        .ai-chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .ai-file-name {
+            font-size: 11px;
+            color: #888;
+            max-width: 120px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ai-chat-helper {
+            font-size: 11px;
+            color: #aaa;
+            padding: 4px 4px 0;
+        }
+
+        @media (max-width: 500px) {
+            .ai-menu-modal { width: 100vw; right: -100vw; }
+            .ai-menu-modal.show { right: 0; }
         }
 
         .browser-menu {
@@ -3483,11 +3868,294 @@ body.reduce-motion *::after {
             bottom: 52px;
         }
     }
+
+    .tab-restore-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.25);
+        z-index: 99998;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+    }
+    .tab-restore-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .tab-restore-panel {
+        display: flex;
+        flex-direction: row;
+        background: #e8eaed;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 1px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10);
+        opacity: 0;
+        width: 700px;
+        max-width: 95vw;
+        height: 340px;
+    }
+
+    .tab-restore-overlay.show .tab-restore-panel {
+        opacity: 1;
+    }
+
+    .tab-restore-left {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 24px 28px 20px;
+        flex: 0 0 270px;
+        height: 100%;
+        background: #e8eaed;
+        gap: 0;
+        position: relative;
+    }
+
+    .tab-restore-right {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 12px;
+        background: #e8eaed;
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .tab-restore-tabs-inner {
+        flex: 1;
+        background: #dcdfe3;
+        border-radius: 14px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: none;
+        padding: 6px 0;
+    }
+    .tab-restore-tabs-inner::-webkit-scrollbar {
+        display: none;
+    }
+
+    .tab-restore-right::before,
+    .tab-restore-right::after {
+        content: '';
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        height: 24px;
+        pointer-events: none;
+        z-index: 2;
+        border-radius: 14px;
+    }
+    .tab-restore-right::before {
+        top: 12px;
+        background: linear-gradient(to bottom, #dcdfe3 0%, transparent 100%);
+    }
+    .tab-restore-right::after {
+        bottom: 12px;
+        background: linear-gradient(to top, #dcdfe3 0%, transparent 100%);
+    }
+
+    .tab-restore-header {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .tab-restore-header-text h2 {
+        font-size: 17px;
+        font-weight: 600;
+        color: #202124;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0;
+        letter-spacing: 0;
+    }
+
+    .tab-restore-header-text p {
+        font-size: 13px;
+        color: #5f6368;
+        margin: 0;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .tab-restore-bottom {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: auto;
+        position: relative;
+    }
+
+    .tab-restore-bottom::before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 12px;
+        height: 12px;
+        background: transparent;
+    }
+
+    .tab-restore-buttons {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .tab-restore-dismiss {
+        background: transparent;
+        border: 1.5px solid #bdc1c6;
+        color: #3c4043;
+        font-size: 13px;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        cursor: pointer;
+        padding: 8px 18px;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.15s ease;
+        position: relative;
+    }
+
+    .tab-restore-dismiss:hover {
+        background: #6b46ff;
+        border-color: #6b46ff;
+        color: #fff;
+        padding: 8px 22px;
+        transform: translateY(-1px);
+        box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+    }
+
+    .tab-restore-dismiss:active {
+        transform: translateY(0);
+        box-shadow: none;
+    }
+
+    .tab-restore-btn {
+        background: #6b46ff;
+        color: #fff;
+        border: none;
+        border-radius: 20px;
+        padding: 8px 22px;
+        font-size: 13px;
+        font-weight: 500;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .tab-restore-btn::before {
+        content: '';
+        position: absolute;
+        top: -12px;
+        left: 0;
+        width: 12px;
+        height: 12px;
+        background: #e8eaed;
+        mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+        -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+    }
+
+    .tab-restore-btn::after {
+        content: '';
+        position: absolute;
+        top: -12px;
+        right: 0;
+        width: 12px;
+        height: 12px;
+        background: #e8eaed;
+        mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+        -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+    }
+
+    .tab-restore-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: default;
+        transition: background 0.12s ease;
+    }
+
+    .tab-restore-item-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .tab-restore-item-icon img {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        object-fit: contain;
+    }
+
+    .tab-restore-item-text {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .tab-restore-item-title {
+        font-size: 13px;
+        color: #202124;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 400;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .tab-restore-top,
+    .tab-restore-body,
+    .tab-restore-body-inner,
+    .tab-restore-content,
+    .tab-restore-message,
+    .tab-restore-tabs-preview,
+    .tab-restore-preview-item,
+    .tab-restore-header-icon,
+    .tab-restore-ghost,
+    .tab-restore-item-avatars {
+        display: none !important;
+    }
     </style>
 </head>
 <body>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-banner" id="loadingBanner"></div>
+    </div>
+
+    <div class="tab-restore-overlay" id="tabRestoreOverlay">
+        <div class="tab-restore-panel">
+            <div class="tab-restore-left">
+                <div>
+                    <div class="tab-restore-header">
+                        <div class="tab-restore-header-text">
+                            <h2>Welcome Recap</h2>
+                            <p>Don't forget these!</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="tab-restore-bottom">
+                    <div class="tab-restore-buttons">
+                        <button class="tab-restore-dismiss" id="restoreDismissBtn">No thanks</button>
+                        <button class="tab-restore-btn" id="restoreBtn">Open</button>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-restore-connector"></div>
+            <div class="tab-restore-right">
+                <div class="tab-restore-tabs-inner" id="restoreTabsList">
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="browser-container">
@@ -3569,8 +4237,8 @@ body.reduce-motion *::after {
                 <button class="zoom-btn" id="zoomInBtn" title="">
                     <i data-lucide="zoom-in" width="16" height="16"></i>
                 </button>
-                <button class="ai-menu-btn" id="aiMenuBtn" title="">
-                    <i data-lucide="diamond" width="16" height="16"></i>
+                <button class="ai-menu-btn" id="aiMenuBtn" title="Ghost AI">
+                    <i data-lucide="sparkles" width="16" height="16"></i>
                 </button>
                 <button class="menu-btn" id="menuBtn" title="">
                     <i data-lucide="more-vertical" width="16" height="16"></i>
@@ -3703,7 +4371,94 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
 
 <div id="aiMenuModal" class="ai-menu-modal">
-    <iframe src="/pages/main/ai.html" class="ai-menu-iframe"></iframe>
+    <div class="ai-chat-header">
+        <div class="ai-chat-header-left">
+            <strong>Ghost AI</strong>
+            <span id="aiChatModelLabel">gpt-4o-mini</span>
+        </div>
+        <div class="ai-chat-header-actions">
+            <button id="aiChatClearBtn" title="Clear chat">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+            </button>
+            <button id="aiChatNewBtn" title="New prompt">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+            </button>
+            <button id="aiChatMinimizeBtn" title="Minimize">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+            </button>
+            <button id="aiChatCloseBtn" title="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+        </div>
+    </div>
+    <div class="ai-chat-model-bar" style="display:none;">
+        <select id="aiChatModel">
+            <option value="openai/gpt-4o-mini" selected>openai/gpt-4o-mini</option>
+        </select>
+    </div>
+    <div class="ai-chat-messages" id="aiChatMessages">
+        <div class="ai-chat-welcome">
+            <h3>Ghost AI</h3>
+            <p>Chat with AI right here on Ghost!</p>
+            <div class="ai-suggestions-grid" id="aiSuggestionsBox">
+                <button class="ai-suggestion-btn" data-prompt="Summarize this topic clearly: ">
+                    <strong>Summarize</strong><span>Clean explanations</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Help me write this better: ">
+                    <strong>Write better</strong><span>Polish your text</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Analyze this image in detail: ">
+                    <strong>Analyze image</strong><span>Upload & describe</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Give me ideas for: ">
+                    <strong>Brainstorm</strong><span>Creative ideas</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Write code for: ">
+                    <strong>Write code</strong><span>Any language</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Debug this code and explain the fix: ">
+                    <strong>Debug code</strong><span>Find & fix bugs</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Explain this concept simply: ">
+                    <strong>Explain</strong><span>Like I'm a beginner</span>
+                </button>
+                <button class="ai-suggestion-btn" data-prompt="Translate this to ">
+                    <strong>Translate</strong><span>Any language</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="ai-chat-composer">
+        <div class="ai-chat-input-shell">
+            <div id="aiChatImagePreview" style="display:none;padding-bottom:8px;">
+                <div style="position:relative;display:inline-block;">
+                    <img id="aiChatPreviewImg" style="max-width:100%;max-height:120px;border-radius:8px;border:1px solid #e4e4e4;" alt="Preview">
+                    <button id="aiChatRemoveFile" type="button" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(0,0,0,0.6);color:#fff;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;line-height:1;">&times;</button>
+                </div>
+            </div>
+            <div id="aiChatFilePreview" style="display:none;padding-bottom:8px;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f5f5f5;border-radius:8px;border:1px solid #e4e4e4;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span id="aiChatFileLabel" style="font-size:12px;color:#555;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                    <button id="aiChatRemoveTextFile" type="button" style="border:none;background:none;cursor:pointer;color:#999;font-size:14px;">&times;</button>
+                </div>
+            </div>
+            <textarea id="aiChatPrompt" placeholder="Message Ghost AI..." rows="1"></textarea>
+            <div class="ai-chat-bottom-bar">
+                <div class="ai-left-dock">
+                    <button class="ai-chat-icon-btn" id="aiChatUploadBtn" title="Upload file">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                    </button>
+                    <span class="ai-file-name" id="aiChatFileName"></span>
+                    <input type="file" id="aiChatFileInput" accept="image/*,.txt,.md,.js,.ts,.jsx,.tsx,.py,.css,.html,.json,.xml,.csv,.yaml,.yml,.log,.sql,.sh,.c,.cpp,.java,.rb,.go,.rs,.php,.swift,.kt,.dart,.r,.lua,.pl,.m,.h,.cs,.scala,.toml,.ini,.cfg,.env,.dockerfile,.makefile,.gitignore,.bat,.ps1,.pdf,.doc,.docx" style="display:none">
+                </div>
+                <button class="ai-chat-icon-btn ai-chat-send-btn" id="aiChatSendBtn" title="Send">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+                </button>
+            </div>
+        </div>
+        <div class="ai-chat-helper">Enter to send · Shift+Enter for new line</div>
+    </div>
 </div>
 
         <div class="bookmarks-bar" id="bookmarksBar">
@@ -3844,10 +4599,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.initializeElements();
                 this.bindEvents();
                 this.setupNewTabInterception();
-                this.createNewTab();
+
+                var savedTabs = this._loadSavedTabs();
+                if (savedTabs && savedTabs.length > 0) {
+                    this._pendingRestore = savedTabs;
+                    this.createNewTab();
+                } else {
+                    this.createNewTab();
+                }
                 this.initializeBatteryMonitoring();
                 
                 this.initializeLoadingAnimation();
+                this._startTabAutoSave();
                 
                 lucide.createIcons();
                 
@@ -4083,14 +4846,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 this.aiMenuBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    this.aiMenuModal.classList.toggle('show');
-                    this.updateAiMenuPosition();
+                    this.toggleAiSidebar();
                 });
 
-                document.addEventListener('click', (e) => {
-                    if (!this.aiMenuModal.contains(e.target) && e.target !== this.aiMenuBtn) {
-                        this.aiMenuModal.classList.remove('show');
-                    }
+                document.getElementById('aiChatMinimizeBtn').addEventListener('click', () => {
+                    this.toggleAiSidebar(false);
                 });
 
                 
@@ -4610,22 +5370,37 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             
             updateAiMenuPosition() {
-                if (!this.aiMenuModal.classList.contains('show')) return;
-                const aiMenuBtnRect = this.aiMenuBtn.getBoundingClientRect();
-                const modalWidth = this.aiMenuModal.offsetWidth;
-                const viewportWidth = window.innerWidth;
+            }
 
-                let left = aiMenuBtnRect.right - modalWidth + 10;
-                let top = aiMenuBtnRect.bottom + 5;
+            toggleAiSidebar(forceState) {
+                const modal = this.aiMenuModal;
+                const isOpen = modal.classList.contains('show');
+                const shouldOpen = forceState !== undefined ? forceState : !isOpen;
 
-                if (left < 10) left = 10;
-                if (left + modalWidth > viewportWidth - 10) {
-                    left = viewportWidth - modalWidth - 10;
+                if (shouldOpen) {
+                    modal.classList.add('show');
+                    this._updateContentAreaForAi(true);
+                } else {
+                    modal.classList.remove('show');
+                    this._updateContentAreaForAi(false);
                 }
-                if (top < 10) top = 10;
+            }
 
-                this.aiMenuModal.style.left = `${left}px`;
-                this.aiMenuModal.style.top = `${top}px`;
+            _updateContentAreaForAi(open) {
+                const openSidebars = this._getOpenSidebars();
+                if (open) {
+                    if (openSidebars.length === 0) {
+                        this.contentArea.style.marginRight = '400px';
+                        this.contentArea.style.borderTopRightRadius = '15px';
+                        this.contentArea.style.borderBottomRightRadius = '15px';
+                    }
+                } else {
+                    if (openSidebars.length === 0) {
+                        this.contentArea.style.marginRight = '';
+                        this.contentArea.style.borderTopRightRadius = '';
+                        this.contentArea.style.borderBottomRightRadius = '';
+                    }
+                }
             }
 
             createNewTab() {
@@ -4645,7 +5420,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     pinned: false,
                     zoomLevel: 1.0,
                     faviconDomain: null,
-                    faviconUrl: null
+                    faviconUrl: null,
+                    isLoading: true
                 };
 
                 const tabElement = document.createElement('div');
@@ -4653,7 +5429,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 tabElement.dataset.tabId = tabId;
                 
                 tabElement.innerHTML = `
-                    <div class="tab-favicon">
+                    <div class="tab-favicon loading">
                         <i data-lucide="globe" width="20" height="20"></i>
                     </div>
                     <div class="tab-title">${tab.title}</div>
@@ -4745,6 +5521,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 iframe.addEventListener('load', () => {
                     this.updateTabInfo(tabId);
                     this.hideLoading();
+                    
+                    const iframeSrc = iframe.src || '';
+                    if (iframeSrc.includes('/active/embed.html')) {
+                        this.waitForEmbedLoad(tabId);
+                    } else {
+                        this.setTabLoaded(tabId);
+                    }
                 });
                 
                 this.setupIframeLoadHandling(tabId);
@@ -5252,6 +6035,64 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
             }
 
+            setTabLoading(tabId) {
+                const tab = this.tabs.get(tabId);
+                if (!tab) return;
+                
+                tab.isLoading = true;
+                const faviconEl = tab.element.querySelector('.tab-favicon');
+                if (faviconEl) {
+                    faviconEl.classList.add('loading');
+                }
+            }
+            
+            setTabLoaded(tabId) {
+                const tab = this.tabs.get(tabId);
+                if (!tab) return;
+                
+                tab.isLoading = false;
+                const faviconEl = tab.element.querySelector('.tab-favicon');
+                if (faviconEl) {
+                    faviconEl.classList.remove('loading');
+                }
+            }
+            
+            waitForEmbedLoad(tabId) {
+                const tab = this.tabs.get(tabId);
+                if (!tab || !tab.iframe) return;
+                
+                const self = this;
+                
+                const checkInnerLoad = () => {
+                    try {
+                        const iframeDoc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
+                        const innerIframe = iframeDoc.querySelector('iframe');
+                        
+                        if (innerIframe) {
+                            innerIframe.addEventListener('load', function onInnerLoad() {
+                                self.setTabLoaded(tabId);
+                                innerIframe.removeEventListener('load', onInnerLoad);
+                            });
+                            
+                            try {
+                                const innerDoc = innerIframe.contentDocument || innerIframe.contentWindow.document;
+                                if (innerDoc && innerDoc.readyState === 'complete') {
+                                    self.setTabLoaded(tabId);
+                                }
+                            } catch(e) {
+                                setTimeout(() => self.setTabLoaded(tabId), 1000);
+                            }
+                        } else {
+                            self.setTabLoaded(tabId);
+                        }
+                    } catch(e) {
+                        setTimeout(() => self.setTabLoaded(tabId), 1500);
+                    }
+                };
+                
+                setTimeout(checkInnerLoad, 200);
+            }
+
             setupIframeLoadHandling(tabId) {
                 const tab = this.tabs.get(tabId);
                 if (!tab || !tab.iframe) return;
@@ -5274,6 +6115,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                         tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
                         this.addressBar.value = '';
+                        this.setTabLoaded(tabId);
                         return;
                     }
                     
@@ -5304,6 +6146,15 @@ document.addEventListener("DOMContentLoaded", () => {
                                 this.addressBar.value = originalUrl;
                             }
                         }, 100);
+                        
+                        const iframeSrc = iframe.src || '';
+                        if (iframeSrc.includes('/active/embed.html')) {
+                            this.waitForEmbedLoad(tabId);
+                        } else {
+                            this.setTabLoaded(tabId);
+                        }
+                    } else {
+                        this.setTabLoaded(tabId);
                     }
                 };
                 
@@ -5564,6 +6415,7 @@ if (this.isBlockedUrl(url)) {
                 if (!tab) return;
 
                 this.showLoading();
+                this.setTabLoading(this.activeTabId);
                 tab.url = url;
                 tab.iframe.src = url;
                 this.addressBar.value = this.extractOriginalUrl(url);
@@ -5889,6 +6741,7 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
+                    this.setTabLoading(this.activeTabId);
                     let urlToLoad = tab.iframe.src;
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
@@ -6355,10 +7208,132 @@ if (this.isBlockedUrl(url)) {
                     }, 3000);
                 }, 50);
             }
+
+            _loadSavedTabs() {
+                try {
+                    var raw = localStorage.getItem('nexos_saved_tabs');
+                    if (!raw) return null;
+                    var tabs = JSON.parse(raw);
+                    if (!Array.isArray(tabs) || tabs.length === 0) return null;
+                    
+                    var filteredTabs = tabs.filter(function(t) {
+                        var url = (t.url || '').toLowerCase();
+                        return !url.endsWith('/welcome.html') && 
+                               !url.endsWith('/welcomer.html') && 
+                               url !== 'welcome.html' && 
+                               url !== 'welcomer.html' &&
+                               url !== 'about:blank';
+                    });
+                    
+                    return filteredTabs.length > 0 ? filteredTabs : null;
+                } catch(e) { return null; }
+            }
+
+            _saveTabsToStorage() {
+                try {
+                    var tabData = [];
+                    for (var [id, tab] of this.tabs) {
+                        if (tab._closing) continue;
+                        var url = tab.currentUrl || this.extractOriginalUrl(tab.url || tab.iframe.src || '');
+                        if (!url || url === 'about:blank') url = tab.url || '';
+                        tabData.push({
+                            title: tab.title || 'New Tab',
+                            url: url,
+                            favicon: tab.faviconUrl || null,
+                            pinned: tab.pinned || false
+                        });
+                    }
+                    if (tabData.length > 0) {
+                        localStorage.setItem('nexos_saved_tabs', JSON.stringify(tabData));
+                    }
+                } catch(e) { console.log('Tab save error:', e); }
+            }
+
+            _startTabAutoSave() {
+                setInterval(() => this._saveTabsToStorage(), 3000);
+                window.addEventListener('beforeunload', () => this._saveTabsToStorage());
+            }
+
+            showRestorePanel() {
+                var saved = this._pendingRestore;
+                if (!saved || saved.length === 0) return;
+
+                var overlay = document.getElementById('tabRestoreOverlay');
+                var tabsList = document.getElementById('restoreTabsList');
+
+                tabsList.innerHTML = '';
+                saved.forEach(function(t) {
+                    var item = document.createElement('div');
+                    item.className = 'tab-restore-item';
+                    var domain = '';
+                    try { domain = new URL(t.url.startsWith('http') ? t.url : 'https://' + t.url).hostname; } catch(e) { domain = t.url; }
+                    var faviconSrc = t.favicon || 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=32';
+                    var displayTitle = t.title || domain || 'Tab';
+                    if (displayTitle.length > 28) displayTitle = displayTitle.substring(0, 28) + '...';
+                    item.innerHTML = '<div class="tab-restore-item-icon"><img src="' + faviconSrc + '" onerror="this.src=\'/ghost.svg\'" alt=""></div><div class="tab-restore-item-text"><span class="tab-restore-item-title">' + displayTitle + '</span></div>';
+                    tabsList.appendChild(item);
+                });
+
+                requestAnimationFrame(function() {
+                    overlay.classList.add('show');
+                });
+
+                var self = this;
+
+                document.getElementById('restoreBtn').onclick = function() {
+                    overlay.classList.remove('show');
+                    setTimeout(function() {
+                        var allIds = Array.from(self.tabs.keys());
+                        saved.forEach(function(t) {
+                            var newId = self.createNewTab();
+                            var newTab = self.tabs.get(newId);
+                            if (newTab && t.url) {
+                                if (t.url.startsWith('http')) {
+                                    self.switchToTab(newId);
+                                    self.navigate(t.url);
+                                } else {
+                                    newTab.iframe.src = t.url;
+                                    newTab.url = t.url;
+                                }
+                                var titleEl = newTab.element.querySelector('.tab-title');
+                                if (titleEl) titleEl.textContent = t.title || 'Tab';
+                                newTab.title = t.title || 'Tab';
+                                if (t.pinned) self.pinTab(newId);
+                            }
+                        });
+                        allIds.forEach(function(id) {
+                            if (self.tabs.size > 1) {
+                                var tab = self.tabs.get(id);
+                                if (tab) {
+                                    tab.element.remove();
+                                    tab.iframe.remove();
+                                    self.tabs.delete(id);
+                                }
+                            }
+                        });
+                        var firstTab = Array.from(self.tabs.values())[0];
+                        if (firstTab) self.switchToTab(firstTab.id);
+                        self.updateTabSizes();
+                        localStorage.removeItem('nexos_saved_tabs');
+                    }, 400);
+                };
+
+                document.getElementById('restoreDismissBtn').onclick = function() {
+                    overlay.classList.remove('show');
+                    localStorage.removeItem('nexos_saved_tabs');
+                };
+            }
         }
         
         const browser = new Browser();
         window.browser = browser;
+
+        if (browser._pendingRestore && browser._pendingRestore.length > 0) {
+            setTimeout(function() {
+                browser.showRestorePanel();
+            }, 1500);
+        }
+
         lucide.createIcons();
 
 
@@ -8751,7 +9726,10 @@ menu.addEventListener('mouseleave', hideMenu);
         var settingsMenu = document.getElementById('settingsMenu');
         if (settingsMenu) settingsMenu.classList.remove('visible');
         var aiMenuModal = document.getElementById('aiMenuModal');
-        if (aiMenuModal) aiMenuModal.classList.remove('show');
+        if (aiMenuModal && aiMenuModal.classList.contains('show')) {
+            aiMenuModal.classList.remove('show');
+            if (window.browser) window.browser._updateContentAreaForAi(false);
+        }
         var globalLayout = document.getElementById('global-layout-options-menu');
         if (globalLayout) globalLayout.classList.remove('show');
         var desktopContext = document.querySelector('#context-menu');
@@ -8779,7 +9757,10 @@ menu.addEventListener('mouseleave', hideMenu);
                         if (window.browser) window.browser.updateTaskbarVisibility && window.browser.updateTaskbarVisibility();
                     }
                     var aiMenuModal = document.getElementById('aiMenuModal');
-                    if (aiMenuModal) aiMenuModal.classList.remove('show');
+                    if (aiMenuModal && aiMenuModal.classList.contains('show')) {
+                        aiMenuModal.classList.remove('show');
+                        if (window.browser) window.browser._updateContentAreaForAi(false);
+                    }
                     var globalLayout = document.getElementById('global-layout-options-menu');
                     if (globalLayout) globalLayout.classList.remove('show');
                     var desktopContext = document.querySelector('#context-menu');
@@ -10763,6 +11744,362 @@ setInterval(async () => {
     }
 
     setInterval(pollSpaUrls, SPA_POLL_MS);
+})();
+</script>
+<script>
+(function() {
+    var messagesEl = document.getElementById('aiChatMessages');
+    var promptEl = document.getElementById('aiChatPrompt');
+    var modelEl = document.getElementById('aiChatModel');
+    var modelLabel = document.getElementById('aiChatModelLabel');
+    var sendBtn = document.getElementById('aiChatSendBtn');
+    var clearBtn = document.getElementById('aiChatClearBtn');
+    var newBtn = document.getElementById('aiChatNewBtn');
+    var closeBtn = document.getElementById('aiChatCloseBtn');
+    var uploadBtn = document.getElementById('aiChatUploadBtn');
+    var fileInput = document.getElementById('aiChatFileInput');
+    var fileNameEl = document.getElementById('aiChatFileName');
+    var suggestionsBox = document.getElementById('aiSuggestionsBox');
+    var modal = document.getElementById('aiMenuModal');
+    var imagePreviewContainer = document.getElementById('aiChatImagePreview');
+    var previewImg = document.getElementById('aiChatPreviewImg');
+    var removeFileBtn = document.getElementById('aiChatRemoveFile');
+    var filePreviewContainer = document.getElementById('aiChatFilePreview');
+    var fileLabel = document.getElementById('aiChatFileLabel');
+    var removeTextFileBtn = document.getElementById('aiChatRemoveTextFile');
+
+    var conversationHistory = [];
+    var currentUserAvatar = '/ghost.svg';
+    var pendingFileContent = null;
+    var pendingFileName = null;
+
+    (async function() {
+        try {
+            var res = await fetch('/auth/session', { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            var data = await res.json();
+            if (data && data.logged_in && data.avatar_url) {
+                currentUserAvatar = data.avatar_url;
+            }
+        } catch(e) {}
+    })();
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function fileToDataURL(file) {
+        return new Promise(function(resolve, reject) {
+            var r = new FileReader();
+            r.onload = function() { resolve(r.result); };
+            r.onerror = reject;
+            r.readAsDataURL(file);
+        });
+    }
+
+    function fileToText(file) {
+        return new Promise(function(resolve, reject) {
+            var r = new FileReader();
+            r.onload = function() { resolve(r.result); };
+            r.onerror = reject;
+            r.readAsText(file);
+        });
+    }
+
+    function scrollBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+
+    function autoGrow() {
+        promptEl.style.height = 'auto';
+        promptEl.style.height = promptEl.scrollHeight + 'px';
+    }
+
+    function renderInline(text) {
+        var out = esc(text);
+        out = out.replace(/`([^`\n]+)`/g, '<code class="inline">$1</code>');
+        out = out.replace(/\*\*([\s\S]+?)\*\*/g, '<strong>$1</strong>');
+        out = out.replace(/(^|[\s(])\*([^*\n][\s\S]*?)\*(?=[\s).,!?]|$)/g, '$1<em>$2</em>');
+        out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+        return out;
+    }
+
+    function renderMarkdown(md) {
+        if (!md) return '<p></p>';
+        var codeBlocks = [];
+        md = md.replace(/```([\w+-]*)\n?([\s\S]*?)```/g, function(_, lang, code) {
+            var token = '__AICODE_' + codeBlocks.length + '__';
+            codeBlocks.push({ lang: lang || 'code', code: code });
+            return token;
+        });
+        var blocks = md.split(/\n{2,}/).map(function(s) { return s.trim(); }).filter(Boolean);
+        var html = blocks.map(function(block) {
+            if (/^__AICODE_\d+__$/.test(block)) return block;
+            if (/^#{1,6}\s/.test(block)) {
+                var lvl = block.match(/^#+/)[0].length;
+                return '<h' + lvl + '>' + renderInline(block.replace(/^#{1,6}\s*/, '')) + '</h' + lvl + '>';
+            }
+            if (/^>\s/.test(block)) {
+                var lines = block.split('\n').map(function(l) { return l.replace(/^>\s?/, ''); });
+                return '<blockquote>' + lines.map(renderInline).join('<br>') + '</blockquote>';
+            }
+            if (/^(-|\*)\s+/m.test(block)) {
+                var items = block.split('\n').filter(function(l) { return /^(-|\*)\s+/.test(l); });
+                return '<ul>' + items.map(function(l) { return '<li>' + renderInline(l.replace(/^(-|\*)\s+/, '')) + '</li>'; }).join('') + '</ul>';
+            }
+            if (/^\d+\.\s+/m.test(block)) {
+                var items2 = block.split('\n').filter(function(l) { return /^\d+\.\s+/.test(l); });
+                return '<ol>' + items2.map(function(l) { return '<li>' + renderInline(l.replace(/^\d+\.\s+/, '')) + '</li>'; }).join('') + '</ol>';
+            }
+            return '<p>' + block.split('\n').map(renderInline).join('<br>') + '</p>';
+        }).join('');
+        html = html.replace(/__AICODE_(\d+)__/g, function(_, i) {
+            var b = codeBlocks[Number(i)];
+            var safe = esc(b.code.replace(/\n$/, ''));
+            return '<div class="ai-code-block"><div class="ai-code-head"><span>' + esc(b.lang) + '</span><button type="button" data-aicode="' + encodeURIComponent(b.code) + '">Copy</button></div><pre><code>' + safe + '</code></pre></div>';
+        });
+        return html;
+    }
+
+    function addMessage(role, html, isMarkdown) {
+        var welcome = messagesEl.querySelector('.ai-chat-welcome');
+        if (welcome) welcome.remove();
+
+        var row = document.createElement('div');
+        row.className = 'ai-msg-row ' + role;
+
+        var avatar = document.createElement('div');
+        avatar.className = 'ai-msg-avatar';
+        if (role === 'user') {
+            var userImg = document.createElement('img');
+            userImg.src = currentUserAvatar;
+            userImg.alt = 'You';
+            userImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+            avatar.appendChild(userImg);
+        } else {
+            var aiImg = document.createElement('img');
+            aiImg.src = '/ghost.svg';
+            aiImg.alt = 'Ghost AI';
+            aiImg.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%;';
+            avatar.appendChild(aiImg);
+        }
+
+        var card = document.createElement('div');
+        card.className = 'ai-msg-card';
+
+        var meta = document.createElement('div');
+        meta.className = 'ai-msg-meta';
+        meta.textContent = role === 'user' ? 'You' : 'Ghost AI';
+
+        var bubble = document.createElement('div');
+        bubble.className = 'ai-msg-bubble';
+        bubble.innerHTML = isMarkdown ? '<div class="ai-md">' + html + '</div>' : html;
+
+        card.appendChild(meta);
+        card.appendChild(bubble);
+        row.appendChild(avatar);
+        row.appendChild(card);
+        messagesEl.appendChild(row);
+        scrollBottom();
+        return { row: row, bubble: bubble };
+    }
+
+    function addTyping() {
+        return addMessage('assistant', '<div style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:12px;color:#999">Thinking</span><span class="ai-typing-dots"><span></span><span></span><span></span></span></div>', false);
+    }
+
+    async function typewriter(bubble, fullText, speed) {
+        var current = '';
+        var i = 0;
+        speed = speed || 6;
+        while (i < fullText.length) {
+            current += fullText[i]; i++;
+            bubble.innerHTML = '<div class="ai-md">' + renderMarkdown(current) + '</div>';
+            scrollBottom();
+            await new Promise(function(r) { setTimeout(r, speed); });
+        }
+        bubble.innerHTML = '<div class="ai-md">' + renderMarkdown(fullText) + '</div>';
+        scrollBottom();
+    }
+
+    var defaultWelcomeHTML = '<div class="ai-chat-welcome"><h3>Ghost AI</h3><p>Chat with AI right here on Ghost!</p><div class="ai-suggestions-grid" id="aiSuggestionsBox">' +
+        '<button class="ai-suggestion-btn" data-prompt="Summarize this topic clearly: "><strong>Summarize</strong><span>Clean explanations</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Help me write this better: "><strong>Write better</strong><span>Polish your text</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Analyze this image in detail: "><strong>Analyze image</strong><span>Upload & describe</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Give me ideas for: "><strong>Brainstorm</strong><span>Creative ideas</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Write code for: "><strong>Write code</strong><span>Any language</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Debug this code and explain the fix: "><strong>Debug code</strong><span>Find & fix bugs</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Explain this concept simply: "><strong>Explain</strong><span>Like I\'m a beginner</span></button>' +
+        '<button class="ai-suggestion-btn" data-prompt="Translate this to "><strong>Translate</strong><span>Any language</span></button>' +
+        '</div></div>';
+
+    function resetChat() {
+        conversationHistory = [];
+        messagesEl.innerHTML = defaultWelcomeHTML;
+        promptEl.value = '';
+        promptEl.style.height = 'auto';
+        clearFileState();
+        bindSuggestions();
+    }
+
+    function clearFileState() {
+        fileInput.value = '';
+        fileNameEl.textContent = '';
+        pendingFileContent = null;
+        pendingFileName = null;
+        imagePreviewContainer.style.display = 'none';
+        filePreviewContainer.style.display = 'none';
+        previewImg.src = '';
+    }
+
+    async function sendMessage() {
+        var prompt = promptEl.value.trim();
+        var file = fileInput.files[0];
+        if (!prompt && !file && !pendingFileContent) return;
+
+        var userHtml = esc(prompt).replace(/\n/g, '<br>') || '';
+        var imageDataUrl = '';
+        var fileTextContent = pendingFileContent || '';
+        var fileName = pendingFileName || '';
+
+        if (file) {
+            if (file.type.startsWith('image/')) {
+                imageDataUrl = await fileToDataURL(file);
+                userHtml += '<img class="ai-user-image" src="' + imageDataUrl + '" alt="Uploaded">';
+            } else {
+                try {
+                    fileTextContent = await fileToText(file);
+                    fileName = file.name;
+                    userHtml += '<div style="margin-top:6px;padding:6px 10px;background:#f5f5f5;border-radius:8px;border:1px solid #e4e4e4;font-size:11px;color:#555;">📄 ' + esc(file.name) + ' (' + formatFileSize(file.size) + ')</div>';
+                } catch(e) {
+                    userHtml += '<div style="margin-top:4px;font-size:11px;color:#c00;">Failed to read file</div>';
+                }
+            }
+        } else if (pendingFileContent) {
+            if (previewImg.src && imagePreviewContainer.style.display !== 'none') {
+                imageDataUrl = previewImg.src;
+                userHtml += '<img class="ai-user-image" src="' + imageDataUrl + '" alt="Uploaded">';
+                fileTextContent = '';
+            } else {
+                userHtml += '<div style="margin-top:6px;padding:6px 10px;background:#f5f5f5;border-radius:8px;border:1px solid #e4e4e4;font-size:11px;color:#555;">📄 ' + esc(pendingFileName) + '</div>';
+            }
+        }
+
+        if (!userHtml && !imageDataUrl && !fileTextContent) userHtml = '[File uploaded]';
+
+        addMessage('user', userHtml, false);
+
+        var userContent = prompt || '';
+        if (fileTextContent) {
+            userContent += (userContent ? '\n\n' : '') + '--- FILE: ' + fileName + ' ---\n' + fileTextContent + '\n--- END FILE ---';
+        }
+
+        conversationHistory.push({ role: 'user', content: userContent, image: imageDataUrl || '' });
+
+        sendBtn.disabled = true;
+        var typing = addTyping();
+
+        try {
+            var res = await fetch('/api/ai/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'openai/gpt-4o-mini',
+                    prompt: userContent,
+                    image: imageDataUrl,
+                    history: conversationHistory.slice(0, -1).map(function(m) {
+                        return { role: m.role, content: m.content };
+                    }),
+                    systemPrompt: "You are Ghost AI, an expert coding assistant and general-purpose AI built into the Ghost browser. You have deep expertise in JavaScript, TypeScript, Python, React, Node.js, HTML, CSS, SQL, and all major programming languages and frameworks. You write clean, efficient, well-commented code. You can debug complex issues, explain algorithms, review code, suggest improvements, refactor code, and build full applications. You also excel at: writing essays, summarizing content, translating text, analyzing images in detail (describe every element you see), brainstorming ideas, solving math problems, explaining concepts simply, and helping with research. When analyzing images, be extremely thorough - describe colors, text, layout, objects, people, context, and any relevant details. When writing code, always include comments and explain your approach. Keep responses clear, well-formatted with markdown, and helpful."
+                })
+            });
+
+            var data = await res.json();
+            var reply = data.reply || data.error || 'No response.';
+
+            conversationHistory.push({ role: 'assistant', content: reply });
+
+            typing.bubble.innerHTML = '<div class="ai-md"></div>';
+            await typewriter(typing.bubble, reply, 6);
+        } catch (err) {
+            typing.bubble.innerHTML = '<div class="ai-md"><p>Request failed.</p></div>';
+        } finally {
+            sendBtn.disabled = false;
+            promptEl.value = '';
+            promptEl.style.height = 'auto';
+            clearFileState();
+            promptEl.focus();
+        }
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function bindSuggestions() {
+        messagesEl.querySelectorAll('.ai-suggestion-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                promptEl.value = btn.dataset.prompt || '';
+                autoGrow();
+                promptEl.focus();
+            });
+        });
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    clearBtn.addEventListener('click', resetChat);
+    newBtn.addEventListener('click', resetChat);
+    closeBtn.addEventListener('click', function() {
+        modal.classList.remove('show');
+        if (window.browser) window.browser._updateContentAreaForAi(false);
+    });
+    uploadBtn.addEventListener('click', function() { fileInput.click(); });
+
+    fileInput.addEventListener('change', async function() {
+        var file = fileInput.files[0];
+        if (!file) { clearFileState(); return; }
+        fileNameEl.textContent = file.name;
+
+        if (file.type.startsWith('image/')) {
+            var dataUrl = await fileToDataURL(file);
+            previewImg.src = dataUrl;
+            imagePreviewContainer.style.display = 'block';
+            filePreviewContainer.style.display = 'none';
+            pendingFileContent = dataUrl;
+            pendingFileName = file.name;
+        } else {
+            try {
+                var text = await fileToText(file);
+                pendingFileContent = text;
+                pendingFileName = file.name;
+                fileLabel.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
+                filePreviewContainer.style.display = 'block';
+                imagePreviewContainer.style.display = 'none';
+            } catch(e) {
+                fileLabel.textContent = 'Could not read file';
+                filePreviewContainer.style.display = 'block';
+            }
+        }
+    });
+
+    removeFileBtn.addEventListener('click', clearFileState);
+    removeTextFileBtn.addEventListener('click', clearFileState);
+
+    promptEl.addEventListener('input', autoGrow);
+    promptEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    messagesEl.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-aicode]');
+        if (btn) {
+            var raw = decodeURIComponent(btn.getAttribute('data-aicode') || '');
+            navigator.clipboard.writeText(raw).then(function() {
+                btn.textContent = 'Copied';
+                setTimeout(function() { btn.textContent = 'Copy'; }, 1200);
+            });
+        }
+    });
+
+    bindSuggestions();
 })();
 </script>
 </body>
