@@ -3896,8 +3896,9 @@ body.reduce-motion *::after {
         transform: scale(0.96) translateY(8px);
         transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
         opacity: 0;
-        width: 580px;
+        width: 640px;
         max-width: 95vw;
+        height: 340px;
     }
 
     .tab-restore-overlay.show .tab-restore-panel {
@@ -3905,15 +3906,17 @@ body.reduce-motion *::after {
         opacity: 1;
     }
 
+    /* Left panel */
     .tab-restore-left {
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        padding: 22px 24px 18px;
-        flex: 0 0 240px;
-        min-height: 180px;
+        padding: 24px 28px 20px;
+        flex: 0 0 270px;
+        height: 100%;
         background: #e8eaed;
         gap: 0;
+        position: relative;
     }
 
     .tab-restore-connector {
@@ -3923,14 +3926,51 @@ body.reduce-motion *::after {
         margin: 16px 0;
     }
 
+    /* Right panel - fixed height, contains scrollable inner box */
     .tab-restore-right {
         flex: 1;
         display: flex;
         flex-direction: column;
-        justify-content: center;
-        padding: 12px 8px;
+        padding: 12px;
         background: #e8eaed;
-        gap: 2px;
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* Inner scrollable tabs container */
+    .tab-restore-tabs-inner {
+        flex: 1;
+        background: #dcdfe3;
+        border-radius: 14px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: none;
+        padding: 6px 0;
+    }
+    .tab-restore-tabs-inner::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Fade masks at top and bottom */
+    .tab-restore-right::before,
+    .tab-restore-right::after {
+        content: '';
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        height: 24px;
+        pointer-events: none;
+        z-index: 2;
+        border-radius: 14px;
+    }
+    .tab-restore-right::before {
+        top: 12px;
+        background: linear-gradient(to bottom, #dcdfe3 0%, transparent 100%);
+    }
+    .tab-restore-right::after {
+        bottom: 12px;
+        background: linear-gradient(to top, #dcdfe3 0%, transparent 100%);
     }
 
     .tab-restore-header {
@@ -3940,7 +3980,7 @@ body.reduce-motion *::after {
     }
 
     .tab-restore-header-text h2 {
-        font-size: 16px;
+        font-size: 17px;
         font-weight: 600;
         color: #202124;
         font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -3949,62 +3989,106 @@ body.reduce-motion *::after {
     }
 
     .tab-restore-header-text p {
-        font-size: 12.5px;
+        font-size: 13px;
         color: #5f6368;
         margin: 0;
         font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    .tab-restore-buttons {
+    /* Bottom button area with curved mask effects */
+    .tab-restore-bottom {
         display: flex;
-        gap: 8px;
         align-items: center;
-        margin-top: 16px;
+        gap: 10px;
+        margin-top: auto;
+        position: relative;
     }
 
+    /* Left curve before Open button */
+    .tab-restore-bottom::before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 12px;
+        height: 12px;
+        background: transparent;
+    }
+
+    .tab-restore-buttons {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    /* No thanks button - outlined, purple on hover with lift */
     .tab-restore-dismiss {
         background: transparent;
         border: 1.5px solid #bdc1c6;
         color: #3c4043;
-        font-size: 12.5px;
+        font-size: 13px;
         font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         cursor: pointer;
-        padding: 7px 16px;
+        padding: 8px 18px;
         border-radius: 20px;
         font-weight: 500;
-        transition: background 0.15s ease, border-color 0.15s ease;
+        transition: all 0.15s ease;
+        position: relative;
     }
 
     .tab-restore-dismiss:hover {
-        background: rgba(0,0,0,0.05);
-        border-color: #9aa0a6;
+        background: #6b46ff;
+        border-color: #6b46ff;
+        color: #fff;
+        padding: 8px 22px;
+        transform: translateY(-1px);
+        box-shadow: 0 1px 0 rgba(0,0,0,0.15);
     }
 
     .tab-restore-dismiss:active {
-        background: rgba(0,0,0,0.09);
+        transform: translateY(0);
+        box-shadow: none;
     }
 
+    /* Open button - purple filled, NO hover effect */
     .tab-restore-btn {
-        background: #1a73e8;
+        background: #6b46ff;
         color: #fff;
         border: none;
         border-radius: 20px;
-        padding: 7px 20px;
-        font-size: 12.5px;
+        padding: 8px 22px;
+        font-size: 13px;
         font-weight: 500;
         font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         cursor: pointer;
-        transition: background 0.15s ease, box-shadow 0.15s ease;
-        box-shadow: 0 1px 3px rgba(26,115,232,0.3);
+        position: relative;
     }
 
-    .tab-restore-btn:hover {
-        background: #1765cc;
-        box-shadow: 0 2px 6px rgba(26,115,232,0.4);
+    /* Curved mask on left of button */
+    .tab-restore-btn::before {
+        content: '';
+        position: absolute;
+        top: -12px;
+        left: 0;
+        width: 12px;
+        height: 12px;
+        background: #e8eaed;
+        mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+        -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
     }
 
-    .tab-restore-btn:active {
-        transform: scale(0.98);
+    /* Curved mask on right of button */
+    .tab-restore-btn::after {
+        content: '';
+        position: absolute;
+        top: -12px;
+        right: 0;
+        width: 12px;
+        height: 12px;
+        background: #e8eaed;
+        mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+        -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
     }
 
     .tab-restore-settings {
@@ -4019,7 +4103,6 @@ body.reduce-motion *::after {
         justify-content: center;
         color: #5f6368;
         transition: background 0.15s ease;
-        margin-top: auto;
         padding: 0;
     }
 
@@ -4036,7 +4119,7 @@ body.reduce-motion *::after {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 9px 14px;
+        padding: 10px 14px;
         border-radius: 10px;
         cursor: default;
         transition: background 0.12s ease;
@@ -4099,22 +4182,34 @@ body.reduce-motion *::after {
 
     <div class="tab-restore-overlay" id="tabRestoreOverlay">
         <div class="tab-restore-panel">
+            <!-- Left Panel -->
             <div class="tab-restore-left">
                 <div>
                     <div class="tab-restore-header">
                         <div class="tab-restore-header-text">
-                            <h2></h2>
-                            <p>Dont forget these!</p>
+                            <h2>Welcome Recap</h2>
+                            <p>Don't forget these!</p>
                         </div>
                     </div>
+                </div>
+                <!-- Bottom area with settings and buttons -->
+                <div class="tab-restore-bottom">
+                    <button class="tab-restore-settings" title="Settings">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    </button>
                     <div class="tab-restore-buttons">
                         <button class="tab-restore-dismiss" id="restoreDismissBtn">No thanks</button>
                         <button class="tab-restore-btn" id="restoreBtn">Open</button>
                     </div>
                 </div>
             </div>
+            <!-- Divider -->
             <div class="tab-restore-connector"></div>
-            <div class="tab-restore-right" id="restoreTabsList">
+            <!-- Right Panel - Tabs List -->
+            <div class="tab-restore-right">
+                <div class="tab-restore-tabs-inner" id="restoreTabsList">
+                    <!-- Items populated by JS -->
+                </div>
             </div>
         </div>
     </div>
