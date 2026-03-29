@@ -3870,20 +3870,20 @@ body.reduce-motion *::after {
         }
     }
 
-    /* ===== TAB RESTORE PANEL - Chrome Style ===== */
+    /* ===== TAB RESTORE PANEL - Chrome OS Welcome Recap Style ===== */
     .tab-restore-overlay {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(32, 33, 36, 0.6);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
         z-index: 99998;
         display: flex;
         align-items: center;
         justify-content: center;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: opacity 0.25s ease;
     }
     .tab-restore-overlay.show {
         opacity: 1;
@@ -3891,510 +3891,278 @@ body.reduce-motion *::after {
     }
 
     .tab-restore-panel {
-        background: transparent;
-        border-radius: 28px;
-        width: 480px;
-        max-width: 90vw;
-        max-height: 85vh;
-        overflow: visible;
-        box-shadow: 
-            0 1px 3px rgba(0,0,0,0.08),
-            0 8px 24px rgba(0,0,0,0.15),
-            0 24px 48px rgba(0,0,0,0.1);
-        transform: translateY(24px) scale(0.96);
-        transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.25s ease;
-        opacity: 0;
         display: flex;
-        flex-direction: column;
-        position: relative;
-    }
-    
-    /* Outer glow ring effect */
-    .tab-restore-panel::before {
-        content: '';
-        position: absolute;
-        inset: -2px;
-        border-radius: 30px;
-        background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(168, 85, 247, 0.15), rgba(124, 58, 237, 0.1));
-        z-index: -1;
+        flex-direction: row;
+        background: transparent;
+        transform: scale(0.95) translateY(10px);
+        transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
         opacity: 0;
-        transition: opacity 0.4s ease;
-    }
-    
-    .tab-restore-overlay.show .tab-restore-panel::before {
-        opacity: 1;
-    }
-    
-    /* Top section with header and preview */
-    .tab-restore-top {
-        background: #ffffff;
-        border-radius: 28px 28px 0 0;
-        padding-bottom: 24px;
         position: relative;
-        overflow: hidden;
-    }
-    
-    /* Subtle top highlight */
-    .tab-restore-top::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
-    }
-    
-    /* Ambient gradient glow at top */
-    .tab-restore-top::after {
-        content: '';
-        position: absolute;
-        top: -60px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 200px;
-        height: 120px;
-        background: radial-gradient(ellipse, rgba(124, 58, 237, 0.08) 0%, transparent 70%);
-        pointer-events: none;
     }
     
     .tab-restore-overlay.show .tab-restore-panel {
-        transform: translateY(0) scale(1);
+        transform: scale(1) translateY(0);
         opacity: 1;
     }
 
-    /* Speech bubble body section - Chrome connector style */
-    .tab-restore-body {
-        position: relative;
-        background: #ffffff;
-        border-radius: 0 0 28px 28px;
-        margin-top: 16px;
-    }
-    
-    /* Left inward curve - smooth Chrome style */
-    .tab-restore-body::before {
-        content: '';
-        position: absolute;
-        top: -16px;
-        left: 0;
-        width: 16px;
-        height: 16px;
-        background: radial-gradient(circle at 0 0, transparent 15px, #ffffff 16px);
-        transition: all 0.3s ease;
-    }
-    
-    /* Right inward curve - smooth Chrome style */
-    .tab-restore-body::after {
-        content: '';
-        position: absolute;
-        top: -16px;
-        right: 0;
-        width: 16px;
-        height: 16px;
-        background: radial-gradient(circle at 100% 0, transparent 15px, #ffffff 16px);
-        transition: all 0.3s ease;
-    }
-    
-    /* Connector bridge element */
-    .tab-restore-connector {
-        position: absolute;
-        top: -16px;
-        left: 16px;
-        right: 16px;
-        height: 16px;
-        background: linear-gradient(to bottom, rgba(124, 58, 237, 0.03), transparent);
-        pointer-events: none;
-    }
-    
-    /* Inner content wrapper */
-    .tab-restore-body-inner {
-        position: relative;
+    /* Left panel - main content */
+    .tab-restore-left {
+        background: #f1f3f4;
+        border-radius: 28px;
+        padding: 24px 28px;
         display: flex;
-        align-items: center;
-        padding: 20px 28px 28px;
-        gap: 18px;
+        flex-direction: column;
+        gap: 20px;
+        position: relative;
         z-index: 2;
-        flex-wrap: nowrap;
+        min-width: 260px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
     }
     
-    /* Bottom inner glow */
-    .tab-restore-body-inner::after {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 80%;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(0,0,0,0.03), transparent);
-    }
-    
-    .tab-restore-body-inner .tab-restore-btn {
-        flex-shrink: 0;
-    }
-
-    .tab-restore-header {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 32px 28px 20px;
+    /* Curved connector between panels */
+    .tab-restore-connector {
+        width: 24px;
+        height: 100%;
         position: relative;
         z-index: 1;
+        display: flex;
+        align-items: center;
     }
     
-    .tab-restore-header-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 16px;
-        background: linear-gradient(145deg, #7c3aed, #9333ea);
+    /* The curved shape connecting the two panels */
+    .tab-restore-connector::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        left: -12px;
+        width: 36px;
+        height: 80px;
+        background: #f1f3f4;
+        border-radius: 0 40px 40px 0 / 0 50% 50% 0;
+    }
+    
+    /* Right panel - tabs list */
+    .tab-restore-right {
+        background: #f1f3f4;
+        border-radius: 28px;
+        padding: 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        position: relative;
+        z-index: 2;
+        min-width: 220px;
+        max-width: 280px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    }
+    
+    /* Settings icon at bottom left */
+    .tab-restore-settings {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.06);
+        border: none;
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        flex-shrink: 0;
-        position: relative;
-        box-shadow: 
-            0 4px 12px rgba(124, 58, 237, 0.3),
-            0 2px 4px rgba(124, 58, 237, 0.2),
-            inset 0 1px 0 rgba(255,255,255,0.2);
-        transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.3s ease;
-    }
-    
-    .tab-restore-header-icon:hover {
-        transform: scale(1.05) rotate(-3deg);
-        box-shadow: 
-            0 6px 20px rgba(124, 58, 237, 0.4),
-            0 2px 4px rgba(124, 58, 237, 0.2),
-            inset 0 1px 0 rgba(255,255,255,0.2);
-    }
-    
-    /* Animated ring around icon */
-    .tab-restore-header-icon::before {
-        content: '';
-        position: absolute;
-        inset: -4px;
-        border-radius: 20px;
-        background: conic-gradient(from 0deg, rgba(124, 58, 237, 0.4), rgba(168, 85, 247, 0.2), rgba(124, 58, 237, 0), rgba(124, 58, 237, 0.4));
-        z-index: -1;
-        animation: icon-ring-rotate 4s linear infinite;
-        opacity: 0.7;
-    }
-    
-    /* Inner highlight reflection */
-    .tab-restore-header-icon::after {
-        content: '';
-        position: absolute;
-        top: 4px;
-        left: 4px;
-        right: 4px;
-        height: 50%;
-        border-radius: 12px 12px 50% 50%;
-        background: linear-gradient(to bottom, rgba(255,255,255,0.25), transparent);
-        pointer-events: none;
-    }
-    
-    .tab-restore-header-icon svg {
-        position: relative;
-        z-index: 2;
-        color: #fff;
-        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
-    }
-    
-    @keyframes icon-ring-rotate {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    @keyframes restore-icon-glow {
-        0%, 100% { opacity: 0.6; transform: scale(1); }
-        50% { opacity: 1; transform: scale(1.05); }
-    }
-    
-    .tab-restore-header-text h2 {
-        font-size: 22px;
-        font-weight: 500;
-        color: #202124;
-        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
-        margin: 0;
-        letter-spacing: -0.3px;
-    }
-    
-    .tab-restore-header-text p {
-        font-size: 14px;
         color: #5f6368;
-        margin: 4px 0 0;
-        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
-        letter-spacing: 0.1px;
+        transition: background 0.15s ease;
+        margin-top: 8px;
+    }
+    
+    .tab-restore-settings:hover {
+        background: rgba(0,0,0,0.1);
+    }
+    
+    .tab-restore-settings svg {
+        width: 18px;
+        height: 18px;
     }
 
-    /* Ghost mascot styling */
-    .tab-restore-ghost {
-        width: 52px;
-        height: 52px;
-        flex-shrink: 0;
-        position: relative;
-    }
-    
-    /* Pulsing aura effect */
-    .tab-restore-ghost::before {
-        content: '';
-        position: absolute;
-        inset: -8px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(124,58,237,0.12) 0%, rgba(124,58,237,0.04) 50%, transparent 70%);
-        animation: ghost-aura 2.5s ease-in-out infinite;
-    }
-    
-    /* Ground shadow */
-    .tab-restore-ghost::after {
-        content: '';
-        position: absolute;
-        bottom: -4px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 32px;
-        height: 8px;
-        border-radius: 50%;
-        background: radial-gradient(ellipse, rgba(0,0,0,0.12) 0%, transparent 70%);
-        animation: ghost-shadow 3s ease-in-out infinite;
-    }
-    
-    .tab-restore-ghost img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        position: relative;
-        z-index: 1;
-        animation: ghost-float 3s ease-in-out infinite;
-        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
-    }
-    
-    @keyframes ghost-float {
-        0%, 100% { transform: translateY(0) rotate(0deg); }
-        25% { transform: translateY(-6px) rotate(1deg); }
-        75% { transform: translateY(-3px) rotate(-1deg); }
-    }
-    
-    @keyframes ghost-aura {
-        0%, 100% { transform: scale(1); opacity: 0.6; }
-        50% { transform: scale(1.15); opacity: 0.9; }
-    }
-    
-    @keyframes ghost-shadow {
-        0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.12; }
-        25% { transform: translateX(-50%) scale(0.85); opacity: 0.08; }
-        75% { transform: translateX(-50%) scale(0.92); opacity: 0.1; }
-    }
-
-    .tab-restore-content {
-        flex: 1;
+    .tab-restore-header {
         display: flex;
         flex-direction: column;
         gap: 6px;
     }
     
-    .tab-restore-message {
-        font-size: 14px;
-        color: #3c4043;
-        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
-        line-height: 1.5;
-    }
-    
-    .tab-restore-message strong {
-        color: #202124;
-        font-weight: 600;
-    }
-
-    /* Chrome-style primary button */
-    .tab-restore-btn {
-        background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #7c3aed 100%);
-        background-size: 200% 200%;
-        color: #fff;
-        border: none;
-        border-radius: 24px;
-        padding: 14px 32px;
-        font-size: 14px;
+    .tab-restore-header-text h2 {
+        font-size: 18px;
         font-weight: 500;
-        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
-        cursor: pointer;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 
-            0 1px 3px rgba(124, 58, 237, 0.3),
-            0 4px 12px rgba(124, 58, 237, 0.2);
-        position: relative;
-        overflow: hidden;
-        letter-spacing: 0.3px;
+        color: #202124;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0;
     }
     
-    /* Shine effect layer */
-    .tab-restore-btn::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-            90deg,
-            transparent,
-            rgba(255,255,255,0.3),
-            transparent
-        );
-        transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    /* Top highlight reflection */
-    .tab-restore-btn::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 50%;
-        background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent);
-        border-radius: 24px 24px 50% 50%;
-        pointer-events: none;
-    }
-    
-    .tab-restore-btn:hover {
-        transform: translateY(-2px) scale(1.02);
-        box-shadow: 
-            0 2px 6px rgba(124, 58, 237, 0.35),
-            0 8px 24px rgba(124, 58, 237, 0.3);
-        background-position: 100% 0;
-    }
-    
-    .tab-restore-btn:hover::before {
-        left: 100%;
-    }
-    
-    .tab-restore-btn:active {
-        transform: translateY(0) scale(0.98);
-        box-shadow: 
-            0 1px 2px rgba(124, 58, 237, 0.3),
-            0 2px 8px rgba(124, 58, 237, 0.2);
+    .tab-restore-header-text p {
+        font-size: 13px;
+        color: #5f6368;
+        margin: 0;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Chrome-style text link */
+    /* Button row */
+    .tab-restore-buttons {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    /* No thanks button - outlined style */
     .tab-restore-dismiss {
-        background: none;
-        border: none;
-        color: #7c3aed;
+        background: transparent;
+        border: 1px solid #dadce0;
+        color: #3c4043;
         font-size: 13px;
-        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         cursor: pointer;
         padding: 8px 16px;
-        border-radius: 20px;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
+        border-radius: 18px;
+        transition: all 0.15s ease;
         font-weight: 500;
+        position: relative;
+        overflow: hidden;
     }
     
     .tab-restore-dismiss::before {
         content: '';
         position: absolute;
         inset: 0;
-        border-radius: 20px;
-        background: rgba(124, 58, 237, 0);
-        transition: background 0.2s ease;
+        background: rgba(0,0,0,0);
+        transition: background 0.15s ease;
     }
     
     .tab-restore-dismiss:hover {
-        color: #6d28d9;
+        background: rgba(0,0,0,0.04);
+        border-color: #c4c7c9;
     }
     
-    .tab-restore-dismiss:hover::before {
-        background: rgba(124, 58, 237, 0.08);
-    }
-    
-    .tab-restore-dismiss:active::before {
-        background: rgba(124, 58, 237, 0.12);
+    .tab-restore-dismiss:active {
+        background: rgba(0,0,0,0.08);
     }
 
-    /* Tab preview pills */
-    .tab-restore-tabs-preview {
-        display: flex;
-        gap: 8px;
-        padding: 0 28px;
-        overflow-x: auto;
-        scrollbar-width: none;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .tab-restore-tabs-preview::-webkit-scrollbar { display: none; }
-
-    .tab-restore-preview-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 14px;
-        background: linear-gradient(135deg, #f8f9fa, #ffffff);
-        border-radius: 20px;
-        flex-shrink: 0;
+    /* Open/Restore button - filled style */
+    .tab-restore-btn {
+        background: #3c4043;
+        color: #fff;
+        border: none;
+        border-radius: 18px;
+        padding: 8px 20px;
         font-size: 13px;
-        color: #3c4043;
-        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
-        border: 1px solid rgba(0,0,0,0.06);
+        font-weight: 500;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        cursor: pointer;
+        transition: all 0.15s ease;
         position: relative;
         overflow: hidden;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     
-    /* Accent bar on left */
-    .tab-restore-preview-item::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 0;
-        transform: translateY(-50%);
-        width: 3px;
-        height: 60%;
-        background: linear-gradient(to bottom, #7c3aed, #a855f7);
-        border-radius: 0 3px 3px 0;
-        opacity: 0;
-        transition: opacity 0.2s ease, height 0.2s ease;
-    }
-    
-    /* Hover highlight gradient */
-    .tab-restore-preview-item::after {
+    .tab-restore-btn::before {
         content: '';
         position: absolute;
         inset: 0;
-        background: linear-gradient(135deg, rgba(124, 58, 237, 0.04), transparent);
-        opacity: 0;
-        transition: opacity 0.2s ease;
-        pointer-events: none;
+        background: rgba(255,255,255,0);
+        transition: background 0.15s ease;
     }
     
-    .tab-restore-preview-item:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        border-color: rgba(124, 58, 237, 0.2);
+    .tab-restore-btn:hover {
+        background: #202124;
     }
     
-    .tab-restore-preview-item:hover::before {
-        opacity: 1;
-        height: 70%;
+    .tab-restore-btn:hover::before {
+        background: rgba(255,255,255,0.08);
     }
     
-    .tab-restore-preview-item:hover::after {
-        opacity: 1;
+    .tab-restore-btn:active {
+        transform: scale(0.98);
+    }
+
+    /* Tab list items */
+    .tab-restore-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        transition: background 0.15s ease;
+        cursor: default;
     }
     
-    .tab-restore-preview-item img {
-        width: 16px;
-        height: 16px;
+    .tab-restore-item:hover {
+        background: rgba(0,0,0,0.04);
+    }
+    
+    .tab-restore-item-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .tab-restore-item-icon img {
+        width: 20px;
+        height: 20px;
         border-radius: 4px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     }
     
-    .tab-restore-preview-item span {
-        max-width: 140px;
+    .tab-restore-item-text {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    .tab-restore-item-title {
+        font-size: 13px;
+        color: #202124;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 400;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        font-weight: 450;
+    }
+    
+    /* User avatars for collaborative items */
+    .tab-restore-item-avatars {
+        display: flex;
+        gap: -4px;
+    }
+    
+    .tab-restore-item-avatars img {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1.5px solid #f1f3f4;
+        margin-left: -4px;
+    }
+    
+    .tab-restore-item-avatars img:first-child {
+        margin-left: 0;
+    }
+
+    /* Ghost mascot - positioned in left panel */
+    .tab-restore-ghost {
+        display: none;
+    }
+
+    /* Hide old elements */
+    .tab-restore-top,
+    .tab-restore-body,
+    .tab-restore-body-inner,
+    .tab-restore-content,
+    .tab-restore-message,
+    .tab-restore-tabs-preview,
+    .tab-restore-preview-item,
+    .tab-restore-header-icon {
+        display: none !important;
     }
     </style>
 </head>
@@ -4403,35 +4171,30 @@ body.reduce-motion *::after {
         <div class="loading-banner" id="loadingBanner"></div>
     </div>
 
-    <!-- Tab Restore Overlay -->
+    <!-- Tab Restore Overlay - Chrome OS Welcome Recap Style -->
     <div class="tab-restore-overlay" id="tabRestoreOverlay">
         <div class="tab-restore-panel">
-            <div class="tab-restore-top">
+            <!-- Left Panel -->
+            <div class="tab-restore-left">
                 <div class="tab-restore-header">
-                    <div class="tab-restore-header-icon">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                    </div>
                     <div class="tab-restore-header-text">
-                        <h2>Welcome to Recap</h2>
-                        <p>restore your tabs</p>
+                        <h2>Welcome Recap</h2>
+                        <p>Open your previous windows and tabs</p>
                     </div>
                 </div>
-                <div class="tab-restore-tabs-preview" id="restoreTabsPreview"></div>
+                <div class="tab-restore-buttons">
+                    <button class="tab-restore-dismiss" id="restoreDismissBtn">No thanks</button>
+                    <button class="tab-restore-btn" id="restoreBtn">Open</button>
+                </div>
+                <button class="tab-restore-settings" title="Settings">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                </button>
             </div>
- <div class="tab-restore-body">
-  <div class="tab-restore-connector"></div>
-  <div class="tab-restore-body-inner">
-                    <div class="tab-restore-ghost">
-                        <img src="/ghost.svg" alt="Ghost" onerror="this.style.display='none'">
-                    </div>
-                    <div class="tab-restore-content">
-                        <div class="tab-restore-message" id="restoreMessage">
-                            Boo! You had <strong>0</strong> tabs opened.<br>Would you like to restore them?
-                        </div>
-                        <button class="tab-restore-dismiss" id="restoreDismissBtn">Start fresh</button>
-                    </div>
-                    <button class="tab-restore-btn" id="restoreBtn">Restore</button>
-                </div>
+            <!-- Curved Connector -->
+            <div class="tab-restore-connector"></div>
+            <!-- Right Panel - Tabs List -->
+            <div class="tab-restore-right" id="restoreTabsList">
+                <!-- Items populated by JS -->
             </div>
         </div>
     </div>
@@ -7554,20 +7317,21 @@ if (this.isBlockedUrl(url)) {
                 if (!saved || saved.length === 0) return;
 
                 var overlay = document.getElementById('tabRestoreOverlay');
-                var preview = document.getElementById('restoreTabsPreview');
-                var msg = document.getElementById('restoreMessage');
+                var tabsList = document.getElementById('restoreTabsList');
 
-                msg.innerHTML = 'Boo! You had <strong>' + saved.length + '</strong> tab' + (saved.length !== 1 ? 's' : '') + ' opened.<br>Would you like to restore them?';
-
-                preview.innerHTML = '';
+                // Populate the right panel with tab items (Chrome OS style)
+                tabsList.innerHTML = '';
                 saved.forEach(function(t) {
                     var item = document.createElement('div');
-                    item.className = 'tab-restore-preview-item';
+                    item.className = 'tab-restore-item';
                     var domain = '';
                     try { domain = new URL(t.url.startsWith('http') ? t.url : 'https://' + t.url).hostname; } catch(e) { domain = t.url; }
-                    var faviconSrc = t.favicon || 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=16';
-                    item.innerHTML = '<img src="' + faviconSrc + '" onerror="this.style.display=\'none\'" alt=""><span>' + (t.title || domain || 'Tab') + '</span>';
-                    preview.appendChild(item);
+                    var faviconSrc = t.favicon || 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=32';
+                    var displayTitle = t.title || domain || 'Tab';
+                    // Truncate title if too long
+                    if (displayTitle.length > 28) displayTitle = displayTitle.substring(0, 28) + '...';
+                    item.innerHTML = '<div class="tab-restore-item-icon"><img src="' + faviconSrc + '" onerror="this.src=\'/ghost.svg\'" alt=""></div><div class="tab-restore-item-text"><span class="tab-restore-item-title">' + displayTitle + '</span></div>';
+                    tabsList.appendChild(item);
                 });
 
                 requestAnimationFrame(function() {
