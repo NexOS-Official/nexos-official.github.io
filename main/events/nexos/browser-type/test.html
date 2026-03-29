@@ -422,6 +422,47 @@
             display: block;
         }
 
+        /* Tab loading spinner overlay */
+        .tab-favicon.loading img {
+            width: 12px !important;
+            height: 12px !important;
+            transition: width 0.2s ease, height 0.2s ease;
+        }
+        
+        .tab-favicon.loading i {
+            width: 12px !important;
+            height: 12px !important;
+            transform: scale(0.6);
+            transition: transform 0.2s ease;
+        }
+        
+        .tab-favicon.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin-top: -10px;
+            margin-left: -10px;
+            border: 2px solid transparent;
+            border-top-color: #4285f4;
+            border-right-color: #4285f4;
+            border-radius: 50%;
+            animation: favicon-spinner 0.8s linear infinite;
+            z-index: 10;
+            box-sizing: border-box;
+        }
+        
+        .tab-favicon.loading .favicon-glow {
+            display: none !important;
+        }
+        
+        @keyframes favicon-spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .tab-title {
            flex: 1;
            font-size: 14px;          
@@ -3855,24 +3896,81 @@ body.reduce-motion *::after {
         width: 520px;
         max-width: 92vw;
         max-height: 80vh;
-        overflow: hidden;
+        overflow: visible;
         box-shadow: 0 25px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
         transform: translateY(30px) scale(0.95);
         transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
         opacity: 0;
         display: flex;
         flex-direction: column;
+        position: relative;
     }
     .tab-restore-overlay.show .tab-restore-panel {
         transform: translateY(0) scale(1);
         opacity: 1;
     }
 
+    /* Speech bubble curved corners - creates inward curved effect between sections */
+    .tab-restore-body {
+        position: relative;
+        background: #ffffff;
+        border-radius: 0 0 24px 24px;
+        margin-top: 16px;
+        box-shadow: 0 -20px 0 0 #ffffff;
+    }
+    
+    /* Left curved connector */
+    .tab-restore-body::before {
+        content: '';
+        position: absolute;
+        top: -16px;
+        left: 0;
+        width: 16px;
+        height: 16px;
+        background: transparent;
+        mask-image: radial-gradient(circle at 0 0, transparent 16px, #ffffff 16px);
+        -webkit-mask-image: radial-gradient(circle at 0 0, transparent 16px, #ffffff 16px);
+        background-color: #ffffff;
+        z-index: 5;
+    }
+    
+    /* Right curved connector */
+    .tab-restore-body::after {
+        content: '';
+        position: absolute;
+        top: -16px;
+        right: 0;
+        width: 16px;
+        height: 16px;
+        background: transparent;
+        mask-image: radial-gradient(circle at 16px 0, transparent 16px, #ffffff 16px);
+        -webkit-mask-image: radial-gradient(circle at 16px 0, transparent 16px, #ffffff 16px);
+        background-color: #ffffff;
+        z-index: 5;
+    }
+    
+    /* Inner content wrapper */
+    .tab-restore-body-inner {
+        position: relative;
+        display: flex;
+        align-items: center;
+        padding: 20px 32px 24px;
+        gap: 16px;
+        z-index: 2;
+        flex-wrap: nowrap;
+    }
+    
+    .tab-restore-body-inner .tab-restore-btn {
+        flex-shrink: 0;
+    }
+
     .tab-restore-header {
         display: flex;
         align-items: center;
         gap: 14px;
-        padding: 28px 32px 8px;
+        padding: 28px 32px 20px;
+        position: relative;
+        z-index: 10;
     }
     .tab-restore-header-icon {
         width: 44px;
@@ -3915,23 +4013,18 @@ body.reduce-motion *::after {
     .tab-restore-header-text h2 {
         font-size: 20px;
         font-weight: 600;
-        color: #7c3aed;
+        color: #000000;
         font-family: google sans, sans-serif;
         margin: 0;
     }
     .tab-restore-header-text p {
         font-size: 14px;
-        color: #888;
+        color: #333333;
         margin: 2px 0 0;
         font-family: google sans, sans-serif;
     }
 
-    .tab-restore-body {
-        display: flex;
-        align-items: center;
-        padding: 20px 32px 28px;
-        gap: 16px;
-    }
+    /* The main body already styled above with the curved mask */
 
     .tab-restore-ghost {
         width: 44px;
@@ -3976,15 +4069,22 @@ body.reduce-motion *::after {
         50% { transform: scale(1.1); opacity: 0.8; }
     }
 
-    .tab-restore-message {
+    .tab-restore-content {
         flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .tab-restore-message {
         font-size: 14px;
-        color: #444;
+        color: #000000;
         font-family: google sans, sans-serif;
         line-height: 1.4;
     }
     .tab-restore-message strong {
-        color: #1a1a1a;
+        color: #000000;
+        font-weight: 700;
     }
 
     .tab-restore-btn {
@@ -4021,16 +4121,10 @@ body.reduce-motion *::after {
         transform: scale(0.98);
     }
 
-    .tab-restore-actions {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 32px 24px;
-    }
     .tab-restore-dismiss {
         background: none;
         border: none;
-        color: #999;
+        color: #666666;
         font-size: 13px;
         font-family: google sans, sans-serif;
         cursor: pointer;
@@ -4039,16 +4133,18 @@ body.reduce-motion *::after {
         transition: all 0.15s ease;
     }
     .tab-restore-dismiss:hover {
-        background: rgba(0,0,0,0.05);
-        color: #666;
+        background: rgba(0,0,0,0.08);
+        color: #000000;
     }
 
     .tab-restore-tabs-preview {
         display: flex;
         gap: 6px;
-        padding: 0 32px 16px;
+        padding: 0 32px 8px;
         overflow-x: auto;
         scrollbar-width: none;
+        position: relative;
+        z-index: 10;
     }
     .tab-restore-tabs-preview::-webkit-scrollbar { display: none; }
 
@@ -4108,16 +4204,18 @@ body.reduce-motion *::after {
             </div>
             <div class="tab-restore-tabs-preview" id="restoreTabsPreview"></div>
             <div class="tab-restore-body">
-                <div class="tab-restore-ghost">
-                    <img src="/ghost.svg" alt="Ghost" onerror="this.style.display='none'">
+                <div class="tab-restore-body-inner">
+                    <div class="tab-restore-ghost">
+                        <img src="/ghost.svg" alt="Ghost" onerror="this.style.display='none'">
+                    </div>
+                    <div class="tab-restore-content">
+                        <div class="tab-restore-message" id="restoreMessage">
+                            Boo! You had <strong>0</strong> tabs opened.<br>Would you like to restore them?
+                        </div>
+                        <button class="tab-restore-dismiss" id="restoreDismissBtn">Start fresh</button>
+                    </div>
+                    <button class="tab-restore-btn" id="restoreBtn">Restore</button>
                 </div>
-                <div class="tab-restore-message" id="restoreMessage">
-                    Boo! You had <strong>0</strong> tabs opened.<br>Would you like to restore them?
-                </div>
-            </div>
-            <div class="tab-restore-actions">
-                <button class="tab-restore-dismiss" id="restoreDismissBtn">Start fresh</button>
-                <button class="tab-restore-btn" id="restoreBtn">Restore</button>
             </div>
         </div>
     </div>
@@ -5386,7 +5484,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     pinned: false,
                     zoomLevel: 1.0,
                     faviconDomain: null,
-                    faviconUrl: null
+                    faviconUrl: null,
+                    isLoading: true
                 };
 
                 const tabElement = document.createElement('div');
@@ -5394,7 +5493,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 tabElement.dataset.tabId = tabId;
                 
                 tabElement.innerHTML = `
-                    <div class="tab-favicon">
+                    <div class="tab-favicon loading">
                         <i data-lucide="globe" width="20" height="20"></i>
                     </div>
                     <div class="tab-title">${tab.title}</div>
@@ -5486,6 +5585,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 iframe.addEventListener('load', () => {
                     this.updateTabInfo(tabId);
                     this.hideLoading();
+                    
+                    // Check if this is an embed.html page - wait for inner iframe to load
+                    const iframeSrc = iframe.src || '';
+                    if (iframeSrc.includes('/active/embed.html')) {
+                        this.waitForEmbedLoad(tabId);
+                    } else {
+                        this.setTabLoaded(tabId);
+                    }
                 });
                 
                 this.setupIframeLoadHandling(tabId);
@@ -5993,6 +6100,73 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
             }
 
+            // Tab loading state management
+            setTabLoading(tabId) {
+                const tab = this.tabs.get(tabId);
+                if (!tab) return;
+                
+                tab.isLoading = true;
+                const faviconEl = tab.element.querySelector('.tab-favicon');
+                if (faviconEl) {
+                    faviconEl.classList.add('loading');
+                }
+            }
+            
+            setTabLoaded(tabId) {
+                const tab = this.tabs.get(tabId);
+                if (!tab) return;
+                
+                tab.isLoading = false;
+                const faviconEl = tab.element.querySelector('.tab-favicon');
+                if (faviconEl) {
+                    faviconEl.classList.remove('loading');
+                }
+            }
+            
+            waitForEmbedLoad(tabId) {
+                const tab = this.tabs.get(tabId);
+                if (!tab || !tab.iframe) return;
+                
+                const self = this;
+                
+                // For embed.html pages, we need to wait for the inner proxied content
+                const checkInnerLoad = () => {
+                    try {
+                        const iframeDoc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
+                        // Look for an inner iframe (the proxy loads content in an iframe)
+                        const innerIframe = iframeDoc.querySelector('iframe');
+                        
+                        if (innerIframe) {
+                            // Listen for inner iframe load
+                            innerIframe.addEventListener('load', function onInnerLoad() {
+                                self.setTabLoaded(tabId);
+                                innerIframe.removeEventListener('load', onInnerLoad);
+                            });
+                            
+                            // Check if already loaded
+                            try {
+                                const innerDoc = innerIframe.contentDocument || innerIframe.contentWindow.document;
+                                if (innerDoc && innerDoc.readyState === 'complete') {
+                                    self.setTabLoaded(tabId);
+                                }
+                            } catch(e) {
+                                // Cross-origin, assume loaded after a delay
+                                setTimeout(() => self.setTabLoaded(tabId), 1000);
+                            }
+                        } else {
+                            // No inner iframe found, mark as loaded
+                            self.setTabLoaded(tabId);
+                        }
+                    } catch(e) {
+                        // Cross-origin or error, fallback to timeout
+                        setTimeout(() => self.setTabLoaded(tabId), 1500);
+                    }
+                };
+                
+                // Give the embed page time to set up its iframe
+                setTimeout(checkInnerLoad, 200);
+            }
+
             setupIframeLoadHandling(tabId) {
                 const tab = this.tabs.get(tabId);
                 if (!tab || !tab.iframe) return;
@@ -6015,6 +6189,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                         tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
                         this.addressBar.value = '';
+                        this.setTabLoaded(tabId);
                         return;
                     }
                     
@@ -6045,6 +6220,16 @@ document.addEventListener("DOMContentLoaded", () => {
                                 this.addressBar.value = originalUrl;
                             }
                         }, 100);
+                        
+                        // Handle loading state - check if embed.html
+                        const iframeSrc = iframe.src || '';
+                        if (iframeSrc.includes('/active/embed.html')) {
+                            this.waitForEmbedLoad(tabId);
+                        } else {
+                            this.setTabLoaded(tabId);
+                        }
+                    } else {
+                        this.setTabLoaded(tabId);
                     }
                 };
                 
@@ -6305,6 +6490,7 @@ if (this.isBlockedUrl(url)) {
                 if (!tab) return;
 
                 this.showLoading();
+                this.setTabLoading(this.activeTabId);
                 tab.url = url;
                 tab.iframe.src = url;
                 this.addressBar.value = this.extractOriginalUrl(url);
@@ -6630,6 +6816,7 @@ if (this.isBlockedUrl(url)) {
                 const tab = this.tabs.get(this.activeTabId);
                 if (tab) {
                     this.showLoading();
+                    this.setTabLoading(this.activeTabId);
                     let urlToLoad = tab.iframe.src;
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
                         urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
@@ -7103,7 +7290,21 @@ if (this.isBlockedUrl(url)) {
                     var raw = localStorage.getItem('nexos_saved_tabs');
                     if (!raw) return null;
                     var tabs = JSON.parse(raw);
-                    return Array.isArray(tabs) && tabs.length > 0 ? tabs : null;
+                    if (!Array.isArray(tabs) || tabs.length === 0) return null;
+                    
+                    // Filter out welcome/start pages (nexOS default tabs)
+                    var filteredTabs = tabs.filter(function(t) {
+                        var url = (t.url || '').toLowerCase();
+                        // Skip if it's welcome.html, welcomer.html, or similar start pages
+                        return !url.endsWith('/welcome.html') && 
+                               !url.endsWith('/welcomer.html') && 
+                               url !== 'welcome.html' && 
+                               url !== 'welcomer.html' &&
+                               url !== 'about:blank';
+                    });
+                    
+                    // If all tabs were just start pages, don't show restore dialog
+                    return filteredTabs.length > 0 ? filteredTabs : null;
                 } catch(e) { return null; }
             }
 
