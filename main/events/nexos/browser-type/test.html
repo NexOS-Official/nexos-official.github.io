@@ -3892,7 +3892,7 @@ body.reduce-motion *::after {
         background: #e8eaed;
         border-radius: 20px;
         overflow: hidden;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.10);
         transform: scale(0.96) translateY(8px);
         transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease;
         opacity: 0;
@@ -3911,18 +3911,19 @@ body.reduce-motion *::after {
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        padding: 24px 28px 0;
+        padding: 24px 28px 20px;
         flex: 0 0 270px;
         height: 100%;
         background: #e8eaed;
         gap: 0;
         position: relative;
-        overflow: hidden;
     }
 
     .tab-restore-connector {
-        width: 0;
+        width: 1px;
+        background: rgba(0,0,0,0.10);
         flex-shrink: 0;
+        margin: 16px 0;
     }
 
     /* Right panel - fixed height, contains scrollable inner box */
@@ -3994,61 +3995,82 @@ body.reduce-motion *::after {
         font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
-    /* Bottom area — Open button flush to bottom-left with tab shape */
+    /* Bottom button area with curved mask effects */
     .tab-restore-bottom {
         display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0;
+        align-items: center;
+        gap: 10px;
         margin-top: auto;
         position: relative;
     }
 
-    .tab-restore-buttons {
-        display: flex;
-        align-items: center;
-        margin-top: 10px;
+    /* Left curve before Open button */
+    .tab-restore-bottom::before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 12px;
+        height: 12px;
+        background: transparent;
     }
 
-    /* No thanks — plain text link, no border, no hover resize */
+    .tab-restore-buttons {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    /* No thanks button - outlined, purple on hover with lift */
     .tab-restore-dismiss {
         background: transparent;
-        border: none;
-        color: #5f6368;
+        border: 1.5px solid #bdc1c6;
+        color: #3c4043;
         font-size: 13px;
         font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         cursor: pointer;
-        padding: 0;
-        font-weight: 400;
-        transition: color 0.15s ease;
-        margin-bottom: 16px;
+        padding: 8px 18px;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.15s ease;
+        position: relative;
     }
 
     .tab-restore-dismiss:hover {
-        color: #6b46ff;
+        background: #6b46ff;
+        border-color: #6b46ff;
+        color: #fff;
+        padding: 8px 22px;
+        transform: translateY(-1px);
+        box-shadow: 0 1px 0 rgba(0,0,0,0.15);
     }
 
-    /* Open button — tab shape sitting at bottom edge, ::before/::after curved masks */
+    .tab-restore-dismiss:active {
+        transform: translateY(0);
+        box-shadow: none;
+    }
+
+    /* Open button - purple filled, NO hover effect */
     .tab-restore-btn {
         background: #6b46ff;
         color: #fff;
         border: none;
-        border-radius: 10px 10px 0 0;
-        padding: 9px 26px;
+        border-radius: 20px;
+        padding: 8px 22px;
         font-size: 13px;
         font-weight: 500;
         font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         cursor: pointer;
         position: relative;
-        display: block;
     }
 
-    /* Left curved notch */
+    /* Curved mask on left of button */
     .tab-restore-btn::before {
         content: '';
         position: absolute;
-        bottom: 0;
-        left: -12px;
+        top: -12px;
+        left: 0;
         width: 12px;
         height: 12px;
         background: #e8eaed;
@@ -4056,21 +4078,17 @@ body.reduce-motion *::after {
         -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
     }
 
-    /* Right curved notch */
+    /* Curved mask on right of button */
     .tab-restore-btn::after {
         content: '';
         position: absolute;
-        bottom: 0;
-        right: -12px;
+        top: -12px;
+        right: 0;
         width: 12px;
         height: 12px;
         background: #e8eaed;
         mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
         -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
-    }
-
-    .tab-restore-settings {
-        display: none;
     }
 
     .tab-restore-item {
@@ -4146,16 +4164,16 @@ body.reduce-motion *::after {
                     <div class="tab-restore-header">
                         <div class="tab-restore-header-text">
                             <h2>Welcome Recap</h2>
-                            <p>Don&apos;t forget these!</p>
+                            <p>Don't forget these!</p>
                         </div>
                     </div>
+                </div>
+                <!-- Bottom area with settings and buttons -->
+                <div class="tab-restore-bottom">
                     <div class="tab-restore-buttons">
                         <button class="tab-restore-dismiss" id="restoreDismissBtn">No thanks</button>
+                        <button class="tab-restore-btn" id="restoreBtn">Open</button>
                     </div>
-                </div>
-                <!-- Open button pinned to bottom-left as a tab shape -->
-                <div class="tab-restore-bottom">
-                    <button class="tab-restore-btn" id="restoreBtn">Open</button>
                 </div>
             </div>
             <!-- Divider -->
