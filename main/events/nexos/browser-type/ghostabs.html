@@ -350,32 +350,28 @@
 }
 
         .tab:hover:not(.active) {
-            background: #ffffffa5;
+            background: transparent;
         }
 
-.tab:hover:not(.active)::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: -11.5px;
-  width: 12px;
-  height: 12px;
-  background: #ffffffa5;
-  mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
-  -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
-}
+        .tab:hover:not(.active) .tab-hover-bg {
+            opacity: 1;
+        }
 
-.tab:hover:not(.active)::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  right: -12px;
-  width: 12px;
-  height: 12px;
-  background: #ffffffa5;
-  mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
-  -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
-}
+        .tab .tab-hover-bg {
+            position: absolute;
+            inset: 4px 4px 4px 4px;
+            background: rgba(0, 0, 0, 0.06);
+            border-radius: 6px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .tab:hover:not(.active)::before,
+        .tab:hover:not(.active)::after {
+            display: none;
+        }
 
 
         .tab-favicon {
@@ -5976,6 +5972,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 tabElement.dataset.tabId = tabId;
                 
                 tabElement.innerHTML = `
+                    <div class="tab-hover-bg"></div>
                     <div class="tab-favicon loading">
                         <i data-lucide="globe" width="20" height="20"></i>
                     </div>
