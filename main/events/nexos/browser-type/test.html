@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -708,12 +709,6 @@
             border-radius: 8px;
             transition: background 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
             position: relative;
-        }
-
-        .ai-menu-btn:hover {
-            background: rgba(0, 0, 0, 0.06);
-            transform: scale(1.08);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         .ai-menu-btn:active {
@@ -4020,6 +4015,92 @@ body.reduce-motion *::after {
         position: relative;
     }
 
+    .tab-restore-updates-btn {
+        background: transparent;
+        border: 1.5px solid #bdc1c6;
+        color: #3c4043;
+        font-size: 13px;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        cursor: pointer;
+        padding: 8px 18px;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.15s ease;
+        position: relative;
+        width: 100%;
+        margin-bottom: 8px;
+    }
+
+    .tab-restore-updates-btn:hover {
+        background: #6b46ff;
+        border-color: #6b46ff;
+        color: #fff;
+        transform: translateY(-1px);
+        box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+    }
+
+    .tab-restore-updates-btn:active {
+        transform: translateY(0);
+        box-shadow: none;
+    }
+
+    .tab-restore-panel.updates-blur > .tab-restore-left > *:not(.updates-overlay),
+    .tab-restore-panel.updates-blur > .tab-restore-connector,
+    .tab-restore-panel.updates-blur > .tab-restore-right {
+        filter: blur(6px);
+        pointer-events: none;
+        transition: filter 0.2s ease;
+    }
+
+    .updates-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        padding: 24px 28px;
+        overflow-y: auto;
+        background: #e8eaed;
+        border-radius: 20px 0 0 20px;
+        display: none;
+    }
+
+    .updates-overlay.visible {
+        display: block;
+    }
+
+    .updates-overlay h3 {
+        font-size: 15px;
+        font-weight: 600;
+        color: #202124;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        margin: 0 0 12px 0;
+    }
+
+    .updates-overlay ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .updates-overlay ul li {
+        font-size: 13px;
+        color: #3c4043;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        padding: 5px 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .updates-overlay ul li::before {
+        content: '•';
+        color: #6b46ff;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+
     .tab-restore-dismiss:hover {
         background: #6b46ff;
         border-color: #6b46ff;
@@ -4135,6 +4216,17 @@ body.reduce-motion *::after {
     <div class="tab-restore-overlay" id="tabRestoreOverlay">
         <div class="tab-restore-panel">
             <div class="tab-restore-left">
+                <div class="updates-overlay" id="updatesOverlayPanel">
+                    <h3>updates ∙ 📣</h3>
+                    <ul>
+                        <li>New tab grouping feature added</li>
+                        <li>Improved page load performance</li>
+                        <li>Bug fixes for bookmark syncing</li>
+                        <li>Updated AI chat responses</li>
+                        <li>New keyboard shortcuts available</li>
+                        <li>Dark mode improvements</li>
+                    </ul>
+                </div>
                 <div>
                     <div class="tab-restore-header">
                         <div class="tab-restore-header-text">
@@ -4144,9 +4236,12 @@ body.reduce-motion *::after {
                     </div>
                 </div>
                 <div class="tab-restore-bottom">
-                    <div class="tab-restore-buttons">
-                        <button class="tab-restore-dismiss" id="restoreDismissBtn">No thanks</button>
-                        <button class="tab-restore-btn" id="restoreBtn">Open</button>
+                    <div class="tab-restore-buttons" style="flex-direction: column; width: 100%;">
+                        <button class="tab-restore-updates-btn" id="showUpdatesBtn" onclick="document.querySelector('.tab-restore-panel').classList.add('updates-blur');document.getElementById('updatesOverlayPanel').classList.add('visible');">Show updates</button>
+                        <div style="display: flex; gap: 10px; width: 100%;">
+                            <button class="tab-restore-dismiss" id="restoreDismissBtn">No thanks</button>
+                            <button class="tab-restore-btn" id="restoreBtn">Open</button>
+                        </div>
                     </div>
                 </div>
             </div>
