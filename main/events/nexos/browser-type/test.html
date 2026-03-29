@@ -3828,11 +3828,298 @@ body.reduce-motion *::after {
             bottom: 52px;
         }
     }
+
+    /* ===== TAB RESTORE PANEL ===== */
+    .tab-restore-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.45);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        z-index: 99998;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    .tab-restore-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .tab-restore-panel {
+        background: #ffffff;
+        border-radius: 24px;
+        width: 520px;
+        max-width: 92vw;
+        max-height: 80vh;
+        overflow: hidden;
+        box-shadow: 0 25px 80px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1);
+        transform: translateY(30px) scale(0.95);
+        transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+        opacity: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .tab-restore-overlay.show .tab-restore-panel {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+
+    .tab-restore-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 28px 32px 8px;
+    }
+    .tab-restore-header-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        position: relative;
+        overflow: hidden;
+    }
+    .tab-restore-header-icon::before {
+        content: '';
+        position: absolute;
+        top: -2px; left: -2px; right: -2px; bottom: -2px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #7c3aed, #a855f7, #7c3aed);
+        z-index: 0;
+        animation: restore-icon-glow 3s ease-in-out infinite;
+    }
+    .tab-restore-header-icon::after {
+        content: '';
+        position: absolute;
+        inset: 2px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        z-index: 1;
+    }
+    .tab-restore-header-icon svg {
+        position: relative;
+        z-index: 2;
+        color: #fff;
+    }
+    @keyframes restore-icon-glow {
+        0%, 100% { opacity: 0.7; }
+        50% { opacity: 1; }
+    }
+    .tab-restore-header-text h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #7c3aed;
+        font-family: google sans, sans-serif;
+        margin: 0;
+    }
+    .tab-restore-header-text p {
+        font-size: 14px;
+        color: #888;
+        margin: 2px 0 0;
+        font-family: google sans, sans-serif;
+    }
+
+    .tab-restore-body {
+        display: flex;
+        align-items: center;
+        padding: 20px 32px 28px;
+        gap: 16px;
+    }
+
+    .tab-restore-ghost {
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+        position: relative;
+    }
+    .tab-restore-ghost::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
+        animation: ghost-pulse 2s ease-in-out infinite;
+    }
+    .tab-restore-ghost::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 28px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.08);
+        filter: blur(2px);
+    }
+    .tab-restore-ghost img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        position: relative;
+        z-index: 1;
+        animation: ghost-float 3s ease-in-out infinite;
+    }
+    @keyframes ghost-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+    }
+    @keyframes ghost-pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.1); opacity: 0.8; }
+    }
+
+    .tab-restore-message {
+        flex: 1;
+        font-size: 14px;
+        color: #444;
+        font-family: google sans, sans-serif;
+        line-height: 1.4;
+    }
+    .tab-restore-message strong {
+        color: #1a1a1a;
+    }
+
+    .tab-restore-btn {
+        background: linear-gradient(135deg, #7c3aed, #9333ea);
+        color: #fff;
+        border: none;
+        border-radius: 16px;
+        padding: 14px 36px;
+        font-size: 16px;
+        font-weight: 600;
+        font-family: google sans, sans-serif;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 20px rgba(124, 58, 237, 0.35);
+        position: relative;
+        overflow: hidden;
+    }
+    .tab-restore-btn::before {
+        content: '';
+        position: absolute;
+        top: 0; left: -100%; right: 0; bottom: 0;
+        width: 300%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.5s ease;
+    }
+    .tab-restore-btn:hover::before {
+        left: 100%;
+    }
+    .tab-restore-btn:hover {
+        transform: scale(1.03);
+        box-shadow: 0 6px 28px rgba(124, 58, 237, 0.45);
+    }
+    .tab-restore-btn:active {
+        transform: scale(0.98);
+    }
+
+    .tab-restore-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 32px 24px;
+    }
+    .tab-restore-dismiss {
+        background: none;
+        border: none;
+        color: #999;
+        font-size: 13px;
+        font-family: google sans, sans-serif;
+        cursor: pointer;
+        padding: 6px 12px;
+        border-radius: 8px;
+        transition: all 0.15s ease;
+    }
+    .tab-restore-dismiss:hover {
+        background: rgba(0,0,0,0.05);
+        color: #666;
+    }
+
+    .tab-restore-tabs-preview {
+        display: flex;
+        gap: 6px;
+        padding: 0 32px 16px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .tab-restore-tabs-preview::-webkit-scrollbar { display: none; }
+
+    .tab-restore-preview-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: #f5f5f5;
+        border-radius: 10px;
+        flex-shrink: 0;
+        font-size: 12px;
+        color: #555;
+        font-family: google sans, sans-serif;
+        border: 1px solid rgba(0,0,0,0.06);
+        position: relative;
+        overflow: hidden;
+    }
+    .tab-restore-preview-item::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        width: 3px;
+        height: 100%;
+        background: linear-gradient(to bottom, #7c3aed, #a855f7);
+        border-radius: 3px 0 0 3px;
+    }
+    .tab-restore-preview-item img {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+    }
+    .tab-restore-preview-item span {
+        max-width: 120px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     </style>
 </head>
 <body>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-banner" id="loadingBanner"></div>
+    </div>
+
+    <!-- Tab Restore Overlay -->
+    <div class="tab-restore-overlay" id="tabRestoreOverlay">
+        <div class="tab-restore-panel">
+            <div class="tab-restore-header">
+                <div class="tab-restore-header-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </div>
+                <div class="tab-restore-header-text">
+                    <h2>Welcome to Recap</h2>
+                    <p>restore your tabs</p>
+                </div>
+            </div>
+            <div class="tab-restore-tabs-preview" id="restoreTabsPreview"></div>
+            <div class="tab-restore-body">
+                <div class="tab-restore-ghost">
+                    <img src="/ghost.svg" alt="Ghost" onerror="this.style.display='none'">
+                </div>
+                <div class="tab-restore-message" id="restoreMessage">
+                    Boo! You had <strong>0</strong> tabs opened.<br>Would you like to restore them?
+                </div>
+            </div>
+            <div class="tab-restore-actions">
+                <button class="tab-restore-dismiss" id="restoreDismissBtn">Start fresh</button>
+                <button class="tab-restore-btn" id="restoreBtn">Restore</button>
+            </div>
+        </div>
     </div>
 
     <div class="browser-container">
@@ -4276,10 +4563,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.initializeElements();
                 this.bindEvents();
                 this.setupNewTabInterception();
-                this.createNewTab();
+
+                // Check for saved tabs before creating default
+                var savedTabs = this._loadSavedTabs();
+                if (savedTabs && savedTabs.length > 0) {
+                    this._pendingRestore = savedTabs;
+                    // Create one blank tab so the browser isn't empty
+                    this.createNewTab();
+                } else {
+                    this.createNewTab();
+                }
                 this.initializeBatteryMonitoring();
                 
                 this.initializeLoadingAnimation();
+                this._startTabAutoSave();
                 
                 lucide.createIcons();
                 
@@ -6799,10 +7096,123 @@ if (this.isBlockedUrl(url)) {
                     }, 3000);
                 }, 50);
             }
+
+            // ===== TAB SAVE & RESTORE =====
+            _loadSavedTabs() {
+                try {
+                    var raw = localStorage.getItem('nexos_saved_tabs');
+                    if (!raw) return null;
+                    var tabs = JSON.parse(raw);
+                    return Array.isArray(tabs) && tabs.length > 0 ? tabs : null;
+                } catch(e) { return null; }
+            }
+
+            _saveTabsToStorage() {
+                try {
+                    var tabData = [];
+                    for (var [id, tab] of this.tabs) {
+                        if (tab._closing) continue;
+                        var url = tab.currentUrl || this.extractOriginalUrl(tab.url || tab.iframe.src || '');
+                        if (!url || url === 'about:blank') url = tab.url || '';
+                        tabData.push({
+                            title: tab.title || 'New Tab',
+                            url: url,
+                            favicon: tab.faviconUrl || null,
+                            pinned: tab.pinned || false
+                        });
+                    }
+                    if (tabData.length > 0) {
+                        localStorage.setItem('nexos_saved_tabs', JSON.stringify(tabData));
+                    }
+                } catch(e) { console.log('Tab save error:', e); }
+            }
+
+            _startTabAutoSave() {
+                setInterval(() => this._saveTabsToStorage(), 3000);
+                window.addEventListener('beforeunload', () => this._saveTabsToStorage());
+            }
+
+            showRestorePanel() {
+                var saved = this._pendingRestore;
+                if (!saved || saved.length === 0) return;
+
+                var overlay = document.getElementById('tabRestoreOverlay');
+                var preview = document.getElementById('restoreTabsPreview');
+                var msg = document.getElementById('restoreMessage');
+
+                msg.innerHTML = 'Boo! You had <strong>' + saved.length + '</strong> tab' + (saved.length !== 1 ? 's' : '') + ' opened.<br>Would you like to restore them?';
+
+                preview.innerHTML = '';
+                saved.forEach(function(t) {
+                    var item = document.createElement('div');
+                    item.className = 'tab-restore-preview-item';
+                    var domain = '';
+                    try { domain = new URL(t.url.startsWith('http') ? t.url : 'https://' + t.url).hostname; } catch(e) { domain = t.url; }
+                    var faviconSrc = t.favicon || 'https://www.google.com/s2/favicons?domain=' + domain + '&sz=16';
+                    item.innerHTML = '<img src="' + faviconSrc + '" onerror="this.style.display=\'none\'" alt=""><span>' + (t.title || domain || 'Tab') + '</span>';
+                    preview.appendChild(item);
+                });
+
+                requestAnimationFrame(function() {
+                    overlay.classList.add('show');
+                });
+
+                var self = this;
+
+                document.getElementById('restoreBtn').onclick = function() {
+                    overlay.classList.remove('show');
+                    setTimeout(function() {
+                        var allIds = Array.from(self.tabs.keys());
+                        saved.forEach(function(t) {
+                            var newId = self.createNewTab();
+                            var newTab = self.tabs.get(newId);
+                            if (newTab && t.url) {
+                                if (t.url.startsWith('http')) {
+                                    self.switchToTab(newId);
+                                    self.navigate(t.url);
+                                } else {
+                                    newTab.iframe.src = t.url;
+                                    newTab.url = t.url;
+                                }
+                                var titleEl = newTab.element.querySelector('.tab-title');
+                                if (titleEl) titleEl.textContent = t.title || 'Tab';
+                                newTab.title = t.title || 'Tab';
+                                if (t.pinned) self.pinTab(newId);
+                            }
+                        });
+                        allIds.forEach(function(id) {
+                            if (self.tabs.size > 1) {
+                                var tab = self.tabs.get(id);
+                                if (tab) {
+                                    tab.element.remove();
+                                    tab.iframe.remove();
+                                    self.tabs.delete(id);
+                                }
+                            }
+                        });
+                        var firstTab = Array.from(self.tabs.values())[0];
+                        if (firstTab) self.switchToTab(firstTab.id);
+                        self.updateTabSizes();
+                        localStorage.removeItem('nexos_saved_tabs');
+                    }, 400);
+                };
+
+                document.getElementById('restoreDismissBtn').onclick = function() {
+                    overlay.classList.remove('show');
+                    localStorage.removeItem('nexos_saved_tabs');
+                };
+            }
         }
         
         const browser = new Browser();
         window.browser = browser;
+
+        if (browser._pendingRestore && browser._pendingRestore.length > 0) {
+            setTimeout(function() {
+                browser.showRestorePanel();
+            }, 1500);
+        }
+
         lucide.createIcons();
 
 
