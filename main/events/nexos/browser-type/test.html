@@ -3870,20 +3870,20 @@ body.reduce-motion *::after {
         }
     }
 
-    /* ===== TAB RESTORE PANEL ===== */
+    /* ===== TAB RESTORE PANEL - Chrome Style ===== */
     .tab-restore-overlay {
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.45);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: rgba(32, 33, 36, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         z-index: 99998;
         display: flex;
         align-items: center;
         justify-content: center;
         opacity: 0;
         pointer-events: none;
-        transition: opacity 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .tab-restore-overlay.show {
         opacity: 1;
@@ -3892,59 +3892,118 @@ body.reduce-motion *::after {
 
     .tab-restore-panel {
         background: transparent;
-        border-radius: 24px;
-        width: 520px;
-        max-width: 92vw;
-        max-height: 80vh;
+        border-radius: 28px;
+        width: 480px;
+        max-width: 90vw;
+        max-height: 85vh;
         overflow: visible;
-        box-shadow: 0 25px 80px rgba(0,0,0,0.3);
-        transform: translateY(30px) scale(0.95);
-        transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+        box-shadow: 
+            0 1px 3px rgba(0,0,0,0.08),
+            0 8px 24px rgba(0,0,0,0.15),
+            0 24px 48px rgba(0,0,0,0.1);
+        transform: translateY(24px) scale(0.96);
+        transition: transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.25s ease;
         opacity: 0;
         display: flex;
         flex-direction: column;
         position: relative;
     }
     
+    /* Outer glow ring effect */
+    .tab-restore-panel::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: 30px;
+        background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(168, 85, 247, 0.15), rgba(124, 58, 237, 0.1));
+        z-index: -1;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+    }
+    
+    .tab-restore-overlay.show .tab-restore-panel::before {
+        opacity: 1;
+    }
+    
     /* Top section with header and preview */
     .tab-restore-top {
         background: #ffffff;
-        border-radius: 24px 24px 0 0;
-        padding-bottom: 20px;
+        border-radius: 28px 28px 0 0;
+        padding-bottom: 24px;
+        position: relative;
+        overflow: hidden;
     }
+    
+    /* Subtle top highlight */
+    .tab-restore-top::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.9), transparent);
+    }
+    
+    /* Ambient gradient glow at top */
+    .tab-restore-top::after {
+        content: '';
+        position: absolute;
+        top: -60px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200px;
+        height: 120px;
+        background: radial-gradient(ellipse, rgba(124, 58, 237, 0.08) 0%, transparent 70%);
+        pointer-events: none;
+    }
+    
     .tab-restore-overlay.show .tab-restore-panel {
         transform: translateY(0) scale(1);
         opacity: 1;
     }
 
-    /* Speech bubble body section */
+    /* Speech bubble body section - Chrome connector style */
     .tab-restore-body {
         position: relative;
         background: #ffffff;
-        border-radius: 0 0 24px 24px;
-        margin-top: 20px;
+        border-radius: 0 0 28px 28px;
+        margin-top: 16px;
     }
     
-    /* Left inward curve */
+    /* Left inward curve - smooth Chrome style */
     .tab-restore-body::before {
         content: '';
         position: absolute;
-        top: -20px;
+        top: -16px;
         left: 0;
-        width: 20px;
-        height: 20px;
-        background: radial-gradient(circle at 0 0, transparent 20px, #ffffff 20px);
+        width: 16px;
+        height: 16px;
+        background: radial-gradient(circle at 0 0, transparent 15px, #ffffff 16px);
+        transition: all 0.3s ease;
     }
     
-    /* Right inward curve */
+    /* Right inward curve - smooth Chrome style */
     .tab-restore-body::after {
         content: '';
         position: absolute;
-        top: -20px;
+        top: -16px;
         right: 0;
-        width: 20px;
-        height: 20px;
-        background: radial-gradient(circle at 100% 0, transparent 20px, #ffffff 20px);
+        width: 16px;
+        height: 16px;
+        background: radial-gradient(circle at 100% 0, transparent 15px, #ffffff 16px);
+        transition: all 0.3s ease;
+    }
+    
+    /* Connector bridge element */
+    .tab-restore-connector {
+        position: absolute;
+        top: -16px;
+        left: 16px;
+        right: 16px;
+        height: 16px;
+        background: linear-gradient(to bottom, rgba(124, 58, 237, 0.03), transparent);
+        pointer-events: none;
     }
     
     /* Inner content wrapper */
@@ -3952,10 +4011,22 @@ body.reduce-motion *::after {
         position: relative;
         display: flex;
         align-items: center;
-        padding: 20px 32px 24px;
-        gap: 16px;
+        padding: 20px 28px 28px;
+        gap: 18px;
         z-index: 2;
         flex-wrap: nowrap;
+    }
+    
+    /* Bottom inner glow */
+    .tab-restore-body-inner::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80%;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(0,0,0,0.03), transparent);
     }
     
     .tab-restore-body-inner .tab-restore-btn {
@@ -3965,89 +4036,128 @@ body.reduce-motion *::after {
     .tab-restore-header {
         display: flex;
         align-items: center;
-        gap: 14px;
-        padding: 28px 32px 16px;
+        gap: 16px;
+        padding: 32px 28px 20px;
+        position: relative;
+        z-index: 1;
     }
+    
     .tab-restore-header-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: linear-gradient(145deg, #7c3aed, #9333ea);
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
         position: relative;
-        overflow: hidden;
+        box-shadow: 
+            0 4px 12px rgba(124, 58, 237, 0.3),
+            0 2px 4px rgba(124, 58, 237, 0.2),
+            inset 0 1px 0 rgba(255,255,255,0.2);
+        transition: transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.3s ease;
     }
+    
+    .tab-restore-header-icon:hover {
+        transform: scale(1.05) rotate(-3deg);
+        box-shadow: 
+            0 6px 20px rgba(124, 58, 237, 0.4),
+            0 2px 4px rgba(124, 58, 237, 0.2),
+            inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+    
+    /* Animated ring around icon */
     .tab-restore-header-icon::before {
         content: '';
         position: absolute;
-        top: -2px; left: -2px; right: -2px; bottom: -2px;
-        border-radius: 16px;
-        background: linear-gradient(135deg, #7c3aed, #a855f7, #7c3aed);
-        z-index: 0;
-        animation: restore-icon-glow 3s ease-in-out infinite;
+        inset: -4px;
+        border-radius: 20px;
+        background: conic-gradient(from 0deg, rgba(124, 58, 237, 0.4), rgba(168, 85, 247, 0.2), rgba(124, 58, 237, 0), rgba(124, 58, 237, 0.4));
+        z-index: -1;
+        animation: icon-ring-rotate 4s linear infinite;
+        opacity: 0.7;
     }
+    
+    /* Inner highlight reflection */
     .tab-restore-header-icon::after {
         content: '';
         position: absolute;
-        inset: 2px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #7c3aed, #a855f7);
-        z-index: 1;
+        top: 4px;
+        left: 4px;
+        right: 4px;
+        height: 50%;
+        border-radius: 12px 12px 50% 50%;
+        background: linear-gradient(to bottom, rgba(255,255,255,0.25), transparent);
+        pointer-events: none;
     }
+    
     .tab-restore-header-icon svg {
         position: relative;
         z-index: 2;
         color: #fff;
+        filter: drop-shadow(0 1px 2px rgba(0,0,0,0.1));
     }
+    
+    @keyframes icon-ring-rotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
     @keyframes restore-icon-glow {
-        0%, 100% { opacity: 0.7; }
-        50% { opacity: 1; }
+        0%, 100% { opacity: 0.6; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.05); }
     }
+    
     .tab-restore-header-text h2 {
-        font-size: 20px;
-        font-weight: 600;
-        color: #000000;
-        font-family: google sans, sans-serif;
+        font-size: 22px;
+        font-weight: 500;
+        color: #202124;
+        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
         margin: 0;
+        letter-spacing: -0.3px;
     }
+    
     .tab-restore-header-text p {
         font-size: 14px;
-        color: #333333;
-        margin: 2px 0 0;
-        font-family: google sans, sans-serif;
+        color: #5f6368;
+        margin: 4px 0 0;
+        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
+        letter-spacing: 0.1px;
     }
 
-    /* The main body already styled above with the curved mask */
-
+    /* Ghost mascot styling */
     .tab-restore-ghost {
-        width: 44px;
-        height: 44px;
+        width: 52px;
+        height: 52px;
         flex-shrink: 0;
         position: relative;
     }
+    
+    /* Pulsing aura effect */
     .tab-restore-ghost::before {
         content: '';
         position: absolute;
-        inset: -4px;
+        inset: -8px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%);
-        animation: ghost-pulse 2s ease-in-out infinite;
+        background: radial-gradient(circle, rgba(124,58,237,0.12) 0%, rgba(124,58,237,0.04) 50%, transparent 70%);
+        animation: ghost-aura 2.5s ease-in-out infinite;
     }
+    
+    /* Ground shadow */
     .tab-restore-ghost::after {
         content: '';
         position: absolute;
-        bottom: -2px;
+        bottom: -4px;
         left: 50%;
         transform: translateX(-50%);
-        width: 28px;
-        height: 6px;
+        width: 32px;
+        height: 8px;
         border-radius: 50%;
-        background: rgba(0,0,0,0.08);
-        filter: blur(2px);
+        background: radial-gradient(ellipse, rgba(0,0,0,0.12) 0%, transparent 70%);
+        animation: ghost-shadow 3s ease-in-out infinite;
     }
+    
     .tab-restore-ghost img {
         width: 100%;
         height: 100%;
@@ -4055,127 +4165,236 @@ body.reduce-motion *::after {
         position: relative;
         z-index: 1;
         animation: ghost-float 3s ease-in-out infinite;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
     }
+    
     @keyframes ghost-float {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-4px); }
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        25% { transform: translateY(-6px) rotate(1deg); }
+        75% { transform: translateY(-3px) rotate(-1deg); }
     }
-    @keyframes ghost-pulse {
-        0%, 100% { transform: scale(1); opacity: 0.5; }
-        50% { transform: scale(1.1); opacity: 0.8; }
+    
+    @keyframes ghost-aura {
+        0%, 100% { transform: scale(1); opacity: 0.6; }
+        50% { transform: scale(1.15); opacity: 0.9; }
+    }
+    
+    @keyframes ghost-shadow {
+        0%, 100% { transform: translateX(-50%) scale(1); opacity: 0.12; }
+        25% { transform: translateX(-50%) scale(0.85); opacity: 0.08; }
+        75% { transform: translateX(-50%) scale(0.92); opacity: 0.1; }
     }
 
     .tab-restore-content {
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 6px;
     }
     
     .tab-restore-message {
         font-size: 14px;
-        color: #000000;
-        font-family: google sans, sans-serif;
-        line-height: 1.4;
+        color: #3c4043;
+        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.5;
     }
+    
     .tab-restore-message strong {
-        color: #000000;
-        font-weight: 700;
+        color: #202124;
+        font-weight: 600;
     }
 
+    /* Chrome-style primary button */
     .tab-restore-btn {
-        background: linear-gradient(135deg, #7c3aed, #9333ea);
+        background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 50%, #7c3aed 100%);
+        background-size: 200% 200%;
         color: #fff;
         border: none;
-        border-radius: 16px;
-        padding: 14px 36px;
-        font-size: 16px;
-        font-weight: 600;
-        font-family: google sans, sans-serif;
+        border-radius: 24px;
+        padding: 14px 32px;
+        font-size: 14px;
+        font-weight: 500;
+        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
         cursor: pointer;
-        transition: all 0.2s ease;
-        box-shadow: 0 4px 20px rgba(124, 58, 237, 0.35);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 
+            0 1px 3px rgba(124, 58, 237, 0.3),
+            0 4px 12px rgba(124, 58, 237, 0.2);
         position: relative;
         overflow: hidden;
+        letter-spacing: 0.3px;
     }
+    
+    /* Shine effect layer */
     .tab-restore-btn::before {
         content: '';
         position: absolute;
-        top: 0; left: -100%; right: 0; bottom: 0;
-        width: 300%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-        transition: left 0.5s ease;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255,255,255,0.3),
+            transparent
+        );
+        transition: left 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    
+    /* Top highlight reflection */
+    .tab-restore-btn::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 50%;
+        background: linear-gradient(to bottom, rgba(255,255,255,0.15), transparent);
+        border-radius: 24px 24px 50% 50%;
+        pointer-events: none;
+    }
+    
+    .tab-restore-btn:hover {
+        transform: translateY(-2px) scale(1.02);
+        box-shadow: 
+            0 2px 6px rgba(124, 58, 237, 0.35),
+            0 8px 24px rgba(124, 58, 237, 0.3);
+        background-position: 100% 0;
+    }
+    
     .tab-restore-btn:hover::before {
         left: 100%;
     }
-    .tab-restore-btn:hover {
-        transform: scale(1.03);
-        box-shadow: 0 6px 28px rgba(124, 58, 237, 0.45);
-    }
+    
     .tab-restore-btn:active {
-        transform: scale(0.98);
+        transform: translateY(0) scale(0.98);
+        box-shadow: 
+            0 1px 2px rgba(124, 58, 237, 0.3),
+            0 2px 8px rgba(124, 58, 237, 0.2);
     }
 
+    /* Chrome-style text link */
     .tab-restore-dismiss {
         background: none;
         border: none;
-        color: #666666;
+        color: #7c3aed;
         font-size: 13px;
-        font-family: google sans, sans-serif;
+        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
         cursor: pointer;
-        padding: 6px 12px;
-        border-radius: 8px;
-        transition: all 0.15s ease;
+        padding: 8px 16px;
+        border-radius: 20px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        font-weight: 500;
     }
+    
+    .tab-restore-dismiss::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 20px;
+        background: rgba(124, 58, 237, 0);
+        transition: background 0.2s ease;
+    }
+    
     .tab-restore-dismiss:hover {
-        background: rgba(0,0,0,0.08);
-        color: #000000;
+        color: #6d28d9;
+    }
+    
+    .tab-restore-dismiss:hover::before {
+        background: rgba(124, 58, 237, 0.08);
+    }
+    
+    .tab-restore-dismiss:active::before {
+        background: rgba(124, 58, 237, 0.12);
     }
 
+    /* Tab preview pills */
     .tab-restore-tabs-preview {
         display: flex;
-        gap: 6px;
-        padding: 0 32px;
+        gap: 8px;
+        padding: 0 28px;
         overflow-x: auto;
         scrollbar-width: none;
+        position: relative;
+        z-index: 1;
     }
+    
     .tab-restore-tabs-preview::-webkit-scrollbar { display: none; }
 
     .tab-restore-preview-item {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 6px 10px;
-        background: #f5f5f5;
-        border-radius: 10px;
+        gap: 8px;
+        padding: 8px 14px;
+        background: linear-gradient(135deg, #f8f9fa, #ffffff);
+        border-radius: 20px;
         flex-shrink: 0;
-        font-size: 12px;
-        color: #555;
-        font-family: google sans, sans-serif;
+        font-size: 13px;
+        color: #3c4043;
+        font-family: google sans, -apple-system, BlinkMacSystemFont, sans-serif;
         border: 1px solid rgba(0,0,0,0.06);
         position: relative;
         overflow: hidden;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
+    
+    /* Accent bar on left */
     .tab-restore-preview-item::before {
         content: '';
         position: absolute;
-        top: 0; left: 0;
+        top: 50%;
+        left: 0;
+        transform: translateY(-50%);
         width: 3px;
-        height: 100%;
+        height: 60%;
         background: linear-gradient(to bottom, #7c3aed, #a855f7);
-        border-radius: 3px 0 0 3px;
+        border-radius: 0 3px 3px 0;
+        opacity: 0;
+        transition: opacity 0.2s ease, height 0.2s ease;
     }
+    
+    /* Hover highlight gradient */
+    .tab-restore-preview-item::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(135deg, rgba(124, 58, 237, 0.04), transparent);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+        pointer-events: none;
+    }
+    
+    .tab-restore-preview-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-color: rgba(124, 58, 237, 0.2);
+    }
+    
+    .tab-restore-preview-item:hover::before {
+        opacity: 1;
+        height: 70%;
+    }
+    
+    .tab-restore-preview-item:hover::after {
+        opacity: 1;
+    }
+    
     .tab-restore-preview-item img {
-        width: 14px;
-        height: 14px;
-        border-radius: 3px;
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.08);
     }
+    
     .tab-restore-preview-item span {
-        max-width: 120px;
+        max-width: 140px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        font-weight: 450;
     }
     </style>
 </head>
@@ -4199,8 +4418,9 @@ body.reduce-motion *::after {
                 </div>
                 <div class="tab-restore-tabs-preview" id="restoreTabsPreview"></div>
             </div>
-            <div class="tab-restore-body">
-                <div class="tab-restore-body-inner">
+ <div class="tab-restore-body">
+  <div class="tab-restore-connector"></div>
+  <div class="tab-restore-body-inner">
                     <div class="tab-restore-ghost">
                         <img src="/ghost.svg" alt="Ghost" onerror="this.style.display='none'">
                     </div>
