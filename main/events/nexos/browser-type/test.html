@@ -4809,12 +4809,12 @@ body.reduce-motion *::after {
     display: inline-block;
 }
 
-/* Split tab in tab bar — two normal-sized tabs side by side */
+/* Split tab in tab bar — same size as normal tabs (120px-240px) */
 .tab.split-tab {
-    min-width: 0 !important;
-    max-width: none !important;
-    flex: 1 !important;
-    padding: 0 !important;
+    min-width: 120px !important;
+    max-width: 240px !important;
+    flex: 1 1 auto !important;
+    padding: 0 4px !important;
 }
 
 .tab.split-tab .split-tab-inner {
@@ -4897,29 +4897,40 @@ body.reduce-motion *::after {
     flex-shrink: 0;
 }
 
+/* Inactive split tab (not selected) - both halves dimmed like inactive tabs */
 .tab.split-tab:not(.active) .split-tab-half {
-    opacity: 0.82;
+    opacity: 0.75;
 }
 
+/* Active split tab (selected) - dimmed half looks inactive */
 .tab.split-tab.active .split-tab-half {
-    opacity: 0.9;
+    opacity: 0.65;
 }
 
+/* Active split tab (selected) - active half is bright */
 .tab.split-tab.active .split-tab-half.is-pane-active {
     opacity: 1;
 }
 
 .tab.split-tab.active .split-tab-half.is-pane-active .tab-title {
     color: #111111;
-    font-weight: 700;
+    font-weight: 500;
 }
 
 /* Thin divider between the two halves */
 .tab.split-tab .split-tab-divider {
     width: 1px;
     height: 18px;
-    background: rgba(0,0,0,0.15);
+    background: rgba(0,0,0,0.2);
     flex-shrink: 0;
+    margin: 0 2px;
+}
+
+/* Active half gets a subtle visual indicator */
+.tab.split-tab.active .split-tab-half.is-pane-active {
+    background: rgba(255,255,255,0.4);
+    border-radius: 4px;
+    margin: 2px 0;
 }
 
 .split-context-submenu {
@@ -5631,7 +5642,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
                         // Skip if this is a split tab - the split view handler manages the address bar
-                        if (this._splitTabs && this._splitTabs.has(this.activeTabId)) {
+                        if (this._splitTabs && (this._splitTabs.has(this.activeTabId) || 
+                            Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === this.activeTabId || sd.rightTabId === this.activeTabId))) {
                             return;
                         }
                         
@@ -5639,7 +5651,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (tab) {
                             const newUrl = e.data.url;
                             tab.currentUrl = newUrl;
-                            this.addressBar.value = newUrl;
+                            // Only update address bar if not focused (avoid disrupting typing)
+                            if (document.activeElement !== this.addressBar) {
+                                this.addressBar.value = newUrl;
+                            }
                             this.updateFavicon(tab, newUrl);
                             this.updateTabTitle(tab, newUrl);
                             
@@ -7024,9 +7039,16 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (originalUrl && originalUrl !== 'about:blank') {
                         this.updateTabInfo(tabId);
                         
-                        if (this.activeTabId === tabId) {
+                        // Check if this tab is part of a split view - if so, let split handler manage address bar
+                        const isInSplit = this._splitTabs && (this._splitTabs.has(tabId) || 
+                            Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === tabId || sd.rightTabId === tabId));
+                        
+                        if (this.activeTabId === tabId && !isInSplit) {
                             this.updateFavicon(tab, originalUrl);
-                            this.addressBar.value = originalUrl;
+                            // Only update address bar if not focused
+                            if (document.activeElement !== this.addressBar) {
+                                this.addressBar.value = originalUrl;
+                            }
                             const isSecure = originalUrl.startsWith('https://');
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                             
@@ -7043,7 +7065,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         
                         setTimeout(() => {
                             this.updateTabInfo(tabId);
-                            if (this.activeTabId === tabId) {
+                            // Skip if in split or if address bar is focused
+                            const stillInSplit = this._splitTabs && (this._splitTabs.has(tabId) || 
+                                Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === tabId || sd.rightTabId === tabId));
+                            if (this.activeTabId === tabId && !stillInSplit && document.activeElement !== this.addressBar) {
                                 this.updateFavicon(tab, originalUrl);
                                 this.addressBar.value = originalUrl;
                             }
@@ -11723,14 +11748,20 @@ setInterval(async () => {
             if (b.isBlockedUrl(newUrl)) {
                 tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                 tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
-                b.addressBar.value = '';
+                if (document.activeElement !== b.addressBar) {
+                    b.addressBar.value = '';
+                }
                 return;
             }
 
             tab.currentUrl = newUrl;
             tab.url = tab.iframe.src;
 
-            if (b.activeTabId === tab.id) {
+            // Check if this tab is part of a split view - if so, split handler manages address bar
+            var isInSplit = b._splitTabs && (b._splitTabs.has(tab.id) || 
+                Array.from(b._splitTabs.values()).some(function(sd) { return sd.leftTabId === tab.id || sd.rightTabId === tab.id; }));
+
+            if (b.activeTabId === tab.id && !isInSplit && document.activeElement !== b.addressBar) {
                 b.addressBar.value = newUrl;
                 b._updateSecurityIcon(newUrl);
             }
@@ -11859,12 +11890,16 @@ setInterval(async () => {
                 b.injectNewTabInterceptor(iframe);
                 b.injectUrlChangeMonitor(iframe, tabId);
 
+                // Check if this tab is part of a split view - if so, split handler manages address bar
+                var isInSplit = b._splitTabs && (b._splitTabs.has(tabId) || 
+                    Array.from(b._splitTabs.values()).some(function(sd) { return sd.leftTabId === tabId || sd.rightTabId === tabId; }));
+
                 if (tab._navigatingHistory) {
                     tab._navigatingHistory = false;
                     b.updateTabInfo(tabId);
                     b.hideLoading();
                     var originalUrl = b.extractOriginalUrl(tab.url);
-                    if (b.activeTabId === tabId) {
+                    if (b.activeTabId === tabId && !isInSplit && document.activeElement !== b.addressBar) {
                         b.updateFavicon(tab, originalUrl);
                         b.addressBar.value = originalUrl;
                         b._updateSecurityIcon(originalUrl);
@@ -11879,14 +11914,16 @@ setInterval(async () => {
                 if (originalUrl && b.isBlockedUrl(originalUrl)) {
                     tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                     tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
-                    b.addressBar.value = '';
+                    if (document.activeElement !== b.addressBar) {
+                        b.addressBar.value = '';
+                    }
                     return;
                 }
 
                 if (originalUrl && originalUrl !== 'about:blank') {
                     b.updateTabInfo(tabId);
 
-                    if (b.activeTabId === tabId) {
+                    if (b.activeTabId === tabId && !isInSplit && document.activeElement !== b.addressBar) {
                         b.updateFavicon(tab, originalUrl);
                         b.addressBar.value = originalUrl;
                         b._updateSecurityIcon(originalUrl);
@@ -11913,7 +11950,9 @@ setInterval(async () => {
 
                     setTimeout(function() {
                         b.updateTabInfo(tabId);
-                        if (b.activeTabId === tabId) {
+                        var stillInSplit = b._splitTabs && (b._splitTabs.has(tabId) || 
+                            Array.from(b._splitTabs.values()).some(function(sd) { return sd.leftTabId === tabId || sd.rightTabId === tabId; }));
+                        if (b.activeTabId === tabId && !stillInSplit && document.activeElement !== b.addressBar) {
                             b.updateFavicon(tab, originalUrl);
                             b.addressBar.value = originalUrl;
                         }
@@ -12635,7 +12674,10 @@ setInterval(async () => {
         if (realUrl && realUrl !== 'about:blank' && realUrl !== tab.currentUrl) {
             tab.currentUrl = realUrl;
             tab.url = tab.iframe.src;
-            b.addressBar.value = realUrl;
+            // Only update address bar if not focused (avoid disrupting typing)
+            if (document.activeElement !== b.addressBar) {
+                b.addressBar.value = realUrl;
+            }
             b.updateFavicon(tab, realUrl);
             b.updateTabTitle(tab, realUrl);
 
@@ -13294,7 +13336,10 @@ setInterval(async () => {
             if (!activeTab) return;
             var url = getTabUrl(activeTab) || '';
             activeTab.currentUrl = url;
-            if (b.addressBar) b.addressBar.value = url;
+            // Only update address bar if it's not focused (avoid disrupting user typing)
+            if (b.addressBar && document.activeElement !== b.addressBar) {
+                b.addressBar.value = url;
+            }
             if (typeof b._updateSecurityIcon === 'function') {
                 b._updateSecurityIcon(url || 'about:blank');
             }
@@ -13515,9 +13560,8 @@ setInterval(async () => {
             moveIframeIntoPane(splitData, 'left');
             moveIframeIntoPane(splitData, 'right');
 
-            // Ensure iframes stay in contentArea (no DOM move) and position them
-            b.contentArea.appendChild(leftIframe);
-            b.contentArea.appendChild(rightIframe);
+            // Iframes are already in contentArea - do NOT appendChild (that causes reload!)
+            // Just ensure they stay visible by setting display styles later in positionSplitIframes
 
             targetTab.element.style.display = 'none';
             targetTab._hiddenBySplit = true;
@@ -13939,26 +13983,53 @@ setInterval(async () => {
             
             // Check if closing this tab would leave us on nothing - need to switch to split tab
             var wasActive = (b.activeTabId === tabId);
-            origCloseTab.call(b, tabId);
             
-            // If we were on the active tab and now nothing is active, find a split tab to switch to
-            if (wasActive && (!b.activeTabId || !b.tabs.has(b.activeTabId))) {
-                // Find any visible tab to switch to
-                var foundTab = null;
-                b.tabs.forEach(function(t, tid) {
-                    if (!t._hiddenBySplit && t.element && t.element.style.display !== 'none') {
-                        foundTab = tid;
+            // Before closing, find a good fallback tab (in case origCloseTab doesn't handle it well)
+            var fallbackTab = null;
+            if (wasActive) {
+                // Get all visible tabs in DOM order
+                var tabElements = Array.from(b.tabBar.querySelectorAll('.tab'));
+                var currentIndex = -1;
+                var visibleTabs = [];
+                tabElements.forEach(function(el, idx) {
+                    var tid = parseInt(el.dataset.tabId);
+                    var t = b.tabs.get(tid);
+                    if (t && !t._closing && !t._hiddenBySplit && el.style.display !== 'none') {
+                        visibleTabs.push({ id: tid, index: idx });
+                        if (tid === tabId) currentIndex = visibleTabs.length - 1;
                     }
                 });
-                // Also check split tabs
-                if (!foundTab) {
-                    b._splitTabs.forEach(function(splitData, splitId) {
-                        if (!foundTab) foundTab = splitId;
-                    });
+                
+                // Also include split tabs as potential fallbacks
+                b._splitTabs.forEach(function(splitData, splitId) {
+                    var splitTab = b.tabs.get(splitId);
+                    if (splitTab && !splitTab._closing) {
+                        var el = splitTab.element;
+                        var domIndex = tabElements.indexOf(el);
+                        visibleTabs.push({ id: splitId, index: domIndex >= 0 ? domIndex : 999 });
+                    }
+                });
+                
+                // Sort by DOM position
+                visibleTabs.sort(function(a, b) { return a.index - b.index; });
+                
+                // Find the next best tab (prefer right neighbor, then left)
+                var closingIndex = visibleTabs.findIndex(function(vt) { return vt.id === tabId; });
+                if (closingIndex >= 0) {
+                    var nextTab = visibleTabs[closingIndex + 1] || visibleTabs[closingIndex - 1];
+                    if (nextTab) fallbackTab = nextTab.id;
+                } else if (visibleTabs.length > 0) {
+                    // Just pick the first visible tab
+                    var firstNonClosing = visibleTabs.find(function(vt) { return vt.id !== tabId; });
+                    if (firstNonClosing) fallbackTab = firstNonClosing.id;
                 }
-                if (foundTab) {
-                    b.switchToTab(foundTab);
-                }
+            }
+            
+            origCloseTab.call(b, tabId);
+            
+            // If we were on the active tab and now nothing is active (or active is deleted), switch to fallback
+            if (wasActive && fallbackTab && (!b.activeTabId || !b.tabs.has(b.activeTabId) || b.activeTabId === tabId)) {
+                b.switchToTab(fallbackTab);
             }
         };
 
@@ -14298,7 +14369,8 @@ setInterval(async () => {
                     }
                 }
 
-                if (b.activeTabId === splitTabId) {
+                // Only sync chrome if address bar is NOT focused (avoid disrupting typing)
+                if (b.activeTabId === splitTabId && document.activeElement !== b.addressBar) {
                     syncSplitChrome(splitData, true);
                 }
             });
