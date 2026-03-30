@@ -5511,6 +5511,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         e.preventDefault();
                         this.createNewTab();
                     
+                    } else if (e.altKey && key === 'w') {
+                        e.preventDefault();
+                        if (this.activeTabId) this.closeTab(this.activeTabId);
+                    
+                    } else if (e.altKey && key === 'r') {
+                        e.preventDefault();
+                        this.refresh();
+                    
+                    
                     } else if (e.altKey && key === 'n' && !e.shiftKey) {
                         e.preventDefault();
                         window.open(window.location.href, '_blank');
@@ -5534,10 +5543,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             tab.iframe.src = '/credits.html';
                             this.updateAddressBar();
                         }
-                    
-                    } else if (e.altKey && key === 'w') {
-                        e.preventDefault();
-                        if (this.activeTabId) this.closeTab(this.activeTabId);
                     }
                     if (e.altKey && e.key.toLowerCase() === 'x') {
                         e.preventDefault();
@@ -5559,10 +5564,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.addEventListener('keydown', (e) => {
                     if (e.ctrlKey || e.metaKey) {
                         switch(e.key) {
-                            case 'r':
-                                e.preventDefault();
-                                this.refresh();
-                                break;
                             case 'l':
                                 e.preventDefault();
                                 this.addressBar.focus();
@@ -12646,5 +12647,135 @@ setInterval(async () => {
     bindSuggestions();
 })();
 </script>
+
+<script>
+(function() {
+
+    var chromeIds = ['tabBar', 'navigationBar', 'bookmarksBar', 'newTabBtn', 'taskbar'];
+    chromeIds.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('mouseenter', function() {
+            window.focus();
+        });
+    });
+
+    window.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            var ae = document.activeElement;
+            if (ae && ae.tagName === 'IFRAME') {
+                window.focus();
+                var addressBar = document.getElementById('addressBar');
+                if (addressBar) {
+                    addressBar.focus();
+                    addressBar.select();
+                }
+            }
+        }
+    }, true);
+
+
+    var _blurOverlay = null;
+
+    window.addEventListener('blur', function() {
+        setTimeout(function() {
+            if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+                enableEdgeCapture();
+            }
+        }, 50);
+    });
+
+    function enableEdgeCapture() {
+        if (_blurOverlay) return;
+
+        _blurOverlay = document.createElement('div');
+        _blurOverlay.id = '_nexos-edge-capture';
+        _blurOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;height:5px;z-index:99998;';
+        document.body.appendChild(_blurOverlay);
+
+        _blurOverlay.addEventListener('mouseenter', function() {
+            window.focus();
+            disableEdgeCapture();
+        });
+
+        document.addEventListener('mousedown', function _cleanup() {
+            disableEdgeCapture();
+            document.removeEventListener('mousedown', _cleanup);
+        });
+    }
+
+    function disableEdgeCapture() {
+        if (_blurOverlay) {
+            _blurOverlay.remove();
+            _blurOverlay = null;
+        }
+    }
+
+    if (window.browser) {
+        _patchBrowserForKeyInjection(window.browser);
+    } else {
+        var _checkBrowser = setInterval(function() {
+            if (window.browser) {
+                clearInterval(_checkBrowser);
+                _patchBrowserForKeyInjection(window.browser);
+            }
+        }, 500);
+    }
+
+    function _patchBrowserForKeyInjection(b) {
+        var origCreateNewTab = b.createNewTab.bind(b);
+        b.createNewTab = function() {
+            var tabId = origCreateNewTab.apply(b, arguments);
+            var tab = b.tabs.get(tabId);
+            if (tab && tab.iframe) {
+                _attachKeyForwarder(tab.iframe);
+            }
+            return tabId;
+        };
+
+        b.tabs.forEach(function(tab) {
+            if (tab.iframe) _attachKeyForwarder(tab.iframe);
+        });
+    }
+
+    function _attachKeyForwarder(iframe) {
+        iframe.addEventListener('load', function() {
+            try {
+                var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                var script = iframeDoc.createElement('script');
+                script.textContent = '(' + function() {
+                    document.addEventListener('keydown', function(e) {
+                        if (e.altKey || e.ctrlKey || e.metaKey) {
+                            try {
+                                window.top.postMessage({
+                                    type: 'nexos-keydown',
+                                    key: e.key,
+                                    code: e.code,
+                                    keyCode: e.keyCode,
+                                    which: e.which,
+                                    altKey: e.altKey,
+                                    ctrlKey: e.ctrlKey,
+                                    shiftKey: e.shiftKey,
+                                    metaKey: e.metaKey
+                                }, '*');
+                                if (e.altKey) e.preventDefault();
+                            } catch(x) {}
+                        }
+                    }, true);
+                    window.addEventListener('message', function(ev) {
+                        if (ev.data && ev.data.type === 'nexos-keydown') {
+                            try { window.parent.postMessage(ev.data, '*'); } catch(x) {}
+                        }
+                    });
+                }.toString() + ')();';
+                iframeDoc.head.appendChild(script);
+            } catch(e) {
+            }
+        });
+    }
+
+})();
+</script>
+
 </body>
 </html>
