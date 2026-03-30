@@ -4662,10 +4662,10 @@ body.reduce-motion *::after {
 /* ===== SPLIT VIEW STYLES ===== */
 .split-content-area {
     display: flex;
-    position: absolute;
-    inset: 0;
+    width: 100%;
+    height: 100%;
+    position: relative;
     overflow: hidden;
-    z-index: 1;
 }
 
 .split-pane {
@@ -13054,7 +13054,7 @@ setInterval(async () => {
 </script>
 
 <script>
-// ═════════════════════════���═════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 // CROSS-ORIGIN IFRAME KEYBOARD SHORTCUT CAPTURE SYSTEM
 // Enables Alt+T, Alt+W, Ctrl+R, etc. even when iframe has focus
 // ═══════════════════════════════════════════════════════════════
@@ -13422,40 +13422,47 @@ setInterval(async () => {
 
         function positionSplitIframes(splitData) {
             var container = splitData.splitContainer;
+            var rect = container.getBoundingClientRect();
+            // If the container hasn't laid out yet, schedule a retry instead of
+            // silently giving up (this is what caused the blank-iframe bug)
+            if (rect.width === 0) {
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        positionSplitIframes(splitData);
+                    });
+                });
+                return;
+            }
             var contentRect = b.contentArea.getBoundingClientRect();
-            if (contentRect.width === 0 || contentRect.height === 0) return false;
 
-            var leftPane = container.querySelector('[data-side="left"]');
-            var rightPane = container.querySelector('[data-side="right"]');
+            var divider = container.querySelector('.split-divider');
+            var dividerWidth = divider ? divider.offsetWidth : 8;
+            var leftPct = splitData.splitRatio;
+            var leftWidth = Math.max(0, rect.width * leftPct - dividerWidth / 2);
+            var rightWidth = Math.max(0, rect.width * (1 - leftPct) - dividerWidth / 2);
+            var top = rect.top - contentRect.top;
+            var left = rect.left - contentRect.left;
 
             var li = splitData.leftIframe;
             var ri = splitData.rightIframe;
 
-            if (leftPane && li) {
-                var lRect = leftPane.getBoundingClientRect();
-                li.style.position = 'absolute';
-                li.style.top = (lRect.top - contentRect.top) + 'px';
-                li.style.left = (lRect.left - contentRect.left) + 'px';
-                li.style.width = lRect.width + 'px';
-                li.style.height = lRect.height + 'px';
-                li.style.display = 'block';
-                li.classList.add('active');
-                li.style.zIndex = '2';
-            }
+            li.style.position = 'absolute';
+            li.style.top = top + 'px';
+            li.style.left = left + 'px';
+            li.style.width = leftWidth + 'px';
+            li.style.height = rect.height + 'px';
+            li.style.display = 'block';
+            li.classList.add('active');
+            li.style.zIndex = '2';
 
-            if (rightPane && ri) {
-                var rRect = rightPane.getBoundingClientRect();
-                ri.style.position = 'absolute';
-                ri.style.top = (rRect.top - contentRect.top) + 'px';
-                ri.style.left = (rRect.left - contentRect.left) + 'px';
-                ri.style.width = rRect.width + 'px';
-                ri.style.height = rRect.height + 'px';
-                ri.style.display = 'block';
-                ri.classList.add('active');
-                ri.style.zIndex = '2';
-            }
-
-            return true;
+            ri.style.position = 'absolute';
+            ri.style.top = top + 'px';
+            ri.style.left = (left + leftWidth + dividerWidth) + 'px';
+            ri.style.width = rightWidth + 'px';
+            ri.style.height = rect.height + 'px';
+            ri.style.display = 'block';
+            ri.classList.add('active');
+            ri.style.zIndex = '2';
         }
 
         function hideSplitIframes(splitData) {
@@ -13575,28 +13582,26 @@ setInterval(async () => {
             splitContainer._noSidebarSquish = true;
             markSplitPaneActive(splitData, 'left', { skipNav: true });
 
-            // Retry positionSplitIframes until contentArea has non-zero size (avoids blank on first split)
-            var attempts = 0;
-            function tryPositionInitial() {
-                var cRect = b.contentArea.getBoundingClientRect();
-                if (cRect.width > 0 && cRect.height > 0) {
+            // Position iframes after layout fully settles (double rAF ensures
+            // the tab-bar reflow caused by adding the split-tab is complete)
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
                     positionSplitIframes(splitData);
                     lucide.createIcons();
-                } else if (attempts < 20) {
-                    attempts++;
-                    requestAnimationFrame(tryPositionInitial);
-                }
-            }
-            requestAnimationFrame(tryPositionInitial);
-
-            // Re-position on content area resize (window resize, sidebar open/close)
-            var resizeObserver = new ResizeObserver(function() {
-                if (b.activeTabId === activeTabId) {
-                    positionSplitIframes(splitData);
-                }
+                });
             });
-            resizeObserver.observe(b.contentArea);
-            splitData._resizeObserver = resizeObserver;
+
+            // Also watch the container for size changes (e.g. tab bar height
+            // shifts, sidebar open/close) and re-position on every change
+            if (typeof ResizeObserver !== 'undefined') {
+                var ro = new ResizeObserver(function() {
+                    if (b.activeTabId === splitData.leftTabId) {
+                        positionSplitIframes(splitData);
+                    }
+                });
+                ro.observe(splitContainer);
+                splitData._resizeObserver = ro;
+            }
         }
 
         function createBottomTab(url, faviconHtml) {
@@ -13707,12 +13712,6 @@ setInterval(async () => {
 
             b._splitTabs.delete(splitTabId);
 
-            // Disconnect resize observer if present
-            if (splitData._resizeObserver) {
-                splitData._resizeObserver.disconnect();
-                splitData._resizeObserver = null;
-            }
-
             // Restore the tab that was kept
             var keepTab = b.tabs.get(keepTabId);
             if (keepTab) {
@@ -13760,6 +13759,12 @@ setInterval(async () => {
         function unsplitTab(splitTabId) {
             var splitData = b._splitTabs.get(splitTabId);
             if (!splitData) return;
+
+            // Clean up ResizeObserver if one was attached
+            if (splitData._resizeObserver) {
+                splitData._resizeObserver.disconnect();
+                splitData._resizeObserver = null;
+            }
 
             // Iframes were never moved — just restore their styles
             hideSplitIframes(splitData);
@@ -13939,11 +13944,6 @@ setInterval(async () => {
         var origSwitchToTab = b.switchToTab.bind(b);
         b.switchToTab = function(tabId) {
             if (b.activeTabId && b.activeTabId !== tabId) {
-                // Deactivate the OLD tab — always remove active class regardless of split status
-                var oldTab = b.tabs.get(b.activeTabId);
-                if (oldTab) {
-                    oldTab.element.classList.remove('active');
-                }
                 var oldSplit = b._splitTabs.get(b.activeTabId);
                 if (oldSplit && oldSplit.splitContainer) {
                     oldSplit.splitContainer.style.display = 'none';
@@ -13953,45 +13953,39 @@ setInterval(async () => {
 
             var newSplit = b._splitTabs.get(tabId);
             if (newSplit) {
-                // Also deactivate any other tabs that may have the active class
-                b.tabs.forEach(function(t) {
-                    if (t.id !== tabId) {
-                        t.element.classList.remove('active');
-                        if (!b._splitTabs.has(t.id)) {
-                            t.iframe.style.display = 'none';
-                        }
+                if (b.activeTabId) {
+                    var currentTab = b.tabs.get(b.activeTabId);
+                    if (currentTab && !b._splitTabs.has(b.activeTabId)) {
+                        currentTab.element.classList.remove('active');
+                        currentTab.iframe.style.display = 'none';
                     }
-                });
+                }
 
                 var newTab = b.tabs.get(tabId);
                 if (newTab) {
                     b.activeTabId = tabId;
                     newTab.element.classList.add('active');
 
-                    newSplit.splitContainer.style.display = 'flex';
+                    b.tabs.forEach(function(t) {
+                        if (!b._splitTabs.has(t.id) && t.id !== tabId) {
+                            t.iframe.style.display = 'none';
+                        }
+                    });
 
-                    // Retry positionSplitIframes until contentArea has non-zero size
-                    var attempts = 0;
-                    function tryPosition() {
-                        var cRect = b.contentArea.getBoundingClientRect();
-                        if (cRect.width > 0 && cRect.height > 0) {
+                    newSplit.splitContainer.style.display = 'flex';
+                    // Position iframes absolutely — no DOM move.
+                    // Double rAF ensures layout reflow (from tab bar changes) is
+                    // complete before we measure getBoundingClientRect().
+                    requestAnimationFrame(function() {
+                        requestAnimationFrame(function() {
                             positionSplitIframes(newSplit);
                             markSplitPaneActive(newSplit, newSplit.lastFocusedSide || newSplit.activeSide || 'left');
-                        } else if (attempts < 20) {
-                            attempts++;
-                            requestAnimationFrame(tryPosition);
-                        }
-                    }
-                    requestAnimationFrame(tryPosition);
+                        });
+                    });
                 }
                 return;
             }
 
-            // Deactivate all split tab elements before falling through to original handler
-            b._splitTabs.forEach(function(splitData, splitId) {
-                var splitTab = b.tabs.get(splitId);
-                if (splitTab) splitTab.element.classList.remove('active');
-            });
             origSwitchToTab(tabId);
         };
 
