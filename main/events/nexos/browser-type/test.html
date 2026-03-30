@@ -4692,8 +4692,8 @@ body.reduce-motion *::after {
 }
 
 .split-divider {
-    width: 4px;
-    background: #e0e0e0;
+    width: 8px;
+    background: transparent;
     cursor: col-resize;
     flex-shrink: 0;
     position: relative;
@@ -4701,9 +4701,27 @@ body.reduce-motion *::after {
     transition: background 0.15s;
 }
 
-.split-divider:hover,
-.split-divider.dragging {
+.split-divider::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    transform: translateX(-50%);
+    background: #e0e0e0;
+    transition: background 0.15s, width 0.15s;
+}
+
+.split-divider:hover::after,
+.split-divider.dragging::after {
     background: #4285f4;
+    width: 4px;
+}
+
+.split-pane.active-pane .split-bottom-tab {
+    border-color: #4285f4;
+    color: #4285f4;
 }
 
 .split-bottom-tab {
@@ -4734,6 +4752,7 @@ body.reduce-motion *::after {
     flex-shrink: 0;
     z-index: 3;
     pointer-events: auto;
+    transition: border-color 0.15s, color 0.15s;
 }
 
 .split-bottom-tab::before {
@@ -4760,6 +4779,21 @@ body.reduce-motion *::after {
     -webkit-mask-image: radial-gradient(circle at 8px 0, transparent 8px, black 0);
 }
 
+.split-bottom-tab .split-bottom-favicon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.split-bottom-tab .split-bottom-favicon img {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+}
+
 .split-bottom-tab .split-bottom-domain {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -4770,8 +4804,9 @@ body.reduce-motion *::after {
 
 /* Split tab in tab bar */
 .tab.split-tab {
-    min-width: 120px !important;
-    max-width: 240px !important;
+    min-width: 280px !important;
+    max-width: 400px !important;
+    flex: 1.5 !important;
 }
 
 .tab.split-tab .split-tab-inner {
@@ -4781,20 +4816,23 @@ body.reduce-motion *::after {
     gap: 0;
     position: relative;
     z-index: 1;
+    overflow: hidden;
 }
 
 .tab.split-tab .split-tab-half {
     display: flex;
     align-items: center;
     flex: 1;
-    min-width: 0;
-    gap: 4px;
+    min-width: 60px;
+    gap: 6px;
     overflow: hidden;
+    padding: 0 4px;
 }
 
 .tab.split-tab .split-tab-half .tab-favicon {
     width: 16px;
     height: 16px;
+    min-width: 16px;
     margin-right: 4px;
     flex-shrink: 0;
 }
@@ -4807,29 +4845,43 @@ body.reduce-motion *::after {
 .tab.split-tab .split-tab-half .tab-title {
     flex: 1;
     font-size: 12px;
-    min-width: 0;
-    -webkit-mask-image: linear-gradient(to right, black calc(100% - 12px), transparent 100%);
-    mask-image: linear-gradient(to right, black calc(100% - 12px), transparent 100%);
+    min-width: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 16px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 16px), transparent 100%);
 }
 
 .tab.split-tab .split-tab-half .tab-close {
-    width: 16px;
-    height: 16px;
-    margin-left: 2px;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    margin-left: 4px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.15s;
+}
+
+.tab.split-tab .split-tab-half .tab-close:hover {
+    background: rgba(0,0,0,0.1);
 }
 
 .tab.split-tab .split-tab-half .tab-close svg,
 .tab.split-tab .split-tab-half .tab-close i {
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
 }
 
 .tab.split-tab .split-tab-divider {
     width: 1px;
-    height: 16px;
-    background: rgba(0,0,0,0.12);
-    margin: 0 4px;
+    height: 18px;
+    background: rgba(0,0,0,0.15);
+    margin: 0 6px;
     flex-shrink: 0;
 }
 
@@ -4851,9 +4903,27 @@ body.reduce-motion *::after {
     display: block;
 }
 
+/* Tab drag overlay - prevents iframe from stealing mouse events */
+#tab-drag-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99998;
+    background: transparent;
+    display: none;
+    cursor: grabbing;
+}
+
+#tab-drag-overlay.active {
+    display: block;
+}
+
     </style>
 </head>
 <body>
+    <div id="tab-drag-overlay"></div>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-banner" id="loadingBanner"></div>
     </div>
@@ -5523,6 +5593,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
+                        // Skip if this is a split tab - the split view handler manages the address bar
+                        if (this._splitTabs && this._splitTabs.has(this.activeTabId)) {
+                            return;
+                        }
+                        
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
                             const newUrl = e.data.url;
@@ -6630,6 +6705,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.dragState.isDragging = true;
                 this.dragState.draggedTab.classList.add('sliding');
                 
+                // Show drag overlay to prevent iframe from stealing mouse events
+                var dragOverlay = document.getElementById('tab-drag-overlay');
+                if (dragOverlay) dragOverlay.classList.add('active');
+                
                 this.switchToTab(this.dragState.draggedTabId);
                 
                 this.dragState.tabOrder.forEach(tab => {
@@ -6757,6 +6836,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             resetDragState() {
+                // Hide drag overlay
+                var dragOverlay = document.getElementById('tab-drag-overlay');
+                if (dragOverlay) dragOverlay.classList.remove('active');
+                
                 if (this.dragState.draggedTab) {
                     this.dragState.draggedTab.classList.remove('sliding');
                     this.dragState.draggedTab.style.transform = '';
@@ -12471,6 +12554,12 @@ setInterval(async () => {
     function pollSpaUrls() {
         var b = window.browser;
         if (!b || !b.activeTabId) return;
+        
+        // Skip if this is a split tab - the split view handler manages the address bar
+        if (b._splitTabs && b._splitTabs.has(b.activeTabId)) {
+            return;
+        }
+        
         var tab = b.tabs.get(b.activeTabId);
         if (!tab || !tab.iframe) return;
 
@@ -13155,7 +13244,49 @@ setInterval(async () => {
                 }
                 if (iframe) {
                     iframe.addEventListener('load', function() {
-                        markSplitPaneActive(splitData, splitData.activeSide || 'left', true);
+                        // Update URL and favicon on load
+                        var tabId = side === 'left' ? splitData.leftTabId : splitData.rightTabId;
+                        var tab = b.tabs.get(tabId);
+                        if (tab) {
+                            var newUrl = getTabUrl(tab);
+                            if (side === 'left') {
+                                splitData.leftUrl = newUrl;
+                                updateBottomTab(splitData.leftBottomTab, newUrl);
+                                // Update favicon
+                                var newFav = getTabFaviconHtml(tab);
+                                if (newFav !== splitData.leftFavicon) {
+                                    splitData.leftFavicon = newFav;
+                                    var favEl = splitData.splitContainer.closest('.browser-container') ? 
+                                        b.tabs.get(splitData.leftTabId).element.querySelector('[data-side="left"] .tab-favicon') : null;
+                                    var mainTab = b.tabs.get(Object.keys(b._splitTabs)[0]);
+                                    if (mainTab && mainTab.element) {
+                                        var leftFavEl = mainTab.element.querySelector('[data-side="left"] .tab-favicon');
+                                        if (leftFavEl) { leftFavEl.innerHTML = newFav; lucide.createIcons(); }
+                                    }
+                                }
+                            } else {
+                                splitData.rightUrl = newUrl;
+                                updateBottomTab(splitData.rightBottomTab, newUrl);
+                                // Update favicon
+                                var newFav = getTabFaviconHtml(tab);
+                                if (newFav !== splitData.rightFavicon) {
+                                    splitData.rightFavicon = newFav;
+                                    b._splitTabs.forEach(function(sd, splitId) {
+                                        if (sd === splitData) {
+                                            var mainTab = b.tabs.get(splitId);
+                                            if (mainTab && mainTab.element) {
+                                                var rightFavEl = mainTab.element.querySelector('[data-side="right"] .tab-favicon');
+                                                if (rightFavEl) { rightFavEl.innerHTML = newFav; lucide.createIcons(); }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                        // Only update address bar if this side is active
+                        if (splitData.activeSide === side) {
+                            markSplitPaneActive(splitData, side, false);
+                        }
                     });
                 }
             });
@@ -13210,8 +13341,8 @@ setInterval(async () => {
             rightPane.className = 'split-pane';
             rightPane.dataset.side = 'right';
 
-            var leftBottomTab = createBottomTab(leftUrl);
-            var rightBottomTab = createBottomTab(rightUrl);
+            var leftBottomTab = createBottomTab(leftUrl, getTabFaviconHtml(activeTab));
+            var rightBottomTab = createBottomTab(rightUrl, getTabFaviconHtml(targetTab));
 
             splitContainer.appendChild(leftPane);
             splitContainer.appendChild(divider);
@@ -13252,20 +13383,28 @@ setInterval(async () => {
             lucide.createIcons();
         }
 
-        function createBottomTab(url) {
+        function createBottomTab(url, faviconHtml) {
             var tab = document.createElement('div');
             tab.className = 'split-bottom-tab';
             var domain = formatBottomDomain(url);
             var fullDomain = getCoreDomain(url);
-            tab.innerHTML = '<span class="split-bottom-domain">' + domain + '</span>';
+            
+            // Include favicon if provided
+            var faviconPart = faviconHtml ? '<span class="split-bottom-favicon">' + faviconHtml + '</span>' : '';
+            tab.innerHTML = faviconPart + '<span class="split-bottom-domain">' + domain + '</span>';
             tab.title = fullDomain;
+            tab._shortDomain = domain;
+            tab._fullDomain = fullDomain;
+            
             tab.addEventListener('mouseenter', function() {
-                if (fullDomain.length > domain.length) {
-                    tab.querySelector('.split-bottom-domain').textContent = fullDomain;
+                if (tab._fullDomain && tab._fullDomain.length > tab._shortDomain.length) {
+                    var domEl = tab.querySelector('.split-bottom-domain');
+                    if (domEl) domEl.textContent = tab._fullDomain;
                 }
             });
             tab.addEventListener('mouseleave', function() {
-                tab.querySelector('.split-bottom-domain').textContent = domain;
+                var domEl = tab.querySelector('.split-bottom-domain');
+                if (domEl) domEl.textContent = tab._shortDomain;
             });
             return tab;
         }
@@ -13473,12 +13612,29 @@ setInterval(async () => {
             markSplitPaneActive(splitData, splitData.activeSide === 'left' ? 'right' : 'left');
         }
 
-        function updateBottomTab(tabEl, url) {
+        function updateBottomTab(tabEl, url, faviconHtml) {
             var domain = formatBottomDomain(url);
             var fullDomain = getCoreDomain(url);
             var domEl = tabEl.querySelector('.split-bottom-domain');
             if (domEl) domEl.textContent = domain;
             tabEl.title = fullDomain;
+            tabEl._shortDomain = domain;
+            tabEl._fullDomain = fullDomain;
+            
+            // Update favicon if provided
+            if (faviconHtml) {
+                var favEl = tabEl.querySelector('.split-bottom-favicon');
+                if (favEl) {
+                    favEl.innerHTML = faviconHtml;
+                } else {
+                    // Add favicon element if it doesn't exist
+                    var newFavEl = document.createElement('span');
+                    newFavEl.className = 'split-bottom-favicon';
+                    newFavEl.innerHTML = faviconHtml;
+                    tabEl.insertBefore(newFavEl, tabEl.firstChild);
+                }
+                lucide.createIcons();
+            }
         }
 
         function restoreTabElement(tab) {
@@ -13585,19 +13741,52 @@ setInterval(async () => {
         // ---- Override closeTab to handle split tabs ----
         var origCloseTab = b.closeTab.bind(b);
         b.closeTab = function(tabId) {
+            // Check if this is a split tab itself
             if (b._splitTabs.has(tabId)) {
                 unsplitTab(tabId);
                 // Now close normally
                 origCloseTab.call(b, tabId);
                 return;
             }
-            // Check if this tab is the right side of a split
+            
+            // Check if this tab is part of any split (left or right side)
+            var foundInSplit = false;
             b._splitTabs.forEach(function(splitData, splitId) {
                 if (splitData.rightTabId === tabId) {
                     closeSplitSide(splitId, 'right');
+                    foundInSplit = true;
+                } else if (splitData.leftTabId === tabId && splitId !== tabId) {
+                    closeSplitSide(splitId, 'left');
+                    foundInSplit = true;
                 }
             });
+            
+            // If we handled it as part of a split, don't close again
+            if (foundInSplit) return;
+            
+            // Check if closing this tab would leave us on nothing - need to switch to split tab
+            var wasActive = (b.activeTabId === tabId);
             origCloseTab.call(b, tabId);
+            
+            // If we were on the active tab and now nothing is active, find a split tab to switch to
+            if (wasActive && (!b.activeTabId || !b.tabs.has(b.activeTabId))) {
+                // Find any visible tab to switch to
+                var foundTab = null;
+                b.tabs.forEach(function(t, tid) {
+                    if (!t._hiddenBySplit && t.element && t.element.style.display !== 'none') {
+                        foundTab = tid;
+                    }
+                });
+                // Also check split tabs
+                if (!foundTab) {
+                    b._splitTabs.forEach(function(splitData, splitId) {
+                        if (!foundTab) foundTab = splitId;
+                    });
+                }
+                if (foundTab) {
+                    b.switchToTab(foundTab);
+                }
+            }
         };
 
         // ---- Override sidebar margin to not affect split views ----
@@ -13845,6 +14034,8 @@ setInterval(async () => {
                             splitData.leftFavicon = newLeftFav;
                             var leftFavEl = mainTab.element.querySelector('[data-side="left"] .tab-favicon');
                             if (leftFavEl) { leftFavEl.innerHTML = newLeftFav; lucide.createIcons(); }
+                            // Also update bottom tab favicon
+                            updateBottomTab(splitData.leftBottomTab, splitData.leftUrl, newLeftFav);
                         }
                     }
                     if (rightTab) {
@@ -13853,6 +14044,8 @@ setInterval(async () => {
                             splitData.rightFavicon = newRightFav;
                             var rightFavEl = mainTab.element.querySelector('[data-side="right"] .tab-favicon');
                             if (rightFavEl) { rightFavEl.innerHTML = newRightFav; lucide.createIcons(); }
+                            // Also update bottom tab favicon
+                            updateBottomTab(splitData.rightBottomTab, splitData.rightUrl, newRightFav);
                         }
                     }
                 }
