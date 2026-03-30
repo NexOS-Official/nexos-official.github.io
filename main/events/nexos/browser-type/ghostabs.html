@@ -1,6 +1,9 @@
 
 
 
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4655,9 +4658,331 @@ body.reduce-motion *::after {
         }
     }
 
+
+.split-content-area {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.split-pane {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: transparent;
+}
+
+.split-pane .tab-content {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+
+.split-pane .tab-content.active {
+    display: block;
+}
+
+.split-divider {
+    width: 8px;
+    background: transparent;
+    cursor: col-resize;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+    transition: background 0.15s;
+}
+
+.split-divider::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    transform: translateX(-50%);
+    background: #e0e0e0;
+    transition: background 0.15s, width 0.15s;
+}
+
+.split-divider:hover::after,
+.split-divider.dragging::after {
+    background: #4285f4;
+    width: 4px;
+}
+
+.split-pane.active-pane .split-bottom-tab {
+    border-color: #d9d9d9;
+    color: #111111;
+    font-weight: 700;
+    min-width: 96px;
+    padding-left: 14px;
+    padding-right: 14px;
+}
+
+.split-bottom-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px;
+    height: 28px;
+    background: #ffffff;
+    border-radius: 8px 8px 0 0;
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    min-width: 80px;
+    max-width: calc(100% - 16px);
+    justify-content: center;
+    cursor: default;
+    user-select: none;
+    font-family: google sans, sans-serif;
+    font-size: 12px;
+    color: #5f6368;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: ellipsis;
+    border: 1px solid #ffffff;
+    border-bottom: none;
+    flex-shrink: 0;
+    z-index: 3;
+    pointer-events: auto;
+    transition: border-color 0.2s ease, color 0.2s ease, min-width 0.2s ease, padding 0.2s ease, font-weight 0.2s ease;
+}
+
+.split-bottom-tab::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -11.9px;
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+    -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+}
+
+.split-bottom-tab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -12px;
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+    -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+}
+
+.split-bottom-tab .split-bottom-favicon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+}
+
+.split-bottom-tab .split-bottom-favicon img {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+}
+
+.split-bottom-tab .split-bottom-domain {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 160px;
+    display: inline-block;
+}
+
+.split-bottom-tab::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: -12px;
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+    -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
+}
+
+.split-bottom-tab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: -12px;
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+    -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
+}
+
+.tab.split-tab {
+    min-width: 120px !important;
+    max-width: 240px !important;
+    flex: 1 1 auto !important;
+    padding: 0 4px !important;
+}
+
+.tab.split-tab .split-tab-inner {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    gap: 0;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.tab.split-tab .split-tab-half {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    height: 100%;
+    gap: 0;
+    overflow: hidden;
+    padding: 0 8px;
+    outline: none;
+}
+
+.tab.split-tab .split-tab-half .tab-favicon {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.tab.split-tab .split-tab-half .tab-favicon img {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+}
+
+.tab.split-tab .split-tab-half .tab-title {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 400;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    color: #3a3a3a;
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+    mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
+}
+
+.tab.split-tab .split-tab-half .tab-close {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    margin-left: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+    background: transparent !important;
+}
+
+.tab.split-tab .split-tab-half .tab-close:hover {
+    background: transparent !important;
+    opacity: 1;
+}
+
+.tab.split-tab .split-tab-half .tab-close svg,
+.tab.split-tab .split-tab-half .tab-close i {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+}
+
+.tab.split-tab:not(.active) .split-tab-half {
+    opacity: 0.75;
+}
+
+.tab.split-tab.active .split-tab-half {
+    opacity: 0.65;
+}
+
+.tab.split-tab.active .split-tab-half.is-pane-active {
+    opacity: 1;
+}
+
+.tab.split-tab.active .split-tab-half.is-pane-active .tab-title {
+    color: #111111;
+    font-weight: 500;
+}
+
+.tab.split-tab .split-tab-divider {
+    width: 1px;
+    height: 18px;
+    background: rgba(0,0,0,0.2);
+    flex-shrink: 0;
+    margin: 0 2px;
+}
+
+.tab.split-tab.active .split-tab-half.is-pane-active {
+    background: rgba(255,255,255,0.4);
+    border-radius: 4px;
+    margin: 2px 0;
+}
+
+.split-context-submenu {
+    position: fixed;
+    background: #ffffff;
+    border: 1px solid #dadce0;
+    border-radius: 12px;
+    z-index: 10002;
+    min-width: 200px;
+    display: none;
+    color: #202124;
+    box-shadow: 0 4px 24px rgba(60, 64, 67, 0.20), 0 1px 6px rgba(60, 64, 67, 0.10);
+    padding: 8px 0;
+    overflow: hidden;
+}
+
+.split-context-submenu.visible {
+    display: block;
+}
+
+#tab-drag-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99998;
+    background: transparent;
+    display: none;
+    cursor: grabbing;
+}
+
+#tab-drag-overlay.active {
+    display: block;
+}
+
     </style>
 </head>
 <body>
+    <div id="tab-drag-overlay"></div>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-banner" id="loadingBanner"></div>
     </div>
@@ -5045,6 +5370,36 @@ document.addEventListener("DOMContentLoaded", () => {
                 <i data-lucide="x-circle" width="14" height="14"></i>
                 Close other tabs
             </button>
+            <div class="context-menu-separator"></div>
+            <button class="context-menu-item" id="openInNewTabBtn">
+                <i data-lucide="external-link" width="14" height="14"></i>
+                Open link in new tab
+            </button>
+            <button class="context-menu-item" id="splitViewBtn">
+                <i data-lucide="columns-2" width="14" height="14"></i>
+                Open in split view
+            </button>
+            <button class="context-menu-item" id="openInNewWindowBtn">
+                <i data-lucide="app-window" width="14" height="14"></i>
+                Open in a new window
+            </button>
+            <div class="context-menu-separator" id="splitManageSep" style="display:none;"></div>
+            <button class="context-menu-item" id="separateViewsBtn" style="display:none;">
+                <i data-lucide="split" width="14" height="14"></i>
+                Separate views
+            </button>
+            <button class="context-menu-item" id="closeLeftViewBtn" style="display:none;">
+                <i data-lucide="panel-left-close" width="14" height="14"></i>
+                Close left view
+            </button>
+            <button class="context-menu-item" id="closeRightViewBtn" style="display:none;">
+                <i data-lucide="panel-right-close" width="14" height="14"></i>
+                Close right view
+            </button>
+            <button class="context-menu-item" id="reverseViewsBtn" style="display:none;">
+                <i data-lucide="arrow-left-right" width="14" height="14"></i>
+                Reverse views
+            </button>
         </div>
 
         <div class="browser-menu" id="browserMenu">
@@ -5297,11 +5652,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
+                        if (this._splitTabs && (this._splitTabs.has(this.activeTabId) || 
+                            Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === this.activeTabId || sd.rightTabId === this.activeTabId))) {
+                            return;
+                        }
+                        
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
                             const newUrl = e.data.url;
                             tab.currentUrl = newUrl;
-                            this.addressBar.value = newUrl;
+                            if (document.activeElement !== this.addressBar) {
+                                this.addressBar.value = newUrl;
+                            }
                             this.updateFavicon(tab, newUrl);
                             this.updateTabTitle(tab, newUrl);
                             
@@ -6019,7 +6381,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.history[tabId] = [tab.url];
                 this.historyIndex[tabId] = 0;
 
+                tabElement.addEventListener('mousedown', (e) => {
+                    if (e.button === 2) {
+                        e.stopPropagation();
+                        tabElement._rightClicked = true;
+                    }
+                });
                 tabElement.addEventListener('click', (e) => {
+                    if (tabElement._rightClicked) {
+                        tabElement._rightClicked = false;
+                        return;
+                    }
                     if (e.detail >= 3) {
                         e.preventDefault();
                         e.stopPropagation();
@@ -6034,6 +6406,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 tabElement.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     this.showContextMenu(e.clientX, e.clientY, tabId);
                 });
 
@@ -6393,6 +6766,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.dragState.isDragging = true;
                 this.dragState.draggedTab.classList.add('sliding');
                 
+                var dragOverlay = document.getElementById('tab-drag-overlay');
+                if (dragOverlay) dragOverlay.classList.add('active');
+                
                 this.switchToTab(this.dragState.draggedTabId);
                 
                 this.dragState.tabOrder.forEach(tab => {
@@ -6520,6 +6896,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             resetDragState() {
+                var dragOverlay = document.getElementById('tab-drag-overlay');
+                if (dragOverlay) dragOverlay.classList.remove('active');
+                
                 if (this.dragState.draggedTab) {
                     this.dragState.draggedTab.classList.remove('sliding');
                     this.dragState.draggedTab.style.transform = '';
@@ -6667,9 +7046,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (originalUrl && originalUrl !== 'about:blank') {
                         this.updateTabInfo(tabId);
                         
-                        if (this.activeTabId === tabId) {
+                        const isInSplit = this._splitTabs && (this._splitTabs.has(tabId) || 
+                            Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === tabId || sd.rightTabId === tabId));
+                        
+                        if (this.activeTabId === tabId && !isInSplit) {
                             this.updateFavicon(tab, originalUrl);
-                            this.addressBar.value = originalUrl;
+                            if (document.activeElement !== this.addressBar) {
+                                this.addressBar.value = originalUrl;
+                            }
                             const isSecure = originalUrl.startsWith('https://');
                             this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
                             
@@ -6686,7 +7070,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         
                         setTimeout(() => {
                             this.updateTabInfo(tabId);
-                            if (this.activeTabId === tabId) {
+                            const stillInSplit = this._splitTabs && (this._splitTabs.has(tabId) || 
+                                Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === tabId || sd.rightTabId === tabId));
+                            if (this.activeTabId === tabId && !stillInSplit && document.activeElement !== this.addressBar) {
                                 this.updateFavicon(tab, originalUrl);
                                 this.addressBar.value = originalUrl;
                             }
@@ -11366,14 +11752,19 @@ setInterval(async () => {
             if (b.isBlockedUrl(newUrl)) {
                 tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                 tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
-                b.addressBar.value = '';
+                if (document.activeElement !== b.addressBar) {
+                    b.addressBar.value = '';
+                }
                 return;
             }
 
             tab.currentUrl = newUrl;
             tab.url = tab.iframe.src;
 
-            if (b.activeTabId === tab.id) {
+            var isInSplit = b._splitTabs && (b._splitTabs.has(tab.id) || 
+                Array.from(b._splitTabs.values()).some(function(sd) { return sd.leftTabId === tab.id || sd.rightTabId === tab.id; }));
+
+            if (b.activeTabId === tab.id && !isInSplit && document.activeElement !== b.addressBar) {
                 b.addressBar.value = newUrl;
                 b._updateSecurityIcon(newUrl);
             }
@@ -11502,12 +11893,15 @@ setInterval(async () => {
                 b.injectNewTabInterceptor(iframe);
                 b.injectUrlChangeMonitor(iframe, tabId);
 
+                var isInSplit = b._splitTabs && (b._splitTabs.has(tabId) || 
+                    Array.from(b._splitTabs.values()).some(function(sd) { return sd.leftTabId === tabId || sd.rightTabId === tabId; }));
+
                 if (tab._navigatingHistory) {
                     tab._navigatingHistory = false;
                     b.updateTabInfo(tabId);
                     b.hideLoading();
                     var originalUrl = b.extractOriginalUrl(tab.url);
-                    if (b.activeTabId === tabId) {
+                    if (b.activeTabId === tabId && !isInSplit && document.activeElement !== b.addressBar) {
                         b.updateFavicon(tab, originalUrl);
                         b.addressBar.value = originalUrl;
                         b._updateSecurityIcon(originalUrl);
@@ -11522,14 +11916,16 @@ setInterval(async () => {
                 if (originalUrl && b.isBlockedUrl(originalUrl)) {
                     tab.iframe.src = '/search/blocker/profanity/blockedmalware.html';
                     tab.currentUrl = '/search/blocker/profanity/blockedmalware.html';
-                    b.addressBar.value = '';
+                    if (document.activeElement !== b.addressBar) {
+                        b.addressBar.value = '';
+                    }
                     return;
                 }
 
                 if (originalUrl && originalUrl !== 'about:blank') {
                     b.updateTabInfo(tabId);
 
-                    if (b.activeTabId === tabId) {
+                    if (b.activeTabId === tabId && !isInSplit && document.activeElement !== b.addressBar) {
                         b.updateFavicon(tab, originalUrl);
                         b.addressBar.value = originalUrl;
                         b._updateSecurityIcon(originalUrl);
@@ -11556,7 +11952,9 @@ setInterval(async () => {
 
                     setTimeout(function() {
                         b.updateTabInfo(tabId);
-                        if (b.activeTabId === tabId) {
+                        var stillInSplit = b._splitTabs && (b._splitTabs.has(tabId) || 
+                            Array.from(b._splitTabs.values()).some(function(sd) { return sd.leftTabId === tabId || sd.rightTabId === tabId; }));
+                        if (b.activeTabId === tabId && !stillInSplit && document.activeElement !== b.addressBar) {
                             b.updateFavicon(tab, originalUrl);
                             b.addressBar.value = originalUrl;
                         }
@@ -12234,6 +12632,11 @@ setInterval(async () => {
     function pollSpaUrls() {
         var b = window.browser;
         if (!b || !b.activeTabId) return;
+        
+        if (b._splitTabs && b._splitTabs.has(b.activeTabId)) {
+            return;
+        }
+        
         var tab = b.tabs.get(b.activeTabId);
         if (!tab || !tab.iframe) return;
 
@@ -12272,7 +12675,9 @@ setInterval(async () => {
         if (realUrl && realUrl !== 'about:blank' && realUrl !== tab.currentUrl) {
             tab.currentUrl = realUrl;
             tab.url = tab.iframe.src;
-            b.addressBar.value = realUrl;
+            if (document.activeElement !== b.addressBar) {
+                b.addressBar.value = realUrl;
+            }
             b.updateFavicon(tab, realUrl);
             b.updateTabTitle(tab, realUrl);
 
@@ -12649,9 +13054,7 @@ setInterval(async () => {
 </script>
 
 <script>
-
 (function() {
-
     var chromeIds = ['tabBar', 'navigationBar', 'bookmarksBar', 'newTabBtn', 'taskbar'];
     chromeIds.forEach(function(id) {
         var el = document.getElementById(id);
@@ -12687,7 +13090,6 @@ setInterval(async () => {
 
     function enableEdgeCapture() {
         if (_blurOverlay) return;
-
 
         _blurOverlay = document.createElement('div');
         _blurOverlay.id = '_nexos-edge-capture';
@@ -12775,6 +13177,1126 @@ setInterval(async () => {
         });
     }
 
+})();
+</script>
+
+
+<script>
+(function() {
+    'use strict';
+
+    function waitForBrowser(cb) {
+        if (window.browser) return cb(window.browser);
+        var iv = setInterval(function() {
+            if (window.browser) { clearInterval(iv); cb(window.browser); }
+        }, 50);
+    }
+
+    waitForBrowser(function(b) {
+
+        b._splitTabs = new Map();
+
+        function getCoreDomain(url) {
+            if (!url || url === 'about:blank') return '';
+            try {
+                var u = new URL(url.startsWith('http') ? url : 'https://' + url);
+                var host = u.hostname.replace(/^www\./, '');
+                return host;
+            } catch(e) {
+                return url;
+            }
+        }
+
+        function formatBottomDomain(url) {
+            var domain = getCoreDomain(url);
+            if (!domain) return '';
+            var parts = domain.split('.');
+            if (parts.length < 2) return domain;
+            var name = parts.slice(0, -1).join('.');
+            var tld = '.' + parts[parts.length - 1];
+            if (name.length > 10) {
+                name = name.substring(0, 10);
+            }
+            return name + tld;
+        }
+
+        function getTabUrl(tab) {
+            if (!tab) return '';
+            var realUrl = b.getIframeCurrentUrl(tab);
+            if (realUrl) return realUrl;
+            return b.extractOriginalUrl(tab.currentUrl || tab.url || tab.iframe.src || '');
+        }
+
+        function getTabFaviconHtml(tab) {
+            if (!tab) return '<i data-lucide="globe" width="16" height="16"></i>';
+            if (tab.faviconUrl) {
+                return '<img src="' + tab.faviconUrl + '" width="16" height="16" style="border-radius:50%;">';
+            }
+            var favEl = tab.element.querySelector('.tab-favicon img');
+            if (favEl && favEl.src) {
+                return '<img src="' + favEl.src + '" width="16" height="16" style="border-radius:50%;">';
+            }
+            var url = getTabUrl(tab);
+            if (url && /^https?:\/\//i.test(url)) {
+                var domain = b.extractDomain(url);
+                if (domain) {
+                    return '<img src="https://www.google.com/s2/favicons?domain=' + domain + '&sz=16" width="16" height="16" style="border-radius:50%;">';
+                }
+            }
+            return '<i data-lucide="globe" width="16" height="16"></i>';
+        }
+
+        function getFaviconHtmlForUrl(url) {
+            if (!url || !/^https?:\/\//i.test(url)) {
+                return '<i data-lucide="globe" width="16" height="16"></i>';
+            }
+            var domain = b.extractDomain(url);
+            if (!domain) return '<i data-lucide="globe" width="16" height="16"></i>';
+            return '<img src="https://www.google.com/s2/favicons?domain=' + domain + '&sz=16" width="16" height="16" style="border-radius:50%;">';
+        }
+
+        function getSplitTabIdForSide(tabId) {
+            var found = null;
+            b._splitTabs.forEach(function(splitData, splitTabId) {
+                if (splitData.leftTabId === tabId || splitData.rightTabId === tabId || splitTabId === tabId) {
+                    found = splitTabId;
+                }
+            });
+            return found;
+        }
+
+        function markSplitPaneActive(splitData, side, opts) {
+            if (!splitData) return;
+            var chosenSide = side === 'right' ? 'right' : 'left';
+            splitData.activeSide = chosenSide;
+            splitData.lastFocusedSide = chosenSide;
+
+            var leftPane = splitData.splitContainer.querySelector('[data-side="left"]');
+            var rightPane = splitData.splitContainer.querySelector('[data-side="right"]');
+            if (leftPane) leftPane.classList.toggle('active-pane', chosenSide === 'left');
+            if (rightPane) rightPane.classList.toggle('active-pane', chosenSide === 'right');
+
+            setSplitTabVisualState(splitData);
+
+            syncSplitChrome(splitData, opts && opts.skipNav);
+        }
+
+        function setSplitTabVisualState(splitData) {
+            if (!splitData) return;
+            var splitTabId = getSplitTabIdForSide(splitData.leftTabId);
+            var splitTab = splitTabId ? b.tabs.get(splitTabId) : null;
+            if (!splitTab || !splitTab.element) return;
+
+            var leftHalf = splitTab.element.querySelector('.split-tab-half[data-side="left"]');
+            var rightHalf = splitTab.element.querySelector('.split-tab-half[data-side="right"]');
+            if (leftHalf) leftHalf.classList.toggle('is-pane-active', splitData.activeSide === 'left');
+            if (rightHalf) rightHalf.classList.toggle('is-pane-active', splitData.activeSide === 'right');
+        }
+
+        function getActiveSplitTab(splitData) {
+            if (!splitData) return null;
+            return b.tabs.get(splitData.activeSide === 'right' ? splitData.rightTabId : splitData.leftTabId);
+        }
+
+        function syncSplitChrome(splitData, skipNav) {
+            var activeTab = getActiveSplitTab(splitData);
+            if (!activeTab) return;
+            var url = getTabUrl(activeTab) || '';
+            activeTab.currentUrl = url;
+            if (b.addressBar && document.activeElement !== b.addressBar) {
+                b.addressBar.value = url;
+            }
+            if (typeof b._updateSecurityIcon === 'function') {
+                b._updateSecurityIcon(url || 'about:blank');
+            }
+            if (!skipNav && typeof b.updateNavigationButtons === 'function') {
+                b.updateNavigationButtons();
+            }
+        }
+
+        function bindSplitPaneFocus(splitData) {
+
+            ['left', 'right'].forEach(function(side) {
+                var iframe = side === 'left' ? splitData.leftIframe : splitData.rightIframe;
+                var pane = splitData.splitContainer.querySelector('[data-side="' + side + '"]');
+                if (pane) {
+                    pane.addEventListener('pointerdown', function() { markSplitPaneActive(splitData, side); }, true);
+                    pane.addEventListener('mousedown', function() { markSplitPaneActive(splitData, side); }, true);
+                }
+                if (iframe) {
+                    iframe.addEventListener('pointerdown', function() { markSplitPaneActive(splitData, side); }, true);
+                    iframe.addEventListener('mousedown', function() { markSplitPaneActive(splitData, side); }, true);
+                    iframe.addEventListener('load', function() {
+                        var tabId = side === 'left' ? splitData.leftTabId : splitData.rightTabId;
+                        var tab = b.tabs.get(tabId);
+                        if (tab) {
+                            var newUrl = getTabUrl(tab);
+                            if (side === 'left') {
+                                splitData.leftUrl = newUrl;
+                                updateBottomTab(splitData.leftBottomTab, newUrl);
+                                var newFav = getFaviconHtmlForUrl(newUrl) || getTabFaviconHtml(tab);
+                                if (newFav !== splitData.leftFavicon) {
+                                    splitData.leftFavicon = newFav;
+                                    b._splitTabs.forEach(function(sd, splitId) {
+                                        if (sd === splitData) {
+                                            var mainTab = b.tabs.get(splitId);
+                                            if (mainTab && mainTab.element) {
+                                                var leftFavEl = mainTab.element.querySelector('[data-side="left"] .tab-favicon');
+                                                if (leftFavEl) { leftFavEl.innerHTML = newFav; lucide.createIcons(); }
+                                            }
+                                        }
+                                    });
+                                }
+                            } else {
+                                splitData.rightUrl = newUrl;
+                                updateBottomTab(splitData.rightBottomTab, newUrl);
+                                var newFav = getFaviconHtmlForUrl(newUrl) || getTabFaviconHtml(tab);
+                                if (newFav !== splitData.rightFavicon) {
+                                    splitData.rightFavicon = newFav;
+                                    b._splitTabs.forEach(function(sd, splitId) {
+                                        if (sd === splitData) {
+                                            var mainTab = b.tabs.get(splitId);
+                                            if (mainTab && mainTab.element) {
+                                                var rightFavEl = mainTab.element.querySelector('[data-side="right"] .tab-favicon');
+                                                if (rightFavEl) { rightFavEl.innerHTML = newFav; lucide.createIcons(); }
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                        if (splitData.activeSide === side) {
+                            markSplitPaneActive(splitData, side, false);
+                        }
+                    });
+                }
+            });
+        }
+
+        function moveIframeIntoPane(splitData, side) {
+
+            var pane = splitData.splitContainer.querySelector('[data-side="' + side + '"]');
+            var bottomTab = side === 'left' ? splitData.leftBottomTab : splitData.rightBottomTab;
+            if (!pane || !bottomTab) return;
+            pane.appendChild(bottomTab);
+        }
+
+        function positionSplitIframes(splitData) {
+            var container = splitData.splitContainer;
+            var rect = container.getBoundingClientRect();
+
+            if (rect.width === 0) {
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        positionSplitIframes(splitData);
+                    });
+                });
+                return;
+            }
+            var contentRect = b.contentArea.getBoundingClientRect();
+
+            var divider = container.querySelector('.split-divider');
+            var dividerWidth = divider ? divider.offsetWidth : 8;
+            var leftPct = splitData.splitRatio;
+            var leftWidth = Math.max(0, rect.width * leftPct - dividerWidth / 2);
+            var rightWidth = Math.max(0, rect.width * (1 - leftPct) - dividerWidth / 2);
+            var top = rect.top - contentRect.top;
+            var left = rect.left - contentRect.left;
+
+            var li = splitData.leftIframe;
+            var ri = splitData.rightIframe;
+
+            li.style.position = 'absolute';
+            li.style.top = top + 'px';
+            li.style.left = left + 'px';
+            li.style.width = leftWidth + 'px';
+            li.style.height = rect.height + 'px';
+            li.style.display = 'block';
+            li.classList.add('active');
+            li.style.zIndex = '2';
+
+            ri.style.position = 'absolute';
+            ri.style.top = top + 'px';
+            ri.style.left = (left + leftWidth + dividerWidth) + 'px';
+            ri.style.width = rightWidth + 'px';
+            ri.style.height = rect.height + 'px';
+            ri.style.display = 'block';
+            ri.classList.add('active');
+            ri.style.zIndex = '2';
+        }
+
+        function hideSplitIframes(splitData) {
+            if (splitData.leftIframe) {
+                splitData.leftIframe.style.display = 'none';
+                splitData.leftIframe.style.position = '';
+                splitData.leftIframe.style.top = '';
+                splitData.leftIframe.style.left = '';
+                splitData.leftIframe.style.width = '';
+                splitData.leftIframe.style.height = '';
+                splitData.leftIframe.style.zIndex = '';
+            }
+            if (splitData.rightIframe) {
+                splitData.rightIframe.style.display = 'none';
+                splitData.rightIframe.style.position = '';
+                splitData.rightIframe.style.top = '';
+                splitData.rightIframe.style.left = '';
+                splitData.rightIframe.style.width = '';
+                splitData.rightIframe.style.height = '';
+                splitData.rightIframe.style.zIndex = '';
+            }
+        }
+
+        function createSplitView(targetTabId) {
+            var activeTabId = b.activeTabId;
+            if (!activeTabId || activeTabId === targetTabId) return;
+
+            var activeTab = b.tabs.get(activeTabId);
+            var targetTab = b.tabs.get(targetTabId);
+            if (!activeTab || !targetTab) return;
+
+            var activeSplitId = getSplitTabIdForSide(activeTabId);
+            var targetSplitId = getSplitTabIdForSide(targetTabId);
+            if (activeSplitId) unsplitTab(activeSplitId);
+            if (targetSplitId) unsplitTab(targetSplitId);
+
+            activeTab = b.tabs.get(activeTabId);
+            targetTab = b.tabs.get(targetTabId);
+            if (!activeTab || !targetTab) return;
+
+            var leftIframe = activeTab.iframe;
+            var rightIframe = targetTab.iframe;
+            var leftUrl = getTabUrl(activeTab);
+            var rightUrl = getTabUrl(targetTab);
+
+            var splitContainer = document.createElement('div');
+            splitContainer.className = 'split-content-area';
+            splitContainer.dataset.splitTabId = activeTabId;
+
+            var leftPane = document.createElement('div');
+            leftPane.className = 'split-pane';
+            leftPane.dataset.side = 'left';
+
+            var divider = document.createElement('div');
+            divider.className = 'split-divider';
+
+            var rightPane = document.createElement('div');
+            rightPane.className = 'split-pane';
+            rightPane.dataset.side = 'right';
+
+            var leftBottomTab = createBottomTab(leftUrl, getTabFaviconHtml(activeTab));
+            var rightBottomTab = createBottomTab(rightUrl, getTabFaviconHtml(targetTab));
+
+            leftBottomTab.addEventListener('click', function(e) {
+                e.stopPropagation();
+                markSplitPaneActive(splitData, 'left');
+                if (splitData.leftIframe && typeof splitData.leftIframe.focus === 'function') {
+                    splitData.leftIframe.focus();
+                }
+            });
+            rightBottomTab.addEventListener('click', function(e) {
+                e.stopPropagation();
+                markSplitPaneActive(splitData, 'right');
+                if (splitData.rightIframe && typeof splitData.rightIframe.focus === 'function') {
+                    splitData.rightIframe.focus();
+                }
+            });
+
+            splitContainer.appendChild(leftPane);
+            splitContainer.appendChild(divider);
+            splitContainer.appendChild(rightPane);
+            b.contentArea.appendChild(splitContainer);
+
+            var splitData = {
+                leftTabId: activeTabId,
+                rightTabId: targetTabId,
+                leftIframe: leftIframe,
+                rightIframe: rightIframe,
+                leftUrl: leftUrl,
+                rightUrl: rightUrl,
+                leftTitle: activeTab.title || 'Tab',
+                rightTitle: targetTab.title || 'Tab',
+                leftFavicon: getTabFaviconHtml(activeTab),
+                rightFavicon: getTabFaviconHtml(targetTab),
+                splitContainer: splitContainer,
+                splitRatio: 0.5,
+                leftBottomTab: leftBottomTab,
+                rightBottomTab: rightBottomTab,
+                activeSide: 'left',
+                lastFocusedSide: 'left'
+            };
+
+            moveIframeIntoPane(splitData, 'left');
+            moveIframeIntoPane(splitData, 'right');
+
+            targetTab.element.style.display = 'none';
+            targetTab._hiddenBySplit = true;
+
+            b._splitTabs.set(activeTabId, splitData);
+            updateSplitTabElement(activeTab, splitData);
+            setupDividerDrag(divider, splitData);
+            bindSplitPaneFocus(splitData);
+            splitContainer._noSidebarSquish = true;
+            markSplitPaneActive(splitData, 'left', { skipNav: true });
+
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    positionSplitIframes(splitData);
+                    lucide.createIcons();
+                });
+            });
+
+            if (typeof ResizeObserver !== 'undefined') {
+                var ro = new ResizeObserver(function() {
+                    if (b.activeTabId === splitData.leftTabId) {
+                        positionSplitIframes(splitData);
+                    }
+                });
+                ro.observe(splitContainer);
+                splitData._resizeObserver = ro;
+            }
+        }
+
+        function createBottomTab(url, faviconHtml) {
+            var tab = document.createElement('div');
+            tab.className = 'split-bottom-tab';
+            var domain = formatBottomDomain(url);
+            var fullDomain = getCoreDomain(url);
+            
+            var faviconPart = faviconHtml ? '<span class="split-bottom-favicon">' + faviconHtml + '</span>' : '';
+            tab.innerHTML = faviconPart + '<span class="split-bottom-domain">' + domain + '</span>';
+            tab.title = fullDomain;
+            tab._shortDomain = domain;
+            tab._fullDomain = fullDomain;
+            
+            tab.addEventListener('mouseenter', function() {
+                if (tab._fullDomain && tab._fullDomain.length > tab._shortDomain.length) {
+                    var domEl = tab.querySelector('.split-bottom-domain');
+                    if (domEl) domEl.textContent = tab._fullDomain;
+                }
+            });
+            tab.addEventListener('mouseleave', function() {
+                var domEl = tab.querySelector('.split-bottom-domain');
+                if (domEl) domEl.textContent = tab._shortDomain;
+            });
+            return tab;
+        }
+
+        function updateSplitTabElement(tab, splitData) {
+            var el = tab.element;
+            el.classList.add('split-tab');
+
+            el.innerHTML = '';
+            var hoverBg = document.createElement('div');
+            hoverBg.className = 'tab-hover-bg';
+            el.appendChild(hoverBg);
+
+            var inner = document.createElement('div');
+            inner.className = 'split-tab-inner';
+
+            var leftHalf = document.createElement('div');
+            leftHalf.className = 'split-tab-half';
+            leftHalf.dataset.side = 'left';
+            leftHalf.innerHTML =
+                '<div class="tab-favicon">' + splitData.leftFavicon + '</div>' +
+                '<div class="tab-title">' + splitData.leftTitle + '</div>' +
+                '<div class="tab-close split-close-left"><i data-lucide="x" width="10" height="10"></i></div>';
+
+            var divLine = document.createElement('div');
+            divLine.className = 'split-tab-divider';
+
+            var rightHalf = document.createElement('div');
+            rightHalf.className = 'split-tab-half';
+            rightHalf.dataset.side = 'right';
+            rightHalf.innerHTML =
+                '<div class="tab-favicon">' + splitData.rightFavicon + '</div>' +
+                '<div class="tab-title">' + splitData.rightTitle + '</div>' +
+                '<div class="tab-close split-close-right"><i data-lucide="x" width="10" height="10"></i></div>';
+
+            inner.appendChild(leftHalf);
+            inner.appendChild(divLine);
+            inner.appendChild(rightHalf);
+            el.appendChild(inner);
+
+            leftHalf.querySelector('.split-close-left').addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeSplitSide(tab.id, 'left');
+            });
+
+            rightHalf.querySelector('.split-close-right').addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeSplitSide(tab.id, 'right');
+            });
+
+            setSplitTabVisualState(splitData);
+
+            lucide.createIcons();
+        }
+
+        function closeSplitSide(splitTabId, side) {
+            var splitData = b._splitTabs.get(splitTabId);
+            if (!splitData) return;
+
+            var keepTabId = (side === 'left') ? splitData.rightTabId : splitData.leftTabId;
+            var removeTabId = (side === 'left') ? splitData.leftTabId : splitData.rightTabId;
+            var keepIframe = (side === 'left') ? splitData.rightIframe : splitData.leftIframe;
+            var removeIframe = (side === 'left') ? splitData.leftIframe : splitData.rightIframe;
+
+            hideSplitIframes(splitData);
+            keepIframe.classList.remove('active');
+            removeIframe.classList.remove('active');
+
+            keepIframe.style.display = 'block';
+            keepIframe.classList.add('active');
+
+            if (splitData.splitContainer) {
+                splitData.splitContainer.remove();
+            }
+
+            b._splitTabs.delete(splitTabId);
+
+            var keepTab = b.tabs.get(keepTabId);
+            if (keepTab) {
+                keepTab.element.style.display = '';
+                keepTab._hiddenBySplit = false;
+            }
+
+            var splitTab = b.tabs.get(splitTabId);
+            if (splitTab) {
+                restoreTabElement(splitTab);
+            }
+
+            if (removeTabId !== splitTabId) {
+                var removeTab = b.tabs.get(removeTabId);
+                if (removeTab) {
+                    removeTab.element.style.display = '';
+                    removeTab._hiddenBySplit = false;
+                }
+            }
+
+            if (keepTabId === splitTabId) {
+                b.switchToTab(splitTabId);
+            } else {
+                if (removeTabId === splitTabId) {
+                    removeIframe.remove();
+                    splitTab.element.remove();
+                    b.tabs.delete(splitTabId);
+                    b.switchToTab(keepTabId);
+                } else {
+                    b.closeTab(removeTabId);
+                    b.switchToTab(splitTabId);
+                }
+            }
+
+            b.updateTabSizes();
+        }
+
+        function unsplitTab(splitTabId) {
+            var splitData = b._splitTabs.get(splitTabId);
+            if (!splitData) return;
+
+            if (splitData._resizeObserver) {
+                splitData._resizeObserver.disconnect();
+                splitData._resizeObserver = null;
+            }
+
+            hideSplitIframes(splitData);
+            splitData.leftIframe.classList.remove('active');
+            splitData.rightIframe.classList.remove('active');
+
+            if (splitData.splitContainer) {
+                splitData.splitContainer.remove();
+            }
+
+            b._splitTabs.delete(splitTabId);
+
+            var rightTab = b.tabs.get(splitData.rightTabId);
+            if (rightTab) {
+                rightTab.element.style.display = '';
+                rightTab._hiddenBySplit = false;
+            }
+
+            var mainTab = b.tabs.get(splitTabId);
+            if (mainTab) {
+                restoreTabElement(mainTab);
+            }
+
+            b.activeTabId = null;
+            b.switchToTab(splitTabId);
+            b.updateTabSizes();
+        }
+
+        function reverseViews(splitTabId) {
+            var splitData = b._splitTabs.get(splitTabId);
+            if (!splitData) return;
+
+            var tmpId = splitData.leftTabId;
+            splitData.leftTabId = splitData.rightTabId;
+            splitData.rightTabId = tmpId;
+
+            var tmpIframe = splitData.leftIframe;
+            splitData.leftIframe = splitData.rightIframe;
+            splitData.rightIframe = tmpIframe;
+
+            var tmpUrl = splitData.leftUrl;
+            splitData.leftUrl = splitData.rightUrl;
+            splitData.rightUrl = tmpUrl;
+
+            var tmpTitle = splitData.leftTitle;
+            splitData.leftTitle = splitData.rightTitle;
+            splitData.rightTitle = tmpTitle;
+
+            var tmpFav = splitData.leftFavicon;
+            splitData.leftFavicon = splitData.rightFavicon;
+            splitData.rightFavicon = tmpFav;
+
+            moveIframeIntoPane(splitData, 'left');
+            moveIframeIntoPane(splitData, 'right');
+
+            requestAnimationFrame(function() {
+                positionSplitIframes(splitData);
+            });
+
+            updateBottomTab(splitData.leftBottomTab, splitData.leftUrl);
+            updateBottomTab(splitData.rightBottomTab, splitData.rightUrl);
+
+            var mainTab = b.tabs.get(splitTabId);
+            if (mainTab) {
+                updateSplitTabElement(mainTab, splitData);
+            }
+            updateBottomTab(splitData.leftBottomTab, splitData.leftUrl, splitData.leftFavicon);
+            updateBottomTab(splitData.rightBottomTab, splitData.rightUrl, splitData.rightFavicon);
+            markSplitPaneActive(splitData, splitData.activeSide === 'left' ? 'right' : 'left');
+        }
+
+        function updateBottomTab(tabEl, url, faviconHtml) {
+            var domain = formatBottomDomain(url);
+            var fullDomain = getCoreDomain(url);
+            var domEl = tabEl.querySelector('.split-bottom-domain');
+            if (domEl) domEl.textContent = domain;
+            tabEl.title = fullDomain;
+            tabEl._shortDomain = domain;
+            tabEl._fullDomain = fullDomain;
+            
+            if (faviconHtml) {
+                var favEl = tabEl.querySelector('.split-bottom-favicon');
+                if (favEl) {
+                    favEl.innerHTML = faviconHtml;
+                } else {
+                    var newFavEl = document.createElement('span');
+                    newFavEl.className = 'split-bottom-favicon';
+                    newFavEl.innerHTML = faviconHtml;
+                    tabEl.insertBefore(newFavEl, tabEl.firstChild);
+                }
+                lucide.createIcons();
+            }
+        }
+
+        function restoreTabElement(tab) {
+            tab.element.classList.remove('split-tab');
+            tab.element.innerHTML =
+                '<div class="tab-hover-bg"></div>' +
+                '<div class="tab-favicon">' + getTabFaviconHtml(tab) + '</div>' +
+                '<div class="tab-title">' + (tab.title || 'Tab') + '</div>' +
+                '<div class="tab-close"><i data-lucide="x" width="12" height="12"></i></div>';
+
+            tab.element.querySelector('.tab-close').addEventListener('click', function(e) {
+                e.stopPropagation();
+                b.closeTab(tab.id);
+            });
+            lucide.createIcons();
+        }
+
+        function setupDividerDrag(divider, splitData) {
+            var isDragging = false;
+            var container = splitData.splitContainer;
+
+            divider.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                isDragging = true;
+                divider.classList.add('dragging');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+
+                var overlay = document.createElement('div');
+                overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;cursor:col-resize;';
+                overlay.id = 'split-drag-overlay';
+                document.body.appendChild(overlay);
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                var rect = container.getBoundingClientRect();
+                var ratio = Math.max(0.15, Math.min(0.85, (e.clientX - rect.left) / rect.width));
+                splitData.splitRatio = ratio;
+                var leftPane = container.querySelector('[data-side="left"]');
+                var rightPane = container.querySelector('[data-side="right"]');
+                if (leftPane) leftPane.style.flex = ratio + '';
+                if (rightPane) rightPane.style.flex = (1 - ratio) + '';
+                positionSplitIframes(splitData);
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (!isDragging) return;
+                isDragging = false;
+                divider.classList.remove('dragging');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                var overlay = document.getElementById('split-drag-overlay');
+                if (overlay) overlay.remove();
+            });
+        }
+
+        window.addEventListener('resize', function() {
+            b._splitTabs.forEach(function(splitData, splitTabId) {
+                if (b.activeTabId === splitTabId) {
+                    positionSplitIframes(splitData);
+                }
+            });
+        });
+
+        var origSwitchToTab = b.switchToTab.bind(b);
+        b.switchToTab = function(tabId) {
+            if (b.activeTabId && b.activeTabId !== tabId) {
+                var oldSplit = b._splitTabs.get(b.activeTabId);
+                if (oldSplit && oldSplit.splitContainer) {
+                    oldSplit.splitContainer.style.display = 'none';
+                    hideSplitIframes(oldSplit);
+                }
+            }
+
+            var newSplit = b._splitTabs.get(tabId);
+            if (newSplit) {
+                if (b.activeTabId) {
+                    var currentTab = b.tabs.get(b.activeTabId);
+                    if (currentTab && !b._splitTabs.has(b.activeTabId)) {
+                        currentTab.element.classList.remove('active');
+                        currentTab.iframe.style.display = 'none';
+                    }
+                }
+
+                var newTab = b.tabs.get(tabId);
+                if (newTab) {
+                    b.activeTabId = tabId;
+                    newTab.element.classList.add('active');
+
+                    b.tabs.forEach(function(t) {
+                        if (!b._splitTabs.has(t.id) && t.id !== tabId) {
+                            t.iframe.style.display = 'none';
+                        }
+                    });
+
+                    newSplit.splitContainer.style.display = 'flex';
+                    requestAnimationFrame(function() {
+                        requestAnimationFrame(function() {
+                            positionSplitIframes(newSplit);
+                            markSplitPaneActive(newSplit, newSplit.lastFocusedSide || newSplit.activeSide || 'left');
+                        });
+                    });
+                }
+                return;
+            }
+
+            origSwitchToTab(tabId);
+        };
+
+        var origCloseTab = b.closeTab.bind(b);
+        b.closeTab = function(tabId) {
+            if (b._splitTabs.has(tabId)) {
+                unsplitTab(tabId);
+                origCloseTab.call(b, tabId);
+                return;
+            }
+            
+            var foundInSplit = false;
+            b._splitTabs.forEach(function(splitData, splitId) {
+                if (splitData.rightTabId === tabId) {
+                    closeSplitSide(splitId, 'right');
+                    foundInSplit = true;
+                } else if (splitData.leftTabId === tabId && splitId !== tabId) {
+                    closeSplitSide(splitId, 'left');
+                    foundInSplit = true;
+                }
+            });
+            
+            if (foundInSplit) return;
+            
+            var wasActive = (b.activeTabId === tabId);
+            
+            var fallbackTab = null;
+            if (wasActive) {
+                var tabElements = Array.from(b.tabBar.querySelectorAll('.tab'));
+                var currentIndex = -1;
+                var visibleTabs = [];
+                tabElements.forEach(function(el, idx) {
+                    var tid = parseInt(el.dataset.tabId);
+                    var t = b.tabs.get(tid);
+                    if (t && !t._closing && !t._hiddenBySplit && el.style.display !== 'none') {
+                        visibleTabs.push({ id: tid, index: idx });
+                        if (tid === tabId) currentIndex = visibleTabs.length - 1;
+                    }
+                });
+                
+                b._splitTabs.forEach(function(splitData, splitId) {
+                    var splitTab = b.tabs.get(splitId);
+                    if (splitTab && !splitTab._closing) {
+                        var el = splitTab.element;
+                        var domIndex = tabElements.indexOf(el);
+                        visibleTabs.push({ id: splitId, index: domIndex >= 0 ? domIndex : 999 });
+                    }
+                });
+                
+                visibleTabs.sort(function(a, b) { return a.index - b.index; });
+                
+                var closingIndex = visibleTabs.findIndex(function(vt) { return vt.id === tabId; });
+                if (closingIndex >= 0) {
+                    var nextTab = visibleTabs[closingIndex + 1] || visibleTabs[closingIndex - 1];
+                    if (nextTab) fallbackTab = nextTab.id;
+                } else if (visibleTabs.length > 0) {
+                    var firstNonClosing = visibleTabs.find(function(vt) { return vt.id !== tabId; });
+                    if (firstNonClosing) fallbackTab = firstNonClosing.id;
+                }
+            }
+            
+            origCloseTab.call(b, tabId);
+            
+            if (wasActive && fallbackTab && (!b.activeTabId || !b.tabs.has(b.activeTabId) || b.activeTabId === tabId)) {
+                b.switchToTab(fallbackTab);
+            }
+        };
+
+        var origRepositionSidebars = b._repositionSidebars.bind(b);
+        b._repositionSidebars = function() {
+            origRepositionSidebars();
+            if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                var splitData = b._splitTabs.get(b.activeTabId);
+                if (splitData && splitData.splitContainer) {
+                    b.contentArea.style.marginRight = '';
+                    b.contentArea.style.borderTopRightRadius = '';
+                    b.contentArea.style.borderBottomRightRadius = '';
+                }
+            }
+        };
+
+        var openInNewTabBtn = document.getElementById('openInNewTabBtn');
+        var splitViewBtn = document.getElementById('splitViewBtn');
+        var openInNewWindowBtn = document.getElementById('openInNewWindowBtn');
+        var separateViewsBtn = document.getElementById('separateViewsBtn');
+        var closeLeftViewBtn = document.getElementById('closeLeftViewBtn');
+        var closeRightViewBtn = document.getElementById('closeRightViewBtn');
+        var reverseViewsBtn = document.getElementById('reverseViewsBtn');
+        var splitManageSep = document.getElementById('splitManageSep');
+
+        var origShowContextMenu = b.showContextMenu.bind(b);
+        b.showContextMenu = function(x, y, tabId) {
+            origShowContextMenu(x, y, tabId);
+
+            var isSplit = b._splitTabs.has(tabId);
+
+            splitManageSep.style.display = isSplit ? '' : 'none';
+            separateViewsBtn.style.display = isSplit ? '' : 'none';
+            closeLeftViewBtn.style.display = isSplit ? '' : 'none';
+            closeRightViewBtn.style.display = isSplit ? '' : 'none';
+            reverseViewsBtn.style.display = isSplit ? '' : 'none';
+
+            splitViewBtn.style.display = (b.tabs.size > 1 && !isSplit) ? '' : 'none';
+        };
+
+        openInNewTabBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            var tab = b.tabs.get(tabId);
+            if (tab) {
+                var newTabId = b.createNewTab();
+                var newTab = b.tabs.get(newTabId);
+                if (newTab) {
+                    var url = getTabUrl(tab);
+                    newTab.title = tab.title;
+                    newTab.url = tab.url;
+                    newTab.currentUrl = url;
+                    newTab.iframe.src = tab.iframe.src;
+                    var titleEl = newTab.element.querySelector('.tab-title');
+                    if (titleEl) titleEl.textContent = tab.title || 'Tab';
+                }
+            }
+            b.hideContextMenu();
+        });
+
+        splitViewBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            if (tabId) createSplitView(tabId);
+            b.hideContextMenu();
+        });
+
+        openInNewWindowBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            var tab = b.tabs.get(tabId);
+            if (tab) {
+                var url = getTabUrl(tab);
+                if (url) {
+                    b._allowRealOpen = true;
+                    window.open('/active/embed.html?url=' + encodeURIComponent(url), '_blank');
+                }
+            }
+            b.hideContextMenu();
+        });
+
+        separateViewsBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            if (tabId && b._splitTabs.has(tabId)) {
+                unsplitTab(tabId);
+            }
+            b.hideContextMenu();
+        });
+
+        closeLeftViewBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            if (tabId && b._splitTabs.has(tabId)) {
+                closeSplitSide(tabId, 'left');
+            }
+            b.hideContextMenu();
+        });
+
+        closeRightViewBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            if (tabId && b._splitTabs.has(tabId)) {
+                closeSplitSide(tabId, 'right');
+            }
+            b.hideContextMenu();
+        });
+
+        reverseViewsBtn.addEventListener('click', function() {
+            var tabId = b.contextMenuTabId;
+            if (tabId && b._splitTabs.has(tabId)) {
+                reverseViews(tabId);
+            }
+            b.hideContextMenu();
+        });
+
+        var origRefresh = b.refresh ? b.refresh.bind(b) : null;
+        if (origRefresh) {
+            b.refresh = function() {
+                if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                    var splitData = b._splitTabs.get(b.activeTabId);
+                    var activeSplitTab = getActiveSplitTab(splitData);
+                    if (activeSplitTab && activeSplitTab.iframe) {
+                        b.showLoading();
+                        b.setTabLoading(activeSplitTab.id);
+                        var urlToLoad = activeSplitTab.iframe.src;
+                        if (activeSplitTab.currentUrl && activeSplitTab.currentUrl.startsWith('http')) {
+                            urlToLoad = '/active/embed.html?url=' + encodeURIComponent(activeSplitTab.currentUrl);
+                        }
+                        activeSplitTab.iframe.src = urlToLoad;
+                        syncSplitChrome(splitData);
+                        return;
+                    }
+                }
+                origRefresh();
+            };
+        }
+
+        var origHandleUrlChange = b._handleUrlChange ? b._handleUrlChange.bind(b) : null;
+        if (origHandleUrlChange) {
+            b._handleUrlChange = function(tab, newUrl, addToHistory) {
+                if (b.activeTabId && b._splitTabs.has(b.activeTabId) && tab && tab.id === b.activeTabId) {
+                    var sd = b._splitTabs.get(b.activeTabId);
+                    var activeSideTab = getActiveSplitTab(sd);
+                    if (activeSideTab) {
+                        return origHandleUrlChange(activeSideTab, newUrl, addToHistory);
+                    }
+                }
+                return origHandleUrlChange(tab, newUrl, addToHistory);
+            };
+        }
+
+        var origLoadUrl = b.loadUrl ? b.loadUrl.bind(b) : null;
+        if (origLoadUrl) {
+            b.loadUrl = function(url) {
+                var targetTabId = b._splitNavigationTargetTabId;
+                if (!targetTabId && b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                    var sd = b._splitTabs.get(b.activeTabId);
+                    var activeSideTab = getActiveSplitTab(sd);
+                    targetTabId = activeSideTab ? activeSideTab.id : null;
+                }
+
+                if (!targetTabId) {
+                    return origLoadUrl(url);
+                }
+
+                var tab = b.tabs.get(targetTabId);
+                if (!tab) return;
+
+                b.showLoading();
+                b.setTabLoading(targetTabId);
+                tab.url = url;
+                tab.iframe.src = url;
+                tab.currentUrl = b.extractOriginalUrl(url);
+                if (b.addressBar) b.addressBar.value = tab.currentUrl;
+
+                var history = b.history[targetTabId];
+                var currentIndex = b.historyIndex[targetTabId];
+                if (history) {
+                    history.splice(currentIndex + 1);
+                    history.push(url);
+                    b.historyIndex[targetTabId] = history.length - 1;
+                }
+
+                if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                    var splitData = b._splitTabs.get(b.activeTabId);
+                    syncSplitChrome(splitData);
+                } else {
+                    b.updateNavigationButtons();
+                }
+            };
+        }
+
+        var origNavigate = b.navigate ? b.navigate.bind(b) : null;
+        if (origNavigate) {
+            b.navigate = function(input) {
+                if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                    var sd = b._splitTabs.get(b.activeTabId);
+                    var activeSideTab = getActiveSplitTab(sd);
+                    if (activeSideTab) {
+                        b._splitNavigationTargetTabId = activeSideTab.id;
+                        try {
+                            origNavigate(input);
+                        } finally {
+                            b._splitNavigationTargetTabId = null;
+                        }
+                        return;
+                    }
+                }
+                origNavigate(input);
+            };
+        }
+
+        var origUpdateNavigationButtons = b.updateNavigationButtons.bind(b);
+        b.updateNavigationButtons = function() {
+            if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                var splitData = b._splitTabs.get(b.activeTabId);
+                var activeSplitTab = getActiveSplitTab(splitData);
+                if (activeSplitTab) {
+                    var history = b.history[activeSplitTab.id] || [];
+                    var currentIndex = b.historyIndex[activeSplitTab.id] || 0;
+                    b.backBtn.disabled = currentIndex <= 0;
+                    b.forwardBtn.disabled = currentIndex >= history.length - 1;
+                    return;
+                }
+            }
+            origUpdateNavigationButtons();
+        };
+
+        var origGoBack = b.goBack.bind(b);
+        b.goBack = function() {
+            if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                var splitData = b._splitTabs.get(b.activeTabId);
+                var activeSplitTab = getActiveSplitTab(splitData);
+                if (activeSplitTab) {
+                    var history = b.history[activeSplitTab.id] || [];
+                    var currentIndex = b.historyIndex[activeSplitTab.id] || 0;
+                    if (currentIndex > 0) {
+                        b.historyIndex[activeSplitTab.id] = currentIndex - 1;
+                        var previousUrl = history[b.historyIndex[activeSplitTab.id]];
+                        var decoded = b.extractOriginalUrl(previousUrl);
+                        activeSplitTab.currentUrl = decoded;
+                        activeSplitTab.url = previousUrl;
+                        activeSplitTab._navigatingHistory = true;
+                        activeSplitTab.iframe.src = previousUrl;
+                        syncSplitChrome(splitData, true);
+                        b.updateFavicon(activeSplitTab, decoded);
+                        b.updateTabTitle(activeSplitTab, decoded);
+                        setTimeout(function() { activeSplitTab._navigatingHistory = false; }, 2000);
+                        b.updateNavigationButtons();
+                    }
+                    return;
+                }
+            }
+            origGoBack();
+        };
+
+        var origGoForward = b.goForward.bind(b);
+        b.goForward = function() {
+            if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                var splitData = b._splitTabs.get(b.activeTabId);
+                var activeSplitTab = getActiveSplitTab(splitData);
+                if (activeSplitTab) {
+                    var history = b.history[activeSplitTab.id] || [];
+                    var currentIndex = b.historyIndex[activeSplitTab.id] || 0;
+                    if (currentIndex < history.length - 1) {
+                        b.historyIndex[activeSplitTab.id] = currentIndex + 1;
+                        var nextUrl = history[b.historyIndex[activeSplitTab.id]];
+                        var decoded = b.extractOriginalUrl(nextUrl);
+                        activeSplitTab.currentUrl = decoded;
+                        activeSplitTab.url = nextUrl;
+                        activeSplitTab._navigatingHistory = true;
+                        activeSplitTab.iframe.src = nextUrl;
+                        syncSplitChrome(splitData, true);
+                        b.updateFavicon(activeSplitTab, decoded);
+                        b.updateTabTitle(activeSplitTab, decoded);
+                        setTimeout(function() { activeSplitTab._navigatingHistory = false; }, 2000);
+                        b.updateNavigationButtons();
+                    }
+                    return;
+                }
+            }
+            origGoForward();
+        };
+
+        setInterval(function() {
+            b._splitTabs.forEach(function(splitData, splitTabId) {
+                var leftTab = b.tabs.get(splitData.leftTabId);
+                var rightTab = b.tabs.get(splitData.rightTabId);
+
+                if (leftTab) {
+                    var newLeftUrl = getTabUrl(leftTab);
+                    if (newLeftUrl && newLeftUrl !== splitData.leftUrl) {
+                        splitData.leftUrl = newLeftUrl;
+                        updateBottomTab(splitData.leftBottomTab, newLeftUrl);
+                    }
+                    splitData.leftTitle = leftTab.title || 'Tab';
+                }
+
+                if (rightTab) {
+                    var newRightUrl = getTabUrl(rightTab);
+                    if (newRightUrl && newRightUrl !== splitData.rightUrl) {
+                        splitData.rightUrl = newRightUrl;
+                        updateBottomTab(splitData.rightBottomTab, newRightUrl);
+                    }
+                    splitData.rightTitle = rightTab.title || 'Tab';
+                }
+
+                var mainTab = b.tabs.get(splitTabId);
+                if (mainTab && mainTab.element.classList.contains('split-tab')) {
+                    var leftTitle = mainTab.element.querySelector('[data-side="left"] .tab-title');
+                    var rightTitle = mainTab.element.querySelector('[data-side="right"] .tab-title');
+                    if (leftTitle) leftTitle.textContent = splitData.leftTitle;
+                    if (rightTitle) rightTitle.textContent = splitData.rightTitle;
+
+                    if (leftTab) {
+                        var newLeftFav = getTabFaviconHtml(leftTab);
+                        if (newLeftFav !== splitData.leftFavicon) {
+                            splitData.leftFavicon = newLeftFav;
+                            var leftFavEl = mainTab.element.querySelector('[data-side="left"] .tab-favicon');
+                            if (leftFavEl) { leftFavEl.innerHTML = newLeftFav; lucide.createIcons(); }
+                            updateBottomTab(splitData.leftBottomTab, splitData.leftUrl, newLeftFav);
+                        }
+                    }
+                    if (rightTab) {
+                        var newRightFav = getTabFaviconHtml(rightTab);
+                        if (newRightFav !== splitData.rightFavicon) {
+                            splitData.rightFavicon = newRightFav;
+                            var rightFavEl = mainTab.element.querySelector('[data-side="right"] .tab-favicon');
+                            if (rightFavEl) { rightFavEl.innerHTML = newRightFav; lucide.createIcons(); }
+                            updateBottomTab(splitData.rightBottomTab, splitData.rightUrl, newRightFav);
+                        }
+                    }
+                }
+
+                if (b.activeTabId === splitTabId && document.activeElement !== b.addressBar) {
+                    syncSplitChrome(splitData, true);
+                }
+            });
+        }, 700);
+
+    });
 })();
 </script>
 
