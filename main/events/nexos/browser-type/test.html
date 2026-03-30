@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4722,8 +4723,12 @@ body.reduce-motion *::after {
 }
 
 .split-pane.active-pane .split-bottom-tab {
-    border-color: #4285f4;
-    color: #4285f4;
+    border-color: #d9d9d9;
+    color: #111111;
+    font-weight: 700;
+    min-width: 96px;
+    padding-left: 14px;
+    padding-right: 14px;
 }
 
 .split-bottom-tab {
@@ -4754,7 +4759,7 @@ body.reduce-motion *::after {
     flex-shrink: 0;
     z-index: 3;
     pointer-events: auto;
-    transition: border-color 0.15s, color 0.15s;
+    transition: border-color 0.2s ease, color 0.2s ease, min-width 0.2s ease, padding 0.2s ease, font-weight 0.2s ease;
 }
 
 .split-bottom-tab::before {
@@ -4806,10 +4811,9 @@ body.reduce-motion *::after {
 
 /* Split tab in tab bar — two normal-sized tabs side by side */
 .tab.split-tab {
-    /* Two normal tabs: each ~160-240px → combined ~320-480px */
-    min-width: 320px !important;
-    max-width: 480px !important;
-    flex: 2 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 1 !important;
     padding: 0 !important;
 }
 
@@ -4829,34 +4833,34 @@ body.reduce-motion *::after {
     display: flex;
     align-items: center;
     flex: 1;
-    min-width: 120px;
-    max-width: 240px;
+    min-width: 0;
+    max-width: none;
     height: 100%;
     gap: 0;
     overflow: hidden;
-    padding: 0 12px;
+    padding: 0 8px;
 }
 
 /* Favicon: same as normal tab */
 .tab.split-tab .split-tab-half .tab-favicon {
-    width: 20px;
-    height: 20px;
-    min-width: 20px;
-    margin-right: 12px;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    margin-right: 8px;
     flex-shrink: 0;
 }
 
 .tab.split-tab .split-tab-half .tab-favicon img {
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
 }
 
 /* Title: same as normal tab */
 .tab.split-tab .split-tab-half .tab-title {
     flex: 1;
-    font-size: 14px;
-    font-weight: 200;
+    font-size: 12px;
+    font-weight: 400;
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -4867,10 +4871,10 @@ body.reduce-motion *::after {
 
 /* Close button: same as normal tab — NO hover background */
 .tab.split-tab .split-tab-half .tab-close {
-    width: 20px;
-    height: 20px;
-    min-width: 20px;
-    margin-left: 12px;
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    margin-left: 8px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
@@ -4888,9 +4892,26 @@ body.reduce-motion *::after {
 
 .tab.split-tab .split-tab-half .tab-close svg,
 .tab.split-tab .split-tab-half .tab-close i {
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     flex-shrink: 0;
+}
+
+.tab.split-tab:not(.active) .split-tab-half {
+    opacity: 0.82;
+}
+
+.tab.split-tab.active .split-tab-half {
+    opacity: 0.9;
+}
+
+.tab.split-tab.active .split-tab-half.is-pane-active {
+    opacity: 1;
+}
+
+.tab.split-tab.active .split-tab-half.is-pane-active .tab-title {
+    color: #111111;
+    font-weight: 700;
 }
 
 /* Thin divider between the two halves */
@@ -13199,11 +13220,30 @@ setInterval(async () => {
 
         function getTabFaviconHtml(tab) {
             if (!tab) return '<i data-lucide="globe" width="16" height="16"></i>';
+            if (tab.faviconUrl) {
+                return '<img src="' + tab.faviconUrl + '" width="16" height="16" style="border-radius:50%;">';
+            }
             var favEl = tab.element.querySelector('.tab-favicon img');
             if (favEl && favEl.src) {
                 return '<img src="' + favEl.src + '" width="16" height="16" style="border-radius:50%;">';
             }
+            var url = getTabUrl(tab);
+            if (url && /^https?:\/\//i.test(url)) {
+                var domain = b.extractDomain(url);
+                if (domain) {
+                    return '<img src="https://www.google.com/s2/favicons?domain=' + domain + '&sz=16" width="16" height="16" style="border-radius:50%;">';
+                }
+            }
             return '<i data-lucide="globe" width="16" height="16"></i>';
+        }
+
+        function getFaviconHtmlForUrl(url) {
+            if (!url || !/^https?:\/\//i.test(url)) {
+                return '<i data-lucide="globe" width="16" height="16"></i>';
+            }
+            var domain = b.extractDomain(url);
+            if (!domain) return '<i data-lucide="globe" width="16" height="16"></i>';
+            return '<img src="https://www.google.com/s2/favicons?domain=' + domain + '&sz=16" width="16" height="16" style="border-radius:50%;">';
         }
 
         function getSplitTabIdForSide(tabId) {
@@ -13227,7 +13267,21 @@ setInterval(async () => {
             if (leftPane) leftPane.classList.toggle('active-pane', chosenSide === 'left');
             if (rightPane) rightPane.classList.toggle('active-pane', chosenSide === 'right');
 
+            setSplitTabVisualState(splitData);
+
             syncSplitChrome(splitData, opts && opts.skipNav);
+        }
+
+        function setSplitTabVisualState(splitData) {
+            if (!splitData) return;
+            var splitTabId = getSplitTabIdForSide(splitData.leftTabId);
+            var splitTab = splitTabId ? b.tabs.get(splitTabId) : null;
+            if (!splitTab || !splitTab.element) return;
+
+            var leftHalf = splitTab.element.querySelector('.split-tab-half[data-side="left"]');
+            var rightHalf = splitTab.element.querySelector('.split-tab-half[data-side="right"]');
+            if (leftHalf) leftHalf.classList.toggle('is-pane-active', splitData.activeSide === 'left');
+            if (rightHalf) rightHalf.classList.toggle('is-pane-active', splitData.activeSide === 'right');
         }
 
         function getActiveSplitTab(splitData) {
@@ -13271,7 +13325,7 @@ setInterval(async () => {
                             if (side === 'left') {
                                 splitData.leftUrl = newUrl;
                                 updateBottomTab(splitData.leftBottomTab, newUrl);
-                                var newFav = getTabFaviconHtml(tab);
+                                var newFav = getFaviconHtmlForUrl(newUrl) || getTabFaviconHtml(tab);
                                 if (newFav !== splitData.leftFavicon) {
                                     splitData.leftFavicon = newFav;
                                     b._splitTabs.forEach(function(sd, splitId) {
@@ -13287,7 +13341,7 @@ setInterval(async () => {
                             } else {
                                 splitData.rightUrl = newUrl;
                                 updateBottomTab(splitData.rightBottomTab, newUrl);
-                                var newFav = getTabFaviconHtml(tab);
+                                var newFav = getFaviconHtmlForUrl(newUrl) || getTabFaviconHtml(tab);
                                 if (newFav !== splitData.rightFavicon) {
                                     splitData.rightFavicon = newFav;
                                     b._splitTabs.forEach(function(sd, splitId) {
@@ -13325,31 +13379,36 @@ setInterval(async () => {
             var container = splitData.splitContainer;
             var rect = container.getBoundingClientRect();
             if (rect.width === 0) return;
+            var contentRect = b.contentArea.getBoundingClientRect();
 
             var divider = container.querySelector('.split-divider');
             var dividerWidth = divider ? divider.offsetWidth : 8;
             var leftPct = splitData.splitRatio;
-            var leftWidth = rect.width * leftPct - dividerWidth / 2;
-            var rightWidth = rect.width * (1 - leftPct) - dividerWidth / 2;
+            var leftWidth = Math.max(0, rect.width * leftPct - dividerWidth / 2);
+            var rightWidth = Math.max(0, rect.width * (1 - leftPct) - dividerWidth / 2);
+            var top = rect.top - contentRect.top;
+            var left = rect.left - contentRect.left;
 
             var li = splitData.leftIframe;
             var ri = splitData.rightIframe;
 
             li.style.position = 'absolute';
-            li.style.top = rect.top + 'px';
-            li.style.left = rect.left + 'px';
+            li.style.top = top + 'px';
+            li.style.left = left + 'px';
             li.style.width = leftWidth + 'px';
             li.style.height = rect.height + 'px';
             li.style.display = 'block';
             li.classList.add('active');
+            li.style.zIndex = '2';
 
             ri.style.position = 'absolute';
-            ri.style.top = rect.top + 'px';
-            ri.style.left = (rect.left + leftWidth + dividerWidth) + 'px';
+            ri.style.top = top + 'px';
+            ri.style.left = (left + leftWidth + dividerWidth) + 'px';
             ri.style.width = rightWidth + 'px';
             ri.style.height = rect.height + 'px';
             ri.style.display = 'block';
             ri.classList.add('active');
+            ri.style.zIndex = '2';
         }
 
         function hideSplitIframes(splitData) {
@@ -13360,6 +13419,7 @@ setInterval(async () => {
                 splitData.leftIframe.style.left = '';
                 splitData.leftIframe.style.width = '';
                 splitData.leftIframe.style.height = '';
+                splitData.leftIframe.style.zIndex = '';
             }
             if (splitData.rightIframe) {
                 splitData.rightIframe.style.display = 'none';
@@ -13368,6 +13428,7 @@ setInterval(async () => {
                 splitData.rightIframe.style.left = '';
                 splitData.rightIframe.style.width = '';
                 splitData.rightIframe.style.height = '';
+                splitData.rightIframe.style.zIndex = '';
             }
         }
 
@@ -13411,6 +13472,21 @@ setInterval(async () => {
 
             var leftBottomTab = createBottomTab(leftUrl, getTabFaviconHtml(activeTab));
             var rightBottomTab = createBottomTab(rightUrl, getTabFaviconHtml(targetTab));
+
+            leftBottomTab.addEventListener('click', function(e) {
+                e.stopPropagation();
+                markSplitPaneActive(splitData, 'left');
+                if (splitData.leftIframe && typeof splitData.leftIframe.focus === 'function') {
+                    splitData.leftIframe.focus();
+                }
+            });
+            rightBottomTab.addEventListener('click', function(e) {
+                e.stopPropagation();
+                markSplitPaneActive(splitData, 'right');
+                if (splitData.rightIframe && typeof splitData.rightIframe.focus === 'function') {
+                    splitData.rightIframe.focus();
+                }
+            });
 
             splitContainer.appendChild(leftPane);
             splitContainer.appendChild(divider);
@@ -13536,6 +13612,8 @@ setInterval(async () => {
                 e.stopPropagation();
                 closeSplitSide(tab.id, 'right');
             });
+
+            setSplitTabVisualState(splitData);
 
             lucide.createIcons();
         }
@@ -13689,6 +13767,8 @@ setInterval(async () => {
             if (mainTab) {
                 updateSplitTabElement(mainTab, splitData);
             }
+            updateBottomTab(splitData.leftBottomTab, splitData.leftUrl, splitData.leftFavicon);
+            updateBottomTab(splitData.rightBottomTab, splitData.rightUrl, splitData.rightFavicon);
             markSplitPaneActive(splitData, splitData.activeSide === 'left' ? 'right' : 'left');
         }
 
@@ -14015,6 +14095,81 @@ setInterval(async () => {
                     }
                 }
                 origRefresh();
+            };
+        }
+
+        var origHandleUrlChange = b._handleUrlChange ? b._handleUrlChange.bind(b) : null;
+        if (origHandleUrlChange) {
+            b._handleUrlChange = function(tab, newUrl, addToHistory) {
+                if (b.activeTabId && b._splitTabs.has(b.activeTabId) && tab && tab.id === b.activeTabId) {
+                    var sd = b._splitTabs.get(b.activeTabId);
+                    var activeSideTab = getActiveSplitTab(sd);
+                    if (activeSideTab) {
+                        return origHandleUrlChange(activeSideTab, newUrl, addToHistory);
+                    }
+                }
+                return origHandleUrlChange(tab, newUrl, addToHistory);
+            };
+        }
+
+        var origLoadUrl = b.loadUrl ? b.loadUrl.bind(b) : null;
+        if (origLoadUrl) {
+            b.loadUrl = function(url) {
+                var targetTabId = b._splitNavigationTargetTabId;
+                if (!targetTabId && b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                    var sd = b._splitTabs.get(b.activeTabId);
+                    var activeSideTab = getActiveSplitTab(sd);
+                    targetTabId = activeSideTab ? activeSideTab.id : null;
+                }
+
+                if (!targetTabId) {
+                    return origLoadUrl(url);
+                }
+
+                var tab = b.tabs.get(targetTabId);
+                if (!tab) return;
+
+                b.showLoading();
+                b.setTabLoading(targetTabId);
+                tab.url = url;
+                tab.iframe.src = url;
+                tab.currentUrl = b.extractOriginalUrl(url);
+                if (b.addressBar) b.addressBar.value = tab.currentUrl;
+
+                var history = b.history[targetTabId];
+                var currentIndex = b.historyIndex[targetTabId];
+                if (history) {
+                    history.splice(currentIndex + 1);
+                    history.push(url);
+                    b.historyIndex[targetTabId] = history.length - 1;
+                }
+
+                if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                    var splitData = b._splitTabs.get(b.activeTabId);
+                    syncSplitChrome(splitData);
+                } else {
+                    b.updateNavigationButtons();
+                }
+            };
+        }
+
+        var origNavigate = b.navigate ? b.navigate.bind(b) : null;
+        if (origNavigate) {
+            b.navigate = function(input) {
+                if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
+                    var sd = b._splitTabs.get(b.activeTabId);
+                    var activeSideTab = getActiveSplitTab(sd);
+                    if (activeSideTab) {
+                        b._splitNavigationTargetTabId = activeSideTab.id;
+                        try {
+                            origNavigate(input);
+                        } finally {
+                            b._splitNavigationTargetTabId = null;
+                        }
+                        return;
+                    }
+                }
+                origNavigate(input);
             };
         }
 
