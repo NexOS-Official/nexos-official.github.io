@@ -4662,10 +4662,10 @@ body.reduce-motion *::after {
 /* ===== SPLIT VIEW STYLES ===== */
 .split-content-area {
     display: flex;
-    width: 100%;
-    height: 100%;
-    position: relative;
+    position: absolute;
+    inset: 0;
     overflow: hidden;
+    z-index: 1;
 }
 
 .split-pane {
@@ -13054,7 +13054,7 @@ setInterval(async () => {
 </script>
 
 <script>
-// ═════════════════════════��═════════════════════════════════════
+// ═════════════════════════���═════════════════════════════════════
 // CROSS-ORIGIN IFRAME KEYBOARD SHORTCUT CAPTURE SYSTEM
 // Enables Alt+T, Alt+W, Ctrl+R, etc. even when iframe has focus
 // ═══════════════════════════════════════════════════════════════
@@ -13422,39 +13422,40 @@ setInterval(async () => {
 
         function positionSplitIframes(splitData) {
             var container = splitData.splitContainer;
-            var rect = container.getBoundingClientRect();
-            // Bail only if truly zero — callers use retry loop to handle this
-            if (rect.width === 0 || rect.height === 0) return false;
             var contentRect = b.contentArea.getBoundingClientRect();
+            if (contentRect.width === 0 || contentRect.height === 0) return false;
 
-            var divider = container.querySelector('.split-divider');
-            var dividerWidth = divider ? divider.offsetWidth : 8;
-            var leftPct = splitData.splitRatio;
-            var leftWidth = Math.max(0, rect.width * leftPct - dividerWidth / 2);
-            var rightWidth = Math.max(0, rect.width * (1 - leftPct) - dividerWidth / 2);
-            var top = rect.top - contentRect.top;
-            var left = rect.left - contentRect.left;
+            var leftPane = container.querySelector('[data-side="left"]');
+            var rightPane = container.querySelector('[data-side="right"]');
 
             var li = splitData.leftIframe;
             var ri = splitData.rightIframe;
 
-            li.style.position = 'absolute';
-            li.style.top = top + 'px';
-            li.style.left = left + 'px';
-            li.style.width = leftWidth + 'px';
-            li.style.height = rect.height + 'px';
-            li.style.display = 'block';
-            li.classList.add('active');
-            li.style.zIndex = '2';
+            if (leftPane && li) {
+                var lRect = leftPane.getBoundingClientRect();
+                li.style.position = 'absolute';
+                li.style.top = (lRect.top - contentRect.top) + 'px';
+                li.style.left = (lRect.left - contentRect.left) + 'px';
+                li.style.width = lRect.width + 'px';
+                li.style.height = lRect.height + 'px';
+                li.style.display = 'block';
+                li.classList.add('active');
+                li.style.zIndex = '2';
+            }
 
-            ri.style.position = 'absolute';
-            ri.style.top = top + 'px';
-            ri.style.left = (left + leftWidth + dividerWidth) + 'px';
-            ri.style.width = rightWidth + 'px';
-            ri.style.height = rect.height + 'px';
-            ri.style.display = 'block';
-            ri.classList.add('active');
-            ri.style.zIndex = '2';
+            if (rightPane && ri) {
+                var rRect = rightPane.getBoundingClientRect();
+                ri.style.position = 'absolute';
+                ri.style.top = (rRect.top - contentRect.top) + 'px';
+                ri.style.left = (rRect.left - contentRect.left) + 'px';
+                ri.style.width = rRect.width + 'px';
+                ri.style.height = rRect.height + 'px';
+                ri.style.display = 'block';
+                ri.classList.add('active');
+                ri.style.zIndex = '2';
+            }
+
+            return true;
         }
 
         function hideSplitIframes(splitData) {
@@ -13574,11 +13575,11 @@ setInterval(async () => {
             splitContainer._noSidebarSquish = true;
             markSplitPaneActive(splitData, 'left', { skipNav: true });
 
-            // Retry positionSplitIframes until the container has non-zero size (avoids blank on first split)
+            // Retry positionSplitIframes until contentArea has non-zero size (avoids blank on first split)
             var attempts = 0;
             function tryPositionInitial() {
-                var rect = splitContainer.getBoundingClientRect();
-                if (rect.width > 0) {
+                var cRect = b.contentArea.getBoundingClientRect();
+                if (cRect.width > 0 && cRect.height > 0) {
                     positionSplitIframes(splitData);
                     lucide.createIcons();
                 } else if (attempts < 20) {
@@ -13587,6 +13588,15 @@ setInterval(async () => {
                 }
             }
             requestAnimationFrame(tryPositionInitial);
+
+            // Re-position on content area resize (window resize, sidebar open/close)
+            var resizeObserver = new ResizeObserver(function() {
+                if (b.activeTabId === activeTabId) {
+                    positionSplitIframes(splitData);
+                }
+            });
+            resizeObserver.observe(b.contentArea);
+            splitData._resizeObserver = resizeObserver;
         }
 
         function createBottomTab(url, faviconHtml) {
@@ -13696,6 +13706,12 @@ setInterval(async () => {
             }
 
             b._splitTabs.delete(splitTabId);
+
+            // Disconnect resize observer if present
+            if (splitData._resizeObserver) {
+                splitData._resizeObserver.disconnect();
+                splitData._resizeObserver = null;
+            }
 
             // Restore the tab that was kept
             var keepTab = b.tabs.get(keepTabId);
@@ -13954,11 +13970,11 @@ setInterval(async () => {
 
                     newSplit.splitContainer.style.display = 'flex';
 
-                    // Retry positionSplitIframes until the container has non-zero size
+                    // Retry positionSplitIframes until contentArea has non-zero size
                     var attempts = 0;
                     function tryPosition() {
-                        var rect = newSplit.splitContainer.getBoundingClientRect();
-                        if (rect.width > 0) {
+                        var cRect = b.contentArea.getBoundingClientRect();
+                        if (cRect.width > 0 && cRect.height > 0) {
                             positionSplitIframes(newSplit);
                             markSplitPaneActive(newSplit, newSplit.lastFocusedSide || newSplit.activeSide || 'left');
                         } else if (attempts < 20) {
