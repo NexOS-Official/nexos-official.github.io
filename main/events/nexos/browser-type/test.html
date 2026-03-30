@@ -4659,7 +4659,6 @@ body.reduce-motion *::after {
     }
 
 
-/* ===== SPLIT VIEW STYLES ===== */
 .split-content-area {
     display: flex;
     width: 100%;
@@ -4675,12 +4674,10 @@ body.reduce-motion *::after {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    background: transparent; /* iframes sit above via absolute positioning */
+    background: transparent;
 }
 
-/* Iframes absolutely positioned over panes — no DOM moves = no reloads */
 .split-pane .tab-content {
-    /* iframes are no longer children of panes; this rule is kept for legacy compat */
     flex: 1;
     width: 100%;
     height: 100%;
@@ -4754,7 +4751,7 @@ body.reduce-motion *::after {
     white-space: nowrap;
     overflow: visible;
     text-overflow: ellipsis;
-    border: 1px solid #e0e0e0;
+    border: 1px solid #ffffff;
     border-bottom: none;
     flex-shrink: 0;
     z-index: 3;
@@ -4809,7 +4806,6 @@ body.reduce-motion *::after {
     display: inline-block;
 }
 
-/* Rounded corner styling for split-bottom-tab — same curved corners as active tabs */
 .split-bottom-tab::before {
     content: '';
     position: absolute;
@@ -4834,7 +4830,6 @@ body.reduce-motion *::after {
     -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
 }
 
-/* Split tab in tab bar — same size as normal tabs (120px-240px) */
 .tab.split-tab {
     min-width: 120px !important;
     max-width: 240px !important;
@@ -4853,7 +4848,6 @@ body.reduce-motion *::after {
     overflow: hidden;
 }
 
-/* Each half looks exactly like a normal tab */
 .tab.split-tab .split-tab-half {
     display: flex;
     align-items: center;
@@ -4864,9 +4858,9 @@ body.reduce-motion *::after {
     gap: 0;
     overflow: hidden;
     padding: 0 8px;
+    outline: none;
 }
 
-/* Favicon: same as normal tab */
 .tab.split-tab .split-tab-half .tab-favicon {
     width: 16px;
     height: 16px;
@@ -4881,7 +4875,6 @@ body.reduce-motion *::after {
     border-radius: 50%;
 }
 
-/* Title: same as normal tab */
 .tab.split-tab .split-tab-half .tab-title {
     flex: 1;
     font-size: 12px;
@@ -4894,7 +4887,6 @@ body.reduce-motion *::after {
     mask-image: linear-gradient(to right, black calc(100% - 24px), transparent 100%);
 }
 
-/* Close button: same as normal tab — NO hover background */
 .tab.split-tab .split-tab-half .tab-close {
     width: 16px;
     height: 16px;
@@ -4922,17 +4914,14 @@ body.reduce-motion *::after {
     flex-shrink: 0;
 }
 
-/* Inactive split tab (not selected) - both halves dimmed like inactive tabs */
 .tab.split-tab:not(.active) .split-tab-half {
     opacity: 0.75;
 }
 
-/* Active split tab (selected) - dimmed half looks inactive */
 .tab.split-tab.active .split-tab-half {
     opacity: 0.65;
 }
 
-/* Active split tab (selected) - active half is bright */
 .tab.split-tab.active .split-tab-half.is-pane-active {
     opacity: 1;
 }
@@ -4942,7 +4931,6 @@ body.reduce-motion *::after {
     font-weight: 500;
 }
 
-/* Thin divider between the two halves */
 .tab.split-tab .split-tab-divider {
     width: 1px;
     height: 18px;
@@ -4951,7 +4939,6 @@ body.reduce-motion *::after {
     margin: 0 2px;
 }
 
-/* Active half gets a subtle visual indicator */
 .tab.split-tab.active .split-tab-half.is-pane-active {
     background: rgba(255,255,255,0.4);
     border-radius: 4px;
@@ -4976,7 +4963,6 @@ body.reduce-motion *::after {
     display: block;
 }
 
-/* Tab drag overlay - prevents iframe from stealing mouse events */
 #tab-drag-overlay {
     position: fixed;
     top: 0;
@@ -5666,7 +5652,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 window.addEventListener('message', (e) => {
                     if (e.data && e.data.type === 'urlChange' && e.data.url) {
-                        // Skip if this is a split tab - the split view handler manages the address bar
                         if (this._splitTabs && (this._splitTabs.has(this.activeTabId) || 
                             Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === this.activeTabId || sd.rightTabId === this.activeTabId))) {
                             return;
@@ -5676,7 +5661,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (tab) {
                             const newUrl = e.data.url;
                             tab.currentUrl = newUrl;
-                            // Only update address bar if not focused (avoid disrupting typing)
                             if (document.activeElement !== this.addressBar) {
                                 this.addressBar.value = newUrl;
                             }
@@ -6782,7 +6766,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.dragState.isDragging = true;
                 this.dragState.draggedTab.classList.add('sliding');
                 
-                // Show drag overlay to prevent iframe from stealing mouse events
                 var dragOverlay = document.getElementById('tab-drag-overlay');
                 if (dragOverlay) dragOverlay.classList.add('active');
                 
@@ -6913,7 +6896,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             resetDragState() {
-                // Hide drag overlay
                 var dragOverlay = document.getElementById('tab-drag-overlay');
                 if (dragOverlay) dragOverlay.classList.remove('active');
                 
@@ -7064,13 +7046,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (originalUrl && originalUrl !== 'about:blank') {
                         this.updateTabInfo(tabId);
                         
-                        // Check if this tab is part of a split view - if so, let split handler manage address bar
                         const isInSplit = this._splitTabs && (this._splitTabs.has(tabId) || 
                             Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === tabId || sd.rightTabId === tabId));
                         
                         if (this.activeTabId === tabId && !isInSplit) {
                             this.updateFavicon(tab, originalUrl);
-                            // Only update address bar if not focused
                             if (document.activeElement !== this.addressBar) {
                                 this.addressBar.value = originalUrl;
                             }
@@ -7090,7 +7070,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         
                         setTimeout(() => {
                             this.updateTabInfo(tabId);
-                            // Skip if in split or if address bar is focused
                             const stillInSplit = this._splitTabs && (this._splitTabs.has(tabId) || 
                                 Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === tabId || sd.rightTabId === tabId));
                             if (this.activeTabId === tabId && !stillInSplit && document.activeElement !== this.addressBar) {
@@ -11782,7 +11761,6 @@ setInterval(async () => {
             tab.currentUrl = newUrl;
             tab.url = tab.iframe.src;
 
-            // Check if this tab is part of a split view - if so, split handler manages address bar
             var isInSplit = b._splitTabs && (b._splitTabs.has(tab.id) || 
                 Array.from(b._splitTabs.values()).some(function(sd) { return sd.leftTabId === tab.id || sd.rightTabId === tab.id; }));
 
@@ -11915,7 +11893,6 @@ setInterval(async () => {
                 b.injectNewTabInterceptor(iframe);
                 b.injectUrlChangeMonitor(iframe, tabId);
 
-                // Check if this tab is part of a split view - if so, split handler manages address bar
                 var isInSplit = b._splitTabs && (b._splitTabs.has(tabId) || 
                     Array.from(b._splitTabs.values()).some(function(sd) { return sd.leftTabId === tabId || sd.rightTabId === tabId; }));
 
@@ -12656,7 +12633,6 @@ setInterval(async () => {
         var b = window.browser;
         if (!b || !b.activeTabId) return;
         
-        // Skip if this is a split tab - the split view handler manages the address bar
         if (b._splitTabs && b._splitTabs.has(b.activeTabId)) {
             return;
         }
@@ -12699,7 +12675,6 @@ setInterval(async () => {
         if (realUrl && realUrl !== 'about:blank' && realUrl !== tab.currentUrl) {
             tab.currentUrl = realUrl;
             tab.url = tab.iframe.src;
-            // Only update address bar if not focused (avoid disrupting typing)
             if (document.activeElement !== b.addressBar) {
                 b.addressBar.value = realUrl;
             }
@@ -13079,14 +13054,7 @@ setInterval(async () => {
 </script>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
-// CROSS-ORIGIN IFRAME KEYBOARD SHORTCUT CAPTURE SYSTEM
-// Enables Alt+T, Alt+W, Ctrl+R, etc. even when iframe has focus
-// ═══════════════════════════════════════════════════════════════
 (function() {
-    // ── 1. MOUSE-HOVER FOCUS STEAL ──
-    // When mouse enters browser chrome (tab bar, nav bar, bookmarks),
-    // steal focus back from iframe so keyboard shortcuts work instantly.
     var chromeIds = ['tabBar', 'navigationBar', 'bookmarksBar', 'newTabBtn', 'taskbar'];
     chromeIds.forEach(function(id) {
         var el = document.getElementById(id);
@@ -13096,11 +13064,6 @@ setInterval(async () => {
         });
     });
 
-    // ── 2. (removed – no toast hints) ──
-
-    // ── 3. ESCAPE KEY FOCUS RECOVERY ──
-    // Escape key DOES bubble from some cross-origin iframes in many browsers.
-    // Use it as a universal "return to browser chrome" key.
     window.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             var ae = document.activeElement;
@@ -13115,13 +13078,9 @@ setInterval(async () => {
         }
     }, true);
 
-    // ── 4. WINDOW BLUR DETECTION ──
-    // When window blurs (iframe steals focus), set up mouseenter
-    // listeners on the content area to re-grab focus on mouse move out of iframe
     var _blurOverlay = null;
 
     window.addEventListener('blur', function() {
-        // Small delay to confirm it's iframe focus, not tab switch
         setTimeout(function() {
             if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
                 enableEdgeCapture();
@@ -13132,8 +13091,6 @@ setInterval(async () => {
     function enableEdgeCapture() {
         if (_blurOverlay) return;
 
-        // Create invisible edge strips at top of content area
-        // When mouse enters these, we steal focus back
         _blurOverlay = document.createElement('div');
         _blurOverlay.id = '_nexos-edge-capture';
         _blurOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;height:5px;z-index:99998;';
@@ -13144,7 +13101,6 @@ setInterval(async () => {
             disableEdgeCapture();
         });
 
-        // Also remove if user clicks anywhere in parent
         document.addEventListener('mousedown', function _cleanup() {
             disableEdgeCapture();
             document.removeEventListener('mousedown', _cleanup);
@@ -13158,13 +13114,9 @@ setInterval(async () => {
         }
     }
 
-    // ── 5. SAME-ORIGIN IFRAME KEY INJECTION ──
-    // For proxied (same-origin) iframes, inject the key forwarder script
-    // automatically when the iframe loads
     if (window.browser) {
         _patchBrowserForKeyInjection(window.browser);
     } else {
-        // Wait for browser to be created
         var _checkBrowser = setInterval(function() {
             if (window.browser) {
                 clearInterval(_checkBrowser);
@@ -13174,7 +13126,6 @@ setInterval(async () => {
     }
 
     function _patchBrowserForKeyInjection(b) {
-        // Observe new iframes and inject key forwarder into same-origin ones
         var origCreateNewTab = b.createNewTab.bind(b);
         b.createNewTab = function() {
             var tabId = origCreateNewTab.apply(b, arguments);
@@ -13185,7 +13136,6 @@ setInterval(async () => {
             return tabId;
         };
 
-        // Also attach to existing tabs
         b.tabs.forEach(function(tab) {
             if (tab.iframe) _attachKeyForwarder(tab.iframe);
         });
@@ -13195,7 +13145,6 @@ setInterval(async () => {
         iframe.addEventListener('load', function() {
             try {
                 var iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                // If we can access it, it's same-origin — inject forwarder
                 var script = iframeDoc.createElement('script');
                 script.textContent = '(' + function() {
                     document.addEventListener('keydown', function(e) {
@@ -13216,7 +13165,6 @@ setInterval(async () => {
                             } catch(x) {}
                         }
                     }, true);
-                    // Also forward from nested iframes
                     window.addEventListener('message', function(ev) {
                         if (ev.data && ev.data.type === 'nexos-keydown') {
                             try { window.parent.postMessage(ev.data, '*'); } catch(x) {}
@@ -13225,7 +13173,6 @@ setInterval(async () => {
                 }.toString() + ')();';
                 iframeDoc.head.appendChild(script);
             } catch(e) {
-                // Cross-origin — can't inject, rely on other methods
             }
         });
     }
@@ -13235,7 +13182,6 @@ setInterval(async () => {
 
 
 <script>
-/* ===== SPLIT VIEW MODULE ===== */
 (function() {
     'use strict';
 
@@ -13248,11 +13194,8 @@ setInterval(async () => {
 
     waitForBrowser(function(b) {
 
-        // ---- State ----
-        // splitTabs: Map<tabId, { leftTabId, rightTabId, leftIframe, rightIframe, leftUrl, rightUrl, leftTitle, rightTitle, leftFavicon, rightFavicon, splitRatio }>
         b._splitTabs = new Map();
 
-        // ---- Helper: extract domain for bottom tab ----
         function getCoreDomain(url) {
             if (!url || url === 'about:blank') return '';
             try {
@@ -13277,7 +13220,6 @@ setInterval(async () => {
             return name + tld;
         }
 
-        // ---- Helper: get tab URL ----
         function getTabUrl(tab) {
             if (!tab) return '';
             var realUrl = b.getIframeCurrentUrl(tab);
@@ -13361,7 +13303,6 @@ setInterval(async () => {
             if (!activeTab) return;
             var url = getTabUrl(activeTab) || '';
             activeTab.currentUrl = url;
-            // Only update address bar if it's not focused (avoid disrupting user typing)
             if (b.addressBar && document.activeElement !== b.addressBar) {
                 b.addressBar.value = url;
             }
@@ -13374,8 +13315,7 @@ setInterval(async () => {
         }
 
         function bindSplitPaneFocus(splitData) {
-            // Panes are visual containers; iframes are absolutely positioned on top.
-            // We listen on both the pane divs AND the iframes for focus detection.
+
             ['left', 'right'].forEach(function(side) {
                 var iframe = side === 'left' ? splitData.leftIframe : splitData.rightIframe;
                 var pane = splitData.splitContainer.querySelector('[data-side="' + side + '"]');
@@ -13387,7 +13327,6 @@ setInterval(async () => {
                     iframe.addEventListener('pointerdown', function() { markSplitPaneActive(splitData, side); }, true);
                     iframe.addEventListener('mousedown', function() { markSplitPaneActive(splitData, side); }, true);
                     iframe.addEventListener('load', function() {
-                        // Update URL and favicon on load
                         var tabId = side === 'left' ? splitData.leftTabId : splitData.rightTabId;
                         var tab = b.tabs.get(tabId);
                         if (tab) {
@@ -13426,7 +13365,6 @@ setInterval(async () => {
                                 }
                             }
                         }
-                        // Only update address bar if this side is active
                         if (splitData.activeSide === side) {
                             markSplitPaneActive(splitData, side, false);
                         }
@@ -13436,20 +13374,17 @@ setInterval(async () => {
         }
 
         function moveIframeIntoPane(splitData, side) {
-            // We do NOT physically move iframes into panes — that causes reloads.
-            // Instead, iframes stay in contentArea and are positioned via positionSplitIframes().
+
             var pane = splitData.splitContainer.querySelector('[data-side="' + side + '"]');
             var bottomTab = side === 'left' ? splitData.leftBottomTab : splitData.rightBottomTab;
             if (!pane || !bottomTab) return;
-            // Only move the bottom tab (non-iframe) into the pane
             pane.appendChild(bottomTab);
         }
 
         function positionSplitIframes(splitData) {
             var container = splitData.splitContainer;
             var rect = container.getBoundingClientRect();
-            // If the container hasn't laid out yet, schedule a retry instead of
-            // silently giving up (this is what caused the blank-iframe bug)
+
             if (rect.width === 0) {
                 requestAnimationFrame(function() {
                     requestAnimationFrame(function() {
@@ -13511,7 +13446,6 @@ setInterval(async () => {
             }
         }
 
-        // ---- Create split view ----
         function createSplitView(targetTabId) {
             var activeTabId = b.activeTabId;
             if (!activeTabId || activeTabId === targetTabId) return;
@@ -13594,9 +13528,6 @@ setInterval(async () => {
             moveIframeIntoPane(splitData, 'left');
             moveIframeIntoPane(splitData, 'right');
 
-            // Iframes are already in contentArea - do NOT appendChild (that causes reload!)
-            // Just ensure they stay visible by setting display styles later in positionSplitIframes
-
             targetTab.element.style.display = 'none';
             targetTab._hiddenBySplit = true;
 
@@ -13607,8 +13538,6 @@ setInterval(async () => {
             splitContainer._noSidebarSquish = true;
             markSplitPaneActive(splitData, 'left', { skipNav: true });
 
-            // Position iframes after layout fully settles (double rAF ensures
-            // the tab-bar reflow caused by adding the split-tab is complete)
             requestAnimationFrame(function() {
                 requestAnimationFrame(function() {
                     positionSplitIframes(splitData);
@@ -13616,8 +13545,6 @@ setInterval(async () => {
                 });
             });
 
-            // Also watch the container for size changes (e.g. tab bar height
-            // shifts, sidebar open/close) and re-position on every change
             if (typeof ResizeObserver !== 'undefined') {
                 var ro = new ResizeObserver(function() {
                     if (b.activeTabId === splitData.leftTabId) {
@@ -13635,7 +13562,6 @@ setInterval(async () => {
             var domain = formatBottomDomain(url);
             var fullDomain = getCoreDomain(url);
             
-            // Include favicon if provided
             var faviconPart = faviconHtml ? '<span class="split-bottom-favicon">' + faviconHtml + '</span>' : '';
             tab.innerHTML = faviconPart + '<span class="split-bottom-domain">' + domain + '</span>';
             tab.title = fullDomain;
@@ -13659,7 +13585,6 @@ setInterval(async () => {
             var el = tab.element;
             el.classList.add('split-tab');
 
-            // Replace inner content with split layout
             el.innerHTML = '';
             var hoverBg = document.createElement('div');
             hoverBg.className = 'tab-hover-bg';
@@ -13668,7 +13593,6 @@ setInterval(async () => {
             var inner = document.createElement('div');
             inner.className = 'split-tab-inner';
 
-            // Left half
             var leftHalf = document.createElement('div');
             leftHalf.className = 'split-tab-half';
             leftHalf.dataset.side = 'left';
@@ -13677,11 +13601,9 @@ setInterval(async () => {
                 '<div class="tab-title">' + splitData.leftTitle + '</div>' +
                 '<div class="tab-close split-close-left"><i data-lucide="x" width="10" height="10"></i></div>';
 
-            // Divider
             var divLine = document.createElement('div');
             divLine.className = 'split-tab-divider';
 
-            // Right half
             var rightHalf = document.createElement('div');
             rightHalf.className = 'split-tab-half';
             rightHalf.dataset.side = 'right';
@@ -13695,7 +13617,6 @@ setInterval(async () => {
             inner.appendChild(rightHalf);
             el.appendChild(inner);
 
-            // Close button handlers
             leftHalf.querySelector('.split-close-left').addEventListener('click', function(e) {
                 e.stopPropagation();
                 closeSplitSide(tab.id, 'left');
@@ -13711,7 +13632,6 @@ setInterval(async () => {
             lucide.createIcons();
         }
 
-        // ---- Close one side of split ----
         function closeSplitSide(splitTabId, side) {
             var splitData = b._splitTabs.get(splitTabId);
             if (!splitData) return;
@@ -13721,36 +13641,30 @@ setInterval(async () => {
             var keepIframe = (side === 'left') ? splitData.rightIframe : splitData.leftIframe;
             var removeIframe = (side === 'left') ? splitData.leftIframe : splitData.rightIframe;
 
-            // Hide both iframes (no DOM move — they're already in contentArea)
             hideSplitIframes(splitData);
             keepIframe.classList.remove('active');
             removeIframe.classList.remove('active');
 
-            // Make the kept iframe visible normally
             keepIframe.style.display = 'block';
             keepIframe.classList.add('active');
 
-            // Remove split container
             if (splitData.splitContainer) {
                 splitData.splitContainer.remove();
             }
 
             b._splitTabs.delete(splitTabId);
 
-            // Restore the tab that was kept
             var keepTab = b.tabs.get(keepTabId);
             if (keepTab) {
                 keepTab.element.style.display = '';
                 keepTab._hiddenBySplit = false;
             }
 
-            // Restore the split tab element
             var splitTab = b.tabs.get(splitTabId);
             if (splitTab) {
                 restoreTabElement(splitTab);
             }
 
-            // Close the removed side's tab
             if (removeTabId !== splitTabId) {
                 var removeTab = b.tabs.get(removeTabId);
                 if (removeTab) {
@@ -13759,14 +13673,10 @@ setInterval(async () => {
                 }
             }
 
-            // Switch to the kept tab
             if (keepTabId === splitTabId) {
-                // The main tab stays, just restore its element
                 b.switchToTab(splitTabId);
             } else {
-                // Close the split tab and switch to the kept one
                 if (removeTabId === splitTabId) {
-                    // The main tab element is being removed
                     removeIframe.remove();
                     splitTab.element.remove();
                     b.tabs.delete(splitTabId);
@@ -13780,54 +13690,45 @@ setInterval(async () => {
             b.updateTabSizes();
         }
 
-        // ---- Unsplit (separate views) ----
         function unsplitTab(splitTabId) {
             var splitData = b._splitTabs.get(splitTabId);
             if (!splitData) return;
 
-            // Clean up ResizeObserver if one was attached
             if (splitData._resizeObserver) {
                 splitData._resizeObserver.disconnect();
                 splitData._resizeObserver = null;
             }
 
-            // Iframes were never moved — just restore their styles
             hideSplitIframes(splitData);
             splitData.leftIframe.classList.remove('active');
             splitData.rightIframe.classList.remove('active');
 
-            // Remove split container
             if (splitData.splitContainer) {
                 splitData.splitContainer.remove();
             }
 
             b._splitTabs.delete(splitTabId);
 
-            // Show the hidden tab again
             var rightTab = b.tabs.get(splitData.rightTabId);
             if (rightTab) {
                 rightTab.element.style.display = '';
                 rightTab._hiddenBySplit = false;
             }
 
-            // Restore the main tab element
             var mainTab = b.tabs.get(splitTabId);
             if (mainTab) {
                 restoreTabElement(mainTab);
             }
 
-            // Switch to main tab
-            b.activeTabId = null; // force re-switch
+            b.activeTabId = null;
             b.switchToTab(splitTabId);
             b.updateTabSizes();
         }
 
-        // ---- Reverse views ----
         function reverseViews(splitTabId) {
             var splitData = b._splitTabs.get(splitTabId);
             if (!splitData) return;
 
-            // Swap data
             var tmpId = splitData.leftTabId;
             splitData.leftTabId = splitData.rightTabId;
             splitData.rightTabId = tmpId;
@@ -13848,20 +13749,16 @@ setInterval(async () => {
             splitData.leftFavicon = splitData.rightFavicon;
             splitData.rightFavicon = tmpFav;
 
-            // Rearrange bottom tabs only (no iframe DOM moves)
             moveIframeIntoPane(splitData, 'left');
             moveIframeIntoPane(splitData, 'right');
 
-            // Reposition iframes visually (no reload)
             requestAnimationFrame(function() {
                 positionSplitIframes(splitData);
             });
 
-            // Update bottom tabs
             updateBottomTab(splitData.leftBottomTab, splitData.leftUrl);
             updateBottomTab(splitData.rightBottomTab, splitData.rightUrl);
 
-            // Update tab element
             var mainTab = b.tabs.get(splitTabId);
             if (mainTab) {
                 updateSplitTabElement(mainTab, splitData);
@@ -13880,13 +13777,11 @@ setInterval(async () => {
             tabEl._shortDomain = domain;
             tabEl._fullDomain = fullDomain;
             
-            // Update favicon if provided
             if (faviconHtml) {
                 var favEl = tabEl.querySelector('.split-bottom-favicon');
                 if (favEl) {
                     favEl.innerHTML = faviconHtml;
                 } else {
-                    // Add favicon element if it doesn't exist
                     var newFavEl = document.createElement('span');
                     newFavEl.className = 'split-bottom-favicon';
                     newFavEl.innerHTML = faviconHtml;
@@ -13904,7 +13799,6 @@ setInterval(async () => {
                 '<div class="tab-title">' + (tab.title || 'Tab') + '</div>' +
                 '<div class="tab-close"><i data-lucide="x" width="12" height="12"></i></div>';
 
-            // Re-bind close
             tab.element.querySelector('.tab-close').addEventListener('click', function(e) {
                 e.stopPropagation();
                 b.closeTab(tab.id);
@@ -13912,7 +13806,6 @@ setInterval(async () => {
             lucide.createIcons();
         }
 
-        // ---- Divider dragging ----
         function setupDividerDrag(divider, splitData) {
             var isDragging = false;
             var container = splitData.splitContainer;
@@ -13924,7 +13817,6 @@ setInterval(async () => {
                 document.body.style.cursor = 'col-resize';
                 document.body.style.userSelect = 'none';
 
-                // Add overlay to prevent iframe stealing events
                 var overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;cursor:col-resize;';
                 overlay.id = 'split-drag-overlay';
@@ -13936,12 +13828,10 @@ setInterval(async () => {
                 var rect = container.getBoundingClientRect();
                 var ratio = Math.max(0.15, Math.min(0.85, (e.clientX - rect.left) / rect.width));
                 splitData.splitRatio = ratio;
-                // Update pane flex for visual container
                 var leftPane = container.querySelector('[data-side="left"]');
                 var rightPane = container.querySelector('[data-side="right"]');
                 if (leftPane) leftPane.style.flex = ratio + '';
                 if (rightPane) rightPane.style.flex = (1 - ratio) + '';
-                // Reposition iframes without DOM moves
                 positionSplitIframes(splitData);
             });
 
@@ -13956,7 +13846,6 @@ setInterval(async () => {
             });
         }
 
-        // Re-position split iframes on window resize
         window.addEventListener('resize', function() {
             b._splitTabs.forEach(function(splitData, splitTabId) {
                 if (b.activeTabId === splitTabId) {
@@ -13965,7 +13854,6 @@ setInterval(async () => {
             });
         });
 
-        // ---- Override switchToTab to handle split views ----
         var origSwitchToTab = b.switchToTab.bind(b);
         b.switchToTab = function(tabId) {
             if (b.activeTabId && b.activeTabId !== tabId) {
@@ -13998,9 +13886,6 @@ setInterval(async () => {
                     });
 
                     newSplit.splitContainer.style.display = 'flex';
-                    // Position iframes absolutely — no DOM move.
-                    // Double rAF ensures layout reflow (from tab bar changes) is
-                    // complete before we measure getBoundingClientRect().
                     requestAnimationFrame(function() {
                         requestAnimationFrame(function() {
                             positionSplitIframes(newSplit);
@@ -14014,18 +13899,14 @@ setInterval(async () => {
             origSwitchToTab(tabId);
         };
 
-        // ---- Override closeTab to handle split tabs ----
         var origCloseTab = b.closeTab.bind(b);
         b.closeTab = function(tabId) {
-            // Check if this is a split tab itself
             if (b._splitTabs.has(tabId)) {
                 unsplitTab(tabId);
-                // Now close normally
                 origCloseTab.call(b, tabId);
                 return;
             }
             
-            // Check if this tab is part of any split (left or right side)
             var foundInSplit = false;
             b._splitTabs.forEach(function(splitData, splitId) {
                 if (splitData.rightTabId === tabId) {
@@ -14037,16 +13918,12 @@ setInterval(async () => {
                 }
             });
             
-            // If we handled it as part of a split, don't close again
             if (foundInSplit) return;
             
-            // Check if closing this tab would leave us on nothing - need to switch to split tab
             var wasActive = (b.activeTabId === tabId);
             
-            // Before closing, find a good fallback tab (in case origCloseTab doesn't handle it well)
             var fallbackTab = null;
             if (wasActive) {
-                // Get all visible tabs in DOM order
                 var tabElements = Array.from(b.tabBar.querySelectorAll('.tab'));
                 var currentIndex = -1;
                 var visibleTabs = [];
@@ -14059,7 +13936,6 @@ setInterval(async () => {
                     }
                 });
                 
-                // Also include split tabs as potential fallbacks
                 b._splitTabs.forEach(function(splitData, splitId) {
                     var splitTab = b.tabs.get(splitId);
                     if (splitTab && !splitTab._closing) {
@@ -14069,16 +13945,13 @@ setInterval(async () => {
                     }
                 });
                 
-                // Sort by DOM position
                 visibleTabs.sort(function(a, b) { return a.index - b.index; });
                 
-                // Find the next best tab (prefer right neighbor, then left)
                 var closingIndex = visibleTabs.findIndex(function(vt) { return vt.id === tabId; });
                 if (closingIndex >= 0) {
                     var nextTab = visibleTabs[closingIndex + 1] || visibleTabs[closingIndex - 1];
                     if (nextTab) fallbackTab = nextTab.id;
                 } else if (visibleTabs.length > 0) {
-                    // Just pick the first visible tab
                     var firstNonClosing = visibleTabs.find(function(vt) { return vt.id !== tabId; });
                     if (firstNonClosing) fallbackTab = firstNonClosing.id;
                 }
@@ -14086,21 +13959,17 @@ setInterval(async () => {
             
             origCloseTab.call(b, tabId);
             
-            // If we were on the active tab and now nothing is active (or active is deleted), switch to fallback
             if (wasActive && fallbackTab && (!b.activeTabId || !b.tabs.has(b.activeTabId) || b.activeTabId === tabId)) {
                 b.switchToTab(fallbackTab);
             }
         };
 
-        // ---- Override sidebar margin to not affect split views ----
         var origRepositionSidebars = b._repositionSidebars.bind(b);
         b._repositionSidebars = function() {
             origRepositionSidebars();
-            // If active tab is split, don't squish it
             if (b.activeTabId && b._splitTabs.has(b.activeTabId)) {
                 var splitData = b._splitTabs.get(b.activeTabId);
                 if (splitData && splitData.splitContainer) {
-                    // Don't change content area margin for split tabs
                     b.contentArea.style.marginRight = '';
                     b.contentArea.style.borderTopRightRadius = '';
                     b.contentArea.style.borderBottomRightRadius = '';
@@ -14108,7 +13977,6 @@ setInterval(async () => {
             }
         };
 
-        // ---- Context menu bindings ----
         var openInNewTabBtn = document.getElementById('openInNewTabBtn');
         var splitViewBtn = document.getElementById('splitViewBtn');
         var openInNewWindowBtn = document.getElementById('openInNewWindowBtn');
@@ -14118,21 +13986,18 @@ setInterval(async () => {
         var reverseViewsBtn = document.getElementById('reverseViewsBtn');
         var splitManageSep = document.getElementById('splitManageSep');
 
-        // Show/hide split management items based on context
         var origShowContextMenu = b.showContextMenu.bind(b);
         b.showContextMenu = function(x, y, tabId) {
             origShowContextMenu(x, y, tabId);
 
             var isSplit = b._splitTabs.has(tabId);
 
-            // Show split management options if this is a split tab
             splitManageSep.style.display = isSplit ? '' : 'none';
             separateViewsBtn.style.display = isSplit ? '' : 'none';
             closeLeftViewBtn.style.display = isSplit ? '' : 'none';
             closeRightViewBtn.style.display = isSplit ? '' : 'none';
             reverseViewsBtn.style.display = isSplit ? '' : 'none';
 
-            // Hide "open in split view" if there's only 1 tab
             splitViewBtn.style.display = (b.tabs.size > 1 && !isSplit) ? '' : 'none';
         };
 
@@ -14375,7 +14240,6 @@ setInterval(async () => {
             origGoForward();
         };
 
-        // ---- Periodic update of split tab info ----
         setInterval(function() {
             b._splitTabs.forEach(function(splitData, splitTabId) {
                 var leftTab = b.tabs.get(splitData.leftTabId);
@@ -14412,7 +14276,6 @@ setInterval(async () => {
                             splitData.leftFavicon = newLeftFav;
                             var leftFavEl = mainTab.element.querySelector('[data-side="left"] .tab-favicon');
                             if (leftFavEl) { leftFavEl.innerHTML = newLeftFav; lucide.createIcons(); }
-                            // Also update bottom tab favicon
                             updateBottomTab(splitData.leftBottomTab, splitData.leftUrl, newLeftFav);
                         }
                     }
@@ -14422,13 +14285,11 @@ setInterval(async () => {
                             splitData.rightFavicon = newRightFav;
                             var rightFavEl = mainTab.element.querySelector('[data-side="right"] .tab-favicon');
                             if (rightFavEl) { rightFavEl.innerHTML = newRightFav; lucide.createIcons(); }
-                            // Also update bottom tab favicon
                             updateBottomTab(splitData.rightBottomTab, splitData.rightUrl, newRightFav);
                         }
                     }
                 }
 
-                // Only sync chrome if address bar is NOT focused (avoid disrupting typing)
                 if (b.activeTabId === splitTabId && document.activeElement !== b.addressBar) {
                     syncSplitChrome(splitData, true);
                 }
