@@ -5507,9 +5507,25 @@ document.addEventListener("DOMContentLoaded", () => {
                                 
                     const key = e.key.toLowerCase();
                                 
-                    if (e.altKey && key === 't') {
+                    if ((e.ctrlKey || e.metaKey) && key === 't') {
                         e.preventDefault();
+                        e.stopPropagation();
                         this.createNewTab();
+                    
+                    } else if ((e.ctrlKey || e.metaKey) && key === 'w') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (this.activeTabId) this.closeTab(this.activeTabId);
+                    
+                    } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && key === 'r') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.refresh();
+                    
+                    } else if ((e.ctrlKey || e.metaKey) && key === 'r') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.refresh();
                     
                     } else if (e.altKey && key === 'n' && !e.shiftKey) {
                         e.preventDefault();
@@ -5534,10 +5550,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             tab.iframe.src = '/credits.html';
                             this.updateAddressBar();
                         }
-                    
-                    } else if (e.altKey && key === 'w') {
-                        e.preventDefault();
-                        if (this.activeTabId) this.closeTab(this.activeTabId);
                     }
                     if (e.altKey && e.key.toLowerCase() === 'x') {
                         e.preventDefault();
@@ -5559,10 +5571,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.addEventListener('keydown', (e) => {
                     if (e.ctrlKey || e.metaKey) {
                         switch(e.key) {
-                            case 'r':
-                                e.preventDefault();
-                                this.refresh();
-                                break;
                             case 'l':
                                 e.preventDefault();
                                 this.addressBar.focus();
@@ -12665,46 +12673,7 @@ setInterval(async () => {
         });
     });
 
-    // ── 2. IFRAME FOCUS DETECTION + HINT TOAST ──
-    // Detect when user clicks into an iframe and show a one-time hint
-    var _iframeHintShown = {};
-    var _lastActiveTag = '';
-
-    setInterval(function() {
-        var ae = document.activeElement;
-        if (ae && ae.tagName === 'IFRAME') {
-            var id = ae.id || ae.src || 'unknown';
-            if (_lastActiveTag !== 'IFRAME') {
-                _lastActiveTag = 'IFRAME';
-                if (!_iframeHintShown[id]) {
-                    _iframeHintShown[id] = true;
-                    _showKeybindHint();
-                }
-            }
-        } else {
-            _lastActiveTag = ae ? ae.tagName : '';
-        }
-    }, 800);
-
-    function _showKeybindHint() {
-        var existing = document.getElementById('_nexos-keyhint');
-        if (existing) existing.remove();
-
-        var hint = document.createElement('div');
-        hint.id = '_nexos-keyhint';
-        hint.textContent = '⌨ Hover tab bar for shortcuts';
-        hint.style.cssText = 'position:fixed;bottom:60px;left:50%;transform:translateX(-50%);' +
-            'background:rgba(40,40,40,0.92);color:#e0e0e0;padding:8px 18px;border-radius:20px;' +
-            'font-size:12px;font-family:inherit;z-index:99999;pointer-events:none;' +
-            'opacity:0;transition:opacity 0.3s ease;backdrop-filter:blur(8px);';
-        document.body.appendChild(hint);
-
-        requestAnimationFrame(function() { hint.style.opacity = '1'; });
-        setTimeout(function() {
-            hint.style.opacity = '0';
-            setTimeout(function() { hint.remove(); }, 400);
-        }, 2500);
-    }
+    // ── 2. (removed – no toast hints) ──
 
     // ── 3. ESCAPE KEY FOCUS RECOVERY ──
     // Escape key DOES bubble from some cross-origin iframes in many browsers.
