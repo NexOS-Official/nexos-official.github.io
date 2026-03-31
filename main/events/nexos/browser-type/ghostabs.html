@@ -214,7 +214,7 @@
         }
 
         .tab.swapping {
-            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
             will-change: transform;
         }
 
@@ -276,21 +276,39 @@
         }
 
         .tab.tab-pinning {
-            transform: translateX(-20px);
             z-index: 100;
         }
 
         .tab.tab-unpinning {
-            transform: translateX(20px);
             z-index: 100;
         }
 
         .tab.pinned {
             min-width: 30px !important;
             max-width: 30px !important;
-            width: 70px !important;
+            width: 30px !important;
             padding: 0 6px !important;
             order: -1;
+        }
+
+        .tab.tab-animating {
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        padding 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                        opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform, width, min-width, max-width, padding;
+        }
+
+        .tab.tab-neighbors-animating {
+            transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
+        }
+
+        .tab.drag-settling {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: transform;
         }
 
         .tab.pinned .tab-close {
@@ -380,11 +398,10 @@
 
 
         .tab-favicon {
-            
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
-            border-radius: 50%;
+          width: 20px;
+          height: 20px;
+          margin-right: 12px;
+          border-radius: 50%;
             background: transparent;
             display: flex;
             align-items: center;
@@ -398,12 +415,11 @@
         }
 
         .tab-favicon img {
-            
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            position: relative;
-            z-index: 2;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          position: relative;
+          z-index: 2;
         }
 
         .tab-favicon .favicon-glow {
@@ -6729,26 +6745,83 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (!tab) return;
                 if (this._splitTabs && this._splitTabs.has(tabId)) return;
 
+                const startRect = tab.element.getBoundingClientRect();
+                const startWidth = tab.element.offsetWidth;
+                
+                const allTabs = Array.from(this.tabs.values()).filter(t => !t._hiddenBySplit && t.element.style.display !== 'none');
+                const tabRects = new Map();
+                allTabs.forEach(t => {
+                    tabRects.set(t.id, t.element.getBoundingClientRect());
+                });
+
                 tab.element.classList.add('tab-pinning');
                 tab.pinned = true;
                 tab.element.classList.add('pinned');
                 
-                setTimeout(() => {
-                    tab.element.classList.remove('tab-pinning');
-                    
-                    const pinnedTabs = Array.from(this.tabs.values()).filter(t => t.pinned && t.id !== tabId);
-                    const lastPinnedTab = pinnedTabs.length > 0 ? pinnedTabs[pinnedTabs.length - 1] : null;
-                    
-                    tab.element.remove();
-                    
-                    if (lastPinnedTab) {
-                        this.tabBar.insertBefore(tab.element, lastPinnedTab.element.nextSibling);
+                const pinnedTabs = Array.from(this.tabs.values()).filter(t => t.pinned && t.id !== tabId);
+                const lastPinnedTab = pinnedTabs.length > 0 ? pinnedTabs[pinnedTabs.length - 1] : null;
+                
+                tab.element.remove();
+                if (lastPinnedTab) {
+                    this.tabBar.insertBefore(tab.element, lastPinnedTab.element.nextSibling);
+                } else {
+                    const firstUnpinned = Array.from(this.tabs.values()).find(t => !t.pinned && t.id !== tabId);
+                    if (firstUnpinned) {
+                        this.tabBar.insertBefore(tab.element, firstUnpinned.element);
                     } else {
-                        this.tabBar.insertBefore(tab.element, this.tabBar.querySelector('.new-tab-btn'));
+                        this.tabBar.insertBefore(tab.element, this.newTabBtn);
                     }
+                }
+                
+                this.updateTabSizes();
+                
+                const endRect = tab.element.getBoundingClientRect();
+                
+                const deltaX = startRect.left - endRect.left;
+                const scaleX = startWidth / 30;
+                
+                tab.element.style.transition = 'none';
+                tab.element.style.transform = `translateX(${deltaX}px) scaleX(${scaleX})`;
+                tab.element.style.transformOrigin = 'left center';
+                
+                allTabs.forEach(t => {
+                    if (t.id === tabId) return;
+                    const oldRect = tabRects.get(t.id);
+                    const newRect = t.element.getBoundingClientRect();
+                    if (oldRect && newRect) {
+                        const dx = oldRect.left - newRect.left;
+                        if (Math.abs(dx) > 1) {
+                            t.element.style.transition = 'none';
+                            t.element.style.transform = `translateX(${dx}px)`;
+                        }
+                    }
+                });
+                
+                tab.element.offsetHeight;
+                
+                tab.element.classList.add('tab-animating');
+                tab.element.style.transition = '';
+                tab.element.style.transform = 'translateX(0) scaleX(1)';
+                
+                allTabs.forEach(t => {
+                    if (t.id === tabId) return;
+                    t.element.classList.add('tab-neighbors-animating');
+                    t.element.style.transition = '';
+                    t.element.style.transform = '';
+                });
+                
+                setTimeout(() => {
+                    tab.element.classList.remove('tab-pinning', 'tab-animating');
+                    tab.element.style.transform = '';
+                    tab.element.style.transformOrigin = '';
+                    
+                    allTabs.forEach(t => {
+                        t.element.classList.remove('tab-neighbors-animating');
+                        t.element.style.transform = '';
+                    });
                     
                     this.updateTabSizes();
-                }, 200);
+                }, 350);
                 
                 this.hideContextMenu();
             }
@@ -6757,24 +6830,77 @@ document.addEventListener("DOMContentLoaded", () => {
                 const tab = this.tabs.get(tabId);
                 if (!tab) return;
 
+                const startRect = tab.element.getBoundingClientRect();
+                const startWidth = tab.element.offsetWidth;
+                
+                const allTabs = Array.from(this.tabs.values()).filter(t => !t._hiddenBySplit && t.element.style.display !== 'none');
+                const tabRects = new Map();
+                allTabs.forEach(t => {
+                    tabRects.set(t.id, t.element.getBoundingClientRect());
+                });
+
                 tab.element.classList.add('tab-unpinning');
                 tab.pinned = false;
                 tab.element.classList.remove('pinned');
                 
-                setTimeout(() => {
-                    tab.element.classList.remove('tab-unpinning');
-                    
-                    tab.element.remove();
-                    
-                    const firstUnpinnedTab = Array.from(this.tabs.values()).find(t => !t.pinned && t.id !== tabId);
-                    if (firstUnpinnedTab) {
-                        this.tabBar.insertBefore(tab.element, firstUnpinnedTab.element);
-                    } else {
-                        this.tabBar.insertBefore(tab.element, this.newTabBtn);
+                tab.element.remove();
+                const firstUnpinnedTab = Array.from(this.tabs.values()).find(t => !t.pinned && t.id !== tabId);
+                if (firstUnpinnedTab) {
+                    this.tabBar.insertBefore(tab.element, firstUnpinnedTab.element);
+                } else {
+                    this.tabBar.insertBefore(tab.element, this.newTabBtn);
+                }
+                
+                this.updateTabSizes();
+                
+                const endRect = tab.element.getBoundingClientRect();
+                const endWidth = tab.element.offsetWidth;
+                
+                const deltaX = startRect.left - endRect.left;
+                const scaleX = startWidth / endWidth;
+                
+                tab.element.style.transition = 'none';
+                tab.element.style.transform = `translateX(${deltaX}px) scaleX(${scaleX})`;
+                tab.element.style.transformOrigin = 'left center';
+                
+                allTabs.forEach(t => {
+                    if (t.id === tabId) return;
+                    const oldRect = tabRects.get(t.id);
+                    const newRect = t.element.getBoundingClientRect();
+                    if (oldRect && newRect) {
+                        const dx = oldRect.left - newRect.left;
+                        if (Math.abs(dx) > 1) {
+                            t.element.style.transition = 'none';
+                            t.element.style.transform = `translateX(${dx}px)`;
+                        }
                     }
+                });
+                
+                tab.element.offsetHeight;
+                
+                tab.element.classList.add('tab-animating');
+                tab.element.style.transition = '';
+                tab.element.style.transform = 'translateX(0) scaleX(1)';
+                
+                allTabs.forEach(t => {
+                    if (t.id === tabId) return;
+                    t.element.classList.add('tab-neighbors-animating');
+                    t.element.style.transition = '';
+                    t.element.style.transform = '';
+                });
+                
+                setTimeout(() => {
+                    tab.element.classList.remove('tab-unpinning', 'tab-animating');
+                    tab.element.style.transform = '';
+                    tab.element.style.transformOrigin = '';
+                    
+                    allTabs.forEach(t => {
+                        t.element.classList.remove('tab-neighbors-animating');
+                        t.element.style.transform = '';
+                    });
                     
                     this.updateTabSizes();
-                }, 200);
+                }, 350);
                 
                 this.hideContextMenu();
             }
@@ -7016,6 +7142,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
 
+                    tab.element.classList.add('swapping');
                     tab.element.style.transform = `translateX(${offset}px)`;
                 });
             }
@@ -7052,17 +7179,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 newIndex = draggedIndex - swapCount;
 
-                this.reorderTabsInDOM(draggedIndex, newIndex);
-
-                this.dragState.draggedTab.classList.remove('sliding');
-                this.dragState.draggedTab.style.transform = '';
-
+                const draggedElement = this.dragState.draggedTab;
+                const currentTransform = this.dragState.currentOffset;
+                
                 this.dragState.tabOrder.forEach(tab => {
                     tab.element.classList.remove('swapping');
                     tab.element.style.transform = '';
                 });
 
-                this.updateTabSizes();
+                this.reorderTabsInDOM(draggedIndex, newIndex);
+
+                const targetPos = draggedElement.getBoundingClientRect();
+                const currentLeft = targetPos.left - currentTransform;
+                const finalDelta = currentLeft - targetPos.left + currentTransform;
+
+                draggedElement.classList.remove('sliding');
+                draggedElement.style.transition = 'none';
+                draggedElement.style.transform = `translateX(${finalDelta}px)`;
+                
+                draggedElement.offsetHeight;
+                
+                draggedElement.classList.add('drag-settling');
+                draggedElement.style.transition = '';
+                draggedElement.style.transform = 'translateX(0)';
+
+                setTimeout(() => {
+                    draggedElement.classList.remove('drag-settling');
+                    draggedElement.style.transform = '';
+                    this.updateTabSizes();
+                }, 300);
             }
 
             reorderTabsInDOM(oldIndex, newIndex) {
@@ -7138,7 +7283,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             tryFaviconSources(faviconElement, sources, index, tab = null) {
                 if (index >= sources.length) {
-                    
                     faviconElement.innerHTML = '<i data-lucide="globe" width="20" height="20"></i>';
                     lucide.createIcons();
                     return;
@@ -7149,6 +7293,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 img.style.width = '20px';
                 img.style.height = '20px';
+                img.style.minWidth = '20px';
+                img.style.minHeight = '20px';
+                img.style.maxWidth = '20px';
+                img.style.maxHeight = '20px';
+                img.style.objectFit = 'contain';
                 
                 img.onerror = () => {
                     this.tryFaviconSources(faviconElement, sources, index + 1, tab);
@@ -7160,6 +7309,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     glow.src = sources[index];
                     glow.className = 'favicon-glow';
                     glow.draggable = false;
+                    glow.style.width = '38px';
+                    glow.style.height = '38px';
+                    glow.style.minWidth = '38px';
+                    glow.style.minHeight = '38px';
+                    glow.style.maxWidth = '38px';
+                    glow.style.maxHeight = '38px';
                     faviconElement.appendChild(glow);
                     faviconElement.appendChild(img);
                     if (tab) {
