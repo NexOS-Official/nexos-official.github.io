@@ -5,6 +5,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1239,14 +1240,21 @@
 
 
         .tab-content {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             border: none;
-            display: none;
+            visibility: hidden;
+            z-index: 0;
+            pointer-events: none;
         }
 
         .tab-content.active {
-            display: block;
+            visibility: visible;
+            z-index: 1;
+            pointer-events: auto;
         }
 
         .loading-indicator {
@@ -7306,7 +7314,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     const currentTab = this.tabs.get(this.activeTabId);
                     if (currentTab) {
                         currentTab.element.classList.remove('active');
-                        currentTab.iframe.style.display = 'none';
+                        currentTab.iframe.style.visibility = 'hidden';
+                        currentTab.iframe.style.zIndex = '0';
+                        currentTab.iframe.style.pointerEvents = 'none';
                     }
                 }
 
@@ -7314,7 +7324,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (newTab) {
                     this.activeTabId = tabId;
                     newTab.element.classList.add('active');
-                    newTab.iframe.style.display = 'block';
+                    newTab.iframe.style.visibility = 'visible';
+                    newTab.iframe.style.zIndex = '1';
+                    newTab.iframe.style.pointerEvents = 'auto';
 
                     const realUrl = this.getIframeCurrentUrl(newTab);
                     let currentUrl = realUrl || newTab.currentUrl || newTab.iframe.src;
@@ -14096,7 +14108,9 @@ setInterval(async () => {
                     if (currentTab) {
                         currentTab.element.classList.remove('active');
                         if (!b._splitTabs.has(b.activeTabId)) {
-                            currentTab.iframe.style.display = 'none';
+                            currentTab.iframe.style.visibility = 'hidden';
+                            currentTab.iframe.style.zIndex = '0';
+                            currentTab.iframe.style.pointerEvents = 'none';
                         }
                     }
                 }
@@ -14108,7 +14122,9 @@ setInterval(async () => {
 
                     b.tabs.forEach(function(t) {
                         if (!b._splitTabs.has(t.id) && t.id !== tabId) {
-                            t.iframe.style.display = 'none';
+                            t.iframe.style.visibility = 'hidden';
+                            t.iframe.style.zIndex = '0';
+                            t.iframe.style.pointerEvents = 'none';
                         }
                     });
 
