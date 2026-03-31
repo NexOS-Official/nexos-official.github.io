@@ -13868,6 +13868,11 @@ setInterval(async () => {
             var splitData = b._splitTabs.get(splitTabId);
             if (!splitData) return;
 
+            if (splitData._resizeObserver) {
+                splitData._resizeObserver.disconnect();
+                splitData._resizeObserver = null;
+            }
+
             var keepTabId = (side === 'left') ? splitData.rightTabId : splitData.leftTabId;
             var removeTabId = (side === 'left') ? splitData.leftTabId : splitData.rightTabId;
             var keepIframe = (side === 'left') ? splitData.rightIframe : splitData.leftIframe;
@@ -13877,8 +13882,16 @@ setInterval(async () => {
             keepIframe.classList.remove('active');
             removeIframe.classList.remove('active');
 
-            keepIframe.style.display = 'block';
-            keepIframe.classList.add('active');
+            if (b.contentArea && keepIframe.parentNode !== b.contentArea) {
+                b.contentArea.appendChild(keepIframe);
+            }
+
+            keepIframe.style.position = '';
+            keepIframe.style.left = '';
+            keepIframe.style.top = '';
+            keepIframe.style.width = '';
+            keepIframe.style.height = '';
+            keepIframe.style.zIndex = '';
 
             if (splitData.splitContainer) {
                 splitData.splitContainer.remove();
@@ -13904,6 +13917,8 @@ setInterval(async () => {
                     removeTab._hiddenBySplit = false;
                 }
             }
+
+            b.activeTabId = null;
 
             if (keepTabId === splitTabId) {
                 b.switchToTab(splitTabId);
