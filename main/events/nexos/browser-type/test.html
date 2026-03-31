@@ -7180,25 +7180,37 @@ document.addEventListener("DOMContentLoaded", () => {
                 newIndex = draggedIndex - swapCount;
 
                 const draggedElement = this.dragState.draggedTab;
-                const currentTransform = this.dragState.currentOffset;
-                
+                const currentOffset = this.dragState.currentOffset;
+
+                draggedElement.style.transition = 'none';
+                draggedElement.style.transform = `translateX(${currentOffset}px)`;
+
                 this.dragState.tabOrder.forEach(tab => {
                     tab.element.classList.remove('swapping');
+                    tab.element.style.transition = 'none';
                     tab.element.style.transform = '';
                 });
 
+                draggedElement.offsetHeight;
+
                 this.reorderTabsInDOM(draggedIndex, newIndex);
 
-                const targetPos = draggedElement.getBoundingClientRect();
-                const currentLeft = targetPos.left - currentTransform;
-                const finalDelta = currentLeft - targetPos.left + currentTransform;
+                const rectBefore = draggedElement.getBoundingClientRect();
+
+                draggedElement.style.transition = 'none';
+                draggedElement.style.transform = '';
+
+                draggedElement.offsetHeight;
+
+                const rectAfter = draggedElement.getBoundingClientRect();
+                const settle = rectBefore.left - rectAfter.left;
+
+                draggedElement.style.transition = 'none';
+                draggedElement.style.transform = `translateX(${settle}px)`;
+
+                draggedElement.offsetHeight;
 
                 draggedElement.classList.remove('sliding');
-                draggedElement.style.transition = 'none';
-                draggedElement.style.transform = `translateX(${finalDelta}px)`;
-                
-                draggedElement.offsetHeight;
-                
                 draggedElement.classList.add('drag-settling');
                 draggedElement.style.transition = '';
                 draggedElement.style.transform = 'translateX(0)';
