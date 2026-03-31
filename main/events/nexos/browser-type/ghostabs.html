@@ -1247,13 +1247,11 @@
             height: 100%;
             border: none;
             visibility: hidden;
-            z-index: 0;
             pointer-events: none;
         }
 
         .tab-content.active {
             visibility: visible;
-            z-index: 1;
             pointer-events: auto;
         }
 
@@ -4691,13 +4689,14 @@ body.reduce-motion *::after {
     width: 100%;
     height: 100%;
     border: none;
-    display: block;
     position: relative;
-    z-index: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .split-pane .tab-content.active {
-    display: block;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .split-divider {
@@ -7314,8 +7313,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     const currentTab = this.tabs.get(this.activeTabId);
                     if (currentTab) {
                         currentTab.element.classList.remove('active');
+                        currentTab.iframe.classList.remove('active');
                         currentTab.iframe.style.visibility = 'hidden';
-                        currentTab.iframe.style.zIndex = '0';
                         currentTab.iframe.style.pointerEvents = 'none';
                     }
                 }
@@ -7324,8 +7323,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (newTab) {
                     this.activeTabId = tabId;
                     newTab.element.classList.add('active');
+                    newTab.iframe.classList.add('active');
                     newTab.iframe.style.visibility = 'visible';
-                    newTab.iframe.style.zIndex = '1';
                     newTab.iframe.style.pointerEvents = 'auto';
 
                     const realUrl = this.getIframeCurrentUrl(newTab);
@@ -13640,7 +13639,8 @@ setInterval(async () => {
             li.style.left = left + 'px';
             li.style.width = leftWidth + 'px';
             li.style.height = rect.height + 'px';
-            li.style.display = 'block';
+            li.style.visibility = 'visible';
+            li.style.pointerEvents = 'auto';
             li.classList.add('active');
             li.style.zIndex = '2';
 
@@ -13649,14 +13649,16 @@ setInterval(async () => {
             ri.style.left = (left + leftWidth + dividerWidth) + 'px';
             ri.style.width = rightWidth + 'px';
             ri.style.height = rect.height + 'px';
-            ri.style.display = 'block';
+            ri.style.visibility = 'visible';
+            ri.style.pointerEvents = 'auto';
             ri.classList.add('active');
             ri.style.zIndex = '2';
         }
 
         function hideSplitIframes(splitData) {
             if (splitData.leftIframe) {
-                splitData.leftIframe.style.display = 'none';
+                splitData.leftIframe.style.visibility = 'hidden';
+                splitData.leftIframe.style.pointerEvents = 'none';
                 splitData.leftIframe.style.position = '';
                 splitData.leftIframe.style.top = '';
                 splitData.leftIframe.style.left = '';
@@ -13665,7 +13667,8 @@ setInterval(async () => {
                 splitData.leftIframe.style.zIndex = '';
             }
             if (splitData.rightIframe) {
-                splitData.rightIframe.style.display = 'none';
+                splitData.rightIframe.style.visibility = 'hidden';
+                splitData.rightIframe.style.pointerEvents = 'none';
                 splitData.rightIframe.style.position = '';
                 splitData.rightIframe.style.top = '';
                 splitData.rightIframe.style.left = '';
@@ -14108,8 +14111,8 @@ setInterval(async () => {
                     if (currentTab) {
                         currentTab.element.classList.remove('active');
                         if (!b._splitTabs.has(b.activeTabId)) {
+                            currentTab.iframe.classList.remove('active');
                             currentTab.iframe.style.visibility = 'hidden';
-                            currentTab.iframe.style.zIndex = '0';
                             currentTab.iframe.style.pointerEvents = 'none';
                         }
                     }
@@ -14122,8 +14125,8 @@ setInterval(async () => {
 
                     b.tabs.forEach(function(t) {
                         if (!b._splitTabs.has(t.id) && t.id !== tabId) {
+                            t.iframe.classList.remove('active');
                             t.iframe.style.visibility = 'hidden';
-                            t.iframe.style.zIndex = '0';
                             t.iframe.style.pointerEvents = 'none';
                         }
                     });
