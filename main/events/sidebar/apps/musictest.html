@@ -1176,15 +1176,28 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
 }
 
 let YT_player = null, ytReady = false, ticker = null;
-let _lastYtPollMs = 0, _lastYtPosMs = 0;
+let _lastYtPollMs = 0, _lastYtPosMs = 0, _ytPlayRate = 1.0;
 
 function getPrecisePos() {
+  const now = performance.now();
   if (ytReady && ST.playing) {
     const direct = YT_player.getCurrentTime?.() * 1000;
-    if (direct > 0) { _lastYtPosMs = direct; _lastYtPollMs = performance.now(); return direct; }
+    if (direct > 0) {
+      if (direct !== _lastYtPosMs) {
+        // YT gave us a fresh position — calibrate playback rate
+        const dt = now - _lastYtPollMs;
+        if (dt > 8 && _lastYtPosMs > 0) {
+          _ytPlayRate = Math.max(0.85, Math.min(1.15, (direct - _lastYtPosMs) / dt));
+        }
+        _lastYtPosMs = direct;
+        _lastYtPollMs = now;
+      }
+      // Always extrapolate forward at the measured rate.
+      // Prevents the ~250ms "same value → jump" pattern from YT's getCurrentTime.
+      return _lastYtPosMs + (now - _lastYtPollMs) * _ytPlayRate;
+    }
   }
-  const elapsed = performance.now() - _lastYtPollMs;
-  return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
+  return _lastYtPosMs + (ST.playing ? (now - _lastYtPollMs) * _ytPlayRate : 0);
 }
 
 window.onYouTubeIframeAPIReady = function() {
@@ -2761,23 +2774,23 @@ function _tickSyls(lineIdx, t, nextBound) {
           _setSylState(id, 'syl-done', 100, false);
         } else {
           const raw   = (t - sylStart) / Math.max(1, sylEnd - sylStart);
-          // Cubic ease-in-out with slight over-shoot feel at the leading edge
-          const eased = raw < 0.45
-            ? 2.8 * raw * raw
-            : 1 - Math.pow(-2 * raw + 2, 2.4) / 2;
-          _setSylState(id, 'syl-now', Math.min(100, eased * 110), false);
+          const eased = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
+          _setSylState(id, 'syl-now', Math.min(100, eased * 100), false);
         }
       }
     } else {
-      // ━━ FALLBACK: distribute syllables by stress-weighted fractions ━━
-      // Stressed syllables (first syl of content words) get more time
+      // ━━ FALLBACK: phonetic vowel-weighted syllable distribution ━━
       const sylWeights = syls.map((syl, si) => {
-        const hasVowel = /[aeiou]/i.test(syl);
-        const isFirst  = si === 0;
-        const isLast   = si === syls.length - 1;
-        let weight = hasVowel ? 1.1 : 0.85;
-        if (isFirst && syls.length > 1) weight *= 1.15;  // stressed opening
-        if (isLast)  weight *= 1.3;                       // trailing hold on final syl
+        const lower = syl.toLowerCase();
+        const vowels = (lower.match(/[aeiou]/g) || []).length;
+        const cons   = lower.replace(/[^a-z]/g, '').replace(/[aeiou]/g, '').length;
+        const isFirst = si === 0;
+        const isLast  = si === syls.length - 1;
+        // Vowel-rich syllables are held longer; hard consonant clusters are quicker
+        let weight = 0.75 + vowels * 0.30 - Math.min(cons, 3) * 0.04;
+        weight = Math.max(0.45, weight);
+        if (isFirst && syls.length > 1) weight *= 1.25; // downbeat emphasis
+        if (isLast)  weight *= 1.40;                     // natural trailing hold
         return weight;
       });
       const totalWeight = sylWeights.reduce((a, b) => a + b, 0) || 1;
@@ -2797,10 +2810,8 @@ function _tickSyls(lineIdx, t, nextBound) {
           _setSylState(id, 'syl-done', 100, false);
         } else {
           const raw   = (t - sylStart) / Math.max(1, sylEnd - sylStart);
-          const eased = raw < 0.45
-            ? 2.8 * raw * raw
-            : 1 - Math.pow(-2 * raw + 2, 2.4) / 2;
-          _setSylState(id, 'syl-now', Math.min(100, eased * 110), false);
+          const eased = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
+          _setSylState(id, 'syl-now', Math.min(100, eased * 100), false);
         }
       }
     }
@@ -2899,25 +2910,6 @@ function buildSylSpans(word, lineIdx, wi) {
 function renderSynced() {
   Object.keys(_sylState).forEach(k => delete _sylState[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
-
-  // Staggered entrance: first 12 lines slide/fade in from below
-  requestAnimationFrame(() => {
-    const lines = G('lscroll').querySelectorAll('.ll');
-    const STAGGER_MAX = 12;
-    lines.forEach((el, i) => {
-      if (i >= STAGGER_MAX) return;
-      const delay = i * 42;
-      el.style.cssText += `;animation:ll-enter 0.55s ${delay}ms cubic-bezier(.34,1.56,.64,1) both`;
-    });
-    // Clean up inline animation after entrance completes
-    setTimeout(() => {
-      lines.forEach((el, i) => {
-        if (i >= STAGGER_MAX) return;
-        // Strip only the inline animation we added; preserve any class-driven one
-        el.style.animation = '';
-      });
-    }, STAGGER_MAX * 42 + 700);
-  });
 }
 
 function seekLrc(i, evt) {
@@ -2966,7 +2958,7 @@ function tickLrc(posMs) {
   // AHEAD: how far into the future to look when deciding which line/syllable is "active".
   // With AI syllable timestamps, we need less lookahead (they're already precise).
   // With fallback word-timing, we need slightly more to compensate for estimation drift.
-  let AHEAD = 50;  // base: modest lookahead for AI-timed songs
+  let AHEAD = 55;  // base: modest lookahead for AI-timed songs
   {
     let lo=0,hi=ST.lrc.length-1,a=0;
     while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
@@ -2975,13 +2967,11 @@ function tickLrc(posMs) {
       const realW = aLine.words.filter(w=>!w._isPause&&!w._isInlineParen);
       const hasSylTimes = realW.some(w => w._sylTimes?.length);
       if (hasSylTimes) {
-        // AI timestamps: very tight lookahead, trust the data
-        AHEAD = 32;
+        AHEAD = 40;
       } else if (realW.length > 1) {
         const span = realW[realW.length-1].ms - realW[0].ms;
         const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
-        // Fallback: scale lookahead with tempo — faster songs need more, slower need less
-        AHEAD = Math.round(Math.max(30, Math.min(90, mps * 0.18)));
+        AHEAD = Math.round(Math.max(35, Math.min(100, mps * 0.22)));
       }
     }
   }
@@ -3040,16 +3030,12 @@ function tickLrc(posMs) {
       if      (dist < 0)      el.classList.add('past');
       else if (absDist === 1) el.classList.add('near');
       else if (absDist === 2) el.classList.add('near2');
-      // Progressive blur: past lines blur faster, future lines blur softly
       if (absDist >= 3) {
         const blurPx = dist < 0
-          ? Math.min(6, (absDist - 2) * 2.0).toFixed(1)   // past: stronger blur
-          : Math.min(4, (absDist - 2) * 1.0).toFixed(1);  // future: gentler blur
+          ? Math.min(6, (absDist - 2) * 2.0).toFixed(1)
+          : Math.min(4, (absDist - 2) * 1.0).toFixed(1);
         el.style.filter = `blur(${blurPx}px)`;
-        el.style.opacity = dist < 0
-          ? Math.max(0.04, 0.11 - (absDist - 3) * 0.03).toFixed(3)
-          : Math.max(0.06, 0.18 - (absDist - 3) * 0.04).toFixed(3);
-      } else { el.style.filter = ''; el.style.opacity = ''; }
+      } else { el.style.filter = ''; }
     });
 
     const focusEl = document.getElementById('ll'+focus);
