@@ -7179,65 +7179,32 @@ document.addEventListener("DOMContentLoaded", () => {
                 newIndex = draggedIndex - swapCount;
 
                 const draggedElement = this.dragState.draggedTab;
+                const currentTransform = this.dragState.currentOffset;
                 
-                draggedElement.style.transition = 'none';
-                draggedElement.style.transform = '';
                 this.dragState.tabOrder.forEach(tab => {
-                    tab.element.style.transition = 'none';
+                    tab.element.classList.remove('swapping');
                     tab.element.style.transform = '';
-                });
-                
-                draggedElement.offsetHeight;
-                
-                const startRect = draggedElement.getBoundingClientRect();
-                const tabRects = new Map();
-                this.dragState.tabOrder.forEach(tab => {
-                    tabRects.set(tab.id, tab.element.getBoundingClientRect());
                 });
 
                 this.reorderTabsInDOM(draggedIndex, newIndex);
 
-                const endRect = draggedElement.getBoundingClientRect();
-                const deltaX = startRect.left - endRect.left;
-                
+                const targetPos = draggedElement.getBoundingClientRect();
+                const currentLeft = targetPos.left - currentTransform;
+                const finalDelta = currentLeft - targetPos.left + currentTransform;
+
                 draggedElement.classList.remove('sliding');
                 draggedElement.style.transition = 'none';
-                draggedElement.style.transform = `translateX(${deltaX}px)`;
-                
-                this.dragState.tabOrder.forEach(tab => {
-                    if (tab.id === this.dragState.draggedTabId) return;
-                    
-                    const oldRect = tabRects.get(tab.id);
-                    const newRect = tab.element.getBoundingClientRect();
-                    if (oldRect && newRect) {
-                        const dx = oldRect.left - newRect.left;
-                        if (Math.abs(dx) > 1) {
-                            tab.element.style.transition = 'none';
-                            tab.element.style.transform = `translateX(${dx}px)`;
-                        }
-                    }
-                });
+                draggedElement.style.transform = `translateX(${finalDelta}px)`;
                 
                 draggedElement.offsetHeight;
                 
                 draggedElement.classList.add('drag-settling');
                 draggedElement.style.transition = '';
-                draggedElement.style.transform = '';
-                
-                this.dragState.tabOrder.forEach(tab => {
-                    if (tab.id === this.dragState.draggedTabId) return;
-                    tab.element.classList.remove('swapping');
-                    tab.element.classList.add('drag-settling');
-                    tab.element.style.transition = '';
-                    tab.element.style.transform = '';
-                });
+                draggedElement.style.transform = 'translateX(0)';
 
                 setTimeout(() => {
                     draggedElement.classList.remove('drag-settling');
-                    this.dragState.tabOrder.forEach(tab => {
-                        tab.element.classList.remove('drag-settling', 'swapping');
-                        tab.element.style.transform = '';
-                    });
+                    draggedElement.style.transform = '';
                     this.updateTabSizes();
                 }, 300);
             }
