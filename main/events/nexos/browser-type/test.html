@@ -398,11 +398,10 @@
 
 
         .tab-favicon {
-            
-            width: 20px;
-            height: 20px;
-            margin-right: 12px;
-            border-radius: 50%;
+          width: 20px;
+          height: 20px;
+          margin-right: 12px;
+          border-radius: 50%;
             background: transparent;
             display: flex;
             align-items: center;
@@ -416,12 +415,11 @@
         }
 
         .tab-favicon img {
-            
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            position: relative;
-            z-index: 2;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          position: relative;
+          z-index: 2;
         }
 
         .tab-favicon .favicon-glow {
@@ -7181,8 +7179,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 newIndex = draggedIndex - swapCount;
 
                 const draggedElement = this.dragState.draggedTab;
-                const startRect = draggedElement.getBoundingClientRect();
                 
+                draggedElement.style.transition = 'none';
+                draggedElement.style.transform = '';
+                this.dragState.tabOrder.forEach(tab => {
+                    tab.element.style.transition = 'none';
+                    tab.element.style.transform = '';
+                });
+                
+                draggedElement.offsetHeight;
+                
+                const startRect = draggedElement.getBoundingClientRect();
                 const tabRects = new Map();
                 this.dragState.tabOrder.forEach(tab => {
                     tabRects.set(tab.id, tab.element.getBoundingClientRect());
@@ -7191,11 +7198,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.reorderTabsInDOM(draggedIndex, newIndex);
 
                 const endRect = draggedElement.getBoundingClientRect();
-                
                 const deltaX = startRect.left - endRect.left;
                 
                 draggedElement.classList.remove('sliding');
-                
                 draggedElement.style.transition = 'none';
                 draggedElement.style.transform = `translateX(${deltaX}px)`;
                 
@@ -7310,7 +7315,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             tryFaviconSources(faviconElement, sources, index, tab = null) {
                 if (index >= sources.length) {
-                    
                     faviconElement.innerHTML = '<i data-lucide="globe" width="20" height="20"></i>';
                     lucide.createIcons();
                     return;
@@ -7321,6 +7325,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 img.style.width = '20px';
                 img.style.height = '20px';
+                img.style.minWidth = '20px';
+                img.style.minHeight = '20px';
+                img.style.maxWidth = '20px';
+                img.style.maxHeight = '20px';
+                img.style.objectFit = 'contain';
                 
                 img.onerror = () => {
                     this.tryFaviconSources(faviconElement, sources, index + 1, tab);
@@ -7332,6 +7341,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     glow.src = sources[index];
                     glow.className = 'favicon-glow';
                     glow.draggable = false;
+                    glow.style.width = '38px';
+                    glow.style.height = '38px';
+                    glow.style.minWidth = '38px';
+                    glow.style.minHeight = '38px';
+                    glow.style.maxWidth = '38px';
+                    glow.style.maxHeight = '38px';
                     faviconElement.appendChild(glow);
                     faviconElement.appendChild(img);
                     if (tab) {
