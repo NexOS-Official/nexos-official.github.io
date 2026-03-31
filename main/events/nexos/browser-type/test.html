@@ -4,6 +4,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11040,6 +11041,11 @@ setInterval(async () => {
     function getCurrentUrl() {
         var b = window.browser;
         if (!b) return '';
+        if (b.activeTabId && b._splitTabs && b._splitTabs.has(b.activeTabId)) {
+            var sd = b._splitTabs.get(b.activeTabId);
+            var activeTab = b.tabs.get(sd.activeSide === 'right' ? sd.rightTabId : sd.leftTabId);
+            if (activeTab) return activeTab.currentUrl || '';
+        }
         var tab = b.tabs.get(b.activeTabId);
         if (!tab) return '';
         return tab.currentUrl || '';
@@ -11048,6 +11054,14 @@ setInterval(async () => {
     function getCurrentTitle() {
         var b = window.browser;
         if (!b) return '';
+        if (b.activeTabId && b._splitTabs && b._splitTabs.has(b.activeTabId)) {
+            var sd = b._splitTabs.get(b.activeTabId);
+            var activeTab = b.tabs.get(sd.activeSide === 'right' ? sd.rightTabId : sd.leftTabId);
+            if (activeTab) {
+                var titleEl = activeTab.element ? activeTab.element.querySelector('.tab-title') : null;
+                return titleEl ? titleEl.textContent : (activeTab.title || '');
+            }
+        }
         var tab = b.tabs.get(b.activeTabId);
         if (!tab) return '';
         var titleEl = tab.element ? tab.element.querySelector('.tab-title') : null;
@@ -12047,11 +12061,25 @@ setInterval(async () => {
 
         window.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'nexos-inner-url-change' && e.data.url) {
-                var tab = b.tabs.get(b.activeTabId);
-                if (tab && !tab._navigatingHistory) {
+                var targetTab = null;
+                if (b.activeTabId && b._splitTabs && b._splitTabs.has(b.activeTabId)) {
+                    var sd = b._splitTabs.get(b.activeTabId);
+                    var leftTab = b.tabs.get(sd.leftTabId);
+                    var rightTab = b.tabs.get(sd.rightTabId);
+                    if (e.source && rightTab && rightTab.iframe && rightTab.iframe.contentWindow === e.source) {
+                        targetTab = rightTab;
+                    } else if (e.source && leftTab && leftTab.iframe && leftTab.iframe.contentWindow === e.source) {
+                        targetTab = leftTab;
+                    } else {
+                        targetTab = b.tabs.get(sd.activeSide === 'right' ? sd.rightTabId : sd.leftTabId);
+                    }
+                } else {
+                    targetTab = b.tabs.get(b.activeTabId);
+                }
+                if (targetTab && !targetTab._navigatingHistory) {
                     var newUrl = e.data.url;
-                    if (newUrl !== tab.currentUrl && newUrl !== 'about:blank') {
-                        b._handleUrlChange(tab, newUrl, true);
+                    if (newUrl !== targetTab.currentUrl && newUrl !== 'about:blank') {
+                        b._handleUrlChange(targetTab, newUrl, true);
                     }
                 }
             }
@@ -13862,26 +13890,26 @@ setInterval(async () => {
                     oldSplit.splitContainer.style.display = 'none';
                     hideSplitIframes(oldSplit);
                 }
+                var oldTab = b.tabs.get(b.activeTabId);
+                if (oldTab) {
+                    oldTab.element.classList.remove('active');
+                    if (!oldSplit) {
+                        oldTab.iframe.style.display = 'none';
+                    }
+                }
             }
 
             var newSplit = b._splitTabs.get(tabId);
             if (newSplit) {
-                if (b.activeTabId) {
-                    var currentTab = b.tabs.get(b.activeTabId);
-                    if (currentTab && !b._splitTabs.has(b.activeTabId)) {
-                        currentTab.element.classList.remove('active');
-                        currentTab.iframe.style.display = 'none';
-                    }
-                }
-
                 var newTab = b.tabs.get(tabId);
                 if (newTab) {
                     b.activeTabId = tabId;
                     newTab.element.classList.add('active');
 
                     b.tabs.forEach(function(t) {
-                        if (!b._splitTabs.has(t.id) && t.id !== tabId) {
+                        if (t.id !== tabId && !b._splitTabs.has(t.id)) {
                             t.iframe.style.display = 'none';
+                            t.element.classList.remove('active');
                         }
                     });
 
@@ -14249,7 +14277,8 @@ setInterval(async () => {
                     var newLeftUrl = getTabUrl(leftTab);
                     if (newLeftUrl && newLeftUrl !== splitData.leftUrl) {
                         splitData.leftUrl = newLeftUrl;
-                        updateBottomTab(splitData.leftBottomTab, newLeftUrl);
+                        var leftFav = getFaviconHtmlForUrl(newLeftUrl) || getTabFaviconHtml(leftTab);
+                        updateBottomTab(splitData.leftBottomTab, newLeftUrl, leftFav);
                     }
                     splitData.leftTitle = leftTab.title || 'Tab';
                 }
@@ -14258,7 +14287,8 @@ setInterval(async () => {
                     var newRightUrl = getTabUrl(rightTab);
                     if (newRightUrl && newRightUrl !== splitData.rightUrl) {
                         splitData.rightUrl = newRightUrl;
-                        updateBottomTab(splitData.rightBottomTab, newRightUrl);
+                        var rightFav = getFaviconHtmlForUrl(newRightUrl) || getTabFaviconHtml(rightTab);
+                        updateBottomTab(splitData.rightBottomTab, newRightUrl, rightFav);
                     }
                     splitData.rightTitle = rightTab.title || 'Tab';
                 }
