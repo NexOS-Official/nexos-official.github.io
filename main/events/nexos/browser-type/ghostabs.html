@@ -4982,6 +4982,184 @@ body.reduce-motion *::after {
     display: block;
 }
 
+    .recap-snapshot-mode .tab-restore-right {
+        display: flex;
+        flex-direction: column;
+    }
+    .recap-snapshot-content {
+        display: none;
+        flex-direction: column;
+        flex: 1;
+        overflow: hidden;
+    }
+    .recap-snapshot-mode .recap-snapshot-content {
+        display: flex;
+    }
+    .recap-snapshot-mode .tab-restore-tabs-inner {
+        display: none;
+    }
+    .recap-tabs-mode .recap-snapshot-content {
+        display: none;
+    }
+    .recap-tabs-mode .tab-restore-tabs-inner {
+        display: flex;
+        flex-direction: column;
+    }
+    .recap-snapshot-save-bar {
+        display: flex;
+        gap: 8px;
+        padding: 10px 14px;
+    }
+    .recap-snapshot-save-input {
+        flex: 1;
+        height: 34px;
+        border: 1.5px solid #bdc1c6;
+        border-radius: 10px;
+        padding: 0 12px;
+        font-size: 13px;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        outline: none;
+        background: #e8eaed;
+        color: #202124;
+        transition: border-color 0.15s;
+    }
+    .recap-snapshot-save-input:focus {
+        border-color: #ffffff;
+    }
+    .recap-snapshot-save-btn {
+        height: 34px;
+        padding: 0 16px;
+        border: none;
+        border-radius: 10px;
+        background: #6b46ff;
+        color: #fff;
+        font-size: 13px;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.15s;
+        white-space: nowrap;
+    }
+    .recap-snapshot-save-btn:hover {
+        background: #5a35e0;
+    }
+    .recap-snapshot-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 4px 0;
+        scrollbar-width: none;
+    }
+    .recap-snapshot-list::-webkit-scrollbar {
+        display: none;
+    }
+    .recap-snapshot-empty {
+        text-align: center;
+        padding: 28px 16px;
+        color: #5f6368;
+        font-size: 13px;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .recap-snap-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 0.12s ease;
+    }
+    .recap-snap-item:hover {
+        background: rgba(0,0,0,0.04);
+    }
+    .recap-snap-item-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .recap-snap-item-icon svg {
+        width: 14px;
+        height: 14px;
+        stroke: #000000;
+    }
+    .recap-snap-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .recap-snap-item-name {
+        font-size: 13px;
+        font-weight: 500;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #202124;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .recap-snap-item-meta {
+        font-size: 11px;
+        color: #5f6368;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        margin-top: 1px;
+    }
+    .recap-snap-item-actions {
+        display: flex;
+        gap: 2px;
+        flex-shrink: 0;
+        opacity: 0;
+        transition: opacity 0.12s;
+    }
+    .recap-snap-item:hover .recap-snap-item-actions {
+        opacity: 1;
+    }
+    .recap-snap-action-btn {
+        width: 26px;
+        height: 26px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.12s;
+    }
+    .recap-snap-action-btn:hover {
+        background: rgba(0,0,0,0.06);
+    }
+    .recap-snap-action-btn svg {
+        width: 13px;
+        height: 13px;
+        stroke: #5f6368;
+    }
+    .recap-snap-action-btn.delete-btn:hover svg {
+        stroke: #e34040;
+    }
+    .recap-snap-rename-input {
+        font-size: 13px;
+        font-weight: 500;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #202124;
+        border: 1.5px solid #6b46ff;
+        border-radius: 6px;
+        padding: 2px 6px;
+        outline: none;
+        width: 100%;
+        max-width: 160px;
+        background: #e8eaed;
+    }
+    .recap-snapshot-autosave {
+        padding: 8px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11px;
+        font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #5f6368;
+    }
     </style>
 </head>
 <body>
@@ -4991,7 +5169,7 @@ body.reduce-motion *::after {
     </div>
 
     <div class="tab-restore-overlay" id="tabRestoreOverlay">
-        <div class="tab-restore-panel">
+        <div class="tab-restore-panel recap-tabs-mode" id="recapPanel">
             <div class="tab-restore-left">
                 <div class="updates-overlay" id="updatesOverlayPanel">
                     <h3>updates ∙ 📣</h3>
@@ -5007,13 +5185,13 @@ body.reduce-motion *::after {
                 <div>
                     <div class="tab-restore-header">
                         <div class="tab-restore-header-text">
-                            <h2>Welcome Recap</h2>
-                            <p>Don't forget these!</p>
+                            <h2 id="recapTitle">Welcome Recap</h2>
+                            <p id="recapSubtitle">Don't forget these!</p>
                         </div>
                     </div>
                 </div>
                 <div class="tab-restore-bottom">
-                    <div class="tab-restore-buttons">
+                    <div class="tab-restore-buttons" id="recapButtons">
                         <button class="tab-restore-updates-btn" id="showUpdatesBtn" onclick="document.querySelector('.tab-restore-panel').classList.add('updates-blur');document.getElementById('updatesOverlayPanel').classList.add('visible');" aria-label="Show updates">
                             <i data-lucide="megaphone" width="15" height="15"></i>
                         </button>
@@ -5026,9 +5204,22 @@ body.reduce-motion *::after {
             <div class="tab-restore-right">
                 <div class="tab-restore-tabs-inner" id="restoreTabsList">
                 </div>
+                <div class="recap-snapshot-content">
+                    <div class="recap-snapshot-save-bar">
+                        <input class="recap-snapshot-save-input" id="recapSnapshotNameInput" type="text" placeholder="Snapshot name...">
+                        <button class="recap-snapshot-save-btn" id="recapSnapshotSaveBtn">Save</button>
+                    </div>
+                    <div class="recap-snapshot-list" id="recapSnapshotList"></div>
+                    <div class="recap-snapshot-autosave">
+                        <button class="recap-snap-action-btn" id="recapSnapshotLoadLastBtn" title="Load last auto-save"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg></button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+
+
 
     <div class="browser-container">
         <div class="tab-bar" id="tabBar">
@@ -5452,6 +5643,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     </button>
                 </div>
             </div>
+            <div class="browser-menu-separator"></div>
+            <button class="browser-menu-item" id="snapshotsMenuItem">
+                <i data-lucide="camera" width="18" height="18"></i>
+                <span class="menu-label">Snapshots</span>
+                <span class="menu-shortcut">Alt + S</span>
+            </button>
             <div class="browser-menu-separator"></div>
             <button class="browser-menu-item" id="panicMenuItem">
                 <i data-lucide="log-out" width="18" height="18"></i>
@@ -8195,7 +8392,22 @@ if (this.isBlockedUrl(url)) {
                 if (!saved || saved.length === 0) return;
 
                 var overlay = document.getElementById('tabRestoreOverlay');
+                var panel = document.getElementById('recapPanel');
                 var tabsList = document.getElementById('restoreTabsList');
+                var title = document.getElementById('recapTitle');
+                var subtitle = document.getElementById('recapSubtitle');
+                var buttons = document.getElementById('recapButtons');
+
+                if (panel) {
+                    panel.classList.remove('recap-snapshot-mode');
+                    panel.classList.add('recap-tabs-mode');
+                }
+                if (title) title.textContent = 'Welcome Recap';
+                if (subtitle) subtitle.textContent = "Don't forget these!";
+                if (buttons) {
+                    buttons.innerHTML = '<button class="tab-restore-updates-btn" id="showUpdatesBtn" onclick="document.querySelector(\'.tab-restore-panel\').classList.add(\'updates-blur\');document.getElementById(\'updatesOverlayPanel\').classList.add(\'visible\');" aria-label="Show updates"><i data-lucide="megaphone" width="15" height="15"></i></button><button class="tab-restore-dismiss" id="restoreDismissBtn">No thanks</button><button class="tab-restore-btn" id="restoreBtn">Open</button>';
+                    try { lucide.createIcons({ nodes: [buttons] }); } catch(e) {}
+                }
 
                 tabsList.innerHTML = '';
                 saved.forEach(function(t) {
@@ -14317,6 +14529,446 @@ setInterval(async () => {
         }, 700);
 
     });
+})();
+</script>
+
+<script>
+(function() {
+    'use strict';
+
+    var SNAPSHOTS_KEY = 'nexos_snapshots';
+    var AUTOSAVE_KEY = 'nexos_autosave_snapshot';
+    var SETTINGS_KEYS = [
+        'nexos_tab_style',
+        'nexos_clock_format',
+        'nexos_show_seconds',
+        'nexos_show_bookmarks',
+        'nexos_bookmarks',
+        'nexos_dimness',
+        'Tabtutle',
+        'tabFavicon'
+    ];
+
+    function waitForBrowser(cb) {
+        if (window.browser) return cb(window.browser);
+        var iv = setInterval(function() {
+            if (window.browser) { clearInterval(iv); cb(window.browser); }
+        }, 50);
+    }
+
+    function getAllSnapshots() {
+        try {
+            return JSON.parse(localStorage.getItem(SNAPSHOTS_KEY)) || [];
+        } catch(e) { return []; }
+    }
+
+    function saveAllSnapshots(list) {
+        try {
+            localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(list));
+        } catch(e) {}
+    }
+
+    function captureState(b) {
+        var tabsData = [];
+        var tabOrder = [];
+        var tabElements = b.tabBar.querySelectorAll('.tab');
+        tabElements.forEach(function(el) {
+            var id = parseInt(el.dataset.tabId);
+            if (!isNaN(id)) tabOrder.push(id);
+        });
+
+        var capturedIds = new Set();
+        tabOrder.forEach(function(id) {
+            var tab = b.tabs.get(id);
+            if (!tab || tab._closing) return;
+            capturedIds.add(id);
+            var url = tab.currentUrl || b.extractOriginalUrl(tab.url || tab.iframe.src || '');
+            if (!url || url === 'about:blank') url = tab.url || '';
+            tabsData.push({
+                id: id,
+                title: tab.title || 'New Tab',
+                url: url,
+                favicon: tab.faviconUrl || null,
+                pinned: tab.pinned || false,
+                active: id === b.activeTabId
+            });
+        });
+
+        for (var [id, tab] of b.tabs) {
+            if (capturedIds.has(id) || tab._closing) continue;
+            var url = tab.currentUrl || b.extractOriginalUrl(tab.url || tab.iframe.src || '');
+            if (!url || url === 'about:blank') url = tab.url || '';
+            tabsData.push({
+                id: id,
+                title: tab.title || 'New Tab',
+                url: url,
+                favicon: tab.faviconUrl || null,
+                pinned: tab.pinned || false,
+                active: id === b.activeTabId
+            });
+        }
+
+        var splits = [];
+        if (b._splitTabs) {
+            b._splitTabs.forEach(function(sd, splitTabId) {
+                var leftUrl = '';
+                var rightUrl = '';
+                var leftTab = b.tabs.get(sd.leftTabId);
+                var rightTab = b.tabs.get(sd.rightTabId);
+                if (leftTab) leftUrl = leftTab.currentUrl || b.extractOriginalUrl(leftTab.url || leftTab.iframe.src || '');
+                if (rightTab) rightUrl = rightTab.currentUrl || b.extractOriginalUrl(rightTab.url || rightTab.iframe.src || '');
+                splits.push({
+                    splitTabId: splitTabId,
+                    leftTabId: sd.leftTabId,
+                    rightTabId: sd.rightTabId,
+                    leftUrl: leftUrl,
+                    rightUrl: rightUrl,
+                    leftTitle: sd.leftTitle || 'Tab',
+                    rightTitle: sd.rightTitle || 'Tab',
+                    splitRatio: sd.splitRatio || 0.5,
+                    activeSide: sd.activeSide || 'left'
+                });
+            });
+        }
+
+        var settings = {};
+        SETTINGS_KEYS.forEach(function(key) {
+            try {
+                var val = localStorage.getItem(key);
+                if (val !== null) settings[key] = val;
+            } catch(e) {}
+        });
+
+        return {
+            tabs: tabsData,
+            splits: splits,
+            activeTabId: b.activeTabId,
+            settings: settings,
+            timestamp: Date.now()
+        };
+    }
+
+    function restoreState(b, snapshot) {
+        var allIds = Array.from(b.tabs.keys());
+
+        if (b._splitTabs) {
+            b._splitTabs.forEach(function(sd, splitId) {
+                try {
+                    if (sd.splitContainer && sd.splitContainer.parentNode) {
+                        sd.splitContainer.parentNode.removeChild(sd.splitContainer);
+                    }
+                } catch(e) {}
+            });
+            b._splitTabs.clear();
+        }
+
+        allIds.forEach(function(id) {
+            var tab = b.tabs.get(id);
+            if (tab) {
+                try { tab.element.remove(); } catch(e) {}
+                try { tab.iframe.remove(); } catch(e) {}
+                b.tabs.delete(id);
+            }
+        });
+
+        if (snapshot.settings) {
+            Object.keys(snapshot.settings).forEach(function(key) {
+                try { localStorage.setItem(key, snapshot.settings[key]); } catch(e) {}
+            });
+        }
+
+        var idMap = {};
+        var activeNewId = null;
+
+        snapshot.tabs.forEach(function(t) {
+            var newId = b.createNewTab();
+            idMap[t.id] = newId;
+            var newTab = b.tabs.get(newId);
+            if (newTab && t.url) {
+                if (t.url.startsWith('http')) {
+                    b.switchToTab(newId);
+                    b.navigate(t.url);
+                } else if (t.url.indexOf('/') !== -1 || t.url.indexOf('.') !== -1) {
+                    newTab.iframe.src = t.url;
+                    newTab.url = t.url;
+                }
+                var titleEl = newTab.element.querySelector('.tab-title');
+                if (titleEl) titleEl.textContent = t.title || 'Tab';
+                newTab.title = t.title || 'Tab';
+                if (t.pinned) b.pinTab(newId);
+            }
+            if (t.active) activeNewId = newId;
+        });
+
+        if (snapshot.splits && snapshot.splits.length > 0 && typeof window.createSplitViewForSnapshot === 'function') {
+            snapshot.splits.forEach(function(sp) {
+                var leftId = idMap[sp.leftTabId];
+                var rightId = idMap[sp.rightTabId];
+                if (leftId && rightId) {
+                    b.switchToTab(leftId);
+                    window.createSplitViewForSnapshot(rightId);
+                }
+            });
+        }
+
+        if (activeNewId) {
+            b.switchToTab(activeNewId);
+        } else {
+            var first = Array.from(b.tabs.values())[0];
+            if (first) b.switchToTab(first.id);
+        }
+
+        b.updateTabSizes();
+
+        try {
+            var tabStyle = localStorage.getItem('nexos_tab_style');
+            var tabBarEl = document.getElementById('tabBar');
+            if (tabBarEl) {
+                if (tabStyle === 'rounded') {
+                    tabBarEl.classList.add('rounded-mode');
+                } else {
+                    tabBarEl.classList.remove('rounded-mode');
+                }
+            }
+        } catch(e) {}
+    }
+
+    function formatTime(ts) {
+        var d = new Date(ts);
+        var now = new Date();
+        var diff = now - d;
+        if (diff < 60000) return 'Just now';
+        if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+        if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+        return d.toLocaleDateString();
+    }
+
+    function renderSnapshotList() {
+        var list = document.getElementById('recapSnapshotList');
+        if (!list) return;
+        var snapshots = getAllSnapshots();
+        if (snapshots.length === 0) {
+            list.innerHTML = '<div class="recap-snapshot-empty">No snapshots saved yet</div>';
+            return;
+        }
+        list.innerHTML = '';
+        snapshots.forEach(function(snap, idx) {
+            var item = document.createElement('div');
+            item.className = 'recap-snap-item';
+            item.dataset.index = idx;
+
+            var tabCount = snap.data ? snap.data.tabs.length : 0;
+            var splitCount = snap.data && snap.data.splits ? snap.data.splits.length : 0;
+            var meta = tabCount + ' tab' + (tabCount !== 1 ? 's' : '');
+            if (splitCount > 0) meta += ', ' + splitCount + ' split' + (splitCount !== 1 ? 's' : '');
+            meta += ' \u00B7 ' + formatTime(snap.data ? snap.data.timestamp : snap.timestamp || Date.now());
+
+            item.innerHTML =
+                '<div class="recap-snap-item-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg></div>' +
+                '<div class="recap-snap-item-info">' +
+                    '<div class="recap-snap-item-name">' + (snap.name || 'Untitled') + '</div>' +
+                    '<div class="recap-snap-item-meta">' + meta + '</div>' +
+                '</div>' +
+                '<div class="recap-snap-item-actions">' +
+                    '<button class="recap-snap-action-btn rename-btn" data-idx="' + idx + '" title="Rename"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg></button>' +
+                    '<button class="recap-snap-action-btn delete-btn" data-idx="' + idx + '" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>' +
+                '</div>';
+
+            item.addEventListener('click', function(e) {
+                if (e.target.closest('.recap-snap-action-btn')) return;
+                loadSnapshotByIndex(idx);
+            });
+
+            list.appendChild(item);
+        });
+
+        list.querySelectorAll('.rename-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var i = parseInt(btn.dataset.idx);
+                startRename(i);
+            });
+        });
+
+        list.querySelectorAll('.delete-btn').forEach(function(btn) {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var i = parseInt(btn.dataset.idx);
+                deleteSnapshot(i);
+            });
+        });
+    }
+
+    function startRename(idx) {
+        var snapshots = getAllSnapshots();
+        if (!snapshots[idx]) return;
+        var item = document.querySelector('.recap-snap-item[data-index="' + idx + '"]');
+        if (!item) return;
+        var nameEl = item.querySelector('.recap-snap-item-name');
+        if (!nameEl) return;
+        var currentName = snapshots[idx].name || '';
+        var input = document.createElement('input');
+        input.className = 'recap-snap-rename-input';
+        input.value = currentName;
+        nameEl.replaceWith(input);
+        input.focus();
+        input.select();
+
+        function finish() {
+            var newName = input.value.trim() || 'Untitled';
+            snapshots[idx].name = newName;
+            saveAllSnapshots(snapshots);
+            renderSnapshotList();
+        }
+
+        input.addEventListener('blur', finish);
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') { input.value = currentName; input.blur(); }
+        });
+    }
+
+    function deleteSnapshot(idx) {
+        var snapshots = getAllSnapshots();
+        snapshots.splice(idx, 1);
+        saveAllSnapshots(snapshots);
+        renderSnapshotList();
+    }
+
+    function loadSnapshotByIndex(idx) {
+        var snapshots = getAllSnapshots();
+        if (!snapshots[idx] || !snapshots[idx].data) return;
+        waitForBrowser(function(b) {
+            restoreState(b, snapshots[idx].data);
+            closeRecapPanel();
+        });
+    }
+
+    function setRecapMode(mode) {
+        var panel = document.getElementById('recapPanel');
+        var title = document.getElementById('recapTitle');
+        var subtitle = document.getElementById('recapSubtitle');
+        var buttons = document.getElementById('recapButtons');
+        if (!panel) return;
+        panel.classList.remove('recap-tabs-mode', 'recap-snapshot-mode');
+        if (mode === 'snapshots') {
+            panel.classList.add('recap-snapshot-mode');
+            if (title) title.textContent = 'Snapshots';
+            if (subtitle) subtitle.textContent = 'Save & restore your sessions';
+            if (buttons) {
+                buttons.innerHTML = '<button class="tab-restore-updates-btn" id="showUpdatesBtn" onclick="document.querySelector(\'.tab-restore-panel\').classList.add(\'updates-blur\');document.getElementById(\'updatesOverlayPanel\').classList.add(\'visible\');" aria-label="Show updates"><i data-lucide="megaphone" width="15" height="15"></i></button><button class="tab-restore-dismiss" id="recapCloseBtn">Close</button>';
+                try { lucide.createIcons({ nodes: [buttons] }); } catch(e) {}
+                var closeBtn = document.getElementById('recapCloseBtn');
+                if (closeBtn) closeBtn.addEventListener('click', closeRecapPanel);
+            }
+        } else {
+            panel.classList.add('recap-tabs-mode');
+            if (title) title.textContent = 'Welcome Recap';
+            if (subtitle) subtitle.textContent = "Don't forget these!";
+        }
+    }
+
+    function openRecapAsSnapshots() {
+        var overlay = document.getElementById('tabRestoreOverlay');
+        if (!overlay) return;
+        setRecapMode('snapshots');
+        renderSnapshotList();
+        requestAnimationFrame(function() {
+            overlay.classList.add('show');
+        });
+        var input = document.getElementById('recapSnapshotNameInput');
+        if (input) { input.value = ''; setTimeout(function() { input.focus(); }, 100); }
+    }
+
+    function closeRecapPanel() {
+        var overlay = document.getElementById('tabRestoreOverlay');
+        if (!overlay) return;
+        overlay.classList.remove('show');
+    }
+
+    waitForBrowser(function(b) {
+
+        if (typeof window.createSplitViewForSnapshot === 'undefined') {
+            window.createSplitViewForSnapshot = function(targetTabId) {
+                var splitBtn = document.getElementById('splitViewBtn');
+                if (splitBtn) {
+                    b.contextMenuTabId = targetTabId;
+                    splitBtn.click();
+                }
+            };
+        }
+
+        var saveBtn = document.getElementById('recapSnapshotSaveBtn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function() {
+                var input = document.getElementById('recapSnapshotNameInput');
+                var name = (input && input.value.trim()) || ('Snapshot ' + new Date().toLocaleTimeString());
+                var state = captureState(b);
+                var snapshots = getAllSnapshots();
+                snapshots.unshift({ name: name, data: state });
+                saveAllSnapshots(snapshots);
+                renderSnapshotList();
+                if (input) input.value = '';
+            });
+        }
+
+        var nameInput = document.getElementById('recapSnapshotNameInput');
+        if (nameInput) {
+            nameInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (saveBtn) saveBtn.click();
+                }
+            });
+        }
+
+        var loadLastBtn = document.getElementById('recapSnapshotLoadLastBtn');
+        if (loadLastBtn) {
+            loadLastBtn.addEventListener('click', function() {
+                try {
+                    var raw = localStorage.getItem(AUTOSAVE_KEY);
+                    if (!raw) return;
+                    var autoState = JSON.parse(raw);
+                    restoreState(b, autoState);
+                    closeRecapPanel();
+                } catch(e) {}
+            });
+        }
+
+        var menuItem = document.getElementById('snapshotsMenuItem');
+        if (menuItem) {
+            menuItem.addEventListener('click', function() {
+                var menu = document.getElementById('browserMenu');
+                if (menu) menu.classList.remove('visible');
+                openRecapAsSnapshots();
+            });
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.altKey && e.key.toLowerCase() === 's' && !e.ctrlKey && !e.shiftKey && !e.metaKey) {
+                e.preventDefault();
+                var overlayEl = document.getElementById('tabRestoreOverlay');
+                if (overlayEl && overlayEl.classList.contains('show')) {
+                    closeRecapPanel();
+                } else {
+                    openRecapAsSnapshots();
+                }
+            }
+        });
+
+        function autoSave() {
+            try {
+                var state = captureState(b);
+                localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(state));
+            } catch(e) {}
+        }
+
+        setInterval(autoSave, 5000);
+        window.addEventListener('beforeunload', autoSave);
+    });
+
+    window.openSnapshotPanel = openRecapAsSnapshots;
+    window.closeSnapshotPanel = closeRecapPanel;
 })();
 </script>
 
