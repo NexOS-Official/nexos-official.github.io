@@ -4,6 +4,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4692,7 +4693,7 @@ body.reduce-motion *::after {
 }
 
 .split-divider {
-    width: 8px;
+    width: 4px;
     background: transparent;
     cursor: col-resize;
     flex-shrink: 0;
@@ -4707,7 +4708,7 @@ body.reduce-motion *::after {
     left: 50%;
     top: 0;
     bottom: 0;
-    width: 2px;
+    width: 1px;
     transform: translateX(-50%);
     background: #e0e0e0;
     transition: background 0.15s, width 0.15s;
@@ -4716,7 +4717,7 @@ body.reduce-motion *::after {
 .split-divider:hover::after,
 .split-divider.dragging::after {
     background: #4285f4;
-    width: 4px;
+    width: 2px;
 }
 
 .split-pane.active-pane .split-bottom-tab {
@@ -4804,6 +4805,11 @@ body.reduce-motion *::after {
     white-space: nowrap;
     max-width: 160px;
     display: inline-block;
+    transition: max-width 0.3s ease;
+}
+
+.split-bottom-tab:hover .split-bottom-domain {
+    max-width: 300px;
 }
 
 .split-bottom-tab::before {
@@ -4831,9 +4837,6 @@ body.reduce-motion *::after {
 }
 
 .tab.split-tab {
-    min-width: 120px !important;
-    max-width: 240px !important;
-    flex: 1 1 auto !important;
     padding: 0 4px !important;
 }
 
@@ -6458,22 +6461,22 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             updateTabSizes() {
-                const regularTabs = Array.from(this.tabs.values()).filter(t => !t.pinned);
+                const visibleTabs = Array.from(this.tabs.values()).filter(t => !t.pinned && !t._hiddenBySplit && t.element.style.display !== 'none');
                 const pinnedTabs = Array.from(this.tabs.values()).filter(t => t.pinned);
                 
-                if (regularTabs.length === 0) return;
+                if (visibleTabs.length === 0) return;
 
                 const tabBarWidth = this.tabBar.offsetWidth;
-                const newTabBtnWidth = 32;
+                const newTabBtnWidth = 44;
                 const pinnedTabsWidth = pinnedTabs.length * 32;
                 const padding = 25;
                 const availableWidth = tabBarWidth - newTabBtnWidth - pinnedTabsWidth - padding - 10;
                 
-                let idealTabWidth = Math.max(28, availableWidth / regularTabs.length);
+                let idealTabWidth = Math.max(28, availableWidth / visibleTabs.length);
                 
                 idealTabWidth = Math.min(240, idealTabWidth);
 
-                regularTabs.forEach(tab => {
+                visibleTabs.forEach(tab => {
                     const tabElement = tab.element;
                     tabElement.style.minWidth = `${idealTabWidth}px`;
                     tabElement.style.maxWidth = `${idealTabWidth}px`;
@@ -6519,6 +6522,7 @@ document.addEventListener("DOMContentLoaded", () => {
             pinTab(tabId) {
                 const tab = this.tabs.get(tabId);
                 if (!tab) return;
+                if (this._splitTabs && this._splitTabs.has(tabId)) return;
 
                 tab.element.classList.add('tab-pinning');
                 tab.pinned = true;
@@ -13856,6 +13860,14 @@ setInterval(async () => {
 
         var origSwitchToTab = b.switchToTab.bind(b);
         b.switchToTab = function(tabId) {
+            if (b.activeTabId === tabId) {
+                var existingSplit = b._splitTabs.get(tabId);
+                if (existingSplit) {
+                    markSplitPaneActive(existingSplit, existingSplit.lastFocusedSide || existingSplit.activeSide || 'left');
+                }
+                return;
+            }
+
             if (b.activeTabId && b.activeTabId !== tabId) {
                 var oldSplit = b._splitTabs.get(b.activeTabId);
                 if (oldSplit && oldSplit.splitContainer) {
@@ -13868,9 +13880,11 @@ setInterval(async () => {
             if (newSplit) {
                 if (b.activeTabId) {
                     var currentTab = b.tabs.get(b.activeTabId);
-                    if (currentTab && !b._splitTabs.has(b.activeTabId)) {
+                    if (currentTab) {
                         currentTab.element.classList.remove('active');
-                        currentTab.iframe.style.display = 'none';
+                        if (!b._splitTabs.has(b.activeTabId)) {
+                            currentTab.iframe.style.display = 'none';
+                        }
                     }
                 }
 
@@ -13999,6 +14013,11 @@ setInterval(async () => {
             reverseViewsBtn.style.display = isSplit ? '' : 'none';
 
             splitViewBtn.style.display = (b.tabs.size > 1 && !isSplit) ? '' : 'none';
+
+            if (isSplit) {
+                b.pinTabBtn.style.display = 'none';
+                b.unpinTabBtn.style.display = 'none';
+            }
         };
 
         openInNewTabBtn.addEventListener('click', function() {
