@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,6 +27,8 @@
   --orange: #ff9f0a;
   --r: 14px;
   --rl: 20px;
+  /* Dynamic accent — updated per track from album art. Fallback = pink. */
+  --lrc-accent: 252, 60, 108;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:var(--bg)}
@@ -173,16 +176,16 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
 .lyrics-panel.active{opacity:1;pointer-events:auto}
 .lrc-scroll-outer{
   position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
-  padding:60px 80px 220px 52px;
+  padding:72px 72px 380px 56px;
   z-index:1;
   text-align:left;
 }
 .lrc-bg{
   position:absolute;inset:0;
   background-size:cover;background-position:center;
-  filter:blur(40px) saturate(1.6) brightness(.35);
-  transform:scale(1.15);
-  opacity:0;transition:opacity .8s ease;
+  filter:blur(44px) saturate(2.0) brightness(.30);
+  transform:scale(1.18);
+  opacity:0;transition:opacity 1.0s ease;
   pointer-events:none;z-index:0;
 }
 .lrc-bg.on{opacity:1}
@@ -245,9 +248,9 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
   padding:5px 0;
   margin-bottom:4px;
   border-radius:14px;cursor:pointer;
-  color:rgba(255,255,255,0.13);
+  color:rgba(255,255,255,0.10);
   filter:blur(0px);
-  opacity:.30;
+  opacity:.22;
   transform-origin:left center;
   letter-spacing:-0.018em;
   text-align:left;
@@ -255,57 +258,82 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
   overflow-wrap:normal;
   hyphens:none;
   transition:
-    color .45s cubic-bezier(.4,0,.2,1),
-    opacity .45s cubic-bezier(.4,0,.2,1),
-    font-size .40s cubic-bezier(.34,1.56,.64,1),
-    letter-spacing .38s cubic-bezier(.4,0,.2,1);
-  will-change:color,opacity;
+    color .42s cubic-bezier(.4,0,.2,1),
+    opacity .42s cubic-bezier(.4,0,.2,1),
+    font-size .38s cubic-bezier(.34,1.56,.64,1),
+    letter-spacing .36s cubic-bezier(.4,0,.2,1),
+    filter .42s ease,
+    transform .42s cubic-bezier(.34,1.56,.64,1),
+    text-shadow .42s ease;
+  will-change:color,opacity,filter,transform;
   position:relative;
 }
 .ll.past{
-  color:rgba(255,255,255,0.07);
-  opacity:.16;
+  color:rgba(255,255,255,0.05);
+  opacity:.11;
 }
 .ll.near{
-  color:rgba(255,255,255,0.42);
-  opacity:.68;
+  color:rgba(255,255,255,0.50);
+  opacity:.78;
   font-size:29px;
 }
 .ll.near2{
   color:rgba(255,255,255,0.22);
-  opacity:.40;
-  font-size:26.5px;
+  opacity:.38;
+  font-size:27px;
 }
 .ll.now{
   color:#ffffff;
-  font-size:40px;
+  font-size:42px;
   opacity:1;
-  letter-spacing:-0.028em;
-  animation:ll-bounce 0.28s cubic-bezier(.34,1.56,.64,1) both;
+  letter-spacing:-0.030em;
+  animation:ll-bounce 0.42s cubic-bezier(.34,1.56,.64,1) both;
+  text-shadow:
+    0 0 28px rgba(255,255,255,0.22),
+    0 0 60px rgba(var(--lrc-accent),0.12),
+    0 2px 14px rgba(0,0,0,0.50);
 }
 .ll.now.ll-sung{
-  opacity:0.50;
-  color:rgba(255,255,255,0.50);
-  transition:opacity 1.2s ease-out, color 1.2s ease-out !important;
+  opacity:0.40;
+  color:rgba(255,255,255,0.40);
+  transform:scale(0.98);
+  text-shadow:none;
+  transition:opacity 1.4s ease-out, color 1.4s ease-out, transform 1.4s ease-out, text-shadow 1.4s ease-out !important;
 }
 @keyframes ll-bounce {
-  0%   { transform:scale(0.91); }
-  55%  { transform:scale(1.04); }
-  100% { transform:scale(1.00); }
+  0%   { transform: scale(0.86) translateY(8px); opacity: 0.4; }
+  30%  { transform: scale(1.07) translateY(-4px); opacity: 1; }
+  55%  { transform: scale(0.97) translateY(2px); }
+  75%  { transform: scale(1.02) translateY(-1px); }
+  100% { transform: scale(1.00) translateY(0); }
 }
 .ll-ripple {
   position:absolute;
   border-radius:50%;
-  width:14px;height:14px;
-  margin:-7px 0 0 -7px;
-  background:rgba(255,255,255,0.18);
+  width:12px;height:12px;
+  margin:-6px 0 0 -6px;
+  background:rgba(var(--lrc-accent),0.45);
   transform:scale(0);
-  animation:ll-ripple-anim 0.55s ease-out forwards;
+  animation:ll-ripple-anim 0.50s cubic-bezier(.2,.6,.4,1) forwards;
   pointer-events:none;
   z-index:10;
 }
+.ll-ripple-2 {
+  width:20px;height:20px;
+  margin:-10px 0 0 -10px;
+  background:rgba(var(--lrc-accent),0.18);
+  animation:ll-ripple-anim 0.90s cubic-bezier(.1,.7,.3,1) forwards;
+}
 @keyframes ll-ripple-anim {
-  to { transform:scale(20); opacity:0; }
+  0%   { transform:scale(0);   opacity:1; }
+  70%  { opacity:0.4; }
+  100% { transform:scale(26);  opacity:0; }
+}
+/* Staggered entrance for lyrics on track change */
+@keyframes ll-enter {
+  0%   { opacity:0; transform:translateY(20px) scale(0.94); filter:blur(4px); }
+  60%  { opacity:1; filter:blur(0px); }
+  100% { transform:translateY(0) scale(1); }
 }
 .ll.ll-sub{
   font-size:16px;
@@ -366,43 +394,55 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
 .lsyl {
   display:inline;
   position:relative;
-  transition:transform 0.26s cubic-bezier(.34,1.56,.64,1),
-             -webkit-text-fill-color 0.12s ease;
-  will-change:transform;
+  transition:transform 0.24s cubic-bezier(.34,1.56,.64,1),
+             filter 0.20s ease,
+             text-shadow 0.20s ease,
+             -webkit-text-fill-color 0.14s ease;
+  will-change:transform,filter;
 }
 /* Non-active lines: no float */
 .ll:not(.now) .lsyl {
   transform:translateY(0px) !important;
+  filter:none !important;
+  text-shadow:none !important;
   transition:none !important;
 }
 
 /* ── Upcoming (not yet sung) in active line ── */
 .ll.now .lsyl.syl-pre {
-  color:rgba(255,255,255,0.22);
-  -webkit-text-fill-color:rgba(255,255,255,0.22);
+  color:rgba(255,255,255,0.16);
+  -webkit-text-fill-color:rgba(255,255,255,0.16);
 }
 
-/* ── Currently being sung — gradient sweep + lift ── */
+/* ── Currently being sung — vivid sweep gradient + pink shimmer + glow ── */
 .ll.now .lsyl.syl-now {
   background:linear-gradient(to right,
-    #ffffff        calc(var(--pct,0%) - 8%),
-    #f4f4ff        calc(var(--pct,0%) + 0%),
-    rgba(255,255,255,0.45) calc(var(--pct,0%) + 16%),
-    rgba(255,255,255,0.12) calc(var(--pct,0%) + 28%)
+    #ffffff                                calc(var(--pct,0%) - 6%),
+    #fffbff                                calc(var(--pct,0%) + 0%),
+    rgba(var(--lrc-accent),0.80)           calc(var(--pct,0%) + 9%),
+    rgba(var(--lrc-accent),0.30)           calc(var(--pct,0%) + 19%),
+    rgba(255,255,255,0.07)                 calc(var(--pct,0%) + 30%),
+    rgba(255,255,255,0.02)                 calc(var(--pct,0%) + 48%)
   );
   -webkit-background-clip:text;
   background-clip:text;
   -webkit-text-fill-color:transparent;
   display:inline-block;
-  transform:translateY(-4px);
+  transform:translateY(-6px) scale(1.04);
+  text-shadow:
+    0 0 22px rgba(255,255,255,0.55),
+    0 0 50px rgba(var(--lrc-accent),0.22);
 }
 
-/* ── Sung — stays lifted ── */
+/* ── Sung — stays lifted with lingering glow ── */
 .ll.now .lsyl.syl-done {
-  -webkit-text-fill-color:rgba(255,255,255,0.90);
-  color:rgba(255,255,255,0.90);
+  -webkit-text-fill-color:rgba(255,255,255,0.92);
+  color:rgba(255,255,255,0.92);
   display:inline-block;
-  transform:translateY(-4px);
+  transform:translateY(-6px);
+  text-shadow:
+    0 0 14px rgba(255,255,255,0.28),
+    0 0 30px rgba(255,255,255,0.10);
 }
 
 /* Word space between lword blocks */
@@ -417,33 +457,38 @@ body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'SF Pro Di
   -webkit-text-fill-color:rgba(255,255,255,0.22);
 }
 
-.ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.55)}
+.ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.60);opacity:0.65;transform:translateX(4px)}
 
 .beat-dots{
-  display:inline-flex;align-items:flex-end;gap:7px;
-  height:1em;vertical-align:middle;
+  display:inline-flex;align-items:center;gap:5px;
+  height:0.8em;vertical-align:middle;
 }
 .beat-dots span{
-  width:8px;height:8px;border-radius:50%;
-  background:rgba(255,255,255,0.28);
+  border-radius:50%;
+  background:rgba(255,255,255,0.18);
   display:inline-block;
-  transform:translateY(0);
-  transition:background .3s;
+  transform:scale(0.65);
+  transition:background .3s, transform .2s;
 }
+.beat-dots span:nth-child(1){ width:7px;  height:7px; }
+.beat-dots span:nth-child(2){ width:10px; height:10px;}
+.beat-dots span:nth-child(3){ width:8px;  height:8px; }
+.beat-dots span:nth-child(4){ width:5px;  height:5px; }
 .ll.now .beat-dots span{
-  background:#ffffff;
-  animation:beatbounce var(--beat-dur,600ms) ease-in-out infinite;
+  background:rgba(var(--lrc-accent),1);
+  transform:scale(1);
+  animation:beatbounce var(--beat-dur,600ms) cubic-bezier(.34,1.56,.64,1) infinite;
+  transition:none;
 }
-.ll.now .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) / 3)}
-.ll.now .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) / 3 * 2)}
+.ll.now .beat-dots span:nth-child(1){animation-delay:calc(var(--beat-dur,600ms) * 0.00)}
+.ll.now .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) * 0.22)}
+.ll.now .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) * 0.44)}
+.ll.now .beat-dots span:nth-child(4){animation-delay:calc(var(--beat-dur,600ms) * 0.66)}
 @keyframes beatbounce{
   0%,100%{transform:translateY(0) scale(1)}
-  35%{transform:translateY(-11px) scale(1.15)}
-  55%{transform:translateY(-7px) scale(1.05)}
-  75%{transform:translateY(-3px) scale(1.02)}
-}
-.ll.now .beat-dots span{
-  transition: none;
+  28%    {transform:translateY(-12px) scale(1.25)}
+  50%    {transform:translateY(-7px)  scale(1.08)}
+  72%    {transform:translateY(-3px)  scale(1.03)}
 }
 .lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
 .lrc-empty svg{width:38px;height:38px;opacity:.22}
@@ -2716,8 +2761,11 @@ function _tickSyls(lineIdx, t, nextBound) {
           _setSylState(id, 'syl-done', 100, false);
         } else {
           const raw   = (t - sylStart) / Math.max(1, sylEnd - sylStart);
-          const eased = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
-          _setSylState(id, 'syl-now', Math.min(100, eased * 100), false);
+          // Cubic ease-in-out with slight over-shoot feel at the leading edge
+          const eased = raw < 0.45
+            ? 2.8 * raw * raw
+            : 1 - Math.pow(-2 * raw + 2, 2.4) / 2;
+          _setSylState(id, 'syl-now', Math.min(100, eased * 110), false);
         }
       }
     } else {
@@ -2749,8 +2797,10 @@ function _tickSyls(lineIdx, t, nextBound) {
           _setSylState(id, 'syl-done', 100, false);
         } else {
           const raw   = (t - sylStart) / Math.max(1, sylEnd - sylStart);
-          const eased = raw < 0.5 ? 2 * raw * raw : 1 - Math.pow(-2 * raw + 2, 2) / 2;
-          _setSylState(id, 'syl-now', Math.min(100, eased * 100), false);
+          const eased = raw < 0.45
+            ? 2.8 * raw * raw
+            : 1 - Math.pow(-2 * raw + 2, 2.4) / 2;
+          _setSylState(id, 'syl-now', Math.min(100, eased * 110), false);
         }
       }
     }
@@ -2801,7 +2851,7 @@ function renderLineHTML(line, i) {
   let mainHTML;
   if (isNote) {
     const beatDur = line.beatDur ?? 600;
-    mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
+    mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span><span></span></span>`;
   } else {
     if (line.words?.length) {
       const parts = [];
@@ -2849,6 +2899,25 @@ function buildSylSpans(word, lineIdx, wi) {
 function renderSynced() {
   Object.keys(_sylState).forEach(k => delete _sylState[k]);
   G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
+
+  // Staggered entrance: first 12 lines slide/fade in from below
+  requestAnimationFrame(() => {
+    const lines = G('lscroll').querySelectorAll('.ll');
+    const STAGGER_MAX = 12;
+    lines.forEach((el, i) => {
+      if (i >= STAGGER_MAX) return;
+      const delay = i * 42;
+      el.style.cssText += `;animation:ll-enter 0.55s ${delay}ms cubic-bezier(.34,1.56,.64,1) both`;
+    });
+    // Clean up inline animation after entrance completes
+    setTimeout(() => {
+      lines.forEach((el, i) => {
+        if (i >= STAGGER_MAX) return;
+        // Strip only the inline animation we added; preserve any class-driven one
+        el.style.animation = '';
+      });
+    }, STAGGER_MAX * 42 + 700);
+  });
 }
 
 function seekLrc(i, evt) {
@@ -2856,15 +2925,38 @@ function seekLrc(i, evt) {
   
   const el = document.getElementById('ll'+i);
   if (el && evt) {
-    const r = document.createElement('span');
-    r.className = 'll-ripple';
     const rect = el.getBoundingClientRect();
-    r.style.left = (evt.clientX - rect.left) + 'px';
-    r.style.top  = (evt.clientY - rect.top)  + 'px';
-    el.appendChild(r);
-    setTimeout(() => r.remove(), 600);
+    const x = evt.clientX - rect.left;
+    const y = evt.clientY - rect.top;
+    // Inner fast ripple
+    const r1 = document.createElement('span');
+    r1.className = 'll-ripple';
+    r1.style.left = x + 'px';
+    r1.style.top  = y + 'px';
+    el.appendChild(r1);
+    setTimeout(() => r1.remove(), 550);
+    // Outer slow ripple
+    const r2 = document.createElement('span');
+    r2.className = 'll-ripple ll-ripple-2';
+    r2.style.left = x + 'px';
+    r2.style.top  = y + 'px';
+    el.appendChild(r2);
+    setTimeout(() => r2.remove(), 950);
   }
   YT_player.seekTo(ST.lrc[i].ms / 1000);
+}
+
+
+/* ── Smooth lyric scroll: position active line at 36% from top (Apple-style) ── */
+function _scrollLrcToEl(el) {
+  const outer = document.querySelector('.lrc-scroll-outer');
+  if (!outer) { el.scrollIntoView({ block:'center', behavior:'smooth' }); return; }
+  const outerH   = outer.clientHeight;
+  const target   = outerH * 0.36;            // 36% down = above center
+  const outerRect = outer.getBoundingClientRect();
+  const elRect    = el.getBoundingClientRect();
+  const delta     = (elRect.top - outerRect.top) - target;
+  outer.scrollBy({ top: delta, behavior: 'smooth' });
 }
 
 
@@ -2874,7 +2966,7 @@ function tickLrc(posMs) {
   // AHEAD: how far into the future to look when deciding which line/syllable is "active".
   // With AI syllable timestamps, we need less lookahead (they're already precise).
   // With fallback word-timing, we need slightly more to compensate for estimation drift.
-  let AHEAD = 55;  // base: modest lookahead for AI-timed songs
+  let AHEAD = 50;  // base: modest lookahead for AI-timed songs
   {
     let lo=0,hi=ST.lrc.length-1,a=0;
     while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
@@ -2883,13 +2975,13 @@ function tickLrc(posMs) {
       const realW = aLine.words.filter(w=>!w._isPause&&!w._isInlineParen);
       const hasSylTimes = realW.some(w => w._sylTimes?.length);
       if (hasSylTimes) {
-        // AI timestamps: tight lookahead, trust the data
-        AHEAD = 40;
+        // AI timestamps: very tight lookahead, trust the data
+        AHEAD = 32;
       } else if (realW.length > 1) {
         const span = realW[realW.length-1].ms - realW[0].ms;
         const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
-        // Fallback: small fraction of ms-per-syllable
-        AHEAD = Math.round(Math.max(35, Math.min(100, mps * 0.22)));
+        // Fallback: scale lookahead with tempo — faster songs need more, slower need less
+        AHEAD = Math.round(Math.max(30, Math.min(90, mps * 0.18)));
       }
     }
   }
@@ -2948,11 +3040,16 @@ function tickLrc(posMs) {
       if      (dist < 0)      el.classList.add('past');
       else if (absDist === 1) el.classList.add('near');
       else if (absDist === 2) el.classList.add('near2');
+      // Progressive blur: past lines blur faster, future lines blur softly
       if (absDist >= 3) {
-        el.style.filter = dist < 0
-          ? `blur(${Math.min(5,(absDist-2)*1.5).toFixed(1)}px)`
-          : `blur(${Math.min(3,(absDist-2)*0.7).toFixed(1)}px)`;
-      } else { el.style.filter = ''; }
+        const blurPx = dist < 0
+          ? Math.min(6, (absDist - 2) * 2.0).toFixed(1)   // past: stronger blur
+          : Math.min(4, (absDist - 2) * 1.0).toFixed(1);  // future: gentler blur
+        el.style.filter = `blur(${blurPx}px)`;
+        el.style.opacity = dist < 0
+          ? Math.max(0.04, 0.11 - (absDist - 3) * 0.03).toFixed(3)
+          : Math.max(0.06, 0.18 - (absDist - 3) * 0.04).toFixed(3);
+      } else { el.style.filter = ''; el.style.opacity = ''; }
     });
 
     const focusEl = document.getElementById('ll'+focus);
@@ -2960,7 +3057,7 @@ function tickLrc(posMs) {
       focusEl.classList.remove('now');
       focusEl.offsetWidth;
       focusEl.classList.add('now');
-      focusEl.scrollIntoView({ block:'center', behavior:'smooth' });
+      _scrollLrcToEl(focusEl);
     }
 
     if (prev >= 0 && prev !== focus) _snapDoneSyls(prev);
@@ -3265,6 +3362,53 @@ function playAllArtist(key) {
   showPanel('queue');
   toast('Playing artist');
 }
+
+/* ── Dynamic accent color — extract vivid hue from album art ── */
+function extractAccentColor(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 20;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, 20, 20);
+        const { data } = ctx.getImageData(0, 0, 20, 20);
+        let bestScore = 0, bR = 252, bG = 60, bB = 108;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i+1], b = data[i+2];
+          const mx = Math.max(r,g,b), mn = Math.min(r,g,b);
+          const lum = (mx + mn) / 510;
+          const sat = mx === 0 ? 0 : (mx - mn) / mx;
+          // Prefer vivid mid-luminance colors; penalize near-black and near-white
+          const score = sat * (1 - Math.abs(lum - 0.48) * 1.8);
+          if (score > bestScore) { bestScore = score; bR = r; bG = g; bB = b; }
+        }
+        // Boost saturation slightly so the extracted color reads well as a glow
+        const lum = 0.299*bR + 0.587*bG + 0.114*bB;
+        const boost = 1.5;
+        const r = Math.max(0, Math.min(255, Math.round(lum + (bR-lum)*boost)));
+        const g = Math.max(0, Math.min(255, Math.round(lum + (bG-lum)*boost)));
+        const b = Math.max(0, Math.min(255, Math.round(lum + (bB-lum)*boost)));
+        resolve(`${r}, ${g}, ${b}`);
+      } catch { resolve('252, 60, 108'); }
+    };
+    img.onerror = () => resolve('252, 60, 108');
+    img.src = src + (src.includes('?') ? '&' : '?') + '_x=' + Date.now();
+  });
+}
+
+function _applyAccentFromArt(src) {
+  if (!src) { document.documentElement.style.setProperty('--lrc-accent','252, 60, 108'); return; }
+  extractAccentColor(src).then(rgb => {
+    document.documentElement.style.setProperty('--lrc-accent', rgb);
+  });
+}
+
+// Hook into cover art changes
+const _cvImg = G('cv-img');
+_cvImg.addEventListener('load', () => { if (_cvImg.src && _cvImg.src !== location.href) _applyAccentFromArt(_cvImg.src); });
 
 document.addEventListener('keydown', e => {
   if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
