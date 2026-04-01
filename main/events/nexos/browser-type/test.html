@@ -5189,14 +5189,15 @@ body.reduce-motion *::after {
             z-index: 99999;
             pointer-events: none;
             opacity: 0;
-            transform: scale(0.92) translateY(6px);
-            transition: opacity 0.18s cubic-bezier(0.4,0,0.2,1), transform 0.18s cubic-bezier(0.4,0,0.2,1);
-            width: 280px;
+            transform: scale(0.96) translateY(4px);
+            transition: opacity 0.22s cubic-bezier(0.4,0,0.2,1), transform 0.22s cubic-bezier(0.4,0,0.2,1);
+            width: 300px;
             background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.10);
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08);
             overflow: hidden;
             font-family: 'google sans', sans-serif;
+            border: 1px solid rgba(0,0,0,0.06);
         }
 
         #tab-preview-card.visible {
@@ -5206,24 +5207,25 @@ body.reduce-motion *::after {
 
         #tab-preview-card .preview-thumbnail {
             width: 100%;
-            height: 160px;
-            background: #f0f0f0;
+            height: 170px;
+            background: #f5f6f8;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             position: relative;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
         }
 
         #tab-preview-card .preview-thumbnail img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+            transition: none;
         }
 
         #tab-preview-card.visible .preview-thumbnail img {
-            transform: scale(1.03);
+            transform: none;
         }
 
         #tab-preview-card .preview-thumbnail .preview-placeholder {
@@ -5231,45 +5233,48 @@ body.reduce-motion *::after {
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 10px;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #e8eaf6, #f5f5f5);
+            background: linear-gradient(145deg, #eef1f7, #f8f9fb);
         }
 
         #tab-preview-card .preview-placeholder img.placeholder-favicon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
             object-fit: contain;
             filter: none;
             transform: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         #tab-preview-card .preview-placeholder .placeholder-text {
             font-size: 11px;
-            color: #999;
+            color: #aaa;
+            letter-spacing: 0.2px;
         }
 
         #tab-preview-card .preview-meta {
-            padding: 10px 12px;
+            padding: 12px 14px;
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 3px;
         }
 
         #tab-preview-card .preview-title {
             font-size: 13px;
-            font-weight: 500;
-            color: #202124;
+            font-weight: 600;
+            color: #1a1a1a;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            letter-spacing: -0.1px;
         }
 
         #tab-preview-card .preview-url {
             font-size: 11px;
-            color: #80868b;
+            color: #90969c;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -6755,7 +6760,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (!this.dragState.isDragging) {
                             this.showTabPreview(tabId, tabElement);
                         }
-                    }, 200);
+                    }, 600);
                 });
 
                 tabElement.addEventListener('mouseleave', (e) => {
@@ -8808,7 +8813,7 @@ if (this.isBlockedUrl(url)) {
                 }
 
                 const tabRect = tabElement.getBoundingClientRect();
-                const cardWidth = 280;
+                const cardWidth = 300;
                 let left = tabRect.left + (tabRect.width / 2) - (cardWidth / 2);
                 let top = tabRect.bottom + 8;
 
@@ -8847,17 +8852,61 @@ if (this.isBlockedUrl(url)) {
 
                 try {
                     const iframe = tab.iframe;
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    let iframeDoc;
+                    try {
+                        iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    } catch (e) {
+                        iframeDoc = null;
+                    }
+
                     if (!iframeDoc || !iframeDoc.body) {
                         tab._capturingPreview = false;
+                        const url = tab.currentUrl || tab.url || '';
+                        let domain = '';
+                        try { domain = new URL(url).hostname; } catch(e) { domain = url; }
+                        const colors = ['#4285f4','#ea4335','#fbbc04','#34a853','#ff6d01','#46bdc6','#7b61ff','#e91e63'];
+                        const colorIndex = domain.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length;
+                        const bgColor = colors[colorIndex];
+                        const initial = domain.replace('www.','').charAt(0).toUpperCase();
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 300;
+                        canvas.height = 170;
+                        const ctx = canvas.getContext('2d');
+
+                        const grad = ctx.createLinearGradient(0, 0, 300, 170);
+                        grad.addColorStop(0, bgColor + '22');
+                        grad.addColorStop(1, bgColor + '08');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0, 0, 300, 170);
+
+                        ctx.fillStyle = bgColor + '33';
+                        ctx.font = 'bold 120px google sans, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(initial, 150, 90);
+
+                        ctx.fillStyle = '#666';
+                        ctx.font = '13px google sans, sans-serif';
+                        ctx.fillText(domain, 150, 150);
+
+                        tab.previewImage = canvas.toDataURL('image/png');
+
+                        if (this._previewTabId === tabId) {
+                            const card = document.getElementById('tab-preview-card');
+                            if (card) {
+                                const thumbContainer = card.querySelector('.preview-thumbnail');
+                                thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
+                            }
+                        }
                         return;
                     }
 
                     const canvas = document.createElement('canvas');
                     const width = iframe.clientWidth || 1280;
                     const height = iframe.clientHeight || 720;
-                    const scale = 280 / width;
-                    canvas.width = 280;
+                    const scale = 300 / width;
+                    canvas.width = 300;
                     canvas.height = Math.round(height * scale);
 
                     const ctx = canvas.getContext('2d');
@@ -8869,11 +8918,11 @@ if (this.isBlockedUrl(url)) {
 
                     const img = new Image();
                     const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                    const url = URL.createObjectURL(blob);
+                    const blobUrl = URL.createObjectURL(blob);
 
                     img.onload = () => {
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        URL.revokeObjectURL(url);
+                        URL.revokeObjectURL(blobUrl);
 
                         tab.previewImage = canvas.toDataURL('image/jpeg', 0.7);
                         tab._capturingPreview = false;
@@ -8888,11 +8937,11 @@ if (this.isBlockedUrl(url)) {
                     };
 
                     img.onerror = () => {
-                        URL.revokeObjectURL(url);
+                        URL.revokeObjectURL(blobUrl);
                         tab._capturingPreview = false;
                     };
 
-                    img.src = url;
+                    img.src = blobUrl;
                 } catch (e) {
                     tab._capturingPreview = false;
                 }
