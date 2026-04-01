@@ -14,6 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nexos by GhostEDU</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
     <link rel="manifest" href="../manifest.json">
     <style>
@@ -8924,49 +8925,55 @@ if (this.isBlockedUrl(url)) {
 
                 try {
                     const iframe = tab.iframe;
-                    let iframeDoc;
+                    let targetDoc = null;
+                    let targetBody = null;
+
                     try {
-                        iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        const outerDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        if (outerDoc) {
+                            const innerIframe = outerDoc.querySelector('iframe');
+                            if (innerIframe) {
+                                try {
+                                    const innerDoc = innerIframe.contentDocument || innerIframe.contentWindow.document;
+                                    if (innerDoc && innerDoc.body && innerDoc.body.innerHTML.trim().length > 0) {
+                                        targetDoc = innerDoc;
+                                        targetBody = innerDoc.body;
+                                    }
+                                } catch(e) {}
+                            }
+                            if (!targetBody && outerDoc.body) {
+                                targetDoc = outerDoc;
+                                targetBody = outerDoc.body;
+                            }
+                        }
                     } catch (e) {
-                        iframeDoc = null;
+                        targetDoc = null;
                     }
 
-                    if (!iframeDoc || !iframeDoc.body) {
+                    if (!targetDoc || !targetBody) {
                         tab._capturingPreview = false;
                         applyFallbackPreview();
                         return;
                     }
 
-                    const canvas = document.createElement('canvas');
-                    const width = iframe.clientWidth || 1280;
-                    const height = iframe.clientHeight || 720;
-                    const scale = 300 / width;
-                    canvas.width = 300;
-                    canvas.height = Math.round(height * scale);
-
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) {
-                        tab._capturingPreview = false;
-                        applyFallbackPreview();
-                        return;
-                    }
-
-                    const svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
-                        '<foreignObject width="100%" height="100%">' +
-                        new XMLSerializer().serializeToString(iframeDoc.documentElement) +
-                        '</foreignObject></svg>';
-
-                    const img = new Image();
-                    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                    const blobUrl = URL.createObjectURL(blob);
-
-                    img.onload = () => {
-                        URL.revokeObjectURL(blobUrl);
-
-                        try {
-                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    if (typeof html2canvas !== 'undefined') {
+                        const captureWidth = iframe.clientWidth || 1280;
+                        const captureHeight = iframe.clientHeight || 720;
+                        html2canvas(targetBody, {
+                            width: captureWidth,
+                            height: captureHeight,
+                            windowWidth: captureWidth,
+                            windowHeight: captureHeight,
+                            scale: 300 / captureWidth,
+                            useCORS: true,
+                            allowTaint: true,
+                            logging: false,
+                            backgroundColor: '#ffffff',
+                            onclone: function(clonedDoc) {
+                                clonedDoc.body.style.overflow = 'hidden';
+                            }
+                        }).then(function(canvas) {
                             tab.previewImage = canvas.toDataURL('image/jpeg', 0.72);
-
                             if (this._previewTabId === tabId) {
                                 const card = document.getElementById('tab-preview-card');
                                 if (card) {
@@ -8974,20 +8981,61 @@ if (this.isBlockedUrl(url)) {
                                     thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
                                 }
                             }
-                        } catch (err) {
+                            tab._capturingPreview = false;
+                        }.bind(this)).catch(function() {
+                            tab._capturingPreview = false;
                             applyFallbackPreview();
+                        });
+                    } else {
+                        const canvas = document.createElement('canvas');
+                        const width = iframe.clientWidth || 1280;
+                        const height = iframe.clientHeight || 720;
+                        const scale = 300 / width;
+                        canvas.width = 300;
+                        canvas.height = Math.round(height * scale);
+
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            tab._capturingPreview = false;
+                            applyFallbackPreview();
+                            return;
                         }
 
-                        tab._capturingPreview = false;
-                    };
+                        const svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
+                            '<foreignObject width="100%" height="100%">' +
+                            new XMLSerializer().serializeToString(targetDoc.documentElement) +
+                            '</foreignObject></svg>';
 
-                    img.onerror = () => {
-                        URL.revokeObjectURL(blobUrl);
-                        tab._capturingPreview = false;
-                        applyFallbackPreview();
-                    };
+                        const img = new Image();
+                        const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                        const blobUrl = URL.createObjectURL(blob);
 
-                    img.src = blobUrl;
+                        img.onload = () => {
+                            URL.revokeObjectURL(blobUrl);
+                            try {
+                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                tab.previewImage = canvas.toDataURL('image/jpeg', 0.72);
+                                if (this._previewTabId === tabId) {
+                                    const card = document.getElementById('tab-preview-card');
+                                    if (card) {
+                                        const thumbContainer = card.querySelector('.preview-thumbnail');
+                                        thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
+                                    }
+                                }
+                            } catch (err) {
+                                applyFallbackPreview();
+                            }
+                            tab._capturingPreview = false;
+                        };
+
+                        img.onerror = () => {
+                            URL.revokeObjectURL(blobUrl);
+                            tab._capturingPreview = false;
+                            applyFallbackPreview();
+                        };
+
+                        img.src = blobUrl;
+                    }
                 } catch (e) {
                     tab._capturingPreview = false;
                     applyFallbackPreview();
