@@ -14,7 +14,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nexos by GhostEDU</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
     <link rel="manifest" href="../manifest.json">
     <style>
@@ -5218,6 +5217,23 @@ body.reduce-motion *::after {
             border-bottom: 1px solid rgba(0,0,0,0.08);
         }
 
+        #tab-preview-card .preview-thumbnail .preview-live-shell {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        #tab-preview-card .preview-thumbnail .preview-live-shell iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            border: 0;
+            pointer-events: none;
+            background: #ffffff;
+        }
+
         #tab-preview-card .preview-thumbnail img {
             width: 100%;
             height: 100%;
@@ -5829,6 +5845,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.battery = null;
                 this.toastTimeout = null;
                 this.toastShownUrls = new Set();
+                this._previewTabId = null;
+                this._previewRestore = null;
+                this._previewMountedTabId = null;
                 
                 this.initializeElements();
                 this.bindEvents();
@@ -7475,10 +7494,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (faviconEl) {
                     faviconEl.classList.remove('loading');
                 }
-                
-                setTimeout(() => {
-                    this.captureTabPreview(tabId);
-                }, 800);
             }
             
             waitForEmbedLoad(tabId) {
@@ -7598,6 +7613,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             switchToTab(tabId) {
+                this.hideActiveTabPreview();
                 if (this.activeTabId === tabId) return;
 
                 if (this.activeTabId) {
@@ -7658,6 +7674,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const tab = this.tabs.get(tabId);
                 if (!tab || tab._closing) return;
+
+                this.hideTabPreview(tabId);
 
                 if (tab.pinned && this.contextMenuTabId !== tabId) {
                     return;
@@ -8810,6 +8828,7 @@ if (this.isBlockedUrl(url)) {
                 const card = document.getElementById('tab-preview-card');
                 if (!card) return;
 
+                this._restorePreviewIframe();
                 card.classList.remove('visible');
 
                 const thumbContainer = card.querySelector('.preview-thumbnail');
@@ -8821,18 +8840,62 @@ if (this.isBlockedUrl(url)) {
                 const currentUrl = tab.currentUrl || this.extractOriginalUrl(tab.iframe.src || tab.url || '');
                 const displayUrl = this._shortenUrl(currentUrl);
                 urlEl.textContent = displayUrl;
+                thumbContainer.innerHTML = '';
 
-                if (tab.previewImage) {
-                    thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
-                } else {
+                if (tabId === this.activeTabId) {
                     const faviconImg = tab.element.querySelector('.tab-favicon img');
                     const faviconSrc = faviconImg ? faviconImg.src : '';
                     if (faviconSrc) {
-                        thumbContainer.innerHTML = '<div class="preview-placeholder"><img class="placeholder-favicon" src="' + faviconSrc + '" alt="" /><span class="placeholder-text">Preview loading…</span></div>';
+                        thumbContainer.innerHTML = '<div class="preview-placeholder"><img class="placeholder-favicon" src="' + faviconSrc + '" alt="" /><span class="placeholder-text">Current tab stays in the main view</span></div>';
                     } else {
-                        thumbContainer.innerHTML = '<div class="preview-placeholder"><span class="placeholder-text">No preview available</span></div>';
+                        thumbContainer.innerHTML = '<div class="preview-placeholder"><span class="placeholder-text">Current tab stays in the main view</span></div>';
                     }
-                    this.captureTabPreview(tabId);
+                } else if (tab.iframe && tab.iframe.parentNode) {
+                    const previewWidth = thumbContainer.clientWidth || 300;
+                    const previewHeight = thumbContainer.clientHeight || 170;
+                    const sourceWidth = this.contentArea?.clientWidth || tab.iframe.clientWidth || 1280;
+                    const sourceHeight = this.contentArea?.clientHeight || tab.iframe.clientHeight || 720;
+                    const scale = Math.min(previewWidth / sourceWidth, previewHeight / sourceHeight);
+                    const offsetX = Math.max(0, (previewWidth - (sourceWidth * scale)) / 2);
+                    const offsetY = Math.max(0, (previewHeight - (sourceHeight * scale)) / 2);
+
+                    const placeholder = document.createComment('tab-preview-placeholder-' + tabId);
+                    tab.iframe.parentNode.replaceChild(placeholder, tab.iframe);
+
+                    this._previewRestore = {
+                        placeholder,
+                        styles: {
+                            position: tab.iframe.style.position,
+                            top: tab.iframe.style.top,
+                            left: tab.iframe.style.left,
+                            width: tab.iframe.style.width,
+                            height: tab.iframe.style.height,
+                            visibility: tab.iframe.style.visibility,
+                            pointerEvents: tab.iframe.style.pointerEvents,
+                            transform: tab.iframe.style.transform,
+                            transformOrigin: tab.iframe.style.transformOrigin,
+                            zIndex: tab.iframe.style.zIndex
+                        }
+                    };
+                    this._previewMountedTabId = tabId;
+
+                    const shell = document.createElement('div');
+                    shell.className = 'preview-live-shell';
+                    thumbContainer.appendChild(shell);
+                    shell.appendChild(tab.iframe);
+
+                    tab.iframe.style.position = 'absolute';
+                    tab.iframe.style.top = offsetY + 'px';
+                    tab.iframe.style.left = offsetX + 'px';
+                    tab.iframe.style.width = sourceWidth + 'px';
+                    tab.iframe.style.height = sourceHeight + 'px';
+                    tab.iframe.style.visibility = 'visible';
+                    tab.iframe.style.pointerEvents = 'none';
+                    tab.iframe.style.transform = 'scale(' + scale + ')';
+                    tab.iframe.style.transformOrigin = 'top left';
+                    tab.iframe.style.zIndex = '1';
+                } else {
+                    thumbContainer.innerHTML = '<div class="preview-placeholder"><span class="placeholder-text">No preview available</span></div>';
                 }
 
                 const tabRect = tabElement.getBoundingClientRect();
@@ -8857,10 +8920,45 @@ if (this.isBlockedUrl(url)) {
                 });
             }
 
+            _restorePreviewIframe() {
+                if (this._previewMountedTabId == null || !this._previewRestore) return;
+
+                const restore = this._previewRestore;
+                const tab = this.tabs.get(this._previewMountedTabId);
+
+                if (tab && tab.iframe) {
+                    if (restore.placeholder && restore.placeholder.parentNode) {
+                        restore.placeholder.parentNode.replaceChild(tab.iframe, restore.placeholder);
+                    } else {
+                        this.contentArea.appendChild(tab.iframe);
+                    }
+
+                    const styles = restore.styles || {};
+                    tab.iframe.style.position = styles.position || '';
+                    tab.iframe.style.top = styles.top || '';
+                    tab.iframe.style.left = styles.left || '';
+                    tab.iframe.style.width = styles.width || '';
+                    tab.iframe.style.height = styles.height || '';
+                    tab.iframe.style.visibility = styles.visibility || '';
+                    tab.iframe.style.pointerEvents = styles.pointerEvents || '';
+                    tab.iframe.style.transform = styles.transform || '';
+                    tab.iframe.style.transformOrigin = styles.transformOrigin || '';
+                    tab.iframe.style.zIndex = styles.zIndex || '';
+                }
+
+                this._previewMountedTabId = null;
+                this._previewRestore = null;
+            }
+
             hideActiveTabPreview() {
                 if (this._previewTabId == null) return;
+                this._restorePreviewIframe();
                 const card = document.getElementById('tab-preview-card');
                 if (card) {
+                    const thumbContainer = card.querySelector('.preview-thumbnail');
+                    if (thumbContainer) {
+                        thumbContainer.innerHTML = '';
+                    }
                     card.classList.remove('visible');
                 }
                 this._previewTabId = null;
@@ -8872,174 +8970,7 @@ if (this.isBlockedUrl(url)) {
             }
 
             captureTabPreview(tabId) {
-                const tab = this.tabs.get(tabId);
-                if (!tab || !tab.iframe) return;
-                if (tab._capturingPreview) return;
-
-                tab._capturingPreview = true;
-
-                const applyFallbackPreview = () => {
-                    const url = tab.currentUrl || tab.url || '';
-                    let domain = '';
-                    try { domain = new URL(url).hostname; } catch(e) { domain = ''; }
-                    const displayDomain = (domain || this._shortenUrl(url) || 'Preview unavailable').replace(/^www\./, '');
-
-                    const colors = ['#4285f4','#ea4335','#fbbc04','#34a853','#ff6d01','#46bdc6','#7b61ff','#e91e63'];
-                    const seed = displayDomain || tab.title || 'Tab';
-                    const colorIndex = seed.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length;
-                    const bgColor = colors[colorIndex];
-                    const initial = (displayDomain.charAt(0) || (tab.title || 'T').charAt(0) || 'T').toUpperCase();
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 300;
-                    canvas.height = 170;
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) return;
-
-                    const grad = ctx.createLinearGradient(0, 0, 300, 170);
-                    grad.addColorStop(0, bgColor + '24');
-                    grad.addColorStop(1, bgColor + '10');
-                    ctx.fillStyle = grad;
-                    ctx.fillRect(0, 0, 300, 170);
-
-                    ctx.fillStyle = bgColor + '44';
-                    ctx.font = 'bold 120px google sans, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(initial, 150, 88);
-
-                    ctx.fillStyle = '#5f6368';
-                    ctx.font = '13px google sans, sans-serif';
-                    ctx.fillText(displayDomain, 150, 150);
-
-                    tab.previewImage = canvas.toDataURL('image/png');
-
-                    if (this._previewTabId === tabId) {
-                        const card = document.getElementById('tab-preview-card');
-                        if (card) {
-                            const thumbContainer = card.querySelector('.preview-thumbnail');
-                            thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
-                        }
-                    }
-                };
-
-                try {
-                    const iframe = tab.iframe;
-                    let targetDoc = null;
-                    let targetBody = null;
-
-                    try {
-                        const outerDoc = iframe.contentDocument || iframe.contentWindow.document;
-                        if (outerDoc) {
-                            const innerIframe = outerDoc.querySelector('iframe');
-                            if (innerIframe) {
-                                try {
-                                    const innerDoc = innerIframe.contentDocument || innerIframe.contentWindow.document;
-                                    if (innerDoc && innerDoc.body && innerDoc.body.innerHTML.trim().length > 0) {
-                                        targetDoc = innerDoc;
-                                        targetBody = innerDoc.body;
-                                    }
-                                } catch(e) {}
-                            }
-                            if (!targetBody && outerDoc.body) {
-                                targetDoc = outerDoc;
-                                targetBody = outerDoc.body;
-                            }
-                        }
-                    } catch (e) {
-                        targetDoc = null;
-                    }
-
-                    if (!targetDoc || !targetBody) {
-                        tab._capturingPreview = false;
-                        applyFallbackPreview();
-                        return;
-                    }
-
-                    if (typeof html2canvas !== 'undefined') {
-                        const captureWidth = iframe.clientWidth || 1280;
-                        const captureHeight = iframe.clientHeight || 720;
-                        html2canvas(targetBody, {
-                            width: captureWidth,
-                            height: captureHeight,
-                            windowWidth: captureWidth,
-                            windowHeight: captureHeight,
-                            scale: 300 / captureWidth,
-                            useCORS: true,
-                            allowTaint: true,
-                            logging: false,
-                            backgroundColor: '#ffffff',
-                            onclone: function(clonedDoc) {
-                                clonedDoc.body.style.overflow = 'hidden';
-                            }
-                        }).then(function(canvas) {
-                            tab.previewImage = canvas.toDataURL('image/jpeg', 0.72);
-                            if (this._previewTabId === tabId) {
-                                const card = document.getElementById('tab-preview-card');
-                                if (card) {
-                                    const thumbContainer = card.querySelector('.preview-thumbnail');
-                                    thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
-                                }
-                            }
-                            tab._capturingPreview = false;
-                        }.bind(this)).catch(function() {
-                            tab._capturingPreview = false;
-                            applyFallbackPreview();
-                        });
-                    } else {
-                        const canvas = document.createElement('canvas');
-                        const width = iframe.clientWidth || 1280;
-                        const height = iframe.clientHeight || 720;
-                        const scale = 300 / width;
-                        canvas.width = 300;
-                        canvas.height = Math.round(height * scale);
-
-                        const ctx = canvas.getContext('2d');
-                        if (!ctx) {
-                            tab._capturingPreview = false;
-                            applyFallbackPreview();
-                            return;
-                        }
-
-                        const svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
-                            '<foreignObject width="100%" height="100%">' +
-                            new XMLSerializer().serializeToString(targetDoc.documentElement) +
-                            '</foreignObject></svg>';
-
-                        const img = new Image();
-                        const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                        const blobUrl = URL.createObjectURL(blob);
-
-                        img.onload = () => {
-                            URL.revokeObjectURL(blobUrl);
-                            try {
-                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                tab.previewImage = canvas.toDataURL('image/jpeg', 0.72);
-                                if (this._previewTabId === tabId) {
-                                    const card = document.getElementById('tab-preview-card');
-                                    if (card) {
-                                        const thumbContainer = card.querySelector('.preview-thumbnail');
-                                        thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
-                                    }
-                                }
-                            } catch (err) {
-                                applyFallbackPreview();
-                            }
-                            tab._capturingPreview = false;
-                        };
-
-                        img.onerror = () => {
-                            URL.revokeObjectURL(blobUrl);
-                            tab._capturingPreview = false;
-                            applyFallbackPreview();
-                        };
-
-                        img.src = blobUrl;
-                    }
-                } catch (e) {
-                    tab._capturingPreview = false;
-                    applyFallbackPreview();
-                }
+                return;
             }
 
             _shortenUrl(url) {
