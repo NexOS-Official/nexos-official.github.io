@@ -5186,18 +5186,18 @@ body.reduce-motion *::after {
     }
         #tab-preview-card {
             position: fixed;
-            z-index: 99999;
+            z-index: 9990;
             pointer-events: none;
             opacity: 0;
             transform: scale(0.96) translateY(4px);
-            transition: opacity 0.22s cubic-bezier(0.4,0,0.2,1), transform 0.22s cubic-bezier(0.4,0,0.2,1);
+            transition: opacity 0.2s cubic-bezier(0.4,0,0.2,1), transform 0.2s cubic-bezier(0.4,0,0.2,1);
             width: 300px;
-            background: #fff;
-            border-radius: 14px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08);
+            background: #fbfcff;
+            border-radius: 10px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.18), 0 2px 6px rgba(0,0,0,0.08);
             overflow: hidden;
             font-family: 'google sans', sans-serif;
-            border: 1px solid rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.1);
         }
 
         #tab-preview-card.visible {
@@ -5208,13 +5208,13 @@ body.reduce-motion *::after {
         #tab-preview-card .preview-thumbnail {
             width: 100%;
             height: 170px;
-            background: #f5f6f8;
+            background: #f1f3f7;
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             position: relative;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+            border-bottom: 1px solid rgba(0,0,0,0.08);
         }
 
         #tab-preview-card .preview-thumbnail img {
@@ -5242,7 +5242,7 @@ body.reduce-motion *::after {
         #tab-preview-card .preview-placeholder img.placeholder-favicon {
             width: 40px;
             height: 40px;
-            border-radius: 10px;
+            border-radius: 8px;
             object-fit: contain;
             filter: none;
             transform: none;
@@ -5256,7 +5256,7 @@ body.reduce-motion *::after {
         }
 
         #tab-preview-card .preview-meta {
-            padding: 12px 14px;
+            padding: 11px 13px;
             display: flex;
             flex-direction: column;
             gap: 3px;
@@ -6251,6 +6251,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.initializeTabDragging();
 
                 document.addEventListener('click', (e) => {
+                    this.hideActiveTabPreview();
                     if (!this.contextMenu.contains(e.target)) {
                         this.hideContextMenu();
                     }
@@ -6717,12 +6718,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.historyIndex[tabId] = 0;
 
                 tabElement.addEventListener('mousedown', (e) => {
+                    if (hoverTimeout) {
+                        clearTimeout(hoverTimeout);
+                        hoverTimeout = null;
+                    }
+                    this.hideActiveTabPreview();
+
                     if (e.button === 2) {
                         e.stopPropagation();
                         tabElement._rightClicked = true;
                     }
                 });
                 tabElement.addEventListener('click', (e) => {
+                    this.hideActiveTabPreview();
+
                     if (tabElement._rightClicked) {
                         tabElement._rightClicked = false;
                         return;
@@ -6740,6 +6749,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 tabElement.addEventListener('contextmenu', (e) => {
+                    if (hoverTimeout) {
+                        clearTimeout(hoverTimeout);
+                        hoverTimeout = null;
+                    }
+                    this.hideActiveTabPreview();
                     e.preventDefault();
                     e.stopPropagation();
                     this.showContextMenu(e.clientX, e.clientY, tabId);
@@ -6751,16 +6765,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 let hoverTimeout = null;
-                let previewBox = null;
 
                 tabElement.addEventListener('mouseenter', (e) => {
-                    if (this.dragState.isDragging) return;
+                    if (this.dragState?.isDragging || this.dragState?.draggedTab) return;
+                    if (this.contextMenu && this.contextMenu.classList.contains('visible')) return;
+                    if (hoverTimeout) {
+                        clearTimeout(hoverTimeout);
+                        hoverTimeout = null;
+                    }
                     
                     hoverTimeout = setTimeout(() => {
-                        if (!this.dragState.isDragging) {
+                        if (!this.dragState?.isDragging && !this.dragState?.draggedTab && !this.contextMenu?.classList.contains('visible')) {
                             this.showTabPreview(tabId, tabElement);
                         }
-                    }, 600);
+                    }, 900);
                 });
 
                 tabElement.addEventListener('mouseleave', (e) => {
@@ -6826,6 +6844,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             showContextMenu(x, y, tabId) {
+                this.hideActiveTabPreview();
                 this.hideContextMenu();
                 
                 const tab = this.tabs.get(tabId);
@@ -7210,6 +7229,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             startSliding() {
                 this.dragState.isDragging = true;
+                this.hideActiveTabPreview();
                 this.dragState.draggedTab.classList.add('sliding');
                 
                 var dragOverlay = document.getElementById('tab-drag-overlay');
@@ -8783,6 +8803,8 @@ if (this.isBlockedUrl(url)) {
             showTabPreview(tabId, tabElement) {
                 const tab = this.tabs.get(tabId);
                 if (!tab) return;
+                if (this.dragState?.isDragging || this.dragState?.draggedTab) return;
+                if (this.contextMenu && this.contextMenu.classList.contains('visible')) return;
 
                 const card = document.getElementById('tab-preview-card');
                 if (!card) return;
@@ -8814,7 +8836,7 @@ if (this.isBlockedUrl(url)) {
 
                 const tabRect = tabElement.getBoundingClientRect();
                 const cardWidth = 300;
-                let left = tabRect.left + (tabRect.width / 2) - (cardWidth / 2);
+                let left = tabRect.left;
                 let top = tabRect.bottom + 8;
 
                 if (left < 8) left = 8;
@@ -8834,13 +8856,18 @@ if (this.isBlockedUrl(url)) {
                 });
             }
 
-            hideTabPreview(tabId) {
-                if (this._previewTabId !== tabId) return;
+            hideActiveTabPreview() {
+                if (this._previewTabId == null) return;
                 const card = document.getElementById('tab-preview-card');
                 if (card) {
                     card.classList.remove('visible');
                 }
                 this._previewTabId = null;
+            }
+
+            hideTabPreview(tabId) {
+                if (this._previewTabId !== tabId) return;
+                this.hideActiveTabPreview();
             }
 
             captureTabPreview(tabId) {
@@ -8849,6 +8876,51 @@ if (this.isBlockedUrl(url)) {
                 if (tab._capturingPreview) return;
 
                 tab._capturingPreview = true;
+
+                const applyFallbackPreview = () => {
+                    const url = tab.currentUrl || tab.url || '';
+                    let domain = '';
+                    try { domain = new URL(url).hostname; } catch(e) { domain = ''; }
+                    const displayDomain = (domain || this._shortenUrl(url) || 'Preview unavailable').replace(/^www\./, '');
+
+                    const colors = ['#4285f4','#ea4335','#fbbc04','#34a853','#ff6d01','#46bdc6','#7b61ff','#e91e63'];
+                    const seed = displayDomain || tab.title || 'Tab';
+                    const colorIndex = seed.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length;
+                    const bgColor = colors[colorIndex];
+                    const initial = (displayDomain.charAt(0) || (tab.title || 'T').charAt(0) || 'T').toUpperCase();
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 300;
+                    canvas.height = 170;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) return;
+
+                    const grad = ctx.createLinearGradient(0, 0, 300, 170);
+                    grad.addColorStop(0, bgColor + '24');
+                    grad.addColorStop(1, bgColor + '10');
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(0, 0, 300, 170);
+
+                    ctx.fillStyle = bgColor + '44';
+                    ctx.font = 'bold 120px google sans, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(initial, 150, 88);
+
+                    ctx.fillStyle = '#5f6368';
+                    ctx.font = '13px google sans, sans-serif';
+                    ctx.fillText(displayDomain, 150, 150);
+
+                    tab.previewImage = canvas.toDataURL('image/png');
+
+                    if (this._previewTabId === tabId) {
+                        const card = document.getElementById('tab-preview-card');
+                        if (card) {
+                            const thumbContainer = card.querySelector('.preview-thumbnail');
+                            thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
+                        }
+                    }
+                };
 
                 try {
                     const iframe = tab.iframe;
@@ -8861,44 +8933,7 @@ if (this.isBlockedUrl(url)) {
 
                     if (!iframeDoc || !iframeDoc.body) {
                         tab._capturingPreview = false;
-                        const url = tab.currentUrl || tab.url || '';
-                        let domain = '';
-                        try { domain = new URL(url).hostname; } catch(e) { domain = url; }
-                        const colors = ['#4285f4','#ea4335','#fbbc04','#34a853','#ff6d01','#46bdc6','#7b61ff','#e91e63'];
-                        const colorIndex = domain.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % colors.length;
-                        const bgColor = colors[colorIndex];
-                        const initial = domain.replace('www.','').charAt(0).toUpperCase();
-
-                        const canvas = document.createElement('canvas');
-                        canvas.width = 300;
-                        canvas.height = 170;
-                        const ctx = canvas.getContext('2d');
-
-                        const grad = ctx.createLinearGradient(0, 0, 300, 170);
-                        grad.addColorStop(0, bgColor + '22');
-                        grad.addColorStop(1, bgColor + '08');
-                        ctx.fillStyle = grad;
-                        ctx.fillRect(0, 0, 300, 170);
-
-                        ctx.fillStyle = bgColor + '33';
-                        ctx.font = 'bold 120px google sans, sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(initial, 150, 90);
-
-                        ctx.fillStyle = '#666';
-                        ctx.font = '13px google sans, sans-serif';
-                        ctx.fillText(domain, 150, 150);
-
-                        tab.previewImage = canvas.toDataURL('image/png');
-
-                        if (this._previewTabId === tabId) {
-                            const card = document.getElementById('tab-preview-card');
-                            if (card) {
-                                const thumbContainer = card.querySelector('.preview-thumbnail');
-                                thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
-                            }
-                        }
+                        applyFallbackPreview();
                         return;
                     }
 
@@ -8910,6 +8945,11 @@ if (this.isBlockedUrl(url)) {
                     canvas.height = Math.round(height * scale);
 
                     const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        tab._capturingPreview = false;
+                        applyFallbackPreview();
+                        return;
+                    }
 
                     const svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
                         '<foreignObject width="100%" height="100%">' +
@@ -8921,29 +8961,36 @@ if (this.isBlockedUrl(url)) {
                     const blobUrl = URL.createObjectURL(blob);
 
                     img.onload = () => {
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         URL.revokeObjectURL(blobUrl);
 
-                        tab.previewImage = canvas.toDataURL('image/jpeg', 0.7);
-                        tab._capturingPreview = false;
+                        try {
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            tab.previewImage = canvas.toDataURL('image/jpeg', 0.72);
 
-                        if (this._previewTabId === tabId) {
-                            const card = document.getElementById('tab-preview-card');
-                            if (card) {
-                                const thumbContainer = card.querySelector('.preview-thumbnail');
-                                thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
+                            if (this._previewTabId === tabId) {
+                                const card = document.getElementById('tab-preview-card');
+                                if (card) {
+                                    const thumbContainer = card.querySelector('.preview-thumbnail');
+                                    thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
+                                }
                             }
+                        } catch (err) {
+                            applyFallbackPreview();
                         }
+
+                        tab._capturingPreview = false;
                     };
 
                     img.onerror = () => {
                         URL.revokeObjectURL(blobUrl);
                         tab._capturingPreview = false;
+                        applyFallbackPreview();
                     };
 
                     img.src = blobUrl;
                 } catch (e) {
                     tab._capturingPreview = false;
+                    applyFallbackPreview();
                 }
             }
 
