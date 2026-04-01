@@ -6,6 +6,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8186,6 +8187,11 @@ if (this.isBlockedUrl(url)) {
                 const currentTab = this.tabs.get(this.activeTabId);
                 if (!currentTab || !currentTab.iframe) return;
 
+                if (this._splitTabs && (this._splitTabs.has(this.activeTabId) || 
+                    Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === this.activeTabId || sd.rightTabId === this.activeTabId))) {
+                    return;
+                }
+
                 if (currentTab.zoomLevel === undefined) {
                     currentTab.zoomLevel = 1.0;
                 }
@@ -8210,6 +8216,27 @@ if (this.isBlockedUrl(url)) {
                 const displayElement = document.getElementById('zoomLevelDisplay');
                 if (displayElement) {
                     displayElement.textContent = `${Math.round(zoomLevel)}%`;
+                }
+
+                const inSplit = this._splitTabs && (this._splitTabs.has(this.activeTabId) || 
+                    Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === this.activeTabId || sd.rightTabId === this.activeTabId));
+                if (this.zoomInBtn) {
+                    this.zoomInBtn.style.opacity = inSplit ? '0.3' : '';
+                    this.zoomInBtn.style.pointerEvents = inSplit ? 'none' : '';
+                }
+                if (this.zoomOutBtn) {
+                    this.zoomOutBtn.style.opacity = inSplit ? '0.3' : '';
+                    this.zoomOutBtn.style.pointerEvents = inSplit ? 'none' : '';
+                }
+                const zoomInMenuBtn = document.getElementById('zoomInMenuBtn');
+                const zoomOutMenuBtn = document.getElementById('zoomOutMenuBtn');
+                if (zoomInMenuBtn) {
+                    zoomInMenuBtn.style.opacity = inSplit ? '0.3' : '';
+                    zoomInMenuBtn.style.pointerEvents = inSplit ? 'none' : '';
+                }
+                if (zoomOutMenuBtn) {
+                    zoomOutMenuBtn.style.opacity = inSplit ? '0.3' : '';
+                    zoomOutMenuBtn.style.pointerEvents = inSplit ? 'none' : '';
                 }
             }
 
@@ -13849,6 +13876,21 @@ setInterval(async () => {
             targetTab = b.tabs.get(targetTabId);
             if (!activeTab || !targetTab) return;
 
+            if (activeTab.zoomLevel && activeTab.zoomLevel !== 1.0) {
+                activeTab.zoomLevel = 1.0;
+                activeTab.iframe.style.transform = '';
+                activeTab.iframe.style.transformOrigin = '';
+                activeTab.iframe.style.width = '';
+                activeTab.iframe.style.height = '';
+            }
+            if (targetTab.zoomLevel && targetTab.zoomLevel !== 1.0) {
+                targetTab.zoomLevel = 1.0;
+                targetTab.iframe.style.transform = '';
+                targetTab.iframe.style.transformOrigin = '';
+                targetTab.iframe.style.width = '';
+                targetTab.iframe.style.height = '';
+            }
+
             var leftIframe = activeTab.iframe;
             var rightIframe = targetTab.iframe;
             var leftUrl = getTabUrl(activeTab);
@@ -14124,6 +14166,7 @@ setInterval(async () => {
             b.activeTabId = null;
             b.switchToTab(splitTabId);
             b.updateTabSizes();
+            b.updateZoomDisplay();
         }
 
         function reverseViews(splitTabId) {
@@ -14308,6 +14351,7 @@ setInterval(async () => {
                         });
                     });
                 }
+                b.updateZoomDisplay();
                 return;
             }
 
