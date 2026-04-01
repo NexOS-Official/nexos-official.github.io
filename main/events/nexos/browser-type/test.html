@@ -6,6 +6,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5183,9 +5184,115 @@ body.reduce-motion *::after {
         font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         color: #5f6368;
     }
+        #tab-preview-card {
+            position: fixed;
+            z-index: 99999;
+            pointer-events: none;
+            opacity: 0;
+            transform: scale(0.92) translateY(6px);
+            transition: opacity 0.18s cubic-bezier(0.4,0,0.2,1), transform 0.18s cubic-bezier(0.4,0,0.2,1);
+            width: 280px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.10);
+            overflow: hidden;
+            font-family: 'google sans', sans-serif;
+        }
+
+        #tab-preview-card.visible {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+
+        #tab-preview-card .preview-thumbnail {
+            width: 100%;
+            height: 160px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #tab-preview-card .preview-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+
+        #tab-preview-card.visible .preview-thumbnail img {
+            transform: scale(1.03);
+        }
+
+        #tab-preview-card .preview-thumbnail .preview-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #e8eaf6, #f5f5f5);
+        }
+
+        #tab-preview-card .preview-placeholder img.placeholder-favicon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            object-fit: contain;
+            filter: none;
+            transform: none;
+        }
+
+        #tab-preview-card .preview-placeholder .placeholder-text {
+            font-size: 11px;
+            color: #999;
+        }
+
+        #tab-preview-card .preview-meta {
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        #tab-preview-card .preview-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: #202124;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #tab-preview-card .preview-url {
+            font-size: 11px;
+            color: #80868b;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #tab-preview-card .preview-loading {
+            font-size: 11px;
+            color: #bbb;
+            text-align: center;
+            padding: 60px 0;
+        }
+
     </style>
 </head>
 <body>
+
+<div id="tab-preview-card">
+    <div class="preview-thumbnail"></div>
+    <div class="preview-meta">
+        <span class="preview-title"></span>
+        <span class="preview-url"></span>
+    </div>
+</div>
     <div id="tab-drag-overlay"></div>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-banner" id="loadingBanner"></div>
@@ -5197,11 +5304,10 @@ body.reduce-motion *::after {
                 <div class="updates-overlay" id="updatesOverlayPanel">
                     <h3>updates ∙ 📣</h3>
                     <ul>
-                        <li>ADDED SPLIT SCREEN 🤩</li>
-                        <li>Improved split screening animations/refreshing</li>
-                        <li>Bug fixes for split screening</li>
-                        <li>Better URL handing</li>
-                        <li>Can now drag tabs without getting mouse caught in iframes</li>
+                        <li>Fixed more bugs with split screen</li>
+                        <li>New animations for pinning + dragging</li>
+                        <li>Added Snapshots (alt+s)</li>
+                        <li>Added Snapshots to menu</li>
                     </ul>
                     <button class="updates-back-btn" onclick="document.querySelector('.tab-restore-panel').classList.remove('updates-blur');document.getElementById('updatesOverlayPanel').classList.remove('visible');">Back</button>
                 </div>
@@ -6649,7 +6755,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         if (!this.dragState.isDragging) {
                             this.showTabPreview(tabId, tabElement);
                         }
-                    }, 3000);
+                    }, 200);
                 });
 
                 tabElement.addEventListener('mouseleave', (e) => {
@@ -7343,6 +7449,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (faviconEl) {
                     faviconEl.classList.remove('loading');
                 }
+                
+                setTimeout(() => {
+                    this.captureTabPreview(tabId);
+                }, 800);
             }
             
             waitForEmbedLoad(tabId) {
@@ -8187,6 +8297,11 @@ if (this.isBlockedUrl(url)) {
                 const currentTab = this.tabs.get(this.activeTabId);
                 if (!currentTab || !currentTab.iframe) return;
 
+                if (this._splitTabs && (this._splitTabs.has(this.activeTabId) || 
+                    Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === this.activeTabId || sd.rightTabId === this.activeTabId))) {
+                    return;
+                }
+
                 if (currentTab.zoomLevel === undefined) {
                     currentTab.zoomLevel = 1.0;
                 }
@@ -8211,6 +8326,27 @@ if (this.isBlockedUrl(url)) {
                 const displayElement = document.getElementById('zoomLevelDisplay');
                 if (displayElement) {
                     displayElement.textContent = `${Math.round(zoomLevel)}%`;
+                }
+
+                const inSplit = this._splitTabs && (this._splitTabs.has(this.activeTabId) || 
+                    Array.from(this._splitTabs.values()).some(sd => sd.leftTabId === this.activeTabId || sd.rightTabId === this.activeTabId));
+                if (this.zoomInBtn) {
+                    this.zoomInBtn.style.opacity = inSplit ? '0.3' : '';
+                    this.zoomInBtn.style.pointerEvents = inSplit ? 'none' : '';
+                }
+                if (this.zoomOutBtn) {
+                    this.zoomOutBtn.style.opacity = inSplit ? '0.3' : '';
+                    this.zoomOutBtn.style.pointerEvents = inSplit ? 'none' : '';
+                }
+                const zoomInMenuBtn = document.getElementById('zoomInMenuBtn');
+                const zoomOutMenuBtn = document.getElementById('zoomOutMenuBtn');
+                if (zoomInMenuBtn) {
+                    zoomInMenuBtn.style.opacity = inSplit ? '0.3' : '';
+                    zoomInMenuBtn.style.pointerEvents = inSplit ? 'none' : '';
+                }
+                if (zoomOutMenuBtn) {
+                    zoomOutMenuBtn.style.opacity = inSplit ? '0.3' : '';
+                    zoomOutMenuBtn.style.pointerEvents = inSplit ? 'none' : '';
                 }
             }
 
@@ -8636,6 +8772,144 @@ if (this.isBlockedUrl(url)) {
                     overlay.classList.remove('show');
                     localStorage.removeItem('nexos_saved_tabs');
                 };
+            }
+
+
+            showTabPreview(tabId, tabElement) {
+                const tab = this.tabs.get(tabId);
+                if (!tab) return;
+
+                const card = document.getElementById('tab-preview-card');
+                if (!card) return;
+
+                card.classList.remove('visible');
+
+                const thumbContainer = card.querySelector('.preview-thumbnail');
+                const titleEl = card.querySelector('.preview-title');
+                const urlEl = card.querySelector('.preview-url');
+
+                titleEl.textContent = tab.title || 'Untitled';
+
+                const currentUrl = tab.currentUrl || this.extractOriginalUrl(tab.iframe.src || tab.url || '');
+                const displayUrl = this._shortenUrl(currentUrl);
+                urlEl.textContent = displayUrl;
+
+                if (tab.previewImage) {
+                    thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
+                } else {
+                    const faviconImg = tab.element.querySelector('.tab-favicon img');
+                    const faviconSrc = faviconImg ? faviconImg.src : '';
+                    if (faviconSrc) {
+                        thumbContainer.innerHTML = '<div class="preview-placeholder"><img class="placeholder-favicon" src="' + faviconSrc + '" alt="" /><span class="placeholder-text">Preview loading…</span></div>';
+                    } else {
+                        thumbContainer.innerHTML = '<div class="preview-placeholder"><span class="placeholder-text">No preview available</span></div>';
+                    }
+                    this.captureTabPreview(tabId);
+                }
+
+                const tabRect = tabElement.getBoundingClientRect();
+                const cardWidth = 280;
+                let left = tabRect.left + (tabRect.width / 2) - (cardWidth / 2);
+                let top = tabRect.bottom + 8;
+
+                if (left < 8) left = 8;
+                if (left + cardWidth > window.innerWidth - 8) left = window.innerWidth - cardWidth - 8;
+
+                if (top + 220 > window.innerHeight) {
+                    top = tabRect.top - 220 - 8;
+                }
+
+                card.style.left = left + 'px';
+                card.style.top = top + 'px';
+
+                this._previewTabId = tabId;
+
+                requestAnimationFrame(() => {
+                    card.classList.add('visible');
+                });
+            }
+
+            hideTabPreview(tabId) {
+                if (this._previewTabId !== tabId) return;
+                const card = document.getElementById('tab-preview-card');
+                if (card) {
+                    card.classList.remove('visible');
+                }
+                this._previewTabId = null;
+            }
+
+            captureTabPreview(tabId) {
+                const tab = this.tabs.get(tabId);
+                if (!tab || !tab.iframe) return;
+                if (tab._capturingPreview) return;
+
+                tab._capturingPreview = true;
+
+                try {
+                    const iframe = tab.iframe;
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (!iframeDoc || !iframeDoc.body) {
+                        tab._capturingPreview = false;
+                        return;
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    const width = iframe.clientWidth || 1280;
+                    const height = iframe.clientHeight || 720;
+                    const scale = 280 / width;
+                    canvas.width = 280;
+                    canvas.height = Math.round(height * scale);
+
+                    const ctx = canvas.getContext('2d');
+
+                    const svgData = '<svg xmlns="http://www.w3.org/2000/svg" width="' + width + '" height="' + height + '">' +
+                        '<foreignObject width="100%" height="100%">' +
+                        new XMLSerializer().serializeToString(iframeDoc.documentElement) +
+                        '</foreignObject></svg>';
+
+                    const img = new Image();
+                    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        URL.revokeObjectURL(url);
+
+                        tab.previewImage = canvas.toDataURL('image/jpeg', 0.7);
+                        tab._capturingPreview = false;
+
+                        if (this._previewTabId === tabId) {
+                            const card = document.getElementById('tab-preview-card');
+                            if (card) {
+                                const thumbContainer = card.querySelector('.preview-thumbnail');
+                                thumbContainer.innerHTML = '<img src="' + tab.previewImage + '" alt="Preview" />';
+                            }
+                        }
+                    };
+
+                    img.onerror = () => {
+                        URL.revokeObjectURL(url);
+                        tab._capturingPreview = false;
+                    };
+
+                    img.src = url;
+                } catch (e) {
+                    tab._capturingPreview = false;
+                }
+            }
+
+            _shortenUrl(url) {
+                if (!url) return '';
+                try {
+                    let short = url.replace(/^https?:\/\//, '');
+                    short = short.replace(/^www\./, '');
+                    if (short.length > 50) {
+                        short = short.substring(0, 47) + '…';
+                    }
+                    return short;
+                } catch (e) {
+                    return url;
+                }
             }
         }
         
@@ -13850,6 +14124,21 @@ setInterval(async () => {
             targetTab = b.tabs.get(targetTabId);
             if (!activeTab || !targetTab) return;
 
+            if (activeTab.zoomLevel && activeTab.zoomLevel !== 1.0) {
+                activeTab.zoomLevel = 1.0;
+                activeTab.iframe.style.transform = '';
+                activeTab.iframe.style.transformOrigin = '';
+                activeTab.iframe.style.width = '';
+                activeTab.iframe.style.height = '';
+            }
+            if (targetTab.zoomLevel && targetTab.zoomLevel !== 1.0) {
+                targetTab.zoomLevel = 1.0;
+                targetTab.iframe.style.transform = '';
+                targetTab.iframe.style.transformOrigin = '';
+                targetTab.iframe.style.width = '';
+                targetTab.iframe.style.height = '';
+            }
+
             var leftIframe = activeTab.iframe;
             var rightIframe = targetTab.iframe;
             var leftUrl = getTabUrl(activeTab);
@@ -14125,6 +14414,7 @@ setInterval(async () => {
             b.activeTabId = null;
             b.switchToTab(splitTabId);
             b.updateTabSizes();
+            b.updateZoomDisplay();
         }
 
         function reverseViews(splitTabId) {
@@ -14309,10 +14599,12 @@ setInterval(async () => {
                         });
                     });
                 }
+                b.updateZoomDisplay();
                 return;
             }
 
             origSwitchToTab(tabId);
+            b.updateZoomDisplay();
         };
 
         var origCloseTab = b.closeTab.bind(b);
