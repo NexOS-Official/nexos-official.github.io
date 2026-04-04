@@ -11861,7 +11861,9 @@ menu.addEventListener('mouseleave', hideMenu);
     const es = new EventSource("/auth/announcements/stream", { withCredentials: true });
     const anncDot = document.getElementById('anncDot');
     const anncList = document.getElementById('anncList');
+    const ccAnncList = document.getElementById('ccAnncList');
     const anncClearAll = document.getElementById('anncClearAll');
+    const ccAnncClearAll = document.getElementById('ccAnncClearAll');
     let announcements = [];
 
     function formatAnncTime(date) {
@@ -11870,10 +11872,11 @@ menu.addEventListener('mouseleave', hideMenu);
 
     function renderAnnouncements() {
       if (announcements.length === 0) {
-        anncList.innerHTML = '<div class="annc-empty">No announcements yet</div>';
+        if (anncList) anncList.innerHTML = '<div class="annc-empty">No announcements yet</div>';
+        if (ccAnncList) ccAnncList.innerHTML = '<div class="annc-empty" style="text-align:center;color:#888;font-size:13px;padding:20px;">No announcements yet</div>';
         anncDot.classList.remove('visible');
       } else {
-        anncList.innerHTML = announcements.map(a => 
+        const html = announcements.map(a => 
           '<div class="annc-item">' +
             '<div class="annc-item-dot"></div>' +
             '<div class="annc-item-content">' +
@@ -11882,6 +11885,8 @@ menu.addEventListener('mouseleave', hideMenu);
             '</div>' +
           '</div>'
         ).join('');
+        if (anncList) anncList.innerHTML = html;
+        if (ccAnncList) ccAnncList.innerHTML = html;
       }
     }
 
@@ -11919,11 +11924,14 @@ menu.addEventListener('mouseleave', hideMenu);
       showAnncNotification(msg, time);
     }
 
-    anncClearAll.addEventListener('click', function() {
+    function clearAllAnnouncements() {
       announcements = [];
       renderAnnouncements();
       anncDot.classList.remove('visible');
-    });
+    }
+    
+    if (anncClearAll) anncClearAll.addEventListener('click', clearAllAnnouncements);
+    if (ccAnncClearAll) ccAnncClearAll.addEventListener('click', clearAllAnnouncements);
 
     es.addEventListener("announcement", (ev) => {
       try {
@@ -11931,6 +11939,95 @@ menu.addEventListener('mouseleave', hideMenu);
         if (data && (data.text || data.message)) showAnnouncement(data.text || data.message);
       } catch {}
     });
+    
+    // Setup progress saving handlers
+    const ccSaveSnapshot = document.getElementById('ccSaveSnapshot');
+    const ccLoadSnapshot = document.getElementById('ccLoadSnapshot');
+    const ccLastSaved = document.getElementById('ccLastSaved');
+    
+    function saveSessionSnapshot() {
+      try {
+        const browser = window.browser;
+        if (!browser) return;
+        
+        const snapshot = {
+          timestamp: new Date().toISOString(),
+          windows: [],
+          currentWindow: window.windowManager ? window.windowManager.currentWindowIndex : 0
+        };
+        
+        if (window.windowManager) {
+          window.windowManager.windows.forEach(win => {
+            const tabs = [];
+            win.tabs.forEach(tab => {
+              tabs.push({
+                id: tab.id,
+                title: tab.title || 'New Tab',
+                url: tab.url || '',
+                favicon: tab.favicon || ''
+              });
+            });
+            snapshot.windows.push({
+              id: win.id,
+              tabs: tabs,
+              activeTabId: win.activeTabId
+            });
+          });
+        } else {
+          const tabs = [];
+          browser.tabs.forEach(tab => {
+            tabs.push({
+              id: tab.id,
+              title: tab.title || 'New Tab',
+              url: tab.url || '',
+              favicon: tab.favicon || ''
+            });
+          });
+          snapshot.windows.push({
+            id: 1,
+            tabs: tabs,
+            activeTabId: browser.activeTabId
+          });
+        }
+        
+        localStorage.setItem('nexaura_session_snapshot', JSON.stringify(snapshot));
+        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (ccLastSaved) ccLastSaved.textContent = time;
+        
+        // Show notification
+        showAnncNotification('Session saved successfully', time);
+      } catch(e) {
+        console.error('[v0] Save failed:', e);
+      }
+    }
+    
+    function loadSessionSnapshot() {
+      try {
+        const saved = localStorage.getItem('nexaura_session_snapshot');
+        if (!saved) {
+          showAnncNotification('No saved session found', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+          return;
+        }
+        
+        const snapshot = JSON.parse(saved);
+        showAnncNotification('Session loaded (refresh page to apply)', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      } catch(e) {
+        console.error('[v0] Load failed:', e);
+      }
+    }
+    
+    if (ccSaveSnapshot) ccSaveSnapshot.addEventListener('click', saveSessionSnapshot);
+    if (ccLoadSnapshot) ccLoadSnapshot.addEventListener('click', loadSessionSnapshot);
+    
+    // Restore last saved time if exists
+    try {
+      const saved = localStorage.getItem('nexaura_session_snapshot');
+      if (saved) {
+        const snapshot = JSON.parse(saved);
+        const saveDate = new Date(snapshot.timestamp);
+        if (ccLastSaved) ccLastSaved.textContent = saveDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch(e) {}
   })();
 </script>
 <script>
