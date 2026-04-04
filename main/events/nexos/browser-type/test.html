@@ -219,56 +219,67 @@
         .taskbar-window-indicator {
             display: flex;
             align-items: center;
-            gap: 6px;
-            background: rgba(255,255,255,0.95);
-            border-radius: 20px;
-            padding: 4px 8px;
+            gap: 8px;
+            background: linear-gradient(135deg, rgba(220, 233, 255, 0.8), rgba(210, 225, 255, 0.8));
+            border-radius: 12px;
+            padding: 6px 10px;
             font-family: 'google sans', sans-serif;
             font-size: 12px;
-            color: #333;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            color: #2c3e50;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.4);
             cursor: pointer;
             user-select: none;
-            transition: background 0.15s;
+            transition: all 0.2s;
+            border: 1px solid rgba(100, 150, 220, 0.2);
         }
         .taskbar-window-indicator:hover {
-            background: rgba(255,255,255,1);
+            background: linear-gradient(135deg, rgba(200, 220, 255, 0.95), rgba(190, 215, 255, 0.95));
+            box-shadow: 0 3px 8px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5);
         }
         .taskbar-window-nav {
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             border: none;
-            background: rgba(0,0,0,0.06);
+            background: rgba(255,255,255,0.6);
             border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.15s;
-            color: #555;
+            transition: all 0.15s;
+            color: #335;
             padding: 0;
+            flex-shrink: 0;
         }
         .taskbar-window-nav:hover {
-            background: rgba(0,0,0,0.12);
+            background: rgba(255,255,255,0.9);
+            transform: scale(1.05);
         }
         .taskbar-window-nav:disabled {
-            opacity: 0.3;
+            opacity: 0.35;
             cursor: not-allowed;
+        }
+        .taskbar-window-nav:disabled:hover {
+            background: rgba(255,255,255,0.6);
+            transform: scale(1);
         }
         .taskbar-window-info {
             display: flex;
             flex-direction: column;
             align-items: center;
-            line-height: 1.2;
-            min-width: 60px;
+            gap: 1px;
+            line-height: 1.1;
+            min-width: 65px;
         }
         .taskbar-window-name {
-            font-weight: 500;
-            color: #222;
+            font-weight: 600;
+            color: #1a2838;
+            font-size: 11px;
         }
         .taskbar-window-tabs {
-            font-size: 10px;
-            color: #666;
+            font-size: 9px;
+            color: #5a7a9a;
+            font-weight: 400;
         }
 
         .tab-bar::after {
@@ -9039,9 +9050,10 @@ if (this.isBlockedUrl(url)) {
                     this.ccNewWindowBtn.addEventListener('click', () => this.createNewWindow());
                 }
                 
-                // CC Navigation buttons
-                document.querySelectorAll('.cc-nav-btn[data-panel]').forEach(btn => {
-                    btn.addEventListener('click', () => {
+                // CC Action buttons repurposed for menu navigation
+                document.querySelectorAll('.cc-action-btn[data-panel]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
                         const panel = parseInt(btn.dataset.panel);
                         this.openCCPanel(panel);
                     });
@@ -9049,7 +9061,8 @@ if (this.isBlockedUrl(url)) {
                 
                 // CC Back buttons
                 document.querySelectorAll('.cc-slide-back-btn[data-panel]').forEach(btn => {
-                    btn.addEventListener('click', () => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
                         const panel = parseInt(btn.dataset.panel);
                         this.openCCPanel(panel);
                     });
@@ -10525,30 +10538,6 @@ menu.addEventListener('mouseleave', hideMenu);
                     
                     <!-- Panel 0: Home -->
                     <div class="cc-slide-panel" id="ccPanelHome">
-                        <!-- Navigation Buttons Row -->
-                        <div class="cc-nav-buttons-row">
-                            <button class="cc-nav-btn" id="ccNavAnnouncements" data-panel="1">
-                                <div class="cc-nav-btn-icon"><i data-lucide="megaphone" width="18" height="18"></i></div>
-                                <span class="cc-nav-btn-label">Announce</span>
-                            </button>
-                            <button class="cc-nav-btn" id="ccNavSettings" data-panel="2">
-                                <div class="cc-nav-btn-icon"><i data-lucide="settings" width="18" height="18"></i></div>
-                                <span class="cc-nav-btn-label">Settings</span>
-                            </button>
-                            <button class="cc-nav-btn" id="ccNavProgress" data-panel="3">
-                                <div class="cc-nav-btn-icon"><i data-lucide="save" width="18" height="18"></i></div>
-                                <span class="cc-nav-btn-label">Progress</span>
-                            </button>
-                            <button class="cc-nav-btn" id="ccNavDashboard" data-panel="4">
-                                <div class="cc-nav-btn-icon"><i data-lucide="layout-dashboard" width="18" height="18"></i></div>
-                                <span class="cc-nav-btn-label">Dashboard</span>
-                            </button>
-                            <button class="cc-nav-btn" id="ccNavWindows" data-panel="5">
-                                <div class="cc-nav-btn-icon"><i data-lucide="app-window" width="18" height="18"></i></div>
-                                <span class="cc-nav-btn-label">Windows</span>
-                            </button>
-                        </div>
-
                         <!-- Brightness Slider -->
                         <div class="cc-slider-bar-row" style="display:flex;align-items:center;gap:8px;">
                             <div class="cc-slider-pill" id="ccDimnessPill" style="flex:1;display:flex;align-items:center;background:rgba(180,195,230,0.45);border-radius:22px;padding:8px 12px;gap:8px;position:relative;overflow:hidden;cursor:pointer;touch-action:none;user-select:none;">
@@ -10563,21 +10552,19 @@ menu.addEventListener('mouseleave', hideMenu);
                             </button>
                         </div>
 
-                        <!-- Actions Row -->
+                        <!-- Actions Row - repurposed as menu navigation -->
                         <div class="cc-actions-row" style="display:flex;align-items:center;background:rgba(255,255,255,0.5);border-radius:22px;padding:6px 12px;gap:4px;">
-                            <div style="display:flex;align-items:center;gap:0;">
-                                <button class="cc-action-btn" id="ccPowerBtn" title="Power Off" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
-                                    <i data-lucide="power" width="16" height="16" style="color:#333;"></i>
-                                </button>
-                                <button class="cc-action-btn" id="ccPowerDropdown" title="Power Options" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:18px;height:32px;border-radius:8px;transition:background 0.2s;margin-left:-4px;">
-                                    <i data-lucide="chevron-down" width="12" height="12" style="color:#555;"></i>
-                                </button>
-                            </div>
-                            <button class="cc-action-btn" id="ccProfileBtn" title="Profile" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
-                                <i data-lucide="users" width="16" height="16" style="color:#333;"></i>
+                            <button class="cc-action-btn" id="ccPowerBtn" title="Announcements" data-panel="1" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
+                                <i data-lucide="megaphone" width="16" height="16" style="color:#333;"></i>
                             </button>
-                            <button class="cc-action-btn" id="ccSaveBtn" title="Save" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
-                                <i data-lucide="download" width="16" height="16" style="color:#333;"></i>
+                            <button class="cc-action-btn" id="ccProfileBtn" title="Dashboard" data-panel="4" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
+                                <i data-lucide="layout-dashboard" width="16" height="16" style="color:#333;"></i>
+                            </button>
+                            <button class="cc-action-btn" id="ccSaveBtn" title="Windows" data-panel="5" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
+                                <i data-lucide="app-window" width="16" height="16" style="color:#333;"></i>
+                            </button>
+                            <button class="cc-action-btn" id="ccProgressBtn" title="Progress" data-panel="3" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;transition:background 0.2s;">
+                                <i data-lucide="save" width="16" height="16" style="color:#333;"></i>
                             </button>
                             <div style="flex:1;"></div>
                             <span id="ccBatteryInfo" style="font-size:13px;color:#444;white-space:nowrap;font-family:'google sans',sans-serif;font-weight:400;">80% - 2:35 left</span>
