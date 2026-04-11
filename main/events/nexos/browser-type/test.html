@@ -1,3 +1,6 @@
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15239,8 +15242,9 @@ setInterval(async () => {
         enableTabBarScroll: true,
         enableIframeGestures: true,
         edgeSize: 40,
-        swipeThreshold: 100,
-        wheelThreshold: 80,
+        swipeThreshold: 55,
+        wheelThreshold: 45,
+        cooldownMs: 300,
         tabBarSelector: '#tabBar'
     };
 
@@ -15309,12 +15313,15 @@ setInterval(async () => {
         return true;
     }
 
+    var lastTriggerTime = 0;
     function trigger(direction) {
         if (!GESTURE_CONFIG.enabled || !browserReady()) return;
+        var now = Date.now();
+        if (now - lastTriggerTime < GESTURE_CONFIG.cooldownMs) return;
         var active = document.activeElement;
         if (isTypingTarget(active)) return;
         var step = direction === 'right' ? 1 : -1;
-        switchInstant(step);
+        if (switchInstant(step)) lastTriggerTime = now;
     }
 
     document.addEventListener('wheel', function(e) {
@@ -15437,13 +15444,13 @@ setInterval(async () => {
                             }
                             if (ifs.dir !== 'h') return;
                             var dxSince = e.touches[0].clientX - ifs.lastSwitchX;
-                            if (Math.abs(dxSince) >= 100) {
+                            if (Math.abs(dxSince) >= 55) {
                                 window.parent.postMessage({ type: 'nexos-gesture', direction: dxSince > 0 ? 'left' : 'right', continuous: true }, '*');
                                 ifs.lastSwitchX = e.touches[0].clientX;
                             }
                         }, { passive: true });
                         iframeDoc.addEventListener('wheel', function(e) {
-                            if (Math.abs(e.deltaX) > 80 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                            if (Math.abs(e.deltaX) > 45 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                                 e.preventDefault();
                                 window.parent.postMessage({ type: 'nexos-gesture', direction: e.deltaX > 0 ? 'right' : 'left', continuous: false }, '*');
                             }
