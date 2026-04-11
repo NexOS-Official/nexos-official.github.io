@@ -7104,15 +7104,39 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             updateSlidePosition(deltaX) {
+                // Clamp so dragged tab can't go off-screen
+                const draggedRect = this.dragState.draggedTab.getBoundingClientRect();
+                const tabBarRect = this.tabBar.getBoundingClientRect();
+                const originalPos = this.dragState.tabPositions.get(this.dragState.draggedTabId);
+                if (originalPos) {
+                    const minDelta = tabBarRect.left - originalPos.left;
+                    const maxDelta = (tabBarRect.right) - (originalPos.left + originalPos.width);
+                    deltaX = Math.max(minDelta, Math.min(maxDelta, deltaX));
+                }
+
                 this.dragState.currentOffset = deltaX;
-                
                 this.dragState.draggedTab.style.transform = `translateX(${deltaX}px)`;
 
                 const draggedPos = this.dragState.tabPositions.get(this.dragState.draggedTabId);
                 if (!draggedPos) return;
 
                 const draggedCurrentX = draggedPos.centerX + deltaX;
+                const draggedRight = draggedPos.left + draggedPos.width + deltaX;
                 const draggedIndex = draggedPos.index;
+
+                // Push new-tab button if dragged tab approaches it
+                if (this.newTabBtn) {
+                    const newTabBtnRect = this.newTabBtn.getBoundingClientRect();
+                    const newTabBtnOrigLeft = newTabBtnRect.left;
+                    if (draggedRight > newTabBtnOrigLeft - 4) {
+                        const pushAmount = draggedRight - newTabBtnOrigLeft + 8;
+                        this.newTabBtn.style.transition = 'transform 0.15s ease';
+                        this.newTabBtn.style.transform = `translateX(${pushAmount}px)`;
+                    } else {
+                        this.newTabBtn.style.transition = 'transform 0.15s ease';
+                        this.newTabBtn.style.transform = '';
+                    }
+                }
 
                 this.dragState.tabOrder.forEach((tab, currentIndex) => {
                     if (tab.id === this.dragState.draggedTabId) return;
@@ -7193,9 +7217,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 draggedElement.style.transition = '';
                 draggedElement.style.transform = 'translateX(0)';
 
+                // Reset new-tab button position
+                if (this.newTabBtn) {
+                    this.newTabBtn.style.transition = 'transform 0.2s ease';
+                    this.newTabBtn.style.transform = '';
+                }
+
                 setTimeout(() => {
                     draggedElement.classList.remove('drag-settling');
                     draggedElement.style.transform = '';
+                    if (this.newTabBtn) {
+                        this.newTabBtn.style.transition = '';
+                        this.newTabBtn.style.transform = '';
+                    }
                     this.updateTabSizes();
                 }, 300);
             }
@@ -15197,8 +15231,58 @@ setInterval(async () => {
 
 
 
+<style>
+/* === GESTURE SWIPE ANIMATION CSS === */
+.content-area {
+    position: relative;
+    overflow: hidden;
+}
+.tab-content.gesture-swipe-out-left {
+    animation: gestureSlideOutLeft 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    visibility: visible !important;
+    pointer-events: none !important;
+}
+.tab-content.gesture-swipe-out-right {
+    animation: gestureSlideOutRight 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    visibility: visible !important;
+    pointer-events: none !important;
+}
+.tab-content.gesture-swipe-in-left {
+    animation: gestureSlideInLeft 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    visibility: visible !important;
+}
+.tab-content.gesture-swipe-in-right {
+    animation: gestureSlideInRight 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    visibility: visible !important;
+}
+@keyframes gestureSlideOutLeft {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-100%); opacity: 0.3; }
+}
+@keyframes gestureSlideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0.3; }
+}
+@keyframes gestureSlideInLeft {
+    from { transform: translateX(100%); opacity: 0.3; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes gestureSlideInRight {
+    from { transform: translateX(-100%); opacity: 0.3; }
+    to { transform: translateX(0); opacity: 1; }
+}
+/* Tab highlight pulse on gesture switch */
+.tab.gesture-highlight {
+    animation: gestureTabPulse 0.35s ease;
+}
+@keyframes gestureTabPulse {
+    0% { background: rgba(66, 133, 244, 0.3); }
+    100% { background: transparent; }
+}
+</style>
+
 <script>
-// === GESTURE TAB SWITCHING SYSTEM ===
+// === GESTURE TAB SWITCHING SYSTEM v3 ===
 (function() {
     var GESTURE_CONFIG = {
         enabled: true,
@@ -15206,10 +15290,12 @@ setInterval(async () => {
         enableEdgeSwipe: true,
         enableTrackpadSwipe: true,
         enableTabBarScroll: true,
+        enableIframeGestures: true,
         edgeSize: 40,
-        swipeThreshold: 80,
-        wheelThreshold: 60,
-        cooldown: 300,
+        swipeThreshold: 60,
+        wheelThreshold: 50,
+        cooldown: 280,
+        continuousSwipeCooldown: 200,
         tabBarSelector: '#tabBar'
     };
 
@@ -15217,114 +15303,164 @@ setInterval(async () => {
         startX: 0,
         startY: 0,
         edgeCandidate: false,
-        lastTrigger: 0
+        lastTrigger: 0,
+        animating: false,
+        wheelAccum: 0,
+        wheelTimeout: null
     };
 
     function browserReady() {
         return !!(window.browser && typeof window.browser.switchToTab === 'function' && window.browser.tabs);
     }
 
-    function canTrigger() {
-        return Date.now() - gestureState.lastTrigger > GESTURE_CONFIG.cooldown;
+    function canTrigger(useContinuousCooldown) {
+        var cd = useContinuousCooldown ? GESTURE_CONFIG.continuousSwipeCooldown : GESTURE_CONFIG.cooldown;
+        return !gestureState.animating && (Date.now() - gestureState.lastTrigger > cd);
     }
 
     function isTypingTarget(el) {
         return !!(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable));
     }
 
-    function isInteractiveTarget(el) {
-        return !!(el && el.closest && el.closest('input, textarea, select, button, a, [contenteditable="true"], .address-bar, .search-input, .url-bar'));
-    }
-
-    function inIframeContext(target) {
-        try {
-            return !!(target && target.closest && target.closest('iframe'));
-        } catch (e) {
-            return false;
-        }
-    }
-
     function getOrderedTabIds() {
         if (!browserReady()) return [];
-
         var tabBar = document.querySelector(GESTURE_CONFIG.tabBarSelector);
         var domIds = [];
-
         if (tabBar) {
-            var tabs = tabBar.querySelectorAll('.tab');
-            tabs.forEach(function(tabEl) {
-                var candidates = [
-                    tabEl.getAttribute('data-tab-id'),
-                    tabEl.dataset ? tabEl.dataset.tabId : null,
-                    tabEl.dataset ? tabEl.dataset.id : null,
-                    tabEl.id ? tabEl.id.replace(/\D+/g, '') : null
-                ];
-
-                for (var i = 0; i < candidates.length; i++) {
-                    var raw = candidates[i];
-                    if (raw == null || raw === '') continue;
+            tabBar.querySelectorAll('.tab').forEach(function(tabEl) {
+                var raw = tabEl.getAttribute('data-tab-id') || (tabEl.dataset && tabEl.dataset.tabId);
+                if (raw != null && raw !== '') {
                     var parsed = parseInt(raw, 10);
-                    if (!isNaN(parsed)) {
-                        domIds.push(parsed);
-                        break;
-                    }
+                    if (!isNaN(parsed)) domIds.push(parsed);
                 }
             });
         }
-
-        if (domIds.length) return domIds.filter(function(id, index, arr) { return arr.indexOf(id) === index; });
+        if (domIds.length) return domIds.filter(function(id, i, arr) { return arr.indexOf(id) === i; });
         return Array.from(window.browser.tabs.keys());
     }
 
-    function switchRelative(step) {
-        if (!browserReady()) return;
+    function switchWithAnimation(step, direction) {
+        if (!browserReady()) return false;
         var b = window.browser;
         var ids = getOrderedTabIds();
-        if (!ids.length || b.activeTabId == null) return;
+        if (!ids.length || b.activeTabId == null) return false;
 
         var idx = ids.indexOf(b.activeTabId);
-        if (idx === -1) return;
+        if (idx === -1) return false;
 
-        var nextIndex = (idx + step + ids.length) % ids.length;
+        var nextIndex = idx + step;
+        // NO WRAPPING — clamp at edges
+        if (nextIndex < 0 || nextIndex >= ids.length) return false;
+
         var targetId = ids[nextIndex];
-        if (targetId == null || targetId === b.activeTabId) return;
+        if (targetId == null || targetId === b.activeTabId) return false;
 
+        var oldTab = b.tabs.get(b.activeTabId);
+        var newTab = b.tabs.get(targetId);
+        if (!oldTab || !newTab) { b.switchToTab(targetId); return true; }
+
+        var oldIframe = oldTab.iframe;
+        var newIframe = newTab.iframe;
+
+        // Animate the swipe
+        gestureState.animating = true;
+
+        // Determine animation direction
+        var outClass = direction === 'right' ? 'gesture-swipe-out-left' : 'gesture-swipe-out-right';
+        var inClass = direction === 'right' ? 'gesture-swipe-in-left' : 'gesture-swipe-in-right';
+
+        // Make new iframe visible for animation before switching
+        newIframe.style.visibility = 'visible';
+        newIframe.classList.add(inClass);
+        oldIframe.classList.add(outClass);
+
+        // Actually switch tabs (updates tab bar active state)
         b.switchToTab(targetId);
-    }
 
-    function trigger(direction, eventTarget) {
-        if (!GESTURE_CONFIG.enabled || !browserReady() || !canTrigger()) return;
-        var active = document.activeElement;
-        if (isTypingTarget(active) || isInteractiveTarget(eventTarget) || inIframeContext(eventTarget)) return;
-
-        gestureState.lastTrigger = Date.now();
-        if (direction === 'left') {
-            switchRelative(-1);
-        } else if (direction === 'right') {
-            switchRelative(1);
+        // Highlight the new active tab element
+        var newTabEl = newTab.element;
+        if (newTabEl) {
+            newTabEl.classList.add('gesture-highlight');
+            setTimeout(function() { newTabEl.classList.remove('gesture-highlight'); }, 350);
         }
+
+        // Clean up animation classes after animation completes
+        setTimeout(function() {
+            oldIframe.classList.remove(outClass);
+            newIframe.classList.remove(inClass);
+            gestureState.animating = false;
+        }, 300);
+
+        return true;
     }
 
+    function trigger(direction, eventTarget, isContinuous) {
+        if (!GESTURE_CONFIG.enabled || !browserReady() || !canTrigger(isContinuous)) return;
+
+        // Allow gestures from anywhere EXCEPT typing targets
+        var active = document.activeElement;
+        if (isTypingTarget(active)) return;
+
+        // Don't block gestures from iframe area — that's the whole point
+        gestureState.lastTrigger = Date.now();
+        var step = direction === 'right' ? 1 : -1;
+        switchWithAnimation(step, direction);
+    }
+
+    // === DISABLE CHROME BACK/FORWARD SWIPE ===
+    document.addEventListener('wheel', function(e) {
+        // Block horizontal wheel that would trigger Chrome's back/forward
+        if (Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    // Also overscroll-behavior CSS to prevent it
+    document.documentElement.style.overscrollBehaviorX = 'none';
+    document.body.style.overscrollBehaviorX = 'none';
+
+    // === TOUCH SWIPE (continuous — keeps switching as you swipe) ===
     if (GESTURE_CONFIG.enableTouchSwipe) {
+        var touchState = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, direction: null };
+
         document.addEventListener('touchstart', function(e) {
             if (!e.touches || !e.touches.length) return;
             var t = e.touches[0];
-            gestureState.startX = t.clientX;
-            gestureState.startY = t.clientY;
+            touchState.startX = t.clientX;
+            touchState.startY = t.clientY;
+            touchState.lastSwitchX = t.clientX;
+            touchState.locked = false;
+            touchState.direction = null;
         }, { passive: true });
 
-        document.addEventListener('touchend', function(e) {
-            if (!e.changedTouches || !e.changedTouches.length) return;
-            var t = e.changedTouches[0];
-            var dx = t.clientX - gestureState.startX;
-            var dy = t.clientY - gestureState.startY;
+        document.addEventListener('touchmove', function(e) {
+            if (!e.touches || !e.touches.length) return;
+            // Don't interfere with tab dragging
+            if (window.browser && window.browser.dragState && window.browser.dragState.isDragging) return;
 
-            if (Math.abs(dx) > GESTURE_CONFIG.swipeThreshold && Math.abs(dx) > Math.abs(dy) * 1.35) {
-                trigger(dx > 0 ? 'left' : 'right', e.target);
+            var t = e.touches[0];
+            var dx = t.clientX - touchState.startX;
+            var dy = t.clientY - touchState.startY;
+
+            // Lock direction after initial movement
+            if (!touchState.locked && (Math.abs(dx) > 15 || Math.abs(dy) > 15)) {
+                touchState.locked = true;
+                touchState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+            }
+
+            if (touchState.direction !== 'horizontal') return;
+
+            // Continuous switching: every swipeThreshold px traveled, switch again
+            var dxSinceLast = t.clientX - touchState.lastSwitchX;
+            if (Math.abs(dxSinceLast) >= GESTURE_CONFIG.swipeThreshold) {
+                var dir = dxSinceLast > 0 ? 'left' : 'right';
+                trigger(dir, e.target, true);
+                touchState.lastSwitchX = t.clientX;
             }
         }, { passive: true });
     }
 
+    // === EDGE SWIPE (mouse) ===
     if (GESTURE_CONFIG.enableEdgeSwipe) {
         document.addEventListener('mousedown', function(e) {
             gestureState.edgeCandidate = (e.clientX <= GESTURE_CONFIG.edgeSize || e.clientX >= window.innerWidth - GESTURE_CONFIG.edgeSize);
@@ -15338,29 +15474,128 @@ setInterval(async () => {
             var dy = e.clientY - gestureState.startY;
 
             if (Math.abs(dx) > GESTURE_CONFIG.swipeThreshold && Math.abs(dx) > Math.abs(dy) * 1.35) {
-                trigger(dx > 0 ? 'left' : 'right', e.target);
+                trigger(dx > 0 ? 'left' : 'right', e.target, false);
             }
-
             gestureState.edgeCandidate = false;
         }, { passive: true });
     }
 
+    // === TRACKPAD HORIZONTAL SCROLL ===
     if (GESTURE_CONFIG.enableTrackpadSwipe) {
         document.addEventListener('wheel', function(e) {
             if (Math.abs(e.deltaX) > GESTURE_CONFIG.wheelThreshold && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                trigger(e.deltaX > 0 ? 'right' : 'left', e.target);
+                trigger(e.deltaX > 0 ? 'right' : 'left', e.target, false);
             }
         }, { passive: true });
     }
 
+    // === TAB BAR VERTICAL SCROLL ===
     if (GESTURE_CONFIG.enableTabBarScroll) {
         document.addEventListener('wheel', function(e) {
             var tabBar = document.querySelector(GESTURE_CONFIG.tabBarSelector);
             if (!tabBar || !tabBar.contains(e.target)) return;
             if (Math.abs(e.deltaY) > 10) {
-                trigger(e.deltaY > 0 ? 'right' : 'left', e.target);
+                trigger(e.deltaY > 0 ? 'right' : 'left', e.target, false);
             }
         }, { passive: true });
+    }
+
+    // === IFRAME GESTURE SUPPORT ===
+    // Listen for messages from iframes to forward gestures
+    if (GESTURE_CONFIG.enableIframeGestures) {
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'nexos-gesture') {
+                trigger(e.data.direction, null, e.data.continuous || false);
+            }
+        });
+
+        // Inject gesture forwarding script into iframes
+        function injectIframeGestures(iframe) {
+            try {
+                var iframeWin = iframe.contentWindow;
+                if (!iframeWin) return;
+
+                // Inject via postMessage-based approach (works cross-origin)
+                // For same-origin, inject directly
+                try {
+                    var iframeDoc = iframe.contentDocument;
+                    if (iframeDoc && !iframeDoc._gestureInjected) {
+                        iframeDoc._gestureInjected = true;
+
+                        // Disable overscroll in iframe too
+                        iframeDoc.documentElement.style.overscrollBehaviorX = 'none';
+                        if (iframeDoc.body) iframeDoc.body.style.overscrollBehaviorX = 'none';
+
+                        // Touch gestures inside iframe
+                        var ifs = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, dir: null };
+
+                        iframeDoc.addEventListener('touchstart', function(e) {
+                            if (!e.touches.length) return;
+                            ifs.startX = e.touches[0].clientX;
+                            ifs.startY = e.touches[0].clientY;
+                            ifs.lastSwitchX = e.touches[0].clientX;
+                            ifs.locked = false;
+                            ifs.dir = null;
+                        }, { passive: true });
+
+                        iframeDoc.addEventListener('touchmove', function(e) {
+                            if (!e.touches.length) return;
+                            var dx = e.touches[0].clientX - ifs.startX;
+                            var dy = e.touches[0].clientY - ifs.startY;
+                            if (!ifs.locked && (Math.abs(dx) > 15 || Math.abs(dy) > 15)) {
+                                ifs.locked = true;
+                                ifs.dir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+                            }
+                            if (ifs.dir !== 'h') return;
+                            var dxSince = e.touches[0].clientX - ifs.lastSwitchX;
+                            if (Math.abs(dxSince) >= 60) {
+                                window.parent.postMessage({ type: 'nexos-gesture', direction: dxSince > 0 ? 'left' : 'right', continuous: true }, '*');
+                                ifs.lastSwitchX = e.touches[0].clientX;
+                            }
+                        }, { passive: true });
+
+                        // Wheel gestures inside iframe
+                        iframeDoc.addEventListener('wheel', function(e) {
+                            if (Math.abs(e.deltaX) > 50 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                                e.preventDefault();
+                                window.parent.postMessage({ type: 'nexos-gesture', direction: e.deltaX > 0 ? 'right' : 'left', continuous: false }, '*');
+                            }
+                        }, { passive: false });
+                    }
+                } catch(crossOriginErr) {
+                    // Cross-origin — can't inject, that's fine
+                }
+            } catch(err) {}
+        }
+
+        // Inject into existing and future iframes
+        function injectAll() {
+            document.querySelectorAll('.tab-content').forEach(function(iframe) {
+                injectIframeGestures(iframe);
+                iframe.addEventListener('load', function() { injectIframeGestures(iframe); });
+            });
+        }
+
+        // Run after browser initializes
+        if (document.readyState === 'complete') {
+            setTimeout(injectAll, 1000);
+        } else {
+            window.addEventListener('load', function() { setTimeout(injectAll, 1000); });
+        }
+
+        // Also observe for new iframes
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                m.addedNodes.forEach(function(node) {
+                    if (node.tagName === 'IFRAME' && node.classList.contains('tab-content')) {
+                        injectIframeGestures(node);
+                        node.addEventListener('load', function() { injectIframeGestures(node); });
+                    }
+                });
+            });
+        });
+        var contentArea = document.getElementById('contentArea');
+        if (contentArea) observer.observe(contentArea, { childList: true });
     }
 
     window._gestureConfig = GESTURE_CONFIG;
