@@ -15242,9 +15242,9 @@ setInterval(async () => {
         enableTabBarScroll: true,
         enableIframeGestures: true,
         edgeSize: 40,
-        swipeThreshold: 55,
-        wheelThreshold: 45,
-        cooldownMs: 300,
+        swipeThreshold: 28,
+        wheelThreshold: 28,
+        cooldownMs: 140,
         tabBarSelector: '#tabBar'
     };
 
@@ -15344,7 +15344,7 @@ setInterval(async () => {
             touchState.lastSwitchX = t.clientX;
             touchState.locked = false;
             touchState.direction = null;
-        }, { passive: true });
+        }, { passive: false });
 
         document.addEventListener('touchmove', function(e) {
             if (!e.touches || !e.touches.length) return;
@@ -15356,14 +15356,16 @@ setInterval(async () => {
                 touchState.locked = true;
                 touchState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
             }
-            if (touchState.direction !== 'horizontal') return;
-            var dxSinceLast = t.clientX - touchState.lastSwitchX;
-            if (Math.abs(dxSinceLast) >= GESTURE_CONFIG.swipeThreshold) {
-                var dir = dxSinceLast > 0 ? 'left' : 'right';
-                trigger(dir);
-                touchState.lastSwitchX = t.clientX;
+            if (touchState.direction === 'horizontal') {
+                e.preventDefault();
+                var dxSinceLast = t.clientX - touchState.lastSwitchX;
+                if (Math.abs(dxSinceLast) >= GESTURE_CONFIG.swipeThreshold) {
+                    var dir = dxSinceLast > 0 ? 'left' : 'right';
+                    trigger(dir);
+                    touchState.lastSwitchX = t.clientX;
+                }
             }
-        }, { passive: true });
+        }, { passive: false });
     }
 
     if (GESTURE_CONFIG.enableEdgeSwipe) {
@@ -15444,13 +15446,13 @@ setInterval(async () => {
                             }
                             if (ifs.dir !== 'h') return;
                             var dxSince = e.touches[0].clientX - ifs.lastSwitchX;
-                            if (Math.abs(dxSince) >= 55) {
+                            if (Math.abs(dxSince) >= 28) {
                                 window.parent.postMessage({ type: 'nexos-gesture', direction: dxSince > 0 ? 'left' : 'right', continuous: true }, '*');
                                 ifs.lastSwitchX = e.touches[0].clientX;
                             }
                         }, { passive: true });
                         iframeDoc.addEventListener('wheel', function(e) {
-                            if (Math.abs(e.deltaX) > 45 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                            if (Math.abs(e.deltaX) > 28 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                                 e.preventDefault();
                                 window.parent.postMessage({ type: 'nexos-gesture', direction: e.deltaX > 0 ? 'right' : 'left', continuous: false }, '*');
                             }
