@@ -15328,8 +15328,8 @@ setInterval(async () => {
     window.addEventListener('blur', function() { altHeld = false; });
 
     var lastTriggerTime = 0;
-    function trigger(direction) {
-        if (!altHeld) return;
+    function trigger(direction, forceAlt) {
+        if (!altHeld && !forceAlt) return;
         if (!GESTURE_CONFIG.enabled || !browserReady()) return;
         var now = Date.now();
         if (now - lastTriggerTime < GESTURE_CONFIG.cooldownMs) return;
@@ -15371,7 +15371,7 @@ setInterval(async () => {
                 touchState.locked = true;
                 touchState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
             }
-            if (touchState.direction === 'horizontal' && altHeld) {
+            if (touchState.direction === 'horizontal' && (altHeld || e.altKey)) {
                 e.preventDefault();
                 var dxSinceLast = t.clientX - touchState.lastSwitchX;
                 if (Math.abs(dxSinceLast) >= GESTURE_CONFIG.swipeThreshold) {
@@ -15440,8 +15440,6 @@ setInterval(async () => {
                     var iframeDoc = iframe.contentDocument;
                     if (iframeDoc && !iframeDoc._gestureInjected) {
                         iframeDoc._gestureInjected = true;
-                        iframeDoc.documentElement.style.overscrollBehaviorX = 'none';
-                        if (iframeDoc.body) iframeDoc.body.style.overscrollBehaviorX = 'none';
                         var ifs = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, dir: null };
                         iframeDoc.addEventListener('touchstart', function(e) {
                             if (!e.touches.length) return;
@@ -15453,6 +15451,7 @@ setInterval(async () => {
                         }, { passive: true });
                         iframeDoc.addEventListener('touchmove', function(e) {
                             if (!e.touches.length) return;
+                            if (!e.altKey) return;
                             var dx = e.touches[0].clientX - ifs.startX;
                             var dy = e.touches[0].clientY - ifs.startY;
                             if (!ifs.locked && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
@@ -15467,7 +15466,7 @@ setInterval(async () => {
                             }
                         }, { passive: true });
                         iframeDoc.addEventListener('wheel', function(e) {
-                            if (Math.abs(e.deltaX) > 28 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                            if (e.altKey && Math.abs(e.deltaX) > 28 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                                 e.preventDefault();
                                 window.parent.postMessage({ type: 'nexos-gesture', direction: e.deltaX > 0 ? 'right' : 'left', continuous: false }, '*');
                             }
@@ -15505,6 +15504,17 @@ setInterval(async () => {
     }
 
     window._gestureConfig = GESTURE_CONFIG;
+
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && e.shiftKey && e.key === '/') {
+            e.preventDefault();
+            var addressBar = document.getElementById('addressBar');
+            if (addressBar) {
+                addressBar.focus();
+                addressBar.select();
+            }
+        }
+    });
 })();
 </script>
 
