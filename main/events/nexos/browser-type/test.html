@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -205,7 +206,7 @@
         }
 
         .tab.swapping {
-            transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1) !important;
             will-change: transform;
         }
 
@@ -5232,8 +5233,6 @@ body.reduce-motion *::after {
     </div>
 
 
-
-
     <div class="browser-container">
         <div class="tab-bar" id="tabBar">
             <button class="new-tab-btn" id="newTabBtn">
@@ -7104,13 +7103,12 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             updateSlidePosition(deltaX) {
-                // Clamp so dragged tab can't go off-screen
                 const draggedRect = this.dragState.draggedTab.getBoundingClientRect();
                 const tabBarRect = this.tabBar.getBoundingClientRect();
                 const originalPos = this.dragState.tabPositions.get(this.dragState.draggedTabId);
                 if (originalPos) {
-                    const minDelta = tabBarRect.left - originalPos.left;
-                    const maxDelta = (tabBarRect.right) - (originalPos.left + originalPos.width);
+                    const minDelta = tabBarRect.left - originalPos.left - 12;
+                    const maxDelta = (tabBarRect.right) - (originalPos.left + originalPos.width) + 12;
                     deltaX = Math.max(minDelta, Math.min(maxDelta, deltaX));
                 }
 
@@ -7124,16 +7122,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 const draggedRight = draggedPos.left + draggedPos.width + deltaX;
                 const draggedIndex = draggedPos.index;
 
-                // Push new-tab button if dragged tab approaches it
                 if (this.newTabBtn) {
-                    const newTabBtnRect = this.newTabBtn.getBoundingClientRect();
-                    const newTabBtnOrigLeft = newTabBtnRect.left;
-                    if (draggedRight > newTabBtnOrigLeft - 4) {
-                        const pushAmount = draggedRight - newTabBtnOrigLeft + 8;
-                        this.newTabBtn.style.transition = 'transform 0.15s ease';
-                        this.newTabBtn.style.transform = `translateX(${pushAmount}px)`;
+                    if (!this.dragState._newTabBtnOrigLeft) {
+                        this.dragState._newTabBtnOrigLeft = this.newTabBtn.getBoundingClientRect().left;
+                    }
+                    var ntbOrigLeft = this.dragState._newTabBtnOrigLeft;
+                    if (draggedRight > ntbOrigLeft - 4) {
+                        var pushAmt = draggedRight - ntbOrigLeft + 8;
+                        this.newTabBtn.style.transition = 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)';
+                        this.newTabBtn.style.transform = 'translateX(' + pushAmt + 'px)';
                     } else {
-                        this.newTabBtn.style.transition = 'transform 0.15s ease';
+                        this.newTabBtn.style.transition = 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)';
                         this.newTabBtn.style.transform = '';
                     }
                 }
@@ -7217,11 +7216,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 draggedElement.style.transition = '';
                 draggedElement.style.transform = 'translateX(0)';
 
-                // Reset new-tab button position
                 if (this.newTabBtn) {
-                    this.newTabBtn.style.transition = 'transform 0.2s ease';
+                    this.newTabBtn.style.transition = 'transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)';
                     this.newTabBtn.style.transform = '';
                 }
+                this.dragState._newTabBtnOrigLeft = null;
 
                 setTimeout(() => {
                     draggedElement.classList.remove('drag-settling');
@@ -8699,7 +8698,6 @@ if (this.isBlockedUrl(url)) {
         }
 
         lucide.createIcons();
-
 
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -15230,59 +15228,10 @@ setInterval(async () => {
 </script>
 
 
-
 <style>
-/* === GESTURE SWIPE ANIMATION CSS === */
-.content-area {
-    position: relative;
-    overflow: hidden;
-}
-.tab-content.gesture-swipe-out-left {
-    animation: gestureSlideOutLeft 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-    visibility: visible !important;
-    pointer-events: none !important;
-}
-.tab-content.gesture-swipe-out-right {
-    animation: gestureSlideOutRight 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-    visibility: visible !important;
-    pointer-events: none !important;
-}
-.tab-content.gesture-swipe-in-left {
-    animation: gestureSlideInLeft 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-    visibility: visible !important;
-}
-.tab-content.gesture-swipe-in-right {
-    animation: gestureSlideInRight 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-    visibility: visible !important;
-}
-@keyframes gestureSlideOutLeft {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(-100%); opacity: 0.3; }
-}
-@keyframes gestureSlideOutRight {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0.3; }
-}
-@keyframes gestureSlideInLeft {
-    from { transform: translateX(100%); opacity: 0.3; }
-    to { transform: translateX(0); opacity: 1; }
-}
-@keyframes gestureSlideInRight {
-    from { transform: translateX(-100%); opacity: 0.3; }
-    to { transform: translateX(0); opacity: 1; }
-}
-/* Tab highlight pulse on gesture switch */
-.tab.gesture-highlight {
-    animation: gestureTabPulse 0.35s ease;
-}
-@keyframes gestureTabPulse {
-    0% { background: rgba(66, 133, 244, 0.3); }
-    100% { background: transparent; }
-}
 </style>
 
 <script>
-// === GESTURE TAB SWITCHING SYSTEM v3 ===
 (function() {
     var GESTURE_CONFIG = {
         enabled: true,
@@ -15292,30 +15241,13 @@ setInterval(async () => {
         enableTabBarScroll: true,
         enableIframeGestures: true,
         edgeSize: 40,
-        swipeThreshold: 60,
-        wheelThreshold: 50,
-        cooldown: 280,
-        continuousSwipeCooldown: 200,
+        swipeThreshold: 40,
+        wheelThreshold: 30,
         tabBarSelector: '#tabBar'
-    };
-
-    var gestureState = {
-        startX: 0,
-        startY: 0,
-        edgeCandidate: false,
-        lastTrigger: 0,
-        animating: false,
-        wheelAccum: 0,
-        wheelTimeout: null
     };
 
     function browserReady() {
         return !!(window.browser && typeof window.browser.switchToTab === 'function' && window.browser.tabs);
-    }
-
-    function canTrigger(useContinuousCooldown) {
-        var cd = useContinuousCooldown ? GESTURE_CONFIG.continuousSwipeCooldown : GESTURE_CONFIG.cooldown;
-        return !gestureState.animating && (Date.now() - gestureState.lastTrigger > cd);
     }
 
     function isTypingTarget(el) {
@@ -15339,7 +15271,28 @@ setInterval(async () => {
         return Array.from(window.browser.tabs.keys());
     }
 
-    function switchWithAnimation(step, direction) {
+    function isSplitTab(tabId) {
+        if (!browserReady()) return false;
+        var b = window.browser;
+        if (!b._splitTabs) return false;
+        if (b._splitTabs.has(tabId)) return true;
+        var found = false;
+        b._splitTabs.forEach(function(sd) {
+            if (sd.leftTabId === tabId || sd.rightTabId === tabId) found = true;
+        });
+        return found;
+    }
+
+    function findNextNonSplitTab(ids, currentIdx, step) {
+        var i = currentIdx + step;
+        while (i >= 0 && i < ids.length) {
+            if (!isSplitTab(ids[i])) return i;
+            i += step;
+        }
+        return -1;
+    }
+
+    function switchInstant(step) {
         if (!browserReady()) return false;
         var b = window.browser;
         var ids = getOrderedTabIds();
@@ -15348,78 +15301,33 @@ setInterval(async () => {
         var idx = ids.indexOf(b.activeTabId);
         if (idx === -1) return false;
 
-        var nextIndex = idx + step;
-        // NO WRAPPING — clamp at edges
+        var nextIndex = findNextNonSplitTab(ids, idx, step);
         if (nextIndex < 0 || nextIndex >= ids.length) return false;
 
         var targetId = ids[nextIndex];
         if (targetId == null || targetId === b.activeTabId) return false;
 
-        var oldTab = b.tabs.get(b.activeTabId);
-        var newTab = b.tabs.get(targetId);
-        if (!oldTab || !newTab) { b.switchToTab(targetId); return true; }
-
-        var oldIframe = oldTab.iframe;
-        var newIframe = newTab.iframe;
-
-        // Animate the swipe
-        gestureState.animating = true;
-
-        // Determine animation direction
-        var outClass = direction === 'right' ? 'gesture-swipe-out-left' : 'gesture-swipe-out-right';
-        var inClass = direction === 'right' ? 'gesture-swipe-in-left' : 'gesture-swipe-in-right';
-
-        // Make new iframe visible for animation before switching
-        newIframe.style.visibility = 'visible';
-        newIframe.classList.add(inClass);
-        oldIframe.classList.add(outClass);
-
-        // Actually switch tabs (updates tab bar active state)
         b.switchToTab(targetId);
-
-        // Highlight the new active tab element
-        var newTabEl = newTab.element;
-        if (newTabEl) {
-            newTabEl.classList.add('gesture-highlight');
-            setTimeout(function() { newTabEl.classList.remove('gesture-highlight'); }, 350);
-        }
-
-        // Clean up animation classes after animation completes
-        setTimeout(function() {
-            oldIframe.classList.remove(outClass);
-            newIframe.classList.remove(inClass);
-            gestureState.animating = false;
-        }, 300);
-
         return true;
     }
 
-    function trigger(direction, eventTarget, isContinuous) {
-        if (!GESTURE_CONFIG.enabled || !browserReady() || !canTrigger(isContinuous)) return;
-
-        // Allow gestures from anywhere EXCEPT typing targets
+    function trigger(direction) {
+        if (!GESTURE_CONFIG.enabled || !browserReady()) return;
         var active = document.activeElement;
         if (isTypingTarget(active)) return;
-
-        // Don't block gestures from iframe area — that's the whole point
-        gestureState.lastTrigger = Date.now();
         var step = direction === 'right' ? 1 : -1;
-        switchWithAnimation(step, direction);
+        switchInstant(step);
     }
 
-    // === DISABLE CHROME BACK/FORWARD SWIPE ===
     document.addEventListener('wheel', function(e) {
-        // Block horizontal wheel that would trigger Chrome's back/forward
         if (Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
             e.preventDefault();
         }
     }, { passive: false });
 
-    // Also overscroll-behavior CSS to prevent it
     document.documentElement.style.overscrollBehaviorX = 'none';
     document.body.style.overscrollBehaviorX = 'none';
 
-    // === TOUCH SWIPE (continuous — keeps switching as you swipe) ===
     if (GESTURE_CONFIG.enableTouchSwipe) {
         var touchState = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, direction: null };
 
@@ -15435,100 +15343,84 @@ setInterval(async () => {
 
         document.addEventListener('touchmove', function(e) {
             if (!e.touches || !e.touches.length) return;
-            // Don't interfere with tab dragging
             if (window.browser && window.browser.dragState && window.browser.dragState.isDragging) return;
-
             var t = e.touches[0];
             var dx = t.clientX - touchState.startX;
             var dy = t.clientY - touchState.startY;
-
-            // Lock direction after initial movement
-            if (!touchState.locked && (Math.abs(dx) > 15 || Math.abs(dy) > 15)) {
+            if (!touchState.locked && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
                 touchState.locked = true;
                 touchState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
             }
-
             if (touchState.direction !== 'horizontal') return;
-
-            // Continuous switching: every swipeThreshold px traveled, switch again
             var dxSinceLast = t.clientX - touchState.lastSwitchX;
             if (Math.abs(dxSinceLast) >= GESTURE_CONFIG.swipeThreshold) {
                 var dir = dxSinceLast > 0 ? 'left' : 'right';
-                trigger(dir, e.target, true);
+                trigger(dir);
                 touchState.lastSwitchX = t.clientX;
             }
         }, { passive: true });
     }
 
-    // === EDGE SWIPE (mouse) ===
     if (GESTURE_CONFIG.enableEdgeSwipe) {
+        var gestureEdge = null;
         document.addEventListener('mousedown', function(e) {
-            gestureState.edgeCandidate = (e.clientX <= GESTURE_CONFIG.edgeSize || e.clientX >= window.innerWidth - GESTURE_CONFIG.edgeSize);
-            gestureState.startX = e.clientX;
-            gestureState.startY = e.clientY;
+            gestureEdge = { candidate: (e.clientX <= GESTURE_CONFIG.edgeSize || e.clientX >= window.innerWidth - GESTURE_CONFIG.edgeSize), startX: e.clientX, startY: e.clientY };
         }, { passive: true });
 
         document.addEventListener('mouseup', function(e) {
-            if (!gestureState.edgeCandidate) return;
-            var dx = e.clientX - gestureState.startX;
-            var dy = e.clientY - gestureState.startY;
-
+            if (!gestureEdge || !gestureEdge.candidate) return;
+            var dx = e.clientX - gestureEdge.startX;
+            var dy = e.clientY - gestureEdge.startY;
             if (Math.abs(dx) > GESTURE_CONFIG.swipeThreshold && Math.abs(dx) > Math.abs(dy) * 1.35) {
-                trigger(dx > 0 ? 'left' : 'right', e.target, false);
+                trigger(dx > 0 ? 'left' : 'right');
             }
-            gestureState.edgeCandidate = false;
+            gestureEdge = null;
         }, { passive: true });
     }
 
-    // === TRACKPAD HORIZONTAL SCROLL ===
     if (GESTURE_CONFIG.enableTrackpadSwipe) {
+        var trackpadAccum = 0;
+        var trackpadTimeout = null;
         document.addEventListener('wheel', function(e) {
-            if (Math.abs(e.deltaX) > GESTURE_CONFIG.wheelThreshold && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-                trigger(e.deltaX > 0 ? 'right' : 'left', e.target, false);
+            if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+            trackpadAccum += e.deltaX;
+            if (Math.abs(trackpadAccum) >= GESTURE_CONFIG.wheelThreshold) {
+                trigger(trackpadAccum > 0 ? 'right' : 'left');
+                trackpadAccum = 0;
             }
+            clearTimeout(trackpadTimeout);
+            trackpadTimeout = setTimeout(function() { trackpadAccum = 0; }, 150);
         }, { passive: true });
     }
 
-    // === TAB BAR VERTICAL SCROLL ===
     if (GESTURE_CONFIG.enableTabBarScroll) {
         document.addEventListener('wheel', function(e) {
             var tabBar = document.querySelector(GESTURE_CONFIG.tabBarSelector);
             if (!tabBar || !tabBar.contains(e.target)) return;
-            if (Math.abs(e.deltaY) > 10) {
-                trigger(e.deltaY > 0 ? 'right' : 'left', e.target, false);
+            if (Math.abs(e.deltaY) > 5) {
+                trigger(e.deltaY > 0 ? 'right' : 'left');
             }
         }, { passive: true });
     }
 
-    // === IFRAME GESTURE SUPPORT ===
-    // Listen for messages from iframes to forward gestures
     if (GESTURE_CONFIG.enableIframeGestures) {
         window.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'nexos-gesture') {
-                trigger(e.data.direction, null, e.data.continuous || false);
+                trigger(e.data.direction);
             }
         });
 
-        // Inject gesture forwarding script into iframes
         function injectIframeGestures(iframe) {
             try {
                 var iframeWin = iframe.contentWindow;
                 if (!iframeWin) return;
-
-                // Inject via postMessage-based approach (works cross-origin)
-                // For same-origin, inject directly
                 try {
                     var iframeDoc = iframe.contentDocument;
                     if (iframeDoc && !iframeDoc._gestureInjected) {
                         iframeDoc._gestureInjected = true;
-
-                        // Disable overscroll in iframe too
                         iframeDoc.documentElement.style.overscrollBehaviorX = 'none';
                         if (iframeDoc.body) iframeDoc.body.style.overscrollBehaviorX = 'none';
-
-                        // Touch gestures inside iframe
                         var ifs = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, dir: null };
-
                         iframeDoc.addEventListener('touchstart', function(e) {
                             if (!e.touches.length) return;
                             ifs.startX = e.touches[0].clientX;
@@ -15537,38 +15429,32 @@ setInterval(async () => {
                             ifs.locked = false;
                             ifs.dir = null;
                         }, { passive: true });
-
                         iframeDoc.addEventListener('touchmove', function(e) {
                             if (!e.touches.length) return;
                             var dx = e.touches[0].clientX - ifs.startX;
                             var dy = e.touches[0].clientY - ifs.startY;
-                            if (!ifs.locked && (Math.abs(dx) > 15 || Math.abs(dy) > 15)) {
+                            if (!ifs.locked && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
                                 ifs.locked = true;
                                 ifs.dir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
                             }
                             if (ifs.dir !== 'h') return;
                             var dxSince = e.touches[0].clientX - ifs.lastSwitchX;
-                            if (Math.abs(dxSince) >= 60) {
+                            if (Math.abs(dxSince) >= 40) {
                                 window.parent.postMessage({ type: 'nexos-gesture', direction: dxSince > 0 ? 'left' : 'right', continuous: true }, '*');
                                 ifs.lastSwitchX = e.touches[0].clientX;
                             }
                         }, { passive: true });
-
-                        // Wheel gestures inside iframe
                         iframeDoc.addEventListener('wheel', function(e) {
-                            if (Math.abs(e.deltaX) > 50 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                            if (Math.abs(e.deltaX) > 30 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                                 e.preventDefault();
                                 window.parent.postMessage({ type: 'nexos-gesture', direction: e.deltaX > 0 ? 'right' : 'left', continuous: false }, '*');
                             }
                         }, { passive: false });
                     }
-                } catch(crossOriginErr) {
-                    // Cross-origin — can't inject, that's fine
-                }
+                } catch(crossOriginErr) {}
             } catch(err) {}
         }
 
-        // Inject into existing and future iframes
         function injectAll() {
             document.querySelectorAll('.tab-content').forEach(function(iframe) {
                 injectIframeGestures(iframe);
@@ -15576,14 +15462,12 @@ setInterval(async () => {
             });
         }
 
-        // Run after browser initializes
         if (document.readyState === 'complete') {
             setTimeout(injectAll, 1000);
         } else {
             window.addEventListener('load', function() { setTimeout(injectAll, 1000); });
         }
 
-        // Also observe for new iframes
         var observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(m) {
                 m.addedNodes.forEach(function(node) {
