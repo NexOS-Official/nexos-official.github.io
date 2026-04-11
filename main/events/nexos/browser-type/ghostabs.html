@@ -1,3 +1,8 @@
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -204,7 +209,7 @@
         }
 
         .tab.swapping {
-            transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+            transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1) !important;
             will-change: transform;
         }
 
@@ -2686,10 +2691,11 @@ body.reduce-motion *::after {
         position: fixed;
         bottom: 60px;
         right: 20px;
-        width: 320px;
+        width: auto;
         z-index: 10000;
         display: flex;
-        flex-direction: column;
+        flex-direction: row-reverse;
+        align-items: flex-end;
         gap: 8px;
         transform: translateY(20px) scale(0.95);
         opacity: 0;
@@ -2703,7 +2709,8 @@ body.reduce-motion *::after {
     }
 
     .control-center-menu {
-        width: 100%;
+        width: 320px;
+        flex-shrink: 0;
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(20px) saturate(180%);
         -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -2885,7 +2892,8 @@ body.reduce-motion *::after {
     }
 
      .annc-panel {
-        width: 100%;
+        width: 320px;
+        flex-shrink: 0;
         max-height: 280px;
         background: rgba(255, 255, 255, 0.88);
         backdrop-filter: blur(20px) saturate(180%);
@@ -3088,6 +3096,13 @@ body.reduce-motion *::after {
             bottom: 52px;
             max-height: calc(100dvh - 100px);
             overflow-y: auto;
+            flex-direction: column;
+        }
+        .annc-panel {
+            width: 100%;
+        }
+        .control-center-menu {
+            width: 100%;
         }
         .annc-notification {
             right: 8px;
@@ -3564,7 +3579,8 @@ body.reduce-motion *::after {
         background: rgba(0,0,0,0.04);
     }
     #settingsMenu .s-option.active {
-        color: #007aff;
+        color: #000;
+        font-weight: 700;
     }
     #settingsMenu .s-option .s-check {
         width: 14px;
@@ -5229,8 +5245,6 @@ body.reduce-motion *::after {
             </div>
         </div>
     </div>
-
-
 
 
     <div class="browser-container">
@@ -7103,15 +7117,39 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             updateSlidePosition(deltaX) {
+                const draggedRect = this.dragState.draggedTab.getBoundingClientRect();
+                const tabBarRect = this.tabBar.getBoundingClientRect();
+                const originalPos = this.dragState.tabPositions.get(this.dragState.draggedTabId);
+                if (originalPos) {
+                    const minDelta = tabBarRect.left - originalPos.left - 12;
+                    const maxDelta = (tabBarRect.right) - (originalPos.left + originalPos.width) + 12;
+                    deltaX = Math.max(minDelta, Math.min(maxDelta, deltaX));
+                }
+
                 this.dragState.currentOffset = deltaX;
-                
                 this.dragState.draggedTab.style.transform = `translateX(${deltaX}px)`;
 
                 const draggedPos = this.dragState.tabPositions.get(this.dragState.draggedTabId);
                 if (!draggedPos) return;
 
                 const draggedCurrentX = draggedPos.centerX + deltaX;
+                const draggedRight = draggedPos.left + draggedPos.width + deltaX;
                 const draggedIndex = draggedPos.index;
+
+                if (this.newTabBtn) {
+                    if (!this.dragState._newTabBtnOrigLeft) {
+                        this.dragState._newTabBtnOrigLeft = this.newTabBtn.getBoundingClientRect().left;
+                    }
+                    var ntbOrigLeft = this.dragState._newTabBtnOrigLeft;
+                    if (draggedRight > ntbOrigLeft - 4) {
+                        var pushAmt = draggedRight - ntbOrigLeft + 8;
+                        this.newTabBtn.style.transition = 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)';
+                        this.newTabBtn.style.transform = 'translateX(' + pushAmt + 'px)';
+                    } else {
+                        this.newTabBtn.style.transition = 'transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)';
+                        this.newTabBtn.style.transform = '';
+                    }
+                }
 
                 this.dragState.tabOrder.forEach((tab, currentIndex) => {
                     if (tab.id === this.dragState.draggedTabId) return;
@@ -7192,9 +7230,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 draggedElement.style.transition = '';
                 draggedElement.style.transform = 'translateX(0)';
 
+                if (this.newTabBtn) {
+                    this.newTabBtn.style.transition = 'transform 0.25s cubic-bezier(0.22, 1, 0.36, 1)';
+                    this.newTabBtn.style.transform = '';
+                }
+                this.dragState._newTabBtnOrigLeft = null;
+
                 setTimeout(() => {
                     draggedElement.classList.remove('drag-settling');
                     draggedElement.style.transform = '';
+                    if (this.newTabBtn) {
+                        this.newTabBtn.style.transition = '';
+                        this.newTabBtn.style.transform = '';
+                    }
                     this.updateTabSizes();
                 }, 300);
             }
@@ -8664,7 +8712,6 @@ if (this.isBlockedUrl(url)) {
         }
 
         lucide.createIcons();
-
 
 
         document.addEventListener("DOMContentLoaded", () => {
@@ -10463,15 +10510,6 @@ menu.addEventListener('mouseleave', hideMenu);
             '<div class="cc-toggle" id="ccShowBookmarksToggle" style="width:34px;height:20px;border-radius:12px;background:#ccc;position:relative;transition:background 0.2s;flex-shrink:0;">' +
             '<div class="cc-toggle-knob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);"></div>' +
             '</div>' +
-            '</button>' +
-            '<div style="height:1px;background:rgba(0,0,0,0.08);margin:8px 12px;"></div>' +
-            '<div style="font-size:11px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:0.4px;padding:6px 12px 6px;">Data</div>' +
-            '<button class="cc-settings-option" id="ccClearHistory" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
-            '<span>Clear Browsing History</span>' +
-            '</button>' +
-            '<button class="cc-settings-option" id="ccResetSettings" style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;font-size:13px;font-family:google sans,sans-serif;color:#e34040;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;">' +
-            '<span>Reset All Settings</span>' +
-            '</button>' +
             '</div>';
 
         function openSettingsPanel(e) {
@@ -10548,7 +10586,8 @@ menu.addEventListener('mouseleave', hideMenu);
                 var check = btn.querySelector('.s-check');
                 var isActive = btn.dataset.clock === fmt;
                 if (check) check.style.opacity = isActive ? '1' : '0';
-                btn.style.color = isActive ? '#007aff' : '#1d1d1f';
+                btn.style.color = isActive ? '#000' : '#1d1d1f';
+                btn.style.fontWeight = isActive ? '700' : '400';
             });
         }
 
@@ -10731,13 +10770,17 @@ menu.addEventListener('mouseleave', hideMenu);
             if (style === 'rounded') {
                 if (roundedCheck) roundedCheck.style.opacity = '1';
                 if (maskedCheck) maskedCheck.style.opacity = '0';
-                roundedBtn.style.color = '#007aff';
+                roundedBtn.style.color = '#000';
+                roundedBtn.style.fontWeight = '700';
                 maskedBtn.style.color = '#1d1d1f';
+                maskedBtn.style.fontWeight = '400';
             } else {
                 if (maskedCheck) maskedCheck.style.opacity = '1';
                 if (roundedCheck) roundedCheck.style.opacity = '0';
-                maskedBtn.style.color = '#007aff';
+                maskedBtn.style.color = '#000';
+                maskedBtn.style.fontWeight = '700';
                 roundedBtn.style.color = '#1d1d1f';
+                roundedBtn.style.fontWeight = '400';
             }
         }
 
@@ -15191,6 +15234,287 @@ setInterval(async () => {
 
     window.openSnapshotPanel = openRecapAsSnapshots;
     window.closeSnapshotPanel = closeRecapPanel;
+})();
+</script>
+
+
+<style>
+</style>
+
+<script>
+(function() {
+    var GESTURE_CONFIG = {
+        enabled: true,
+        enableTouchSwipe: true,
+        enableEdgeSwipe: true,
+        enableTrackpadSwipe: true,
+        enableTabBarScroll: true,
+        enableIframeGestures: true,
+        edgeSize: 40,
+        swipeThreshold: 28,
+        wheelThreshold: 28,
+        cooldownMs: 140,
+        tabBarSelector: '#tabBar'
+    };
+
+    function browserReady() {
+        return !!(window.browser && typeof window.browser.switchToTab === 'function' && window.browser.tabs);
+    }
+
+    function isTypingTarget(el) {
+        return !!(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable));
+    }
+
+    function getOrderedTabIds() {
+        if (!browserReady()) return [];
+        var tabBar = document.querySelector(GESTURE_CONFIG.tabBarSelector);
+        var domIds = [];
+        if (tabBar) {
+            tabBar.querySelectorAll('.tab').forEach(function(tabEl) {
+                var raw = tabEl.getAttribute('data-tab-id') || (tabEl.dataset && tabEl.dataset.tabId);
+                if (raw != null && raw !== '') {
+                    var parsed = parseInt(raw, 10);
+                    if (!isNaN(parsed)) domIds.push(parsed);
+                }
+            });
+        }
+        if (domIds.length) return domIds.filter(function(id, i, arr) { return arr.indexOf(id) === i; });
+        return Array.from(window.browser.tabs.keys());
+    }
+
+    function isSplitTab(tabId) {
+        if (!browserReady()) return false;
+        var b = window.browser;
+        if (!b._splitTabs) return false;
+        if (b._splitTabs.has(tabId)) return true;
+        var found = false;
+        b._splitTabs.forEach(function(sd) {
+            if (sd.leftTabId === tabId || sd.rightTabId === tabId) found = true;
+        });
+        return found;
+    }
+
+    function findNextNonSplitTab(ids, currentIdx, step) {
+        var i = currentIdx + step;
+        while (i >= 0 && i < ids.length) {
+            if (!isSplitTab(ids[i])) return i;
+            i += step;
+        }
+        return -1;
+    }
+
+    function switchInstant(step) {
+        if (!browserReady()) return false;
+        var b = window.browser;
+        var ids = getOrderedTabIds();
+        if (!ids.length || b.activeTabId == null) return false;
+
+        var idx = ids.indexOf(b.activeTabId);
+        if (idx === -1) return false;
+
+        var nextIndex = findNextNonSplitTab(ids, idx, step);
+        if (nextIndex < 0 || nextIndex >= ids.length) return false;
+
+        var targetId = ids[nextIndex];
+        if (targetId == null || targetId === b.activeTabId) return false;
+
+        b.switchToTab(targetId);
+        return true;
+    }
+
+    var altHeld = false;
+    document.addEventListener('keydown', function(e) { if (e.key === 'Alt') altHeld = true; });
+    document.addEventListener('keyup', function(e) { if (e.key === 'Alt') altHeld = false; });
+    window.addEventListener('blur', function() { altHeld = false; });
+
+    var lastTriggerTime = 0;
+    function trigger(direction, forceAlt) {
+        if (!altHeld && !forceAlt) return;
+        if (!GESTURE_CONFIG.enabled || !browserReady()) return;
+        var now = Date.now();
+        if (now - lastTriggerTime < GESTURE_CONFIG.cooldownMs) return;
+        var active = document.activeElement;
+        if (isTypingTarget(active)) return;
+        var step = direction === 'right' ? 1 : -1;
+        if (switchInstant(step)) lastTriggerTime = now;
+    }
+
+    document.addEventListener('wheel', function(e) {
+        if (altHeld && Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    document.documentElement.style.overscrollBehaviorX = 'none';
+    document.body.style.overscrollBehaviorX = 'none';
+
+    if (GESTURE_CONFIG.enableTouchSwipe) {
+        var touchState = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, direction: null };
+
+        document.addEventListener('touchstart', function(e) {
+            if (!e.touches || !e.touches.length) return;
+            var t = e.touches[0];
+            touchState.startX = t.clientX;
+            touchState.startY = t.clientY;
+            touchState.lastSwitchX = t.clientX;
+            touchState.locked = false;
+            touchState.direction = null;
+        }, { passive: false });
+
+        document.addEventListener('touchmove', function(e) {
+            if (!e.touches || !e.touches.length) return;
+            if (window.browser && window.browser.dragState && window.browser.dragState.isDragging) return;
+            var t = e.touches[0];
+            var dx = t.clientX - touchState.startX;
+            var dy = t.clientY - touchState.startY;
+            if (!touchState.locked && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+                touchState.locked = true;
+                touchState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+            }
+            if (touchState.direction === 'horizontal' && (altHeld || e.altKey)) {
+                e.preventDefault();
+                var dxSinceLast = t.clientX - touchState.lastSwitchX;
+                if (Math.abs(dxSinceLast) >= GESTURE_CONFIG.swipeThreshold) {
+                    var dir = dxSinceLast > 0 ? 'left' : 'right';
+                    trigger(dir);
+                    touchState.lastSwitchX = t.clientX;
+                }
+            }
+        }, { passive: false });
+    }
+
+    if (GESTURE_CONFIG.enableEdgeSwipe) {
+        var gestureEdge = null;
+        document.addEventListener('mousedown', function(e) {
+            gestureEdge = { candidate: (e.clientX <= GESTURE_CONFIG.edgeSize || e.clientX >= window.innerWidth - GESTURE_CONFIG.edgeSize), startX: e.clientX, startY: e.clientY };
+        }, { passive: true });
+
+        document.addEventListener('mouseup', function(e) {
+            if (!gestureEdge || !gestureEdge.candidate) return;
+            var dx = e.clientX - gestureEdge.startX;
+            var dy = e.clientY - gestureEdge.startY;
+            if (Math.abs(dx) > GESTURE_CONFIG.swipeThreshold && Math.abs(dx) > Math.abs(dy) * 1.35) {
+                trigger(dx > 0 ? 'left' : 'right');
+            }
+            gestureEdge = null;
+        }, { passive: true });
+    }
+
+    if (GESTURE_CONFIG.enableTrackpadSwipe) {
+        var trackpadAccum = 0;
+        var trackpadTimeout = null;
+        document.addEventListener('wheel', function(e) {
+            if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+            trackpadAccum += e.deltaX;
+            if (Math.abs(trackpadAccum) >= GESTURE_CONFIG.wheelThreshold) {
+                trigger(trackpadAccum > 0 ? 'right' : 'left');
+                trackpadAccum = 0;
+            }
+            clearTimeout(trackpadTimeout);
+            trackpadTimeout = setTimeout(function() { trackpadAccum = 0; }, 150);
+        }, { passive: true });
+    }
+
+    if (GESTURE_CONFIG.enableTabBarScroll) {
+        document.addEventListener('wheel', function(e) {
+            var tabBar = document.querySelector(GESTURE_CONFIG.tabBarSelector);
+            if (!tabBar || !tabBar.contains(e.target)) return;
+            if (Math.abs(e.deltaY) > 5) {
+                trigger(e.deltaY > 0 ? 'right' : 'left');
+            }
+        }, { passive: true });
+    }
+
+    if (GESTURE_CONFIG.enableIframeGestures) {
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'nexos-gesture') {
+                trigger(e.data.direction);
+            }
+        });
+
+        function injectIframeGestures(iframe) {
+            try {
+                var iframeWin = iframe.contentWindow;
+                if (!iframeWin) return;
+                try {
+                    var iframeDoc = iframe.contentDocument;
+                    if (iframeDoc && !iframeDoc._gestureInjected) {
+                        iframeDoc._gestureInjected = true;
+                        var ifs = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, dir: null };
+                        iframeDoc.addEventListener('touchstart', function(e) {
+                            if (!e.touches.length) return;
+                            ifs.startX = e.touches[0].clientX;
+                            ifs.startY = e.touches[0].clientY;
+                            ifs.lastSwitchX = e.touches[0].clientX;
+                            ifs.locked = false;
+                            ifs.dir = null;
+                        }, { passive: true });
+                        iframeDoc.addEventListener('touchmove', function(e) {
+                            if (!e.touches.length) return;
+                            if (!e.altKey) return;
+                            var dx = e.touches[0].clientX - ifs.startX;
+                            var dy = e.touches[0].clientY - ifs.startY;
+                            if (!ifs.locked && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+                                ifs.locked = true;
+                                ifs.dir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+                            }
+                            if (ifs.dir !== 'h') return;
+                            var dxSince = e.touches[0].clientX - ifs.lastSwitchX;
+                            if (Math.abs(dxSince) >= 28) {
+                                window.parent.postMessage({ type: 'nexos-gesture', direction: dxSince > 0 ? 'left' : 'right', continuous: true }, '*');
+                                ifs.lastSwitchX = e.touches[0].clientX;
+                            }
+                        }, { passive: true });
+                        iframeDoc.addEventListener('wheel', function(e) {
+                            if (e.altKey && Math.abs(e.deltaX) > 28 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                                e.preventDefault();
+                                window.parent.postMessage({ type: 'nexos-gesture', direction: e.deltaX > 0 ? 'right' : 'left', continuous: false }, '*');
+                            }
+                        }, { passive: false });
+                    }
+                } catch(crossOriginErr) {}
+            } catch(err) {}
+        }
+
+        function injectAll() {
+            document.querySelectorAll('.tab-content').forEach(function(iframe) {
+                injectIframeGestures(iframe);
+                iframe.addEventListener('load', function() { injectIframeGestures(iframe); });
+            });
+        }
+
+        if (document.readyState === 'complete') {
+            setTimeout(injectAll, 1000);
+        } else {
+            window.addEventListener('load', function() { setTimeout(injectAll, 1000); });
+        }
+
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                m.addedNodes.forEach(function(node) {
+                    if (node.tagName === 'IFRAME' && node.classList.contains('tab-content')) {
+                        injectIframeGestures(node);
+                        node.addEventListener('load', function() { injectIframeGestures(node); });
+                    }
+                });
+            });
+        });
+        var contentArea = document.getElementById('contentArea');
+        if (contentArea) observer.observe(contentArea, { childList: true });
+    }
+
+    window._gestureConfig = GESTURE_CONFIG;
+
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && e.shiftKey && (e.key === '?' || e.key === '/' || e.code === 'Slash')) {
+            e.preventDefault();
+            var addressBar = document.getElementById('addressBar');
+            if (addressBar) {
+                addressBar.focus();
+                addressBar.select();
+            }
+        }
+    });
 })();
 </script>
 
