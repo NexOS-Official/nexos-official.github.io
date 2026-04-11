@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7104,7 +7105,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             updateSlidePosition(deltaX) {
-                // Clamp so dragged tab can't go off-screen
                 const draggedRect = this.dragState.draggedTab.getBoundingClientRect();
                 const tabBarRect = this.tabBar.getBoundingClientRect();
                 const originalPos = this.dragState.tabPositions.get(this.dragState.draggedTabId);
@@ -7124,7 +7124,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 const draggedRight = draggedPos.left + draggedPos.width + deltaX;
                 const draggedIndex = draggedPos.index;
 
-                // Push new-tab button if dragged tab approaches it
                 if (this.newTabBtn) {
                     const newTabBtnRect = this.newTabBtn.getBoundingClientRect();
                     const newTabBtnOrigLeft = newTabBtnRect.left;
@@ -7217,7 +7216,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 draggedElement.style.transition = '';
                 draggedElement.style.transform = 'translateX(0)';
 
-                // Reset new-tab button position
                 if (this.newTabBtn) {
                     this.newTabBtn.style.transition = 'transform 0.2s ease';
                     this.newTabBtn.style.transform = '';
@@ -15232,7 +15230,6 @@ setInterval(async () => {
 
 
 <style>
-/* === GESTURE SWIPE ANIMATION CSS === */
 .content-area {
     position: relative;
     overflow: hidden;
@@ -15271,7 +15268,6 @@ setInterval(async () => {
     from { transform: translateX(-100%); opacity: 0.3; }
     to { transform: translateX(0); opacity: 1; }
 }
-/* Tab highlight pulse on gesture switch */
 .tab.gesture-highlight {
     animation: gestureTabPulse 0.35s ease;
 }
@@ -15282,7 +15278,6 @@ setInterval(async () => {
 </style>
 
 <script>
-// === GESTURE TAB SWITCHING SYSTEM v3 ===
 (function() {
     var GESTURE_CONFIG = {
         enabled: true,
@@ -15292,10 +15287,10 @@ setInterval(async () => {
         enableTabBarScroll: true,
         enableIframeGestures: true,
         edgeSize: 40,
-        swipeThreshold: 60,
-        wheelThreshold: 50,
-        cooldown: 280,
-        continuousSwipeCooldown: 200,
+        swipeThreshold: 120,
+        wheelThreshold: 100,
+        cooldown: 400,
+        continuousSwipeCooldown: 350,
         tabBarSelector: '#tabBar'
     };
 
@@ -15349,7 +15344,6 @@ setInterval(async () => {
         if (idx === -1) return false;
 
         var nextIndex = idx + step;
-        // NO WRAPPING — clamp at edges
         if (nextIndex < 0 || nextIndex >= ids.length) return false;
 
         var targetId = ids[nextIndex];
@@ -15362,29 +15356,23 @@ setInterval(async () => {
         var oldIframe = oldTab.iframe;
         var newIframe = newTab.iframe;
 
-        // Animate the swipe
         gestureState.animating = true;
 
-        // Determine animation direction
         var outClass = direction === 'right' ? 'gesture-swipe-out-left' : 'gesture-swipe-out-right';
         var inClass = direction === 'right' ? 'gesture-swipe-in-left' : 'gesture-swipe-in-right';
 
-        // Make new iframe visible for animation before switching
         newIframe.style.visibility = 'visible';
         newIframe.classList.add(inClass);
         oldIframe.classList.add(outClass);
 
-        // Actually switch tabs (updates tab bar active state)
         b.switchToTab(targetId);
 
-        // Highlight the new active tab element
         var newTabEl = newTab.element;
         if (newTabEl) {
             newTabEl.classList.add('gesture-highlight');
             setTimeout(function() { newTabEl.classList.remove('gesture-highlight'); }, 350);
         }
 
-        // Clean up animation classes after animation completes
         setTimeout(function() {
             oldIframe.classList.remove(outClass);
             newIframe.classList.remove(inClass);
@@ -15397,29 +15385,23 @@ setInterval(async () => {
     function trigger(direction, eventTarget, isContinuous) {
         if (!GESTURE_CONFIG.enabled || !browserReady() || !canTrigger(isContinuous)) return;
 
-        // Allow gestures from anywhere EXCEPT typing targets
         var active = document.activeElement;
         if (isTypingTarget(active)) return;
 
-        // Don't block gestures from iframe area — that's the whole point
         gestureState.lastTrigger = Date.now();
         var step = direction === 'right' ? 1 : -1;
         switchWithAnimation(step, direction);
     }
 
-    // === DISABLE CHROME BACK/FORWARD SWIPE ===
     document.addEventListener('wheel', function(e) {
-        // Block horizontal wheel that would trigger Chrome's back/forward
         if (Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
             e.preventDefault();
         }
     }, { passive: false });
 
-    // Also overscroll-behavior CSS to prevent it
     document.documentElement.style.overscrollBehaviorX = 'none';
     document.body.style.overscrollBehaviorX = 'none';
 
-    // === TOUCH SWIPE (continuous — keeps switching as you swipe) ===
     if (GESTURE_CONFIG.enableTouchSwipe) {
         var touchState = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, direction: null };
 
@@ -15435,14 +15417,12 @@ setInterval(async () => {
 
         document.addEventListener('touchmove', function(e) {
             if (!e.touches || !e.touches.length) return;
-            // Don't interfere with tab dragging
             if (window.browser && window.browser.dragState && window.browser.dragState.isDragging) return;
 
             var t = e.touches[0];
             var dx = t.clientX - touchState.startX;
             var dy = t.clientY - touchState.startY;
 
-            // Lock direction after initial movement
             if (!touchState.locked && (Math.abs(dx) > 15 || Math.abs(dy) > 15)) {
                 touchState.locked = true;
                 touchState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
@@ -15450,8 +15430,7 @@ setInterval(async () => {
 
             if (touchState.direction !== 'horizontal') return;
 
-            // Continuous switching: every swipeThreshold px traveled, switch again
-            var dxSinceLast = t.clientX - touchState.lastSwitchX;
+                                var dxSinceLast = t.clientX - touchState.lastSwitchX;
             if (Math.abs(dxSinceLast) >= GESTURE_CONFIG.swipeThreshold) {
                 var dir = dxSinceLast > 0 ? 'left' : 'right';
                 trigger(dir, e.target, true);
@@ -15460,7 +15439,6 @@ setInterval(async () => {
         }, { passive: true });
     }
 
-    // === EDGE SWIPE (mouse) ===
     if (GESTURE_CONFIG.enableEdgeSwipe) {
         document.addEventListener('mousedown', function(e) {
             gestureState.edgeCandidate = (e.clientX <= GESTURE_CONFIG.edgeSize || e.clientX >= window.innerWidth - GESTURE_CONFIG.edgeSize);
@@ -15480,7 +15458,6 @@ setInterval(async () => {
         }, { passive: true });
     }
 
-    // === TRACKPAD HORIZONTAL SCROLL ===
     if (GESTURE_CONFIG.enableTrackpadSwipe) {
         document.addEventListener('wheel', function(e) {
             if (Math.abs(e.deltaX) > GESTURE_CONFIG.wheelThreshold && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
@@ -15489,7 +15466,6 @@ setInterval(async () => {
         }, { passive: true });
     }
 
-    // === TAB BAR VERTICAL SCROLL ===
     if (GESTURE_CONFIG.enableTabBarScroll) {
         document.addEventListener('wheel', function(e) {
             var tabBar = document.querySelector(GESTURE_CONFIG.tabBarSelector);
@@ -15500,8 +15476,7 @@ setInterval(async () => {
         }, { passive: true });
     }
 
-    // === IFRAME GESTURE SUPPORT ===
-    // Listen for messages from iframes to forward gestures
+
     if (GESTURE_CONFIG.enableIframeGestures) {
         window.addEventListener('message', function(e) {
             if (e.data && e.data.type === 'nexos-gesture') {
@@ -15509,24 +15484,19 @@ setInterval(async () => {
             }
         });
 
-        // Inject gesture forwarding script into iframes
-        function injectIframeGestures(iframe) {
+                    function injectIframeGestures(iframe) {
             try {
                 var iframeWin = iframe.contentWindow;
                 if (!iframeWin) return;
 
-                // Inject via postMessage-based approach (works cross-origin)
-                // For same-origin, inject directly
                 try {
                     var iframeDoc = iframe.contentDocument;
                     if (iframeDoc && !iframeDoc._gestureInjected) {
                         iframeDoc._gestureInjected = true;
 
-                        // Disable overscroll in iframe too
                         iframeDoc.documentElement.style.overscrollBehaviorX = 'none';
                         if (iframeDoc.body) iframeDoc.body.style.overscrollBehaviorX = 'none';
 
-                        // Touch gestures inside iframe
                         var ifs = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, dir: null };
 
                         iframeDoc.addEventListener('touchstart', function(e) {
@@ -15554,7 +15524,6 @@ setInterval(async () => {
                             }
                         }, { passive: true });
 
-                        // Wheel gestures inside iframe
                         iframeDoc.addEventListener('wheel', function(e) {
                             if (Math.abs(e.deltaX) > 50 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                                 e.preventDefault();
@@ -15563,12 +15532,10 @@ setInterval(async () => {
                         }, { passive: false });
                     }
                 } catch(crossOriginErr) {
-                    // Cross-origin — can't inject, that's fine
                 }
             } catch(err) {}
         }
 
-        // Inject into existing and future iframes
         function injectAll() {
             document.querySelectorAll('.tab-content').forEach(function(iframe) {
                 injectIframeGestures(iframe);
@@ -15576,14 +15543,12 @@ setInterval(async () => {
             });
         }
 
-        // Run after browser initializes
         if (document.readyState === 'complete') {
             setTimeout(injectAll, 1000);
         } else {
             window.addEventListener('load', function() { setTimeout(injectAll, 1000); });
         }
 
-        // Also observe for new iframes
         var observer = new MutationObserver(function(mutations) {
             mutations.forEach(function(m) {
                 m.addedNodes.forEach(function(node) {
