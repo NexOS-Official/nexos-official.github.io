@@ -15524,33 +15524,26 @@ setInterval(async () => {
 // Suppress browser status bar link preview for all <a> tags
 (function() {
     function suppressLinkPreview(root) {
+        // On first hover, stash href into data-href and remove href permanently
         root.addEventListener('mouseover', function(e) {
             var a = e.target.closest ? e.target.closest('a[href]') : null;
-            if (!a) return;
-            a._realHref = a.getAttribute('href');
+            if (!a || a.hasAttribute('data-real-href')) return;
+            a.setAttribute('data-real-href', a.getAttribute('href'));
             a.removeAttribute('href');
             a.style.cursor = 'pointer';
         }, true);
-        root.addEventListener('mouseout', function(e) {
-            var a = e.target.closest ? e.target.closest('a') : null;
-            if (a && a._realHref) {
-                a.setAttribute('href', a._realHref);
-                delete a._realHref;
-            }
-        }, true);
+        // Handle clicks using the stashed URL
         root.addEventListener('click', function(e) {
-            var a = e.target.closest ? e.target.closest('a') : null;
-            if (a && a._realHref) {
-                e.preventDefault();
-                var href = a._realHref;
-                a.setAttribute('href', href);
-                delete a._realHref;
-                var target = a.getAttribute('target');
-                if (target === '_blank') {
-                    window.open(href, '_blank', 'noopener,noreferrer');
-                } else {
-                    window.location.href = href;
-                }
+            var a = e.target.closest ? e.target.closest('a[data-real-href]') : null;
+            if (!a) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var href = a.getAttribute('data-real-href');
+            var target = a.getAttribute('target');
+            if (target === '_blank') {
+                window.open(href, '_blank', 'noopener,noreferrer');
+            } else {
+                root.defaultView ? root.defaultView.location.href = href : window.location.href = href;
             }
         }, true);
     }
