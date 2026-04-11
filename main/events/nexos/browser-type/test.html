@@ -2,6 +2,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15321,8 +15322,14 @@ setInterval(async () => {
         return true;
     }
 
+    var altHeld = false;
+    document.addEventListener('keydown', function(e) { if (e.key === 'Alt') altHeld = true; });
+    document.addEventListener('keyup', function(e) { if (e.key === 'Alt') altHeld = false; });
+    window.addEventListener('blur', function() { altHeld = false; });
+
     var lastTriggerTime = 0;
     function trigger(direction) {
+        if (!altHeld) return;
         if (!GESTURE_CONFIG.enabled || !browserReady()) return;
         var now = Date.now();
         if (now - lastTriggerTime < GESTURE_CONFIG.cooldownMs) return;
@@ -15333,7 +15340,7 @@ setInterval(async () => {
     }
 
     document.addEventListener('wheel', function(e) {
-        if (Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
+        if (altHeld && Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
             e.preventDefault();
         }
     }, { passive: false });
@@ -15364,7 +15371,7 @@ setInterval(async () => {
                 touchState.locked = true;
                 touchState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
             }
-            if (touchState.direction === 'horizontal') {
+            if (touchState.direction === 'horizontal' && altHeld) {
                 e.preventDefault();
                 var dxSinceLast = t.clientX - touchState.lastSwitchX;
                 if (Math.abs(dxSinceLast) >= GESTURE_CONFIG.swipeThreshold) {
