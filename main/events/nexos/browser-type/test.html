@@ -15440,6 +15440,7 @@ setInterval(async () => {
                     var iframeDoc = iframe.contentDocument;
                     if (iframeDoc && !iframeDoc._gestureInjected) {
                         iframeDoc._gestureInjected = true;
+                        // overscrollBehaviorX left as default so iframes scroll normally
                         var ifs = { startX: 0, startY: 0, lastSwitchX: 0, locked: false, dir: null };
                         iframeDoc.addEventListener('touchstart', function(e) {
                             if (!e.touches.length) return;
@@ -15505,6 +15506,7 @@ setInterval(async () => {
 
     window._gestureConfig = GESTURE_CONFIG;
 
+    // Alt+Shift+/ shortcut to focus address bar
     document.addEventListener('keydown', function(e) {
         if (e.altKey && e.shiftKey && (e.key === '?' || e.key === '/' || e.code === 'Slash')) {
             e.preventDefault();
@@ -15515,6 +15517,70 @@ setInterval(async () => {
             }
         }
     });
+})();
+</script>
+
+<script>
+// Suppress browser status bar link preview for all <a> tags
+(function() {
+    function suppressLinkPreview(root) {
+        root.addEventListener('mouseover', function(e) {
+            var a = e.target.closest ? e.target.closest('a[href]') : null;
+            if (!a) return;
+            a._realHref = a.getAttribute('href');
+            a.removeAttribute('href');
+            a.style.cursor = 'pointer';
+        }, true);
+        root.addEventListener('mouseout', function(e) {
+            var a = e.target.closest ? e.target.closest('a') : null;
+            if (a && a._realHref) {
+                a.setAttribute('href', a._realHref);
+                delete a._realHref;
+            }
+        }, true);
+        root.addEventListener('click', function(e) {
+            var a = e.target.closest ? e.target.closest('a') : null;
+            if (a && a._realHref) {
+                e.preventDefault();
+                var href = a._realHref;
+                a.setAttribute('href', href);
+                delete a._realHref;
+                var target = a.getAttribute('target');
+                if (target === '_blank') {
+                    window.open(href, '_blank', 'noopener,noreferrer');
+                } else {
+                    window.location.href = href;
+                }
+            }
+        }, true);
+    }
+    suppressLinkPreview(document);
+
+    // Also inject into same-origin iframes
+    function injectIntoIframe(iframe) {
+        try {
+            var doc = iframe.contentDocument;
+            if (doc && !doc._linkPreviewSuppressed) {
+                doc._linkPreviewSuppressed = true;
+                suppressLinkPreview(doc);
+            }
+        } catch(e) {} // cross-origin, can't touch
+    }
+    function injectAll() {
+        document.querySelectorAll('iframe').forEach(injectIntoIframe);
+    }
+    window.addEventListener('load', function() { setTimeout(injectAll, 1500); });
+    var obs = new MutationObserver(function(muts) {
+        muts.forEach(function(m) {
+            m.addedNodes.forEach(function(n) {
+                if (n.tagName === 'IFRAME') {
+                    n.addEventListener('load', function() { injectIntoIframe(n); });
+                }
+            });
+        });
+    });
+    var ca = document.getElementById('contentArea');
+    if (ca) obs.observe(ca, { childList: true });
 })();
 </script>
 
