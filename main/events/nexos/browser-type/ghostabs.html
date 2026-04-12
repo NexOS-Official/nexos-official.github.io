@@ -6,6 +6,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5749,6 +5751,7 @@ document.addEventListener("DOMContentLoaded", () => {
         class Browser {
             constructor() {
                 this.tabs = new Map();
+                this.closedTabs = [];
                 this.activeTabId = null;
                 this.tabCounter = 0;
                 this.history = {};
@@ -6176,6 +6179,12 @@ document.addEventListener("DOMContentLoaded", () => {
                             tab.iframe.src = '/credits.html';
                             this.updateAddressBar();
                         }
+                    } else if (e.altKey && e.shiftKey && key === 't') {
+                        e.preventDefault();
+                        if (this.closedTabs && this.closedTabs.length > 0) {
+                            const lastClosed = this.closedTabs.pop();
+                            this.createNewTab(lastClosed.url);
+                        }
                     }
                     if (e.altKey && e.key.toLowerCase() === 'x') {
                         e.preventDefault();
@@ -6580,7 +6589,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            createNewTab() {
+            createNewTab(url) {
                 if (this.tabs.size >= 30) {
                     console.log('30 is max tabs sry');
                     return;
@@ -6590,7 +6599,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const tab = {
                     id: tabId,
                     title: 'ermmmm',
-                    url: 'welcomer.html',
+                    url: url || 'welcomer.html',
                     favicon: null,
                     element: null,
                     iframe: null,
@@ -7615,6 +7624,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     openTabs.find(t => t.id !== tabId) ||
                     null;
 
+                this.closedTabs.push({ url: tab.iframe?.src || 'about:blank', title: tab.title });
                 tab._closing = true;
 
                 if (tab.id === this.activeTabId && nextActiveTab) {
