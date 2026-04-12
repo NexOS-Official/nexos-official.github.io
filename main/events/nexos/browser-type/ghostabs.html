@@ -3,6 +3,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4694,6 +4696,36 @@ body.reduce-motion *::after {
     height: 100%;
     position: relative;
     overflow: hidden;
+    padding: 10px 10px 34px;
+    gap: 10px;
+    background: #f2f2f2;
+}
+
+.split-content-area::before {
+    content: '';
+    position: absolute;
+    inset: -40px;
+    z-index: 0;
+    filter: blur(80px) saturate(1.6);
+    opacity: 0.85;
+    background: var(--split-bg-gradient, radial-gradient(circle at 20% 30%, #667eea, transparent 50%), radial-gradient(circle at 80% 20%, #764ba2, transparent 50%), radial-gradient(circle at 50% 80%, #f093fb, transparent 50%), radial-gradient(circle at 10% 70%, #4facfe, transparent 50%), radial-gradient(circle at 90% 60%, #00f2fe, transparent 50%));
+    transition: background 1.2s ease;
+    pointer-events: none;
+}
+
+.split-content-area::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: rgba(232, 232, 232, 0.15);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+}
+
+.split-content-area > * {
+    position: relative;
+    z-index: 1;
 }
 
 .split-pane {
@@ -4703,7 +4735,10 @@ body.reduce-motion *::after {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    background: transparent;
+    background: #ffffff;
+    border: 1px solid #d8dde6;
+    border-radius: 18px;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
 .split-pane .tab-content {
@@ -4714,6 +4749,8 @@ body.reduce-motion *::after {
     position: relative;
     visibility: visible;
     pointer-events: auto;
+    border-radius: inherit;
+    background: #ffffff;
 }
 
 .split-pane .tab-content.active {
@@ -4722,34 +4759,56 @@ body.reduce-motion *::after {
 }
 
 .split-divider {
-    width: 4px;
+    width: 18px;
     background: transparent;
     cursor: col-resize;
     flex-shrink: 0;
     position: relative;
     z-index: 10;
-    transition: background 0.15s;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.split-divider::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 50%;
+    width: 10px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: #ffffff00;
+    box-shadow: 0 0 0 1px #d8dde600, 0 10px 24px rgba(15, 23, 42, 0.08);
+    transition: box-shadow 0.18s ease;
 }
 
 .split-divider::after {
     content: '';
     position: absolute;
     left: 50%;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    transform: translateX(-50%);
-    background: #e0e0e0;
-    transition: background 0.15s, width 0.15s;
+    top: 50%;
+    width: 2px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    background: #bcc3cf;
+    transition: background 0.18s ease, height 0.18s ease;
+}
+
+.split-divider:hover::before,
+.split-divider.dragging::before {
+    box-shadow: 0 0 0 1px #cfd6e0, 0 14px 30px rgba(15, 23, 42, 0.12);
 }
 
 .split-divider:hover::after,
 .split-divider.dragging::after {
-    background: #4285f4;
-    width: 2px;
+    background: #9aa3b2;
+    height: 56px;
 }
 
-.split-pane.active-pane .split-bottom-tab {
+.split-bottom-tab.active {
     border-color: #d9d9d9;
     color: #111111;
     font-weight: 700;
@@ -4784,7 +4843,7 @@ body.reduce-motion *::after {
     border: 1px solid #ffffff;
     border-bottom: none;
     flex-shrink: 0;
-    z-index: 3;
+    z-index: 20;
     pointer-events: auto;
     transition: border-color 0.2s ease, color 0.2s ease, min-width 0.2s ease, padding 0.2s ease, font-weight 0.2s ease;
 }
@@ -4793,7 +4852,7 @@ body.reduce-motion *::after {
     content: '';
     position: absolute;
     bottom: 0;
-    left: -11.9px;
+    left: -12px;
     width: 12px;
     height: 12px;
     background: #ffffff;
@@ -4839,30 +4898,6 @@ body.reduce-motion *::after {
 
 .split-bottom-tab:hover .split-bottom-domain {
     max-width: 300px;
-}
-
-.split-bottom-tab::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: -12px;
-    width: 12px;
-    height: 12px;
-    background: #ffffff;
-    mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
-    -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
-}
-
-.split-bottom-tab::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    right: -12px;
-    width: 12px;
-    height: 12px;
-    background: #ffffff;
-    mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
-    -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
 }
 
 .tab.split-tab {
@@ -13716,6 +13751,8 @@ setInterval(async () => {
             var rightPane = splitData.splitContainer.querySelector('[data-side="right"]');
             if (leftPane) leftPane.classList.toggle('active-pane', chosenSide === 'left');
             if (rightPane) rightPane.classList.toggle('active-pane', chosenSide === 'right');
+            if (splitData.leftBottomTab) splitData.leftBottomTab.classList.toggle('active', chosenSide === 'left');
+            if (splitData.rightBottomTab) splitData.rightBottomTab.classList.toggle('active', chosenSide === 'right');
 
             setSplitTabVisualState(splitData);
 
@@ -13816,10 +13853,41 @@ setInterval(async () => {
 
         function moveIframeIntoPane(splitData, side) {
 
-            var pane = splitData.splitContainer.querySelector('[data-side="' + side + '"]');
             var bottomTab = side === 'left' ? splitData.leftBottomTab : splitData.rightBottomTab;
-            if (!pane || !bottomTab) return;
-            pane.appendChild(bottomTab);
+            if (!bottomTab) return;
+            if (bottomTab.parentNode !== splitData.splitContainer) {
+                splitData.splitContainer.appendChild(bottomTab);
+            }
+        }
+
+        function applySplitIframeLayout(iframe, paneRect, contentRect) {
+            if (!iframe || !paneRect) return;
+            iframe.style.position = 'absolute';
+            iframe.style.top = (paneRect.top - contentRect.top) + 'px';
+            iframe.style.left = (paneRect.left - contentRect.left) + 'px';
+            iframe.style.width = paneRect.width + 'px';
+            iframe.style.height = paneRect.height + 'px';
+            iframe.style.visibility = 'visible';
+            iframe.style.pointerEvents = 'auto';
+            iframe.classList.add('active');
+            iframe.style.zIndex = '2';
+            iframe.style.border = '0';
+            iframe.style.borderRadius = '18px';
+            iframe.style.clipPath = 'inset(0 round 18px)';
+            iframe.style.background = '#ffffff';
+        }
+
+        function positionSplitBottomTabs(splitData, leftPane, rightPane, containerRect) {
+            [
+                { tab: splitData.leftBottomTab, pane: leftPane },
+                { tab: splitData.rightBottomTab, pane: rightPane }
+            ].forEach(function(item) {
+                if (!item.tab || !item.pane) return;
+                var paneRect = item.pane.getBoundingClientRect();
+                var centerX = (paneRect.left - containerRect.left) + (paneRect.width / 2);
+                item.tab.style.left = centerX + 'px';
+                item.tab.style.maxWidth = Math.max(80, paneRect.width - 16) + 'px';
+            });
         }
 
         function positionSplitIframes(splitData) {
@@ -13834,38 +13902,15 @@ setInterval(async () => {
                 });
                 return;
             }
+
             var contentRect = b.contentArea.getBoundingClientRect();
+            var leftPane = container.querySelector('[data-side="left"]');
+            var rightPane = container.querySelector('[data-side="right"]');
+            if (!leftPane || !rightPane) return;
 
-            var divider = container.querySelector('.split-divider');
-            var dividerWidth = divider ? divider.offsetWidth : 8;
-            var leftPct = splitData.splitRatio;
-            var leftWidth = Math.max(0, rect.width * leftPct - dividerWidth / 2);
-            var rightWidth = Math.max(0, rect.width * (1 - leftPct) - dividerWidth / 2);
-            var top = rect.top - contentRect.top;
-            var left = rect.left - contentRect.left;
-
-            var li = splitData.leftIframe;
-            var ri = splitData.rightIframe;
-
-            li.style.position = 'absolute';
-            li.style.top = top + 'px';
-            li.style.left = left + 'px';
-            li.style.width = leftWidth + 'px';
-            li.style.height = rect.height + 'px';
-            li.style.visibility = 'visible';
-            li.style.pointerEvents = 'auto';
-            li.classList.add('active');
-            li.style.zIndex = '2';
-
-            ri.style.position = 'absolute';
-            ri.style.top = top + 'px';
-            ri.style.left = (left + leftWidth + dividerWidth) + 'px';
-            ri.style.width = rightWidth + 'px';
-            ri.style.height = rect.height + 'px';
-            ri.style.visibility = 'visible';
-            ri.style.pointerEvents = 'auto';
-            ri.classList.add('active');
-            ri.style.zIndex = '2';
+            applySplitIframeLayout(splitData.leftIframe, leftPane.getBoundingClientRect(), contentRect);
+            applySplitIframeLayout(splitData.rightIframe, rightPane.getBoundingClientRect(), contentRect);
+            positionSplitBottomTabs(splitData, leftPane, rightPane, rect);
         }
 
         function hideSplitIframes(splitData) {
@@ -13878,6 +13923,10 @@ setInterval(async () => {
                 splitData.leftIframe.style.width = '';
                 splitData.leftIframe.style.height = '';
                 splitData.leftIframe.style.zIndex = '';
+                splitData.leftIframe.style.border = '';
+                splitData.leftIframe.style.borderRadius = '';
+                splitData.leftIframe.style.clipPath = '';
+                splitData.leftIframe.style.background = '';
             }
             if (splitData.rightIframe) {
                 splitData.rightIframe.style.visibility = 'hidden';
@@ -13888,6 +13937,10 @@ setInterval(async () => {
                 splitData.rightIframe.style.width = '';
                 splitData.rightIframe.style.height = '';
                 splitData.rightIframe.style.zIndex = '';
+                splitData.rightIframe.style.border = '';
+                splitData.rightIframe.style.borderRadius = '';
+                splitData.rightIframe.style.clipPath = '';
+                splitData.rightIframe.style.background = '';
             }
         }
 
@@ -14285,6 +14338,31 @@ setInterval(async () => {
         function setupDividerDrag(divider, splitData) {
             var isDragging = false;
             var container = splitData.splitContainer;
+            var pendingClientX = null;
+            var frameRequested = false;
+
+            function applyDrag(clientX) {
+                var rect = container.getBoundingClientRect();
+                var ratio = Math.max(0.18, Math.min(0.82, (clientX - rect.left) / rect.width));
+                splitData.splitRatio = ratio;
+                var leftPane = container.querySelector('[data-side="left"]');
+                var rightPane = container.querySelector('[data-side="right"]');
+                if (leftPane) leftPane.style.flex = ratio + ' 1 0';
+                if (rightPane) rightPane.style.flex = (1 - ratio) + ' 1 0';
+                positionSplitIframes(splitData);
+            }
+
+            function queueDrag(clientX) {
+                pendingClientX = clientX;
+                if (frameRequested) return;
+                frameRequested = true;
+                requestAnimationFrame(function() {
+                    frameRequested = false;
+                    if (pendingClientX !== null) {
+                        applyDrag(pendingClientX);
+                    }
+                });
+            }
 
             divider.addEventListener('mousedown', function(e) {
                 e.preventDefault();
@@ -14292,6 +14370,7 @@ setInterval(async () => {
                 divider.classList.add('dragging');
                 document.body.style.cursor = 'col-resize';
                 document.body.style.userSelect = 'none';
+                queueDrag(e.clientX);
 
                 var overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;cursor:col-resize;';
@@ -14301,19 +14380,13 @@ setInterval(async () => {
 
             document.addEventListener('mousemove', function(e) {
                 if (!isDragging) return;
-                var rect = container.getBoundingClientRect();
-                var ratio = Math.max(0.15, Math.min(0.85, (e.clientX - rect.left) / rect.width));
-                splitData.splitRatio = ratio;
-                var leftPane = container.querySelector('[data-side="left"]');
-                var rightPane = container.querySelector('[data-side="right"]');
-                if (leftPane) leftPane.style.flex = ratio + '';
-                if (rightPane) rightPane.style.flex = (1 - ratio) + '';
-                positionSplitIframes(splitData);
+                queueDrag(e.clientX);
             });
 
             document.addEventListener('mouseup', function() {
                 if (!isDragging) return;
                 isDragging = false;
+                pendingClientX = null;
                 divider.classList.remove('dragging');
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
@@ -15515,6 +15588,109 @@ setInterval(async () => {
             }
         }
     });
+
+    (function initSplitColorBg() {
+        function extractColorsFromDOM() {
+            var colors = [];
+            var seen = new Set();
+            var elements = document.querySelectorAll('.tab-bar, .toolbar, .tab.active, .address-bar-wrapper, .navigation-controls button, .tab-favicon img, .split-pane, [style*="background"]');
+            
+            elements.forEach(function(el) {
+                if (colors.length >= 8) return;
+                var style = getComputedStyle(el);
+                var bg = style.backgroundColor;
+                var border = style.borderColor;
+                var color = style.color;
+                
+                [bg, border, color].forEach(function(c) {
+                    if (!c || c === 'transparent' || c === 'rgba(0, 0, 0, 0)' || seen.has(c)) return;
+                    var match = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                    if (match) {
+                        var r = +match[1], g = +match[2], b = +match[3];
+                        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+                        var saturation = max === 0 ? 0 : (max - min) / max;
+                        if (saturation > 0.08 || (r + g + b > 100 && r + g + b < 650)) {
+                            seen.add(c);
+                            colors.push(c);
+                        }
+                    }
+                });
+            });
+
+            var iframes = document.querySelectorAll('iframe');
+            iframes.forEach(function(iframe) {
+                try {
+                    var doc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (doc) {
+                        var meta = doc.querySelector('meta[name="theme-color"]');
+                        if (meta && meta.content) {
+                            colors.push(meta.content);
+                        }
+                        var bodyBg = getComputedStyle(doc.body).backgroundColor;
+                        if (bodyBg && bodyBg !== 'rgba(0, 0, 0, 0)') colors.push(bodyBg);
+                    }
+                } catch(e) { }
+            });
+
+            var fallbacks = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#43e97b', '#fa709a', '#fee140'];
+            while (colors.length < 5) {
+                colors.push(fallbacks[colors.length % fallbacks.length]);
+            }
+
+            return colors.slice(0, 5);
+        }
+
+        function generateGradient(colors) {
+            var positions = [
+                { x: 15 + Math.random() * 15, y: 20 + Math.random() * 20 },
+                { x: 70 + Math.random() * 20, y: 10 + Math.random() * 20 },
+                { x: 40 + Math.random() * 20, y: 70 + Math.random() * 20 },
+                { x: 5 + Math.random() * 15,  y: 60 + Math.random() * 25 },
+                { x: 80 + Math.random() * 15, y: 55 + Math.random() * 25 }
+            ];
+            var gradients = colors.map(function(c, i) {
+                var size = 45 + Math.random() * 25;
+                return 'radial-gradient(circle ' + size + '% at ' + positions[i].x + '% ' + positions[i].y + '%, ' + c + ', transparent 70%)';
+            });
+            return gradients.join(', ');
+        }
+
+        function updateSplitBg() {
+            var splitAreas = document.querySelectorAll('.split-content-area');
+            if (splitAreas.length === 0) return;
+            
+            var colors = extractColorsFromDOM();
+            var gradient = generateGradient(colors);
+            
+            splitAreas.forEach(function(area) {
+                area.style.setProperty('--split-bg-gradient', gradient);
+            });
+        }
+
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                m.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1 && (node.classList.contains('split-content-area') || node.querySelector && node.querySelector('.split-content-area'))) {
+                        setTimeout(updateSplitBg, 100);
+                        if (!window._splitColorInterval) {
+                            window._splitColorInterval = setInterval(function() {
+                                if (document.querySelector('.split-content-area')) {
+                                    updateSplitBg();
+                                } else {
+                                    clearInterval(window._splitColorInterval);
+                                    window._splitColorInterval = null;
+                                }
+                            }, 5000);
+                        }
+                    }
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        updateSplitBg();
+    })();
+
 })();
 </script>
 
