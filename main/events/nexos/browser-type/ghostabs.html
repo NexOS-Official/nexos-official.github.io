@@ -1,13 +1,3 @@
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5753,9 +5743,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.tabs = new Map();
                 this.activeTabId = null;
                 this.tabCounter = 0;
-                this.closedTabs = [];
                 this.history = {};
                 this.historyIndex = {};
+                this.closedTabs = [];
                 this.contextMenuTabId = null;
                 this.lastClosedSidebarApp = null;
                 this.sidebars = new Map();
@@ -6145,10 +6135,8 @@ document.addEventListener("DOMContentLoaded", () => {
                                 
                     if (e.altKey && e.shiftKey && key === 't') {
                         e.preventDefault();
-                        if (this.closedTabs.length > 0) {
-                            const lastClosed = this.closedTabs.pop();
-                            this.createNewTabWithUrl(lastClosed.url);
-                        }
+                        this.restoreClosedTab();
+
                     } else if (e.altKey && key === 't') {
                         e.preventDefault();
                         this.createNewTab();
@@ -6975,6 +6963,62 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.hideContextMenu();
             }
 
+            getDisplayUrlForTab(tab) {
+                if (!tab) return '';
+
+                if (tab.id === this.activeTabId && this.addressBar && this.addressBar.value) {
+                    return this.addressBar.value.trim();
+                }
+
+                if (tab.currentUrl) {
+                    return String(tab.currentUrl).trim();
+                }
+
+                const iframeUrl = this.getIframeCurrentUrl(tab);
+                if (iframeUrl) {
+                    return String(iframeUrl).trim();
+                }
+
+                return String(this.extractOriginalUrl(tab.url || tab.iframe?.src || '') || '').trim();
+            }
+
+            openStoredUrl(url) {
+                if (!url) return null;
+
+                const tabId = this.createNewTab();
+                if (!tabId) return null;
+
+                this.switchToTab(tabId);
+
+                if (/^(https?:\/\/|ghost:\/\/|nexos:\/\/|nexapp:\/\/)/i.test(url) || this.isUrl(url)) {
+                    this.navigate(url);
+                } else {
+                    this.loadUrl(url);
+                }
+
+                return tabId;
+            }
+
+            restoreClosedTab() {
+                if (!this.closedTabs.length) return;
+
+                const lastClosed = this.closedTabs.pop();
+                if (!lastClosed || !lastClosed.url) return;
+
+                const restoredTabId = this.openStoredUrl(lastClosed.url);
+                if (!restoredTabId) return;
+
+                const restoredTab = this.tabs.get(restoredTabId);
+                if (restoredTab && lastClosed.title) {
+                    restoredTab.title = lastClosed.title;
+                    const titleEl = restoredTab.element?.querySelector('.tab-title');
+                    if (titleEl) {
+                        titleEl.textContent = lastClosed.title;
+                        titleEl.title = lastClosed.title;
+                    }
+                }
+            }
+
             closeOtherTabs(tabId) {
                 const tabsToClose = Array.from(this.tabs.values()).filter(t => t.id !== tabId && !t.pinned);
                 tabsToClose.forEach(tab => this.closeTab(tab.id));
@@ -7613,6 +7657,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 const tab = this.tabs.get(tabId);
                 if (!tab || tab._closing) return;
 
+                const closedTabUrl = this.getDisplayUrlForTab(tab);
+                if (closedTabUrl && closedTabUrl !== 'about:blank') {
+                    this.closedTabs.push({
+                        url: closedTabUrl,
+                        title: tab.title || this.extractDomain(closedTabUrl) || 'Tab'
+                    });
+                    if (this.closedTabs.length > 20) {
+                        this.closedTabs.shift();
+                    }
+                }
+
                 if (tab.pinned && this.contextMenuTabId !== tabId) {
                     return;
                 }
@@ -7623,9 +7678,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     (currentIndex > 0 && openTabs[currentIndex - 1]) ||
                     openTabs.find(t => t.id !== tabId) ||
                     null;
-
-                this.closedTabs.push({ url: tab.iframe?.src || 'about:blank', title: tab.title });
-                if (this.closedTabs.length > 20) this.closedTabs.shift();
 
                 tab._closing = true;
 
