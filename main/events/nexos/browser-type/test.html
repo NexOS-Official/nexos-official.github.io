@@ -1,8 +1,4 @@
 
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,7 +14,7 @@
             src: url(/fonts/GoogleSans-Regular.ttf);
         }
         * {
-            margin: 0;
+            margin: 0; 
             padding: 0;
             box-sizing: border-box;
             touch-action: none;
@@ -412,7 +408,7 @@
         .tab-favicon img {
           width: 20px;
           height: 20px;
-          border-radius: 50%;
+          border-radius: 20%;
           position: relative;
           z-index: 2;
         }
@@ -658,6 +654,47 @@
 
         .address-bar::placeholder {
             color: #7c7c7c;
+        }
+
+        .security-icon {
+            position: relative;
+        }
+        .security-dropdown {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            min-width: 240px;
+        }
+        .security-icon:hover .security-dropdown.security-dropdown-http {
+            display: block;
+        }
+        .security-dropdown-arrow {
+            width: 12px;
+            height: 12px;
+            background: #323232;
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            transform: translateX(-50%) rotate(45deg);
+            border-radius: 2px;
+            z-index: 0;
+        }
+        .security-dropdown-content {
+            background: #323232;
+            color: #e8eaed;
+            font-size: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
+            white-space: nowrap;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
         }
 
         .toolbar-icons {
@@ -4694,6 +4731,35 @@ body.reduce-motion *::after {
     height: 100%;
     position: relative;
     overflow: hidden;
+    padding: 10px 10px 34px;
+    gap: 10px;
+    background: #f2f2f2;
+}
+
+.split-content-area::before {
+    content: '';
+    position: absolute;
+    inset: -40px;
+    z-index: 0;
+    filter: blur(80px) saturate(1.6);
+    opacity: 0.85;
+    transition: background 1.2s ease;
+    pointer-events: none;
+}
+
+.split-content-area::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: rgba(232, 232, 232, 0.15);
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+}
+
+.split-content-area > * {
+    position: relative;
+    z-index: 1;
 }
 
 .split-pane {
@@ -4703,7 +4769,10 @@ body.reduce-motion *::after {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    background: transparent;
+    background: #ffffff;
+    border: 1px solid #d8dde6;
+    border-radius: 18px;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
 .split-pane .tab-content {
@@ -4714,6 +4783,8 @@ body.reduce-motion *::after {
     position: relative;
     visibility: visible;
     pointer-events: auto;
+    border-radius: inherit;
+    background: #ffffff;
 }
 
 .split-pane .tab-content.active {
@@ -4722,34 +4793,56 @@ body.reduce-motion *::after {
 }
 
 .split-divider {
-    width: 4px;
+    width: 18px;
     background: transparent;
     cursor: col-resize;
     flex-shrink: 0;
     position: relative;
     z-index: 10;
-    transition: background 0.15s;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.split-divider::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 50%;
+    width: 10px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: #ffffff00;
+    box-shadow: 0 0 0 1px #d8dde600, 0 10px 24px rgba(15, 23, 42, 0.08);
+    transition: box-shadow 0.18s ease;
 }
 
 .split-divider::after {
     content: '';
     position: absolute;
     left: 50%;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    transform: translateX(-50%);
-    background: #e0e0e0;
-    transition: background 0.15s, width 0.15s;
+    top: 50%;
+    width: 2px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+    background: #bcc3cf;
+    transition: background 0.18s ease, height 0.18s ease;
+}
+
+.split-divider:hover::before,
+.split-divider.dragging::before {
+    box-shadow: 0 0 0 1px #cfd6e0, 0 14px 30px rgba(15, 23, 42, 0.12);
 }
 
 .split-divider:hover::after,
 .split-divider.dragging::after {
-    background: #4285f4;
-    width: 2px;
+    background: #9aa3b2;
+    height: 56px;
 }
 
-.split-pane.active-pane .split-bottom-tab {
+.split-bottom-tab.active {
     border-color: #d9d9d9;
     color: #111111;
     font-weight: 700;
@@ -4784,7 +4877,7 @@ body.reduce-motion *::after {
     border: 1px solid #ffffff;
     border-bottom: none;
     flex-shrink: 0;
-    z-index: 3;
+    z-index: 20;
     pointer-events: auto;
     transition: border-color 0.2s ease, color 0.2s ease, min-width 0.2s ease, padding 0.2s ease, font-weight 0.2s ease;
 }
@@ -4793,7 +4886,7 @@ body.reduce-motion *::after {
     content: '';
     position: absolute;
     bottom: 0;
-    left: -11.9px;
+    left: -12px;
     width: 12px;
     height: 12px;
     background: #ffffff;
@@ -4839,30 +4932,6 @@ body.reduce-motion *::after {
 
 .split-bottom-tab:hover .split-bottom-domain {
     max-width: 300px;
-}
-
-.split-bottom-tab::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: -12px;
-    width: 12px;
-    height: 12px;
-    background: #ffffff;
-    mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
-    -webkit-mask-image: radial-gradient(circle at 0 0, transparent 12px, black 0);
-}
-
-.split-bottom-tab::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    right: -12px;
-    width: 12px;
-    height: 12px;
-    background: #ffffff;
-    mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
-    -webkit-mask-image: radial-gradient(circle at 12px 0, transparent 12px, black 0);
 }
 
 .tab.split-tab {
@@ -5203,10 +5272,19 @@ body.reduce-motion *::after {
                 <div class="updates-overlay" id="updatesOverlayPanel">
                     <h3>updates ∙ 📣</h3>
                     <ul>
-                        <li>Fixed more bugs with split screen</li>
-                        <li>New animations for pinning + dragging</li>
-                        <li>Added Snapshots (alt+s)</li>
-                        <li>Added Snapshots to menu</li>
+                        <li>Bug fixes</li>
+                        <li>New split screen design</li>
+                        <li>New chat design</li>
+                        <li>New animations for tab dragging</li>
+                        <li>Drag + drop more file types into tabs</li>
+                        <li>Images in chat now</li>
+                        <li>Cooldown now 3 sec // public chat / 0 sec DMS</li>
+                        <li>we now fit mobile screens on more pages, yay!?</li>
+                        <li>Music Down, fixing soon!</li>
+                        <li>New time / date menu</li>
+                        <li>Moved announcements</li>
+                        <li>Hacking into others accounts = patched</li>
+                        <li>ADMIN = Locked to only admin accounts, not just a key anymore</li>
                     </ul>
                     <button class="updates-back-btn" onclick="document.querySelector('.tab-restore-panel').classList.remove('updates-blur');document.getElementById('updatesOverlayPanel').classList.remove('visible');">Back</button>
                 </div>
@@ -5279,7 +5357,17 @@ body.reduce-motion *::after {
             </div>
             
             <div class="address-bar-wrapper" style="position:relative;">
-                <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off" spellcheck="false">
+                <div class="security-icon" id="securityIcon" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:3;display:flex;align-items:center;cursor:default;">
+                    <img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;" class="security-icon-img" />
+                    <div class="security-dropdown" id="securityDropdown">
+                        <div class="security-dropdown-arrow"></div>
+                        <div class="security-dropdown-content">
+                            <i data-lucide="info" width="14" height="14" style="color:#6b7280;flex-shrink:0;"></i>
+                            <span>This domain isn't marked as safe right now</span>
+                        </div>
+                    </div>
+                </div>
+                <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off" spellcheck="false" style="padding-left:26px;">
                 <button class="bookmark-star" id="bookmarkStarBtn" title="Bookmark this page">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 </button>
@@ -5709,6 +5797,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.tabCounter = 0;
                 this.history = {};
                 this.historyIndex = {};
+                this.closedTabs = [];
                 this.contextMenuTabId = null;
                 this.lastClosedSidebarApp = null;
                 this.sidebars = new Map();
@@ -5871,7 +5960,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById('openExternalBtn').addEventListener('click', () => {
                     const tab = this.tabs.get(this.activeTabId);
                     if (tab && tab.currentUrl) {
-                        const embedUrl = '/fluxserver/launch.html?url=' + encodeURIComponent(tab.currentUrl);
+                        const embedUrl = '/active/embed.html?url=' + encodeURIComponent(tab.currentUrl);
                         this._allowRealOpen = true;
                         window.open(embedUrl, '_blank');
                     }
@@ -5894,14 +5983,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             this.updateFavicon(tab, newUrl);
                             this.updateTabTitle(tab, newUrl);
                             
-                            const isSecure = newUrl.startsWith('https://');
-                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                            if (securityIcon) {
-                                securityIcon.innerHTML = isSecure ? 
-                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                lucide.createIcons();
+                            if (typeof this._updateSecurityIcon === 'function') {
+                                this._updateSecurityIcon(newUrl);
                             }
                         }
                     }
@@ -6096,7 +6179,11 @@ document.addEventListener("DOMContentLoaded", () => {
                                 
                     const key = e.key.toLowerCase();
                                 
-                    if (e.altKey && key === 't') {
+                    if (e.altKey && e.shiftKey && key === 't') {
+                        e.preventDefault();
+                        this.restoreClosedTab();
+
+                    } else if (e.altKey && key === 't') {
                         e.preventDefault();
                         this.createNewTab();
                     
@@ -6668,7 +6755,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     this.hideLoading();
                     
                     const iframeSrc = iframe.src || '';
-                    if (iframeSrc.includes('/fluxserver/launch.html?url=')) {
+                    if (iframeSrc.includes('/active/embed.html')) {
                         this.waitForEmbedLoad(tabId);
                     } else {
                         this.setTabLoaded(tabId);
@@ -6920,6 +7007,62 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
                 this.hideContextMenu();
+            }
+
+            getDisplayUrlForTab(tab) {
+                if (!tab) return '';
+
+                if (tab.id === this.activeTabId && this.addressBar && this.addressBar.value) {
+                    return this.addressBar.value.trim();
+                }
+
+                if (tab.currentUrl) {
+                    return String(tab.currentUrl).trim();
+                }
+
+                const iframeUrl = this.getIframeCurrentUrl(tab);
+                if (iframeUrl) {
+                    return String(iframeUrl).trim();
+                }
+
+                return String(this.extractOriginalUrl(tab.url || tab.iframe?.src || '') || '').trim();
+            }
+
+            openStoredUrl(url) {
+                if (!url) return null;
+
+                const tabId = this.createNewTab();
+                if (!tabId) return null;
+
+                this.switchToTab(tabId);
+
+                if (/^(https?:\/\/|ghost:\/\/|nexos:\/\/|nexapp:\/\/)/i.test(url) || this.isUrl(url)) {
+                    this.navigate(url);
+                } else {
+                    this.loadUrl(url);
+                }
+
+                return tabId;
+            }
+
+            restoreClosedTab() {
+                if (!this.closedTabs.length) return;
+
+                const lastClosed = this.closedTabs.pop();
+                if (!lastClosed || !lastClosed.url) return;
+
+                const restoredTabId = this.openStoredUrl(lastClosed.url);
+                if (!restoredTabId) return;
+
+                const restoredTab = this.tabs.get(restoredTabId);
+                if (restoredTab && lastClosed.title) {
+                    restoredTab.title = lastClosed.title;
+                    const titleEl = restoredTab.element?.querySelector('.tab-title');
+                    if (titleEl) {
+                        titleEl.textContent = lastClosed.title;
+                        titleEl.title = lastClosed.title;
+                    }
+                }
             }
 
             closeOtherTabs(tabId) {
@@ -7455,15 +7598,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (document.activeElement !== this.addressBar) {
                                 this.addressBar.value = originalUrl;
                             }
-                            const isSecure = originalUrl.startsWith('https://');
-                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                            
-                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                            if (securityIcon) {
-                                securityIcon.innerHTML = isSecure ? 
-                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                lucide.createIcons();
+                            if (typeof this._updateSecurityIcon === 'function') {
+                                this._updateSecurityIcon(originalUrl);
                             }
                             
                             this.showSiteToast(tab, originalUrl);
@@ -7480,7 +7616,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         }, 100);
                         
                         const iframeSrc = iframe.src || '';
-                        if (iframeSrc.includes('/fluxserver/launch.html?url=')) {
+                        if (iframeSrc.includes('/active/embed.html')) {
                             this.waitForEmbedLoad(tabId);
                         } else {
                             this.setTabLoaded(tabId);
@@ -7527,15 +7663,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         newTab.currentUrl = originalUrl;
                         this.updateTabTitle(newTab, originalUrl);
                         this.addressBar.value = originalUrl;
-                        const isSecure = originalUrl.startsWith('https://');
-                        this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                        
-                        const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                        if (securityIcon) {
-                            securityIcon.innerHTML = isSecure ? 
-                                '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                            lucide.createIcons();
+                        if (typeof this._updateSecurityIcon === 'function') {
+                            this._updateSecurityIcon(originalUrl);
+                        }
+                    } else {
+                        this.addressBar.value = '';
+                        if (typeof this._updateSecurityIcon === 'function') {
+                            this._updateSecurityIcon('');
                         }
                     }
                 }
@@ -7559,6 +7693,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const tab = this.tabs.get(tabId);
                 if (!tab || tab._closing) return;
+
+                const closedTabUrl = this.getDisplayUrlForTab(tab);
+                if (closedTabUrl && closedTabUrl !== 'about:blank') {
+                    this.closedTabs.push({
+                        url: closedTabUrl,
+                        title: tab.title || this.extractDomain(closedTabUrl) || 'Tab'
+                    });
+                    if (this.closedTabs.length > 20) {
+                        this.closedTabs.shift();
+                    }
+                }
 
                 if (tab.pinned && this.contextMenuTabId !== tabId) {
                     return;
@@ -7641,7 +7786,12 @@ if (this.isBlockedUrl(url)) {
                 }
 
                 if (url.toLowerCase() === 'nexos://chat') {
-                    this.loadUrl('/chat.html');
+                    this.loadUrl('/chat');
+                    return;
+                }
+
+                if (url.toLowerCase() === 'nexos://join') {
+                    this.loadUrl('/meet');
                     return;
                 }
 
@@ -7676,7 +7826,7 @@ if (this.isBlockedUrl(url)) {
                 }
 
                 if (url.toLowerCase() === 'ngg') {
-                    this.loadUrl('/fluxserver/launch.html?url=https://now.gg');
+                    this.loadUrl('/active/embed.html?url=https://now.gg');
                     return;
                 }
 
@@ -7706,7 +7856,7 @@ if (this.isBlockedUrl(url)) {
                 }
 
                 url = this.smartURL(url);
-                url = `/fluxserver/launch.html?url=${encodeURIComponent(url)}`;
+                url = `/active/embed.html?url=${encodeURIComponent(url)}`;
 
                 this.loadUrl(url);
             }
@@ -7772,7 +7922,7 @@ if (this.isBlockedUrl(url)) {
                     return decodeURIComponent(match[1]);
                 }
                 
-                const uvMatch = proxyUrl.match(/\/fluxserver\/go\/(.+)/);
+                const uvMatch = proxyUrl.match(/\/active\/go\/(.+)/);
                 if (uvMatch) {
                     try {
                         const encoded = decodeURIComponent(uvMatch[1]);
@@ -7929,6 +8079,33 @@ if (this.isBlockedUrl(url)) {
                 });
             }
 
+            _updateSecurityIcon(url) {
+                var securityIcon = document.getElementById('securityIcon');
+                if (!securityIcon) return;
+                
+                var isNewTab = !url || url === 'about:blank' || url.includes('welcomer.html') || url.includes('newtab') || url.includes('launch.html') || (!url.startsWith('http://') && !url.startsWith('https://'));
+                var isSecure = url && url.startsWith('https://');
+                var isHttp = url && url.startsWith('http://');
+                
+                this.addressBar.style.paddingLeft = '26px';
+                
+                if (isNewTab) {
+                    securityIcon.innerHTML = '<img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;" />';
+                } else if (isHttp) {
+                    securityIcon.innerHTML = '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>' +
+                        '<div class="security-dropdown security-dropdown-http">' +
+                        '<div class="security-dropdown-arrow"></div>' +
+                        '<div class="security-dropdown-content">' +
+                        '<i data-lucide="info" width="14" height="14" style="color:#6b7280;flex-shrink:0;"></i>' +
+                        '<span>This domain isn\'t marked as safe right now</span>' +
+                        '</div></div>';
+                    lucide.createIcons();
+                } else if (isSecure) {
+                    securityIcon.innerHTML = '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>';
+                    lucide.createIcons();
+                }
+            }
+
             getIframeCurrentUrl(tab) {
                 try {
                     const iframeHref = tab.iframe.contentWindow.location.href;
@@ -7975,14 +8152,8 @@ if (this.isBlockedUrl(url)) {
                                     this.updateFavicon(tab, realUrl);
                                     this.updateTabTitle(tab, realUrl);
                                     
-                                    const isSecure = realUrl.startsWith('https://');
-                                    this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-                                    const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
-                                    if (securityIcon) {
-                                        securityIcon.innerHTML = isSecure ? 
-                                            '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
-                                            '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                                        lucide.createIcons();
+                                    if (typeof this._updateSecurityIcon === 'function') {
+                                        this._updateSecurityIcon(realUrl);
                                     }
                                     
                                     if (!tab._navigatingHistory) {
@@ -7992,7 +8163,7 @@ if (this.isBlockedUrl(url)) {
                                             const currentEntry = history[currentIndex];
                                             const currentExtracted = this.extractOriginalUrl(currentEntry || '');
                                             if (currentExtracted !== realUrl) {
-                                                const proxyUrl = `/fluxserver/launch.html?url=${encodeURIComponent(realUrl)}`;
+                                                const proxyUrl = `/active/embed.html?url=${encodeURIComponent(realUrl)}`;
                                                 history.splice(currentIndex + 1);
                                                 history.push(proxyUrl);
                                                 this.historyIndex[this.activeTabId] = history.length - 1;
@@ -8080,7 +8251,7 @@ if (this.isBlockedUrl(url)) {
                     this.setTabLoading(this.activeTabId);
                     let urlToLoad = tab.iframe.src;
                     if (tab.currentUrl && tab.currentUrl.startsWith('http')) {
-                        urlToLoad = `/fluxserver/launch.html?url=${encodeURIComponent(tab.currentUrl)}`;
+                        urlToLoad = `/active/embed.html?url=${encodeURIComponent(tab.currentUrl)}`;
                     }
                     tab.iframe.src = 'about:blank';
                     setTimeout(() => {
@@ -8283,7 +8454,7 @@ if (this.isBlockedUrl(url)) {
                 if (/^(data:|javascript:)/i.test(url.trim())) return false;
                 if (/^[#?]/.test(url.trim())) return false;
 
-                const activeGoMatch = url.match(/\/fluxserver\/go\/(.+)/);
+                const activeGoMatch = url.match(/\/active\/go\/(.+)/);
                 if (activeGoMatch) {
                     let decoded = activeGoMatch[1];
                     try { decoded = decodeURIComponent(decoded); } catch(e) {}
@@ -8304,7 +8475,7 @@ if (this.isBlockedUrl(url)) {
                         const tab = this.tabs.get(this.activeTabId);
                         if (tab) {
                             const url = e.data.url;
-                            const proxyUrl = '/fluxserver/launch.html?url=' + encodeURIComponent(url);
+                            const proxyUrl = '/active/embed.html?url=' + encodeURIComponent(url);
                             tab.iframe.src = proxyUrl;
                             tab.url = proxyUrl;
                             tab.currentUrl = url;
@@ -10184,7 +10355,7 @@ menu.addEventListener('mouseleave', hideMenu);
     var quickServices = [
         { id: 'qsCalculator', title: 'Calculator', url: '/desmos/', type: 'iframe' },
         { id: 'qsTimer',      title: 'Timer',      url: null, type: 'custom', builder: buildTimerContent },
-        { id: 'qsTranslate',  title: 'Translate',   url: '/fluxserver/launch.html?url=https://translate.google.com/?sl=auto&tl=en&op=translate', type: 'iframe' },
+        { id: 'qsTranslate',  title: 'Translate',   url: '/active/embed.html?url=https://translate.google.com/?sl=auto&tl=en&op=translate', type: 'iframe' },
         { id: 'qsNotes',      title: 'Quick Notes',  url: null, type: 'custom', builder: buildNotesContent },
         { id: 'qsConvert',    title: 'Unit Converter', url: null, type: 'custom', builder: buildConverterContent }
     ];
@@ -12175,13 +12346,30 @@ setInterval(async () => {
         if (!b) { setTimeout(patchBrowser, 200); return; }
 
         b._updateSecurityIcon = function(url) {
-            var isSecure = url.startsWith('https://');
-            b.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-            var securityIcon = b.addressBar.parentElement.querySelector('.security-icon');
-            if (securityIcon) {
-                securityIcon.innerHTML = isSecure ?
-                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' :
-                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+            var securityIcon = document.getElementById('securityIcon');
+            var dropdown = document.getElementById('securityDropdown');
+            if (!securityIcon) return;
+            
+            var isNewTab = !url || url === 'about:blank' || url.includes('welcomer.html') || url.includes('newtab') || url.includes('launch.html') || (!url.startsWith('http://') && !url.startsWith('https://'));
+            var isSecure = url && url.startsWith('https://');
+            var isHttp = url && url.startsWith('http://');
+            
+            b.addressBar.style.paddingLeft = '26px';
+            
+            if (isNewTab) {
+                securityIcon.innerHTML = '<img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;" />';
+                dropdown.classList.remove('security-dropdown-http');
+            } else if (isHttp) {
+                securityIcon.innerHTML = '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>' +
+                    '<div class="security-dropdown security-dropdown-http" id="securityDropdown">' +
+                    '<div class="security-dropdown-arrow"></div>' +
+                    '<div class="security-dropdown-content">' +
+                    '<i data-lucide="info" width="14" height="14" style="color:#6b7280;flex-shrink:0;"></i>' +
+                    '<span>This domain isn\'t marked as safe right now</span>' +
+                    '</div></div>';
+                lucide.createIcons();
+            } else if (isSecure) {
+                securityIcon.innerHTML = '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>';
                 lucide.createIcons();
             }
         };
@@ -12220,7 +12408,7 @@ setInterval(async () => {
                     var currentEntry = history[currentIndex];
                     var currentExtracted = b.extractOriginalUrl(currentEntry || '');
                     if (currentExtracted !== newUrl) {
-                        var proxyUrl = '/fluxserver/launch.html?url=' + encodeURIComponent(newUrl);
+                        var proxyUrl = '/active/embed.html?url=' + encodeURIComponent(newUrl);
                         history.splice(currentIndex + 1);
                         history.push(proxyUrl);
                         b.historyIndex[tab.id] = history.length - 1;
@@ -13122,14 +13310,8 @@ setInterval(async () => {
             b.updateFavicon(tab, realUrl);
             b.updateTabTitle(tab, realUrl);
 
-            var isSecure = realUrl.startsWith('https://');
-            b.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
-            var securityIcon = b.addressBar.parentElement.querySelector('.security-icon');
-            if (securityIcon) {
-                securityIcon.innerHTML = isSecure ?
-                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' :
-                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
-                lucide.createIcons();
+            if (typeof b._updateSecurityIcon === 'function') {
+                b._updateSecurityIcon(realUrl);
             }
         }
     }
@@ -13716,6 +13898,8 @@ setInterval(async () => {
             var rightPane = splitData.splitContainer.querySelector('[data-side="right"]');
             if (leftPane) leftPane.classList.toggle('active-pane', chosenSide === 'left');
             if (rightPane) rightPane.classList.toggle('active-pane', chosenSide === 'right');
+            if (splitData.leftBottomTab) splitData.leftBottomTab.classList.toggle('active', chosenSide === 'left');
+            if (splitData.rightBottomTab) splitData.rightBottomTab.classList.toggle('active', chosenSide === 'right');
 
             setSplitTabVisualState(splitData);
 
@@ -13816,10 +14000,41 @@ setInterval(async () => {
 
         function moveIframeIntoPane(splitData, side) {
 
-            var pane = splitData.splitContainer.querySelector('[data-side="' + side + '"]');
             var bottomTab = side === 'left' ? splitData.leftBottomTab : splitData.rightBottomTab;
-            if (!pane || !bottomTab) return;
-            pane.appendChild(bottomTab);
+            if (!bottomTab) return;
+            if (bottomTab.parentNode !== splitData.splitContainer) {
+                splitData.splitContainer.appendChild(bottomTab);
+            }
+        }
+
+        function applySplitIframeLayout(iframe, paneRect, contentRect) {
+            if (!iframe || !paneRect) return;
+            iframe.style.position = 'absolute';
+            iframe.style.top = (paneRect.top - contentRect.top) + 'px';
+            iframe.style.left = (paneRect.left - contentRect.left) + 'px';
+            iframe.style.width = paneRect.width + 'px';
+            iframe.style.height = paneRect.height + 'px';
+            iframe.style.visibility = 'visible';
+            iframe.style.pointerEvents = 'auto';
+            iframe.classList.add('active');
+            iframe.style.zIndex = '2';
+            iframe.style.border = '0';
+            iframe.style.borderRadius = '18px';
+            iframe.style.clipPath = 'inset(0 round 18px)';
+            iframe.style.background = '#ffffff';
+        }
+
+        function positionSplitBottomTabs(splitData, leftPane, rightPane, containerRect) {
+            [
+                { tab: splitData.leftBottomTab, pane: leftPane },
+                { tab: splitData.rightBottomTab, pane: rightPane }
+            ].forEach(function(item) {
+                if (!item.tab || !item.pane) return;
+                var paneRect = item.pane.getBoundingClientRect();
+                var centerX = (paneRect.left - containerRect.left) + (paneRect.width / 2);
+                item.tab.style.left = centerX + 'px';
+                item.tab.style.maxWidth = Math.max(80, paneRect.width - 16) + 'px';
+            });
         }
 
         function positionSplitIframes(splitData) {
@@ -13834,38 +14049,15 @@ setInterval(async () => {
                 });
                 return;
             }
+
             var contentRect = b.contentArea.getBoundingClientRect();
+            var leftPane = container.querySelector('[data-side="left"]');
+            var rightPane = container.querySelector('[data-side="right"]');
+            if (!leftPane || !rightPane) return;
 
-            var divider = container.querySelector('.split-divider');
-            var dividerWidth = divider ? divider.offsetWidth : 8;
-            var leftPct = splitData.splitRatio;
-            var leftWidth = Math.max(0, rect.width * leftPct - dividerWidth / 2);
-            var rightWidth = Math.max(0, rect.width * (1 - leftPct) - dividerWidth / 2);
-            var top = rect.top - contentRect.top;
-            var left = rect.left - contentRect.left;
-
-            var li = splitData.leftIframe;
-            var ri = splitData.rightIframe;
-
-            li.style.position = 'absolute';
-            li.style.top = top + 'px';
-            li.style.left = left + 'px';
-            li.style.width = leftWidth + 'px';
-            li.style.height = rect.height + 'px';
-            li.style.visibility = 'visible';
-            li.style.pointerEvents = 'auto';
-            li.classList.add('active');
-            li.style.zIndex = '2';
-
-            ri.style.position = 'absolute';
-            ri.style.top = top + 'px';
-            ri.style.left = (left + leftWidth + dividerWidth) + 'px';
-            ri.style.width = rightWidth + 'px';
-            ri.style.height = rect.height + 'px';
-            ri.style.visibility = 'visible';
-            ri.style.pointerEvents = 'auto';
-            ri.classList.add('active');
-            ri.style.zIndex = '2';
+            applySplitIframeLayout(splitData.leftIframe, leftPane.getBoundingClientRect(), contentRect);
+            applySplitIframeLayout(splitData.rightIframe, rightPane.getBoundingClientRect(), contentRect);
+            positionSplitBottomTabs(splitData, leftPane, rightPane, rect);
         }
 
         function hideSplitIframes(splitData) {
@@ -13878,6 +14070,10 @@ setInterval(async () => {
                 splitData.leftIframe.style.width = '';
                 splitData.leftIframe.style.height = '';
                 splitData.leftIframe.style.zIndex = '';
+                splitData.leftIframe.style.border = '';
+                splitData.leftIframe.style.borderRadius = '';
+                splitData.leftIframe.style.clipPath = '';
+                splitData.leftIframe.style.background = '';
             }
             if (splitData.rightIframe) {
                 splitData.rightIframe.style.visibility = 'hidden';
@@ -13888,6 +14084,10 @@ setInterval(async () => {
                 splitData.rightIframe.style.width = '';
                 splitData.rightIframe.style.height = '';
                 splitData.rightIframe.style.zIndex = '';
+                splitData.rightIframe.style.border = '';
+                splitData.rightIframe.style.borderRadius = '';
+                splitData.rightIframe.style.clipPath = '';
+                splitData.rightIframe.style.background = '';
             }
         }
 
@@ -14285,6 +14485,31 @@ setInterval(async () => {
         function setupDividerDrag(divider, splitData) {
             var isDragging = false;
             var container = splitData.splitContainer;
+            var pendingClientX = null;
+            var frameRequested = false;
+
+            function applyDrag(clientX) {
+                var rect = container.getBoundingClientRect();
+                var ratio = Math.max(0.18, Math.min(0.82, (clientX - rect.left) / rect.width));
+                splitData.splitRatio = ratio;
+                var leftPane = container.querySelector('[data-side="left"]');
+                var rightPane = container.querySelector('[data-side="right"]');
+                if (leftPane) leftPane.style.flex = ratio + ' 1 0';
+                if (rightPane) rightPane.style.flex = (1 - ratio) + ' 1 0';
+                positionSplitIframes(splitData);
+            }
+
+            function queueDrag(clientX) {
+                pendingClientX = clientX;
+                if (frameRequested) return;
+                frameRequested = true;
+                requestAnimationFrame(function() {
+                    frameRequested = false;
+                    if (pendingClientX !== null) {
+                        applyDrag(pendingClientX);
+                    }
+                });
+            }
 
             divider.addEventListener('mousedown', function(e) {
                 e.preventDefault();
@@ -14292,6 +14517,7 @@ setInterval(async () => {
                 divider.classList.add('dragging');
                 document.body.style.cursor = 'col-resize';
                 document.body.style.userSelect = 'none';
+                queueDrag(e.clientX);
 
                 var overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;cursor:col-resize;';
@@ -14301,19 +14527,13 @@ setInterval(async () => {
 
             document.addEventListener('mousemove', function(e) {
                 if (!isDragging) return;
-                var rect = container.getBoundingClientRect();
-                var ratio = Math.max(0.15, Math.min(0.85, (e.clientX - rect.left) / rect.width));
-                splitData.splitRatio = ratio;
-                var leftPane = container.querySelector('[data-side="left"]');
-                var rightPane = container.querySelector('[data-side="right"]');
-                if (leftPane) leftPane.style.flex = ratio + '';
-                if (rightPane) rightPane.style.flex = (1 - ratio) + '';
-                positionSplitIframes(splitData);
+                queueDrag(e.clientX);
             });
 
             document.addEventListener('mouseup', function() {
                 if (!isDragging) return;
                 isDragging = false;
+                pendingClientX = null;
                 divider.classList.remove('dragging');
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
@@ -14530,7 +14750,7 @@ setInterval(async () => {
                 var url = getTabUrl(tab);
                 if (url) {
                     b._allowRealOpen = true;
-                    window.open('/fluxserver/launch.html?url=' + encodeURIComponent(url), '_blank');
+                    window.open('/active/embed.html?url=' + encodeURIComponent(url), '_blank');
                 }
             }
             b.hideContextMenu();
@@ -14579,7 +14799,7 @@ setInterval(async () => {
                         b.setTabLoading(activeSplitTab.id);
                         var urlToLoad = activeSplitTab.iframe.src;
                         if (activeSplitTab.currentUrl && activeSplitTab.currentUrl.startsWith('http')) {
-                            urlToLoad = '/fluxserver/launch.html?url=' + encodeURIComponent(activeSplitTab.currentUrl);
+                            urlToLoad = '/active/embed.html?url=' + encodeURIComponent(activeSplitTab.currentUrl);
                         }
                         activeSplitTab.iframe.src = urlToLoad;
                         syncSplitChrome(splitData);
@@ -15515,6 +15735,109 @@ setInterval(async () => {
             }
         }
     });
+
+    (function initSplitColorBg() {
+        function extractColorsFromDOM() {
+            var colors = [];
+            var seen = new Set();
+            var elements = document.querySelectorAll('.tab-bar, .toolbar, .tab.active, .address-bar-wrapper, .navigation-controls button, .tab-favicon img, .split-pane, [style*="background"]');
+            
+            elements.forEach(function(el) {
+                if (colors.length >= 8) return;
+                var style = getComputedStyle(el);
+                var bg = style.backgroundColor;
+                var border = style.borderColor;
+                var color = style.color;
+                
+                [bg, border, color].forEach(function(c) {
+                    if (!c || c === 'transparent' || c === 'rgba(0, 0, 0, 0)' || seen.has(c)) return;
+                    var match = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                    if (match) {
+                        var r = +match[1], g = +match[2], b = +match[3];
+                        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+                        var saturation = max === 0 ? 0 : (max - min) / max;
+                        if (saturation > 0.08 || (r + g + b > 100 && r + g + b < 650)) {
+                            seen.add(c);
+                            colors.push(c);
+                        }
+                    }
+                });
+            });
+
+            var iframes = document.querySelectorAll('iframe');
+            iframes.forEach(function(iframe) {
+                try {
+                    var doc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (doc) {
+                        var meta = doc.querySelector('meta[name="theme-color"]');
+                        if (meta && meta.content) {
+                            colors.push(meta.content);
+                        }
+                        var bodyBg = getComputedStyle(doc.body).backgroundColor;
+                        if (bodyBg && bodyBg !== 'rgba(0, 0, 0, 0)') colors.push(bodyBg);
+                    }
+                } catch(e) { }
+            });
+
+            var fallbacks = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#43e97b', '#fa709a', '#fee140'];
+            while (colors.length < 5) {
+                colors.push(fallbacks[colors.length % fallbacks.length]);
+            }
+
+            return colors.slice(0, 5);
+        }
+
+        function generateGradient(colors) {
+            var positions = [
+                { x: 15 + Math.random() * 15, y: 20 + Math.random() * 20 },
+                { x: 70 + Math.random() * 20, y: 10 + Math.random() * 20 },
+                { x: 40 + Math.random() * 20, y: 70 + Math.random() * 20 },
+                { x: 5 + Math.random() * 15,  y: 60 + Math.random() * 25 },
+                { x: 80 + Math.random() * 15, y: 55 + Math.random() * 25 }
+            ];
+            var gradients = colors.map(function(c, i) {
+                var size = 45 + Math.random() * 25;
+                return 'radial-gradient(circle ' + size + '% at ' + positions[i].x + '% ' + positions[i].y + '%, ' + c + ', transparent 70%)';
+            });
+            return gradients.join(', ');
+        }
+
+        function updateSplitBg() {
+            var splitAreas = document.querySelectorAll('.split-content-area');
+            if (splitAreas.length === 0) return;
+            
+            var colors = extractColorsFromDOM();
+            var gradient = generateGradient(colors);
+            
+            splitAreas.forEach(function(area) {
+                area.style.setProperty('--split-bg-gradient', gradient);
+            });
+        }
+
+        var observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                m.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1 && (node.classList.contains('split-content-area') || node.querySelector && node.querySelector('.split-content-area'))) {
+                        setTimeout(updateSplitBg, 100);
+                        if (!window._splitColorInterval) {
+                            window._splitColorInterval = setInterval(function() {
+                                if (document.querySelector('.split-content-area')) {
+                                    updateSplitBg();
+                                } else {
+                                    clearInterval(window._splitColorInterval);
+                                    window._splitColorInterval = null;
+                                }
+                            }, 5000);
+                        }
+                    }
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        updateSplitBg();
+    })();
+
 })();
 </script>
 
