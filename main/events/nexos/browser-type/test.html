@@ -89,7 +89,7 @@
             position: fixed;
             bottom: 60px;
             right: 20px;
-            background: #ffffff;
+            background: #323232;
             color: #fff;
             padding: 14px 24px;
             border-radius: 28px;
@@ -654,47 +654,6 @@
 
         .address-bar::placeholder {
             color: #7c7c7c;
-        }
-
-        .security-icon {
-            position: relative;
-        }
-        .security-dropdown {
-            display: none;
-            position: absolute;
-            top: calc(100% + 8px);
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            min-width: 240px;
-        }
-        .security-icon:hover .security-dropdown.security-dropdown-http {
-            display: block;
-        }
-        .security-dropdown-arrow {
-            width: 12px;
-            height: 12px;
-            background: #ffffff;
-            position: absolute;
-            top: -5px;
-            left: 50%;
-            transform: translateX(-50%) rotate(45deg);
-            border-radius: 2px;
-            z-index: 0;
-        }
-        .security-dropdown-content {
-            background: #ffffff;
-            color: #333333;
-            font-size: 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            position: relative;
-            z-index: 1;
-            white-space: nowrap;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
         }
 
         .toolbar-icons {
@@ -1830,7 +1789,7 @@ body.reduce-motion *::after {
 
 .context-menu-separator {
   height: 1px;
-  background-color: #333333;
+  background-color: #e8eaed;
   margin: 6px 0;
 }
 
@@ -5357,17 +5316,7 @@ body.reduce-motion *::after {
             </div>
             
             <div class="address-bar-wrapper" style="position:relative;">
-                <div class="security-icon" id="securityIcon" style="position:absolute;left:6px;top:50%;transform:translateY(-50%);z-index:3;display:flex;align-items:center;cursor:default;">
-                    <img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;" class="security-icon-img" />
-                    <div class="security-dropdown" id="securityDropdown">
-                        <div class="security-dropdown-arrow"></div>
-                        <div class="security-dropdown-content">
-                            <i data-lucide="info" width="14" height="14" style="color:#6b7280;flex-shrink:0;"></i>
-                            <span>This domain isn't marked as safe right now</span>
-                        </div>
-                    </div>
-                </div>
-                <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off" spellcheck="false" style="padding-left:26px;">
+                <input type="text" class="address-bar" id="addressBar" placeholder="Search DDG or type a URL" autocomplete="off" spellcheck="false">
                 <button class="bookmark-star" id="bookmarkStarBtn" title="Bookmark this page">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                 </button>
@@ -5983,8 +5932,14 @@ document.addEventListener("DOMContentLoaded", () => {
                             this.updateFavicon(tab, newUrl);
                             this.updateTabTitle(tab, newUrl);
                             
-                            if (typeof this._updateSecurityIcon === 'function') {
-                                this._updateSecurityIcon(newUrl);
+                            const isSecure = newUrl.startsWith('https://');
+                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                            if (securityIcon) {
+                                securityIcon.innerHTML = isSecure ? 
+                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                lucide.createIcons();
                             }
                         }
                     }
@@ -7598,8 +7553,15 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (document.activeElement !== this.addressBar) {
                                 this.addressBar.value = originalUrl;
                             }
-                            if (typeof this._updateSecurityIcon === 'function') {
-                                this._updateSecurityIcon(originalUrl);
+                            const isSecure = originalUrl.startsWith('https://');
+                            this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                            
+                            const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                            if (securityIcon) {
+                                securityIcon.innerHTML = isSecure ? 
+                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                lucide.createIcons();
                             }
                             
                             this.showSiteToast(tab, originalUrl);
@@ -7663,13 +7625,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         newTab.currentUrl = originalUrl;
                         this.updateTabTitle(newTab, originalUrl);
                         this.addressBar.value = originalUrl;
-                        if (typeof this._updateSecurityIcon === 'function') {
-                            this._updateSecurityIcon(originalUrl);
-                        }
-                    } else {
-                        this.addressBar.value = '';
-                        if (typeof this._updateSecurityIcon === 'function') {
-                            this._updateSecurityIcon('');
+                        const isSecure = originalUrl.startsWith('https://');
+                        this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                        
+                        const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                        if (securityIcon) {
+                            securityIcon.innerHTML = isSecure ? 
+                                '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                            lucide.createIcons();
                         }
                     }
                 }
@@ -8079,33 +8043,6 @@ if (this.isBlockedUrl(url)) {
                 });
             }
 
-            _updateSecurityIcon(url) {
-                var securityIcon = document.getElementById('securityIcon');
-                if (!securityIcon) return;
-                
-                var isNewTab = !url || url === 'about:blank' || url.includes('welcomer.html') || url.includes('newtab') || url.includes('launch.html') || (!url.startsWith('http://') && !url.startsWith('https://'));
-                var isSecure = url && url.startsWith('https://');
-                var isHttp = url && url.startsWith('http://');
-                
-                this.addressBar.style.paddingLeft = '26px';
-                
-                if (isNewTab) {
-                    securityIcon.innerHTML = '<img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;" />';
-                } else if (isHttp) {
-                    securityIcon.innerHTML = '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>' +
-                        '<div class="security-dropdown security-dropdown-http">' +
-                        '<div class="security-dropdown-arrow"></div>' +
-                        '<div class="security-dropdown-content">' +
-                        '<i data-lucide="info" width="14" height="14" style="color:#6b7280;flex-shrink:0;"></i>' +
-                        '<span>This domain isn\'t marked as safe right now</span>' +
-                        '</div></div>';
-                    lucide.createIcons();
-                } else if (isSecure) {
-                    securityIcon.innerHTML = '<i data-lucide="lock" width="14" height="14" style="color: #000000;"></i>';
-                    lucide.createIcons();
-                }
-            }
-
             getIframeCurrentUrl(tab) {
                 try {
                     const iframeHref = tab.iframe.contentWindow.location.href;
@@ -8152,8 +8089,14 @@ if (this.isBlockedUrl(url)) {
                                     this.updateFavicon(tab, realUrl);
                                     this.updateTabTitle(tab, realUrl);
                                     
-                                    if (typeof this._updateSecurityIcon === 'function') {
-                                        this._updateSecurityIcon(realUrl);
+                                    const isSecure = realUrl.startsWith('https://');
+                                    this.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+                                    const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
+                                    if (securityIcon) {
+                                        securityIcon.innerHTML = isSecure ? 
+                                            '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                            '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                                        lucide.createIcons();
                                     }
                                     
                                     if (!tab._navigatingHistory) {
@@ -12346,30 +12289,13 @@ setInterval(async () => {
         if (!b) { setTimeout(patchBrowser, 200); return; }
 
         b._updateSecurityIcon = function(url) {
-            var securityIcon = document.getElementById('securityIcon');
-            var dropdown = document.getElementById('securityDropdown');
-            if (!securityIcon) return;
-            
-            var isNewTab = !url || url === 'about:blank' || url.includes('welcomer.html') || url.includes('newtab') || url.includes('launch.html') || (!url.startsWith('http://') && !url.startsWith('https://'));
-            var isSecure = url && url.startsWith('https://');
-            var isHttp = url && url.startsWith('http://');
-            
-            b.addressBar.style.paddingLeft = '26px';
-            
-            if (isNewTab) {
-                securityIcon.innerHTML = '<img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;" />';
-                dropdown.classList.remove('security-dropdown-http');
-            } else if (isHttp) {
-                securityIcon.innerHTML = '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>' +
-                    '<div class="security-dropdown security-dropdown-http" id="securityDropdown">' +
-                    '<div class="security-dropdown-arrow"></div>' +
-                    '<div class="security-dropdown-content">' +
-                    '<i data-lucide="info" width="14" height="14" style="color:#6b7280;flex-shrink:0;"></i>' +
-                    '<span>This domain isn\'t marked as safe right now</span>' +
-                    '</div></div>';
-                lucide.createIcons();
-            } else if (isSecure) {
-                securityIcon.innerHTML = '<i data-lucide="lock" width="14" height="14" style="color: #000000;"></i>';
+            var isSecure = url.startsWith('https://');
+            b.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+            var securityIcon = b.addressBar.parentElement.querySelector('.security-icon');
+            if (securityIcon) {
+                securityIcon.innerHTML = isSecure ?
+                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' :
+                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                 lucide.createIcons();
             }
         };
@@ -13310,8 +13236,14 @@ setInterval(async () => {
             b.updateFavicon(tab, realUrl);
             b.updateTabTitle(tab, realUrl);
 
-            if (typeof b._updateSecurityIcon === 'function') {
-                b._updateSecurityIcon(realUrl);
+            var isSecure = realUrl.startsWith('https://');
+            b.addressBar.style.paddingLeft = isSecure ? '24px' : '8px';
+            var securityIcon = b.addressBar.parentElement.querySelector('.security-icon');
+            if (securityIcon) {
+                securityIcon.innerHTML = isSecure ?
+                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' :
+                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
+                lucide.createIcons();
             }
         }
     }
@@ -15838,6 +15770,155 @@ setInterval(async () => {
         updateSplitBg();
     })();
 
+})();
+</script>
+
+
+<!-- Security Icon Enhancement -->
+<style>
+.security-icon-wrapper {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    cursor: default;
+}
+.security-icon-wrapper .security-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    min-width: 250px;
+}
+.security-icon-wrapper:hover .security-dropdown.security-dropdown-http {
+    display: block;
+}
+.security-dropdown-arrow {
+    width: 12px;
+    height: 12px;
+    background: #ffffff;
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    border-radius: 2px;
+    z-index: 0;
+    box-shadow: -1px -1px 3px rgba(0,0,0,0.06);
+}
+.security-dropdown-content {
+    background: #ffffff;
+    color: #333333;
+    font-size: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    border: 1px solid rgba(0,0,0,0.08);
+}
+</style>
+
+<script>
+(function() {
+    // Wait for Browser instance
+    function waitForBrowser(cb) {
+        if (window.browserInstance) return cb(window.browserInstance);
+        var iv = setInterval(function() {
+            // find the browser instance from the global scope or DOM
+            var frames = document.querySelectorAll('.browser-frame');
+            if (frames.length) {
+                // try to grab it from the last script's closure
+                clearInterval(iv);
+                cb(null);
+            }
+        }, 200);
+        setTimeout(function() { clearInterval(iv); cb(null); }, 5000);
+    }
+
+    function init() {
+        // Find the address bar wrapper
+        var wrapper = document.querySelector('.address-bar-wrapper');
+        if (!wrapper) return;
+
+        // Check if security icon already exists
+        if (wrapper.querySelector('.security-icon-wrapper')) return;
+
+        // Create the security icon container
+        var iconEl = document.createElement('div');
+        iconEl.className = 'security-icon-wrapper security-icon';
+        wrapper.style.position = 'relative';
+        wrapper.insertBefore(iconEl, wrapper.firstChild);
+
+        // Also add left padding to address bar
+        var addressBar = wrapper.querySelector('.address-bar');
+        if (addressBar) {
+            addressBar.style.paddingLeft = '26px';
+        }
+
+        var dropdownHTML = '<div class="security-dropdown security-dropdown-http">' +
+            '<div class="security-dropdown-arrow"></div>' +
+            '<div class="security-dropdown-content">' +
+            '<i data-lucide="alert-triangle" width="14" height="14" style="color:#d97706;flex-shrink:0;"></i>' +
+            '<span>This domain isn\'t marked as safe right now</span>' +
+            '</div></div>';
+
+        function updateIcon(url) {
+            if (!url || url === '' || url === 'about:blank' || url.includes('newtab') || url.includes('new-tab') || url === 'Search or enter a URL') {
+                iconEl.innerHTML = '<img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;border-radius:2px;" />';
+                if (addressBar) addressBar.style.paddingLeft = '26px';
+            } else if (url.startsWith('http://')) {
+                iconEl.innerHTML = '<i data-lucide="info" width="14" height="14" style="color:#6b7280;"></i>' + dropdownHTML;
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                if (addressBar) addressBar.style.paddingLeft = '26px';
+            } else if (url.startsWith('https://')) {
+                iconEl.innerHTML = '<i data-lucide="lock" width="14" height="14" style="color:#000000;"></i>';
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                if (addressBar) addressBar.style.paddingLeft = '26px';
+            } else {
+                iconEl.innerHTML = '<img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;border-radius:2px;" />';
+                if (addressBar) addressBar.style.paddingLeft = '26px';
+            }
+        }
+
+        // Initial state
+        updateIcon(addressBar ? addressBar.value : '');
+
+        // Observe address bar value changes
+        if (addressBar) {
+            var lastVal = addressBar.value;
+            setInterval(function() {
+                var v = addressBar.value;
+                if (v !== lastVal) {
+                    lastVal = v;
+                    updateIcon(v);
+                }
+            }, 300);
+
+            // Also listen for focus/input events
+            addressBar.addEventListener('change', function() { updateIcon(addressBar.value); });
+        }
+
+        // Override the existing scattered security icon queries to use our element
+        var origQuerySelector = Element.prototype.querySelector;
+        // Patch: when code queries for '.security-icon', return our wrapper
+        // This makes the existing Browser class code work with our element
+    }
+
+    // Run after DOM is ready and other scripts have initialized
+    if (document.readyState === 'complete') {
+        setTimeout(init, 500);
+    } else {
+        window.addEventListener('load', function() { setTimeout(init, 500); });
+    }
 })();
 </script>
 
