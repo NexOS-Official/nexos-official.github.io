@@ -1,4 +1,6 @@
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1666,7 +1668,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 10px;
-  background-color: rgba(255, 255, 255, 0);
+  background-color: rgb(255, 255, 255);
   color: #000000;
   
 }
@@ -7740,15 +7742,10 @@ if (this.isBlockedUrl(url)) {
                         'ghost://restart': '/welcomer.html?resetagain',
                         'ghost://streaming': '/main/events/sidebar/apps/movie.html',
                         'ghost://docs': '/main/events/sidebar/apps/docs.html',
-                        'ghost://music': '/main/events/sidebar/apps/music.html',
-                        'ghost://flags': '__GHOST_FLAGS_INTERNAL__'
+                        'ghost://music': '/main/events/sidebar/apps/music.html'
                     };
                     var ghostTarget = ghostRoutes[url.toLowerCase()];
                     if (ghostTarget) {
-                        if (ghostTarget === '__GHOST_FLAGS_INTERNAL__') {
-                            this._openFlagsPage();
-                            return;
-                        }
                         this.loadUrl(ghostTarget);
                         return;
                     }
@@ -7883,153 +7880,6 @@ if (this.isBlockedUrl(url)) {
                 this.historyIndex[this.activeTabId] = history.length - 1;
                 
                 this.updateNavigationButtons();
-            }
-
-
-            _openFlagsPage() {
-                const tab = this.tabs.get(this.activeTabId);
-                if (!tab) return;
-                this.showLoading();
-                this.setTabLoading(this.activeTabId);
-                tab.url = 'ghost://flags';
-                this.addressBar.value = 'ghost://flags';
-                const savedFlags = JSON.parse(localStorage.getItem('ghost_flags') || '{}');
-                const flagsDef = [
-                    { id: 'vertical-tabs', name: 'Vertical Tab Strip', desc: 'Moves the tab bar to a vertical sidebar on the left side of the window.', category: 'UI', default: 'Disabled' },
-                    { id: 'smooth-scrolling', name: 'Smooth Scrolling', desc: 'Animate page scrolling with smooth transitions instead of jumping.', category: 'Rendering', default: 'Enabled' },
-                    { id: 'parallel-downloading', name: 'Parallel Downloading', desc: 'Enable downloading multiple files simultaneously for faster downloads.', category: 'Network', default: 'Disabled' },
-                    { id: 'tab-groups', name: 'Tab Groups', desc: 'Allow grouping tabs by color and label for better organization.', category: 'UI', default: 'Disabled' },
-                    { id: 'reader-mode', name: 'Reader Mode', desc: 'Add a reader mode button to simplify article pages for distraction-free reading.', category: 'UI', default: 'Disabled' },
-                    { id: 'experimental-canvas', name: 'Experimental Canvas Features', desc: 'Enable experimental HTML5 canvas rendering features for better graphics performance.', category: 'Rendering', default: 'Disabled' },
-                    { id: 'force-dark-mode', name: 'Force Dark Mode for Web Contents', desc: 'Automatically apply dark theme to all web pages.', category: 'Rendering', default: 'Disabled' },
-                    { id: 'back-forward-cache', name: 'Back-Forward Cache', desc: 'Cache pages in memory for instant back/forward navigation.', category: 'Performance', default: 'Enabled' },
-                    { id: 'lazy-loading', name: 'Lazy Image Loading', desc: 'Defer loading offscreen images until they are scrolled into view.', category: 'Performance', default: 'Enabled' },
-                    { id: 'gpu-rasterization', name: 'GPU Rasterization', desc: 'Use the GPU to rasterize web content for smoother scrolling and animations.', category: 'Rendering', default: 'Enabled' },
-                    { id: 'prerender-pages', name: 'Prerender Pages', desc: 'Speculatively prerender linked pages for near-instant page loads.', category: 'Performance', default: 'Disabled' },
-                    { id: 'heavy-ad-blocking', name: 'Heavy Ad Intervention', desc: 'Automatically unload ads that use too many resources.', category: 'Performance', default: 'Disabled' },
-                    { id: 'tab-hover-cards', name: 'Tab Hover Cards', desc: 'Show a preview card with page thumbnail when hovering over tabs.', category: 'UI', default: 'Disabled' },
-                    { id: 'touch-ui-layout', name: 'Touch-Optimized UI', desc: 'Enlarge UI elements and spacing for touch-friendly interaction.', category: 'UI', default: 'Disabled' },
-                    { id: 'webgpu', name: 'WebGPU', desc: 'Enable the experimental WebGPU API for high-performance graphics and compute on the web.', category: 'Rendering', default: 'Disabled' },
-                    { id: 'dns-over-https', name: 'DNS-over-HTTPS', desc: 'Encrypt DNS queries for improved privacy and security.', category: 'Network', default: 'Disabled' }
-                ];
-                let flagsHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flags</title><style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Google Sans','Segoe UI',Roboto,sans-serif;background:#fff;color:#202124;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:auto}
-.flags-header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e0e0e0;padding:24px 32px 16px}
-.flags-header h1{font-size:22px;font-weight:400;color:#202124;margin-bottom:4px}
-.flags-header p{font-size:13px;color:#5f6368;margin-bottom:16px}
-.flags-search{width:100%;max-width:600px;padding:10px 16px;border:1px solid #dadce0;border-radius:24px;font-size:14px;outline:none;font-family:inherit;background:#f8f9fa;transition:all .2s}
-.flags-search:focus{border-color:#4285f4;background:#fff;box-shadow:0 1px 6px rgba(66,133,244,.28)}
-.flags-body{padding:16px 32px 48px;max-width:960px}
-.flags-category{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#5f6368;margin:24px 0 8px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
-.flag-card{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 0;border-bottom:1px solid #f1f3f4;gap:16px}
-.flag-card.hidden{display:none}
-.flag-info{flex:1;min-width:0}
-.flag-name{font-size:14px;font-weight:500;color:#202124;margin-bottom:2px}
-.flag-desc{font-size:13px;color:#5f6368;line-height:1.5}
-.flag-default{font-size:11px;color:#9aa0a6;margin-top:4px}
-.flag-toggle{flex-shrink:0}
-.flag-select{padding:6px 28px 6px 12px;border:1px solid #dadce0;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;color:#202124;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
-.flag-select:focus{border-color:#4285f4}
-.flag-select.modified{border-color:#1a73e8;background:#e8f0fe;color:#1a73e8;font-weight:500}
-.flags-reset-bar{position:sticky;bottom:0;background:#fff;border-top:1px solid #e0e0e0;padding:12px 32px;display:none;align-items:center;justify-content:space-between;z-index:10}
-.flags-reset-bar.show{display:flex}
-.flags-reset-bar span{font-size:13px;color:#5f6368}
-.reset-btn{padding:8px 24px;border:none;border-radius:20px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;background:#1a73e8;color:#fff;transition:background .2s}
-.reset-btn:hover{background:#1557b0}
-.reset-all-btn{padding:8px 24px;border:1px solid #dadce0;border-radius:20px;font-size:13px;font-family:inherit;cursor:pointer;color:#5f6368;background:#fff;transition:all .2s}
-.reset-all-btn:hover{background:#f1f3f4}
-.no-results{text-align:center;padding:48px 0;color:#9aa0a6;font-size:15px}
-</style></head><body>
-<div class="flags-header">
-<h1>⚑ Experiments</h1>
-<p>These features are experimental and may change, break, or disappear at any time. Use with caution.</p>
-<input type="text" class="flags-search" id="flagsSearch" placeholder="Search flags..." autocomplete="off" spellcheck="false">
-</div>
-<div class="flags-body" id="flagsBody"></div>
-<div class="flags-reset-bar" id="flagsResetBar"><span id="modifiedCount">0 flags modified</span><div style="display:flex;gap:8px"><button class="reset-all-btn" onclick="resetAll()">Reset All</button></div></div>
-<script>
-var flags = ${JSON.stringify(flagsDef)};
-var saved = ${JSON.stringify(savedFlags)};
-var body = document.getElementById('flagsBody');
-var searchInput = document.getElementById('flagsSearch');
-var resetBar = document.getElementById('flagsResetBar');
-var modifiedCountEl = document.getElementById('modifiedCount');
-
-function getVal(f){return saved[f.id]||f.default}
-function render(){
-    var cats={};
-    flags.forEach(function(f){if(!cats[f.category])cats[f.category]=[];cats[f.category].push(f)});
-    var html='';
-    Object.keys(cats).sort().forEach(function(cat){
-        html+='<div class="flags-category" data-cat="'+cat+'">'+cat+'</div>';
-        cats[cat].forEach(function(f){
-            var val=getVal(f);
-            var mod=saved[f.id]&&saved[f.id]!==f.default;
-            html+='<div class="flag-card" data-flag="'+f.id+'" data-search="'+(f.name+' '+f.desc+' '+f.category).toLowerCase()+'">'+
-            '<div class="flag-info"><div class="flag-name">'+f.name+'</div><div class="flag-desc">'+f.desc+'</div><div class="flag-default">Default: '+f.default+'</div></div>'+
-            '<div class="flag-toggle"><select class="flag-select'+(mod?' modified':'')+'" data-id="'+f.id+'" data-default="'+f.default+'">'+
-            '<option value="Enabled"'+(val==='Enabled'?' selected':'')+'>Enabled</option>'+
-            '<option value="Disabled"'+(val==='Disabled'?' selected':'')+'>Disabled</option>'+
-            '</select></div></div>';
-        });
-    });
-    body.innerHTML=html;
-    body.querySelectorAll('.flag-select').forEach(function(sel){
-        sel.addEventListener('change',function(){
-            var id=this.dataset.id;
-            var def=this.dataset.default;
-            saved[id]=this.value;
-            if(this.value===def)delete saved[id];
-            localStorage.setItem('ghost_flags',JSON.stringify(saved));
-            this.classList.toggle('modified',this.value!==def);
-            updateResetBar();
-        });
-    });
-    updateResetBar();
-}
-function updateResetBar(){
-    var c=Object.keys(saved).length;
-    modifiedCountEl.textContent=c+' flag'+(c!==1?'s':'')+' modified';
-    resetBar.classList.toggle('show',c>0);
-}
-function resetAll(){
-    saved={};localStorage.setItem('ghost_flags',JSON.stringify(saved));render();
-}
-searchInput.addEventListener('input',function(){
-    var q=this.value.toLowerCase().trim();
-    body.querySelectorAll('.flag-card').forEach(function(card){
-        card.classList.toggle('hidden',q&&card.dataset.search.indexOf(q)===-1);
-    });
-    body.querySelectorAll('.flags-category').forEach(function(catEl){
-        var cat=catEl.dataset.cat;
-        var anyVisible=false;
-        body.querySelectorAll('.flag-card').forEach(function(card){
-            if(!card.classList.contains('hidden')){
-                var prev=card.previousElementSibling;
-                while(prev&&!prev.classList.contains('flags-category'))prev=prev.previousElementSibling;
-                if(prev&&prev.dataset.cat===cat)anyVisible=true;
-            }
-        });
-        catEl.style.display=anyVisible||!q?'':'none';
-    });
-    var noRes=document.getElementById('noResults');
-    var anyShown=body.querySelector('.flag-card:not(.hidden)');
-    if(!anyShown&&q){if(!noRes){noRes=document.createElement('div');noRes.id='noResults';noRes.className='no-results';noRes.textContent='No flags match your search.';body.appendChild(noRes);}}
-    else if(noRes)noRes.remove();
-});
-render();
-\x3c/script></body></html>`;
-                tab.iframe.srcdoc = flagsHtml;
-                this.updateTabTitle(this.activeTabId, 'Flags');
-                this.updateTabFavicon(this.activeTabId, '');
-                const history = this.history[this.activeTabId];
-                const currentIndex = this.historyIndex[this.activeTabId];
-                history.splice(currentIndex + 1);
-                history.push('ghost://flags');
-                this.historyIndex[this.activeTabId] = history.length - 1;
-                this.updateNavigationButtons();
-                setTimeout(() => { this.hideLoading(); this.clearTabLoading(this.activeTabId); }, 300);
             }
 
             extractOriginalUrl(proxyUrl) {
@@ -15644,15 +15494,8 @@ setInterval(async () => {
     }
 
     document.addEventListener('wheel', function(e) {
-        var _vtOn = (function(){ try { var fl = JSON.parse(localStorage.getItem('ghost_flags')||'{}'); return fl['vertical-tabs'] === 'Enabled'; } catch(e){return false;} })();
-        if (_vtOn) {
-            if (altHeld && Math.abs(e.deltaY) > 10 && Math.abs(e.deltaY) > Math.abs(e.deltaX) * 0.8) {
-                e.preventDefault();
-            }
-        } else {
-            if (altHeld && Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
-                e.preventDefault();
-            }
+        if (altHeld && Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
+            e.preventDefault();
         }
     }, { passive: false });
 
@@ -15668,7 +15511,6 @@ setInterval(async () => {
             touchState.startX = t.clientX;
             touchState.startY = t.clientY;
             touchState.lastSwitchX = t.clientX;
-            touchState.lastSwitchY = t.clientY;
             touchState.locked = false;
             touchState.direction = null;
         }, { passive: false });
@@ -15683,19 +15525,6 @@ setInterval(async () => {
                 touchState.locked = true;
                 touchState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
             }
-            var verticalTabsOn = (function(){ try { var fl = JSON.parse(localStorage.getItem('ghost_flags')||'{}'); return fl['vertical-tabs'] === 'Enabled'; } catch(e){return false;} })();
-            if (verticalTabsOn) {
-                if (touchState.direction === 'vertical' && (altHeld || e.altKey)) {
-                    e.preventDefault();
-                    if (!touchState.lastSwitchY) touchState.lastSwitchY = touchState.startY;
-                    var dySinceLast = t.clientY - touchState.lastSwitchY;
-                    if (Math.abs(dySinceLast) >= GESTURE_CONFIG.swipeThreshold) {
-                        var dir = dySinceLast > 0 ? 'left' : 'right';
-                        trigger(dir);
-                        touchState.lastSwitchY = t.clientY;
-                    }
-                }
-            } else {
             if (touchState.direction === 'horizontal' && (altHeld || e.altKey)) {
                 e.preventDefault();
                 var dxSinceLast = t.clientX - touchState.lastSwitchX;
@@ -15704,7 +15533,6 @@ setInterval(async () => {
                     trigger(dir);
                     touchState.lastSwitchX = t.clientX;
                 }
-            }
             }
         }, { passive: false });
     }
@@ -15945,267 +15773,920 @@ setInterval(async () => {
     })();
 
 })();
+</script>
 
-(function ghostFlagsEngine() {
-    function getFlags() {
-        try { return JSON.parse(localStorage.getItem('ghost_flags') || '{}'); } catch(e) { return {}; }
+
+<style id="vtab-styles">
+/* ===== VERTICAL TABS - LIGHT THEME ===== */
+
+.vtab-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 240px;
+    height: calc(100vh - 48px);
+    background: #ffffff;
+    border-right: 1px solid #dce1e6;
+    z-index: 600;
+    display: none;
+    flex-direction: column;
+    font-family: 'google sans', sans-serif;
+    transition: width 0.2s cubic-bezier(0.4,0,0.2,1);
+    overflow: hidden;
+}
+.vtab-sidebar.open { display: flex; }
+.vtab-sidebar.collapsed { width: 48px !important; min-width: 48px !important; }
+
+/* When sidebar is open, push everything right */
+body.vtab-active .browser-container {
+    margin-left: var(--vtab-width, 240px);
+    transition: margin-left 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* Remove top-left rounding on address bar container */
+body.vtab-active .address-bar-container {
+    border-top-left-radius: 0;
+    overflow: hidden;
+}
+body.vtab-active.vtab-collapsed-mode .address-bar-container {
+    border-top-left-radius: 0;
+}
+
+/* Hide horizontal tab bar */
+body.vtab-active .tab-bar { display: none !important; }
+
+/* Fix content area height */
+body.vtab-active .content-area {
+    margin-bottom: 50px;
+}
+
+/* Sidebar header */
+.vtab-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 10px 12px 6px;
+    flex-shrink: 0;
+}
+.vtab-header-label {
+    display: none !important;
+}
+.vtab-icon-btn {
+    width: 28px; height: 28px;
+    border: none; background: transparent;
+    border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #5f6368; transition: background 0.15s; flex-shrink: 0;
+}
+.vtab-icon-btn:hover { background: rgba(0,0,0,0.06); }
+
+/* Tab list wrapper with inner box */
+.vtab-list-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    margin: 0 6px;
+    border-radius: 10px;
+    background: #d3dce6;
+}
+.vtab-list-wrapper .vtab-blur-top,
+.vtab-list-wrapper .vtab-blur-bottom {
+    position: absolute;
+    left: 0; right: 0;
+    height: 24px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.vtab-list-wrapper .vtab-blur-top {
+    top: 0;
+    background: linear-gradient(to bottom, #d3dce6 0%, transparent 100%);
+}
+.vtab-list-wrapper .vtab-blur-bottom {
+    bottom: 0;
+    background: linear-gradient(to top, #d3dce6 0%, transparent 100%);
+}
+.vtab-list-wrapper .vtab-blur-top.visible,
+.vtab-list-wrapper .vtab-blur-bottom.visible { opacity: 1; }
+
+/* Tab list */
+.vtab-list {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 4px 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    scroll-behavior: smooth;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.vtab-list::-webkit-scrollbar { display: none; }
+
+/* Individual tab */
+.vtab-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: default;
+    position: relative;
+    min-height: 34px;
+    transition: background 0.12s, transform 0.2s cubic-bezier(0.22,1,0.36,1), opacity 0.3s;
+    user-select: none;
+    overflow: hidden;
+    opacity: 1;
+    max-height: 50px;
+}
+.vtab-item:hover { background: rgba(0,0,0,0.03); }
+.vtab-item.active {
+    background: #ffffff;
+}
+.vtab-item .vtab-fav {
+    width: 18px; height: 18px; min-width: 18px;
+    border-radius: 4px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+}
+.vtab-item .vtab-fav img {
+    width: 18px; height: 18px; border-radius: 4px;
+}
+.vtab-item .vtab-title {
+    flex: 1; font-size: 13px; color: #3a3a3a;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-weight: 400; pointer-events: none;
+    mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent 100%);
+}
+.vtab-item.active .vtab-title { color: #1a1a1a; font-weight: 500; }
+.vtab-item .vtab-close {
+    width: 18px; height: 18px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.1s;
+    flex-shrink: 0; cursor: pointer; border: none; background: transparent;
+    color: #5f6368; padding: 0;
+}
+.vtab-item:hover .vtab-close, .vtab-item.active .vtab-close { opacity: 0.6; }
+.vtab-item .vtab-close:hover { opacity: 1; }
+.vtab-item .vtab-close svg { width: 10px; height: 10px; }
+
+/* Tab open/close animations */
+.vtab-item.vtab-entering {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-top: -1px;
+    overflow: hidden;
+}
+.vtab-item.vtab-entering.vtab-enter-active {
+    opacity: 1;
+    max-height: 50px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+    margin-top: 0;
+    transition: opacity 0.25s ease, max-height 0.25s ease, padding 0.25s ease, margin 0.25s ease;
+}
+.vtab-item.vtab-leaving {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    overflow: hidden;
+    transition: opacity 0.2s ease, max-height 0.2s ease, padding 0.2s ease;
+}
+
+/* Drag states */
+.vtab-item.vtab-dragging {
+    z-index: 1000; opacity: 0.92;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    transition: none !important;
+    cursor: grabbing !important;
+}
+.vtab-item.vtab-shifting {
+    transition: transform 0.22s cubic-bezier(0.22,1,0.36,1) !important;
+}
+body.vtab-dragging-active { cursor: grabbing !important; }
+body.vtab-dragging-active * { cursor: grabbing !important; }
+
+/* New tab button - shaped like a sidebar tab, directly under tabs */
+.vtab-newtab {
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px 10px;
+    margin: 0 6px 6px;
+    border: none; background: transparent; border-radius: 8px;
+    cursor: pointer; color: #5f6368; font-size: 13px;
+    font-family: 'google sans', sans-serif; transition: background 0.15s; flex-shrink: 0;
+    min-height: 34px;
+}
+.vtab-newtab:hover { background: rgba(0,0,0,0.04); }
+.vtab-newtab span { display: none !important; }
+
+/* Resize handle - no color change */
+.vtab-resize {
+    position: absolute; top: 0; right: -3px;
+    width: 6px; height: 100%; cursor: col-resize; z-index: 601;
+}
+
+/* Collapsed mode */
+.vtab-sidebar.collapsed .vtab-header-label,
+.vtab-sidebar.collapsed .vtab-item .vtab-title,
+.vtab-sidebar.collapsed .vtab-item .vtab-close,
+.vtab-sidebar.collapsed .vtab-newtab span { display: none !important; }
+.vtab-sidebar.collapsed .vtab-item {
+    padding: 6px 0 !important; justify-content: center !important;
+}
+.vtab-sidebar.collapsed .vtab-newtab {
+    justify-content: center; padding: 8px 0;
+}
+.vtab-sidebar.collapsed .vtab-header {
+    justify-content: center; padding: 8px 4px;
+}
+</style>
+
+
+<script id="vtab-script">
+// ===== VERTICAL TABS MODULE =====
+(function() {
+    'use strict';
+    
+    var KEYS = {
+        mode: 'nexos_vtab_mode',
+        width: 'nexos_vtab_width',
+        collapsed: 'nexos_vtab_collapsed'
+    };
+    
+    var sidebar, list, listWrapper, blurTop, blurBottom, state = { active: false, collapsed: false, width: 240 };
+    
+    // Track pre-vtab pinned/split state for restoration
+    var savedPins = [];
+    var savedSplits = [];
+    
+    function createSidebar() {
+        sidebar = document.createElement('div');
+        sidebar.className = 'vtab-sidebar';
+        sidebar.id = 'vtabSidebar';
+        sidebar.innerHTML =
+            '<div class="vtab-header">' +
+                '<button class="vtab-icon-btn" id="vtabToggleBtn" title="Collapse">' +
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>' +
+                '</button>' +
+            '</div>' +
+            '<div class="vtab-list-wrapper">' +
+                '<div class="vtab-blur-top"></div>' +
+                '<div class="vtab-list" id="vtabList"></div>' +
+                '<div class="vtab-blur-bottom"></div>' +
+            '</div>' +
+            '<button class="vtab-newtab" id="vtabNewBtn">' +
+                '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>' +
+                '<span>New tab</span>' +
+            '</button>' +
+            '<div class="vtab-resize" id="vtabResize"></div>';
+        
+        document.body.appendChild(sidebar);
+        list = document.getElementById('vtabList');
+        listWrapper = sidebar.querySelector('.vtab-list-wrapper');
+        blurTop = sidebar.querySelector('.vtab-blur-top');
+        blurBottom = sidebar.querySelector('.vtab-blur-bottom');
+        
+        // Scroll blur updates
+        list.addEventListener('scroll', updateBlurs);
+        
+        // Toggle collapse
+        document.getElementById('vtabToggleBtn').addEventListener('click', function() {
+            state.collapsed = !state.collapsed;
+            applyCollapsed();
+            localStorage.setItem(KEYS.collapsed, state.collapsed);
+        });
+        
+        // New tab
+        document.getElementById('vtabNewBtn').addEventListener('click', function() {
+            if (window.browser) window.browser.createNewTab();
+        });
+        
+        // Resize
+        setupResize();
+        
+        // Drag
+        setupDrag();
     }
-
-    function isEnabled(flagId) {
-        var flags = getFlags();
-        var flagDefs = {
-            'smooth-scrolling': 'Enabled',
-            'back-forward-cache': 'Enabled',
-            'lazy-loading': 'Enabled',
-            'gpu-rasterization': 'Enabled'
-        };
-        var val = flags[flagId];
-        if (val) return val === 'Enabled';
-        return (flagDefs[flagId] || 'Disabled') === 'Enabled';
+    
+    function updateBlurs() {
+        if (!list || !blurTop || !blurBottom) return;
+        var st = list.scrollTop;
+        var sh = list.scrollHeight;
+        var ch = list.clientHeight;
+        blurTop.classList.toggle('visible', st > 5);
+        blurBottom.classList.toggle('visible', sh - st - ch > 5);
     }
-
-    var flagStyleEl = document.createElement('style');
-    flagStyleEl.id = 'ghost-flags-styles';
-    document.head.appendChild(flagStyleEl);
-
-    function applyFlags() {
-        var css = '';
-
-        if (isEnabled('vertical-tabs')) {
-            css += `
-                .browser-container { flex-direction: row !important; }
-                .browser-container > .tab-bar {
-                    flex-direction: column !important;
-                    width: 220px !important;
-                    height: 100vh !important;
-                    min-height: 100vh !important;
-                    max-height: 100vh !important;
-                    overflow-y: auto !important;
-                    overflow-x: hidden !important;
-                    align-items: stretch !important;
-                    padding: 8px 4px !important;
-                    padding-left: 6px !important;
-                    gap: 2px !important;
-                    flex-shrink: 0 !important;
-                    background: #eaf1fb !important;
-                    border-right: 1px solid #d3d3d3 !important;
-                }
-                .browser-container > .tab-bar::after { display: none !important; }
-                .tab-bar .tab {
-                    max-width: none !important;
-                    min-width: 0 !important;
-                    width: 100% !important;
-                    flex: none !important;
-                    height: 36px !important;
-                    border-radius: 8px !important;
-                    margin: 0 !important;
-                }
-                .tab-bar .tab.active {
-                    background: #fff !important;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-                }
-                .tab-bar .tab.active::before,
-                .tab-bar .tab.active::after { display: none !important; }
-                .tab-bar .new-tab-btn {
-                    width: 100% !important;
-                    max-width: none !important;
-                    border-radius: 8px !important;
-                    height: 36px !important;
-                    margin: 4px 0 !important;
-                    justify-content: center !important;
-                }
-                .tab-bar .tab.pinned {
-                    min-width: 0 !important;
-                    max-width: none !important;
-                    width: 100% !important;
-                    padding: 0 8px !important;
-                }
-                .tab-bar .tab.pinned .tab-title { display: block !important; }
-                .tab-bar .tab.pinned .tab-close { display: none !important; }
-                .tab-bar .tab .tab-hover-bg { border-radius: 8px !important; }
-                .browser-container > :not(.tab-bar) {
-                    flex: 1 !important;
-                    min-width: 0 !important;
-                }
-                .browser-container {
-                    background: #fff !important;
-                }
-            `;
+    
+    function applyCollapsed() {
+        sidebar.classList.toggle('collapsed', state.collapsed);
+        document.body.classList.toggle('vtab-collapsed-mode', state.collapsed);
+        var w = state.collapsed ? 48 : state.width;
+        document.body.style.setProperty('--vtab-width', w + 'px');
+        sidebar.style.width = state.collapsed ? '' : (state.width + 'px');
+        
+        var btn = document.getElementById('vtabToggleBtn');
+        if (btn) {
+            btn.innerHTML = state.collapsed
+                ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><polyline points="14 9 17 12 14 15"/></svg>'
+                : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>';
+            btn.title = state.collapsed ? 'Expand' : 'Collapse';
         }
-
-        if (isEnabled('smooth-scrolling')) {
-            css += `
-                html, .tab-content, iframe { scroll-behavior: smooth !important; }
-            `;
-        }
-
-        if (isEnabled('force-dark-mode')) {
-            css += `
-                .tab-content, .tab-content iframe {
-                    filter: invert(0.88) hue-rotate(180deg) !important;
-                }
-                .tab-content img, .tab-content video, .tab-content canvas,
-                .tab-content [style*="background-image"] {
-                    filter: invert(1) hue-rotate(180deg) !important;
-                }
-            `;
-        }
-
-        if (isEnabled('tab-hover-cards')) {
-            css += `
-                .ghost-tab-hover-card {
-                    position: fixed;
-                    z-index: 99999;
-                    background: #fff;
-                    border: 1px solid #dadce0;
-                    border-radius: 12px;
-                    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-                    padding: 12px;
-                    width: 280px;
-                    pointer-events: none;
-                    opacity: 0;
-                    transition: opacity 0.15s ease;
-                    font-family: 'Google Sans', sans-serif;
-                }
-                .ghost-tab-hover-card.show { opacity: 1; }
-                .ghost-tab-hover-card .thc-title {
-                    font-size: 13px;
-                    font-weight: 500;
-                    color: #202124;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    margin-bottom: 4px;
-                }
-                .ghost-tab-hover-card .thc-url {
-                    font-size: 11px;
-                    color: #5f6368;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-            `;
-        }
-
-        if (isEnabled('touch-ui-layout')) {
-            css += `
-                .tab-bar .tab { height: 44px !important; padding: 0 16px !important; }
-                .tab-bar { height: 52px !important; }
-                .nav-btn { width: 44px !important; height: 44px !important; }
-                .address-bar { height: 44px !important; font-size: 16px !important; }
-                .address-bar-container { padding: 10px 16px !important; }
-                .tab-close { width: 28px !important; height: 28px !important; }
-                .new-tab-btn { width: 40px !important; height: 40px !important; }
-            `;
-        }
-
-        flagStyleEl.textContent = css;
     }
-
-    if (isEnabled('tab-hover-cards') && window.browser) {
-        var hoverCard = document.createElement('div');
-        hoverCard.className = 'ghost-tab-hover-card';
-        hoverCard.innerHTML = '<div class="thc-title"></div><div class="thc-url"></div>';
-        document.body.appendChild(hoverCard);
-        var hoverTimeout = null;
-
-        window.browser.showTabPreview = function(tabId, tabElement) {
-            if (!isEnabled('tab-hover-cards')) return;
-            var tab = window.browser.tabs.get(tabId);
-            if (!tab) return;
-            hoverCard.querySelector('.thc-title').textContent = tab.title || 'Untitled';
-            hoverCard.querySelector('.thc-url').textContent = tab.url || '';
-            var rect = tabElement.getBoundingClientRect();
-            hoverCard.style.left = rect.left + 'px';
-            hoverCard.style.top = (rect.bottom + 6) + 'px';
-            hoverCard.classList.add('show');
-        };
-
-        document.addEventListener('mouseover', function(e) {
-            if (!e.target.closest('.tab')) {
-                hoverCard.classList.remove('show');
+    
+    function unpinAndUnsplitAll() {
+        var b = window.browser;
+        if (!b) return;
+        savedPins = [];
+        savedSplits = [];
+        
+        // Save and undo splits
+        if (b._splitTabs) {
+            b._splitTabs.forEach(function(sd, sid) {
+                savedSplits.push({ id: sid, data: sd });
+            });
+            // Close all splits
+            if (b.closeSplitView) {
+                savedSplits.forEach(function(s) {
+                    try { b.closeSplitView(s.id); } catch(e) {}
+                });
+            }
+        }
+        
+        // Save and undo pins
+        b.tabs.forEach(function(tab, id) {
+            if (tab.pinned) {
+                savedPins.push(id);
+                if (b.unpinTab) {
+                    try { b.unpinTab(id); } catch(e) {}
+                }
             }
         });
     }
-
-    if (isEnabled('lazy-loading')) {
-        var origCreateNewTab = window.browser && window.browser.createNewTab;
-        if (window.browser) {
-            var origAppendChild = HTMLElement.prototype.appendChild;
+    
+    function restorePinsAndSplits() {
+        var b = window.browser;
+        if (!b) return;
+        
+        // Restore pins
+        savedPins.forEach(function(id) {
+            if (b.tabs.has(id) && b.pinTab) {
+                try { b.pinTab(id); } catch(e) {}
+            }
+        });
+        savedPins = [];
+        
+        // We don't restore splits as it's complex; just clear
+        savedSplits = [];
+    }
+    
+    function enable() {
+        if (state.active) return;
+        state.active = true;
+        
+        // Unpin and unsplit before entering sidebar mode
+        unpinAndUnsplitAll();
+        
+        sidebar.classList.add('open');
+        document.body.classList.add('vtab-active');
+        var w = state.collapsed ? 48 : state.width;
+        document.body.style.setProperty('--vtab-width', w + 'px');
+        applyCollapsed();
+        syncTabs();
+        localStorage.setItem(KEYS.mode, 'true');
+        
+        setTimeout(updateBlurs, 50);
+    }
+    
+    function disable() {
+        if (!state.active) return;
+        state.active = false;
+        sidebar.classList.remove('open');
+        document.body.classList.remove('vtab-active');
+        document.body.classList.remove('vtab-collapsed-mode');
+        document.body.style.removeProperty('--vtab-width');
+        localStorage.setItem(KEYS.mode, 'false');
+        
+        // Restore pins/splits
+        restorePinsAndSplits();
+        
+        // Force recalculate tab sizes after showing tab bar again
+        if (window.browser && window.browser.updateTabSizes) {
+            setTimeout(function() {
+                window.browser.updateTabSizes();
+            }, 50);
         }
     }
-
-    if (isEnabled('heavy-ad-blocking')) {
-        var origFetch = window.fetch;
-        window.fetch = function() {
-            var url = arguments[0];
-            if (typeof url === 'string') {
-                var adPatterns = ['doubleclick.net', 'googlesyndication', 'adservice', 'pagead', 'ads.', 'adserver'];
-                for (var i = 0; i < adPatterns.length; i++) {
-                    if (url.indexOf(adPatterns[i]) !== -1) {
-                        return Promise.resolve(new Response('', { status: 204 }));
+    
+    function toggle() { state.active ? disable() : enable(); }
+    
+    // ===== TAB SYNC =====
+    function syncTabs() {
+        if (!state.active || !list || !window.browser) return;
+        var b = window.browser;
+        
+        var existingIds = new Set();
+        list.querySelectorAll('.vtab-item').forEach(function(el) {
+            existingIds.add(parseInt(el.dataset.tabId));
+        });
+        
+        // Get ordered tab ids from DOM
+        var tabBar = document.getElementById('tabBar');
+        var ids = [];
+        if (tabBar) {
+            tabBar.querySelectorAll('.tab').forEach(function(el) {
+                var id = parseInt(el.dataset.tabId);
+                if (!isNaN(id) && b.tabs.has(id)) ids.push(id);
+            });
+        }
+        if (!ids.length) ids = Array.from(b.tabs.keys());
+        
+        // Remove items no longer present
+        list.querySelectorAll('.vtab-item').forEach(function(el) {
+            var eid = parseInt(el.dataset.tabId);
+            if (!ids.includes(eid)) {
+                // Close animation
+                el.classList.add('vtab-leaving');
+                setTimeout(function() { if (el.parentNode) el.remove(); updateBlurs(); }, 200);
+            }
+        });
+        
+        var currentIds = new Set();
+        list.querySelectorAll('.vtab-item').forEach(function(el) {
+            currentIds.add(parseInt(el.dataset.tabId));
+        });
+        
+        ids.forEach(function(tabId, idx) {
+            var tab = b.tabs.get(tabId);
+            if (!tab) return;
+            
+            var existing = list.querySelector('.vtab-item[data-tab-id="' + tabId + '"]');
+            if (existing) {
+                // Update active state
+                existing.classList.toggle('active', tabId === b.activeTabId);
+                // Update title
+                var titleEl = existing.querySelector('.vtab-title');
+                if (titleEl) titleEl.textContent = tab.title || 'New Tab';
+                // Update favicon
+                var favDiv = existing.querySelector('.vtab-fav');
+                var origFav = tab.element ? tab.element.querySelector('.tab-favicon img') : null;
+                if (favDiv && origFav && origFav.src) {
+                    var img = favDiv.querySelector('img');
+                    if (img) img.src = origFav.src;
+                    else {
+                        favDiv.innerHTML = '';
+                        img = document.createElement('img');
+                        img.src = origFav.src;
+                        favDiv.appendChild(img);
+                    }
+                }
+                return;
+            }
+            
+            var el = document.createElement('div');
+            el.className = 'vtab-item vtab-entering' + (tabId === b.activeTabId ? ' active' : '');
+            el.dataset.tabId = tabId;
+            
+            // Favicon
+            var favDiv = document.createElement('div');
+            favDiv.className = 'vtab-fav';
+            var origFav = tab.element ? tab.element.querySelector('.tab-favicon img') : null;
+            if (origFav && origFav.src) {
+                var img = document.createElement('img');
+                img.src = origFav.src;
+                favDiv.appendChild(img);
+            } else {
+                favDiv.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>';
+            }
+            el.appendChild(favDiv);
+            
+            // Title
+            var titleDiv = document.createElement('div');
+            titleDiv.className = 'vtab-title';
+            titleDiv.textContent = tab.title || 'New Tab';
+            el.appendChild(titleDiv);
+            
+            // Close btn
+            var closeBtn = document.createElement('button');
+            closeBtn.className = 'vtab-close';
+            closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>';
+            closeBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                // Animate close
+                el.classList.add('vtab-leaving');
+                setTimeout(function() {
+                    b.closeTab(tabId);
+                }, 200);
+            });
+            el.appendChild(closeBtn);
+            
+            // Click to switch - also make dragged inactive tabs active
+            el.addEventListener('click', function(e) {
+                if (e.target.closest('.vtab-close')) return;
+                b.switchToTab(tabId);
+            });
+            
+            // Context menu - disable pin and split options in this mode
+            el.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                // We could show a limited context menu but for now just prevent
+            });
+            
+            list.appendChild(el);
+            
+            // Trigger enter animation
+            requestAnimationFrame(function() {
+                requestAnimationFrame(function() {
+                    el.classList.add('vtab-enter-active');
+                    setTimeout(function() {
+                        el.classList.remove('vtab-entering', 'vtab-enter-active');
+                    }, 260);
+                });
+            });
+        });
+        
+        setTimeout(updateBlurs, 50);
+    }
+    
+    function updateActive(tabId) {
+        if (!list) return;
+        list.querySelectorAll('.vtab-item').forEach(function(el) {
+            el.classList.toggle('active', parseInt(el.dataset.tabId) === tabId);
+        });
+    }
+    
+    // ===== MONKEY-PATCH BROWSER =====
+    function patchBrowser() {
+        var b = window.browser;
+        if (!b || b._vtabPatched) return;
+        b._vtabPatched = true;
+        
+        var origSwitch = b.switchToTab.bind(b);
+        b.switchToTab = function(id) {
+            origSwitch(id);
+            if (state.active) updateActive(id);
+        };
+        
+        var origClose = b.closeTab.bind(b);
+        b.closeTab = function(id) {
+            origClose(id);
+            if (state.active) setTimeout(syncTabs, 30);
+        };
+        
+        var origCreate = b.createNewTab.bind(b);
+        b.createNewTab = function(url, title, opts) {
+            var id = origCreate(url, title, opts);
+            if (state.active) setTimeout(syncTabs, 60);
+            return id;
+        };
+        
+        var origUpdateInfo = b.updateTabInfo.bind(b);
+        b.updateTabInfo = function(id) {
+            origUpdateInfo(id);
+            if (state.active) setTimeout(syncTabs, 150);
+        };
+        
+        // Intercept pin/split in sidebar mode
+        if (b.pinTab) {
+            var origPin = b.pinTab.bind(b);
+            b.pinTab = function(id) {
+                if (state.active) return; // disabled in sidebar mode
+                origPin(id);
+            };
+        }
+        if (b.splitTab || b.openSplitView) {
+            var origSplit = (b.splitTab || b.openSplitView).bind(b);
+            var fnName = b.splitTab ? 'splitTab' : 'openSplitView';
+            b[fnName] = function() {
+                if (state.active) return; // disabled in sidebar mode
+                origSplit.apply(b, arguments);
+            };
+        }
+        
+        // Also observe the tab bar mutations
+        var tabBar = document.getElementById('tabBar');
+        if (tabBar) {
+            var mo = new MutationObserver(function() {
+                if (state.active) requestAnimationFrame(syncTabs);
+            });
+            mo.observe(tabBar, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        }
+    }
+    
+    // ===== RESIZE =====
+    function setupResize() {
+        var handle = document.getElementById('vtabResize');
+        if (!handle) return;
+        var resizing = false, startX = 0, startW = 0;
+        
+        handle.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            resizing = true; startX = e.clientX; startW = sidebar.offsetWidth;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+        document.addEventListener('mousemove', function(e) {
+            if (!resizing) return;
+            var nw = startW + (e.clientX - startX);
+            nw = Math.max(48, Math.min(340, nw));
+            if (nw <= 60) {
+                state.collapsed = true;
+            } else {
+                state.collapsed = false;
+                state.width = nw;
+                localStorage.setItem(KEYS.width, nw);
+            }
+            localStorage.setItem(KEYS.collapsed, state.collapsed);
+            applyCollapsed();
+        });
+        document.addEventListener('mouseup', function() {
+            if (!resizing) return;
+            resizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        });
+    }
+    
+    // ===== VERTICAL DRAG =====
+    function setupDrag() {
+        if (!list) return;
+        var d = { el: null, id: null, startY: 0, dragging: false, positions: [], switchedActive: false };
+        
+        function capture() {
+            d.positions = [];
+            list.querySelectorAll('.vtab-item:not(.vtab-leaving)').forEach(function(el) {
+                var r = el.getBoundingClientRect();
+                d.positions.push({ el: el, id: parseInt(el.dataset.tabId), top: r.top, h: r.height, cy: r.top + r.height/2 });
+            });
+        }
+        
+        function updatePos(clientY) {
+            if (!d.el) return;
+            var dy = clientY - d.startY;
+            d.el.style.transform = 'translateY(' + dy + 'px)';
+            var di = -1, dp = null;
+            d.positions.forEach(function(p,i) { if (p.id === d.id) { di = i; dp = p; } });
+            if (!dp) return;
+            var dcy = dp.cy + dy;
+            d.positions.forEach(function(p,i) {
+                if (p.id === d.id) return;
+                var off = 0;
+                if (i < di && dcy < p.cy) off = dp.h;
+                else if (i > di && dcy > p.cy) off = -dp.h;
+                p.el.style.transform = 'translateY(' + off + 'px)';
+            });
+        }
+        
+        function endDrag() {
+            if (!d.el) return;
+            var di = -1, dp = null;
+            d.positions.forEach(function(p,i) { if (p.id === d.id) { di = i; dp = p; } });
+            if (!dp) return;
+            var dy = d.currentY - d.startY;
+            var dcy = dp.cy + dy;
+            var ni = di, sc = 0;
+            d.positions.forEach(function(p,i) {
+                if (p.id === d.id) return;
+                if (i < di && dcy < p.cy) sc++;
+                else if (i > di && dcy > p.cy) sc--;
+            });
+            ni = di - sc;
+            
+            // Reorder in DOM
+            var items = Array.from(list.querySelectorAll('.vtab-item:not(.vtab-leaving)'));
+            list.querySelectorAll('.vtab-item').forEach(function(el) {
+                el.classList.remove('vtab-dragging', 'vtab-shifting');
+                el.style.transform = '';
+            });
+            
+            if (di !== ni && ni >= 0 && ni < items.length) {
+                d.el.remove();
+                var remaining = Array.from(list.querySelectorAll('.vtab-item:not(.vtab-leaving)'));
+                if (ni >= remaining.length) list.appendChild(d.el);
+                else list.insertBefore(d.el, remaining[ni]);
+                
+                // Also reorder in original tab bar
+                var b = window.browser;
+                if (b && b.tabBar) {
+                    var tab = b.tabs.get(d.id);
+                    if (tab && tab.element) {
+                        tab.element.remove();
+                        var vtabOrder = Array.from(list.querySelectorAll('.vtab-item:not(.vtab-leaving)'));
+                        var nextTabId = null;
+                        for (var k = 0; k < vtabOrder.length; k++) {
+                            if (parseInt(vtabOrder[k].dataset.tabId) === d.id && k + 1 < vtabOrder.length) {
+                                nextTabId = parseInt(vtabOrder[k+1].dataset.tabId);
+                                break;
+                            }
+                        }
+                        if (nextTabId != null) {
+                            var nt = b.tabs.get(nextTabId);
+                            if (nt && nt.element && nt.element.parentNode) {
+                                b.tabBar.insertBefore(tab.element, nt.element);
+                            } else {
+                                b.tabBar.insertBefore(tab.element, b.newTabBtn);
+                            }
+                        } else {
+                            b.tabBar.insertBefore(tab.element, b.newTabBtn);
+                        }
                     }
                 }
             }
-            return origFetch.apply(this, arguments);
-        };
-    }
-
-    if (isEnabled('dns-over-https')) {
-        console.log('[Ghost Flags] DNS-over-HTTPS enabled (simulated)');
-    }
-
-    if (isEnabled('prerender-pages')) {
-        document.addEventListener('mouseover', function(e) {
-            var link = e.target.closest('a[href]');
-            if (link && link.href && link.href.startsWith('http') && !document.querySelector('link[rel=prefetch][href="'+link.href+'"]')) {
-                var prefetch = document.createElement('link');
-                prefetch.rel = 'prefetch';
-                prefetch.href = link.href;
-                document.head.appendChild(prefetch);
-            }
+            
+            document.body.classList.remove('vtab-dragging-active');
+        }
+        
+        function reset() {
+            list.querySelectorAll('.vtab-item').forEach(function(el) {
+                el.classList.remove('vtab-dragging', 'vtab-shifting');
+                el.style.transform = '';
+            });
+            document.body.classList.remove('vtab-dragging-active');
+            d.el = null; d.id = null; d.dragging = false; d.switchedActive = false;
+        }
+        
+        // Mouse
+        list.addEventListener('mousedown', function(e) {
+            if (e.target.closest('.vtab-close')) return;
+            var item = e.target.closest('.vtab-item');
+            if (!item) return;
+            e.preventDefault();
+            d.el = item; d.id = parseInt(item.dataset.tabId);
+            d.startY = e.clientY; d.currentY = e.clientY; d.dragging = false; d.switchedActive = false;
+            capture();
         });
-    }
-
-    if (isEnabled('reader-mode') && window.browser) {
-        var readerBtn = document.createElement('button');
-        readerBtn.className = 'nav-btn';
-        readerBtn.title = 'Reader Mode';
-        readerBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>';
-        readerBtn.addEventListener('click', function() {
-            var tab = window.browser.tabs.get(window.browser.activeTabId);
-            if (!tab || !tab.iframe) return;
-            try {
-                var iframeDoc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
-                var body = iframeDoc.body;
-                if (body.dataset.readerMode === 'true') {
-                    body.innerHTML = body.dataset.originalHtml;
-                    body.dataset.readerMode = 'false';
-                    return;
+        document.addEventListener('mousemove', function(e) {
+            if (!d.el) return;
+            d.currentY = e.clientY;
+            var dy = d.currentY - d.startY;
+            if (!d.dragging && Math.abs(dy) > 3) {
+                d.dragging = true;
+                // Switch to this tab when starting to drag (like real browser)
+                if (!d.switchedActive && window.browser) {
+                    window.browser.switchToTab(d.id);
+                    d.switchedActive = true;
                 }
-                body.dataset.originalHtml = body.innerHTML;
-                var title = iframeDoc.title || 'Article';
-                var article = body.querySelector('article') || body.querySelector('main') || body.querySelector('.content') || body;
-                var paragraphs = article.querySelectorAll('p');
-                var text = '';
-                paragraphs.forEach(function(p) { text += '<p>' + p.innerHTML + '</p>'; });
-                if (!text) text = '<p>' + article.innerText + '</p>';
-                body.innerHTML = '<div style="max-width:680px;margin:40px auto;padding:0 20px;font-family:Georgia,serif;line-height:1.8;color:#333;font-size:18px"><h1 style="font-size:28px;margin-bottom:24px;font-family:sans-serif">' + title + '</h1>' + text + '</div>';
-                body.style.background = '#fafafa';
-                body.dataset.readerMode = 'true';
-            } catch(e) {}
+                d.el.classList.add('vtab-dragging');
+                document.body.classList.add('vtab-dragging-active');
+                list.querySelectorAll('.vtab-item').forEach(function(t) {
+                    if (t !== d.el) t.classList.add('vtab-shifting');
+                });
+            }
+            if (d.dragging) updatePos(e.clientY);
         });
-        var toolbar = document.querySelector('.toolbar-icons') || document.querySelector('.nav-controls');
-        if (toolbar) toolbar.appendChild(readerBtn);
+        document.addEventListener('mouseup', function() {
+            if (!d.el) return;
+            if (d.dragging) endDrag();
+            reset();
+        });
+        
+        // Touch
+        list.addEventListener('touchstart', function(e) {
+            if (e.target.closest('.vtab-close')) return;
+            var item = e.target.closest('.vtab-item');
+            if (!item) return;
+            d.el = item; d.id = parseInt(item.dataset.tabId);
+            d.startY = e.touches[0].clientY; d.currentY = d.startY; d.dragging = false; d.switchedActive = false;
+            capture();
+        }, { passive: false });
+        document.addEventListener('touchmove', function(e) {
+            if (!d.el) return;
+            d.currentY = e.touches[0].clientY;
+            var dy = d.currentY - d.startY;
+            if (!d.dragging && Math.abs(dy) > 3) {
+                e.preventDefault(); d.dragging = true;
+                if (!d.switchedActive && window.browser) {
+                    window.browser.switchToTab(d.id);
+                    d.switchedActive = true;
+                }
+                d.el.classList.add('vtab-dragging');
+                document.body.classList.add('vtab-dragging-active');
+            }
+            if (d.dragging) { e.preventDefault(); updatePos(e.touches[0].clientY); }
+        }, { passive: false });
+        document.addEventListener('touchend', function() {
+            if (!d.el) return;
+            if (d.dragging) endDrag();
+            reset();
+        });
     }
-
-    applyFlags();
-
-    window.addEventListener('storage', function(e) {
-        if (e.key === 'ghost_flags') applyFlags();
+    
+    // ===== INIT =====
+    function init() {
+        createSidebar();
+        
+        // Restore state
+        var sw = localStorage.getItem(KEYS.width);
+        if (sw) state.width = Math.max(48, Math.min(340, parseInt(sw) || 240));
+        state.collapsed = localStorage.getItem(KEYS.collapsed) === 'true';
+        
+        patchBrowser();
+        
+        if (localStorage.getItem(KEYS.mode) === 'true') {
+            enable();
+        }
+    }
+    
+    // Alt+Shift+V keybinding
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'v' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            if (!sidebar) return;
+            toggle();
+        }
     });
+    
+    // Wait for browser
+    function waitForBrowser() {
+        if (window.browser && window.browser.tabs && window.browser.switchToTab) {
+            init();
+        } else {
+            setTimeout(waitForBrowser, 100);
+        }
+    }
+    if (document.readyState === 'complete') waitForBrowser();
+    else window.addEventListener('load', function() { waitForBrowser(); });
+    
+    window._verticalTabs = { toggle: toggle, enable: enable, disable: disable, isActive: function() { return state.active; }, sync: syncTabs };
+})();
+</script>
 
-    setInterval(applyFlags, 2000);
+<script id="vtab-gesture-overrides">
+// ===== VERTICAL GESTURE OVERRIDES =====
+(function() {
+    'use strict';
+    
+    // Alt + vertical scroll (2 fingers on trackpad) switches tabs in vertical mode
+    document.addEventListener('wheel', function(e) {
+        if (!window._verticalTabs || !window._verticalTabs.isActive()) return;
+        if (!e.altKey) return;
+        if (Math.abs(e.deltaY) <= 5) return;
+        
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        
+        var now = Date.now();
+        if (window._vtGestureTime && now - window._vtGestureTime < 140) return;
+        window._vtGestureTime = now;
+        
+        var b = window.browser;
+        if (!b || !b.tabs || b.activeTabId == null) return;
+        
+        var tabBar = document.querySelector('#tabBar');
+        var ids = [];
+        if (tabBar) {
+            tabBar.querySelectorAll('.tab').forEach(function(el) {
+                var id = parseInt(el.dataset.tabId);
+                if (!isNaN(id)) ids.push(id);
+            });
+        }
+        if (!ids.length) ids = Array.from(b.tabs.keys());
+        var idx = ids.indexOf(b.activeTabId);
+        if (idx === -1) return;
+        
+        var step = e.deltaY > 0 ? 1 : -1;
+        var ni = idx + step;
+        if (ni >= 0 && ni < ids.length) b.switchToTab(ids[ni]);
+    }, { passive: false, capture: true });
+    
+    // Alt + vertical 2-finger touch swipe
+    var ts = { sy: 0, lastY: 0, locked: false, dir: null };
+    document.addEventListener('touchstart', function(e) {
+        if (!window._verticalTabs || !window._verticalTabs.isActive()) return;
+        if (!e.touches.length) return;
+        ts.sy = e.touches[0].clientY; ts.lastY = ts.sy; ts.locked = false; ts.dir = null;
+    }, { passive: true, capture: true });
+    
+    document.addEventListener('touchmove', function(e) {
+        if (!window._verticalTabs || !window._verticalTabs.isActive()) return;
+        if (!e.altKey || !e.touches.length) return;
+        var t = e.touches[0];
+        var dx = t.clientX - ts.sy, dy = t.clientY - ts.sy;
+        if (!ts.locked && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+            ts.locked = true;
+            ts.dir = Math.abs(dy) > Math.abs(dx) ? 'v' : 'h';
+        }
+        if (ts.dir !== 'v') return;
+        e.preventDefault();
+        var d = t.clientY - ts.lastY;
+        if (Math.abs(d) >= 28) {
+            var b = window.browser;
+            if (b && b.tabs && b.activeTabId != null) {
+                var ids = Array.from(b.tabs.keys());
+                var idx = ids.indexOf(b.activeTabId);
+                if (idx !== -1) {
+                    var ni = idx + (d > 0 ? 1 : -1);
+                    if (ni >= 0 && ni < ids.length) b.switchToTab(ids[ni]);
+                }
+            }
+            ts.lastY = t.clientY;
+        }
+    }, { passive: false, capture: true });
 })();
 </script>
 
