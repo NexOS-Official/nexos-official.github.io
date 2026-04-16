@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15584,6 +15585,28 @@ setInterval(async () => {
             if (e.data && e.data.type === 'nexos-gesture') {
                 trigger(e.data.direction);
             }
+            if (e.data && e.data.type === 'nexos-vtab-gesture') {
+                if (!window._verticalTabs || !window._verticalTabs.isActive()) return;
+                var now = Date.now();
+                if (window._vtGestureTime && now - window._vtGestureTime < 140) return;
+                window._vtGestureTime = now;
+                var b = window.browser;
+                if (!b || !b.tabs || b.activeTabId == null) return;
+                var tabBar = document.querySelector('#tabBar');
+                var ids = [];
+                if (tabBar) {
+                    tabBar.querySelectorAll('.tab').forEach(function(el) {
+                        var id = parseInt(el.dataset.tabId);
+                        if (!isNaN(id)) ids.push(id);
+                    });
+                }
+                if (!ids.length) ids = Array.from(b.tabs.keys());
+                var idx = ids.indexOf(b.activeTabId);
+                if (idx === -1) return;
+                var step = e.data.deltaY > 0 ? 1 : -1;
+                var ni = idx + step;
+                if (ni >= 0 && ni < ids.length) b.switchToTab(ids[ni]);
+            }
         });
 
         function injectIframeGestures(iframe) {
@@ -15623,6 +15646,10 @@ setInterval(async () => {
                             if (e.altKey && Math.abs(e.deltaX) > 28 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                                 e.preventDefault();
                                 window.parent.postMessage({ type: 'nexos-gesture', direction: e.deltaX > 0 ? 'right' : 'left', continuous: false }, '*');
+                            }
+                            if (e.altKey && Math.abs(e.deltaY) > 5 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                                e.preventDefault();
+                                window.parent.postMessage({ type: 'nexos-vtab-gesture', deltaY: e.deltaY }, '*');
                             }
                         }, { passive: false });
                     }
@@ -15786,7 +15813,7 @@ setInterval(async () => {
     width: 240px;
     height: calc(100vh - 48px);
     background: #ffffff;
-    border-right: 1px solid #dce1e6;
+    border-right: 0px solid #dce1e6;
     z-index: 600;
     display: none;
     flex-direction: column;
@@ -16005,11 +16032,37 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
 .vtab-sidebar.collapsed .vtab-header {
     justify-content: center; padding: 8px 4px;
 }
+
+body.vtab-active .address-bar-wrapper {
+    overflow: visible;
+}
+body.vtab-active .search-suggestions {
+    z-index: 10000;
+    position: absolute;
+}
+body.vtab-active .content-area {
+    border-radius: 12px;
+    overflow: hidden;
+}
+body.vtab-active .sidebar {
+    top: calc(49px + var(--bookmark-bar-offset, 0px));
+    height: calc(100vh - 49px - var(--bookmark-bar-offset, 0px) - 50px);
+}
+body.vtab-active .sidebar::before {
+    top: 0;
+}
+body.vtab-active .ai-menu-modal {
+    top: calc(49px + var(--bookmark-bar-offset, 0px));
+    height: calc(100vh - 49px - var(--bookmark-bar-offset, 0px) - 50px);
+}
+body.vtab-dragging-active .content-area,
+body.vtab-resizing .content-area {
+    pointer-events: none;
+}
 </style>
 
 
 <script id="vtab-script">
-// ===== VERTICAL TABS MODULE =====
 (function() {
     'use strict';
     
@@ -16021,7 +16074,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
     
     var sidebar, list, listWrapper, blurTop, blurBottom, state = { active: false, collapsed: false, width: 240 };
     
-    // Track pre-vtab pinned/split state for restoration
     var savedPins = [];
     var savedSplits = [];
     
@@ -16052,25 +16104,20 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         blurTop = sidebar.querySelector('.vtab-blur-top');
         blurBottom = sidebar.querySelector('.vtab-blur-bottom');
         
-        // Scroll blur updates
         list.addEventListener('scroll', updateBlurs);
         
-        // Toggle collapse
         document.getElementById('vtabToggleBtn').addEventListener('click', function() {
             state.collapsed = !state.collapsed;
             applyCollapsed();
             localStorage.setItem(KEYS.collapsed, state.collapsed);
         });
         
-        // New tab
         document.getElementById('vtabNewBtn').addEventListener('click', function() {
             if (window.browser) window.browser.createNewTab();
         });
         
-        // Resize
         setupResize();
         
-        // Drag
         setupDrag();
     }
     
@@ -16105,12 +16152,10 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         savedPins = [];
         savedSplits = [];
         
-        // Save and undo splits
         if (b._splitTabs) {
             b._splitTabs.forEach(function(sd, sid) {
                 savedSplits.push({ id: sid, data: sd });
             });
-            // Close all splits
             if (b.closeSplitView) {
                 savedSplits.forEach(function(s) {
                     try { b.closeSplitView(s.id); } catch(e) {}
@@ -16118,7 +16163,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             }
         }
         
-        // Save and undo pins
         b.tabs.forEach(function(tab, id) {
             if (tab.pinned) {
                 savedPins.push(id);
@@ -16133,7 +16177,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         var b = window.browser;
         if (!b) return;
         
-        // Restore pins
         savedPins.forEach(function(id) {
             if (b.tabs.has(id) && b.pinTab) {
                 try { b.pinTab(id); } catch(e) {}
@@ -16141,7 +16184,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         });
         savedPins = [];
         
-        // We don't restore splits as it's complex; just clear
         savedSplits = [];
     }
     
@@ -16149,7 +16191,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         if (state.active) return;
         state.active = true;
         
-        // Unpin and unsplit before entering sidebar mode
         unpinAndUnsplitAll();
         
         sidebar.classList.add('open');
@@ -16172,10 +16213,8 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         document.body.style.removeProperty('--vtab-width');
         localStorage.setItem(KEYS.mode, 'false');
         
-        // Restore pins/splits
         restorePinsAndSplits();
         
-        // Force recalculate tab sizes after showing tab bar again
         if (window.browser && window.browser.updateTabSizes) {
             setTimeout(function() {
                 window.browser.updateTabSizes();
@@ -16185,7 +16224,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
     
     function toggle() { state.active ? disable() : enable(); }
     
-    // ===== TAB SYNC =====
     function syncTabs() {
         if (!state.active || !list || !window.browser) return;
         var b = window.browser;
@@ -16195,7 +16233,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             existingIds.add(parseInt(el.dataset.tabId));
         });
         
-        // Get ordered tab ids from DOM
         var tabBar = document.getElementById('tabBar');
         var ids = [];
         if (tabBar) {
@@ -16206,11 +16243,9 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         }
         if (!ids.length) ids = Array.from(b.tabs.keys());
         
-        // Remove items no longer present
         list.querySelectorAll('.vtab-item').forEach(function(el) {
             var eid = parseInt(el.dataset.tabId);
             if (!ids.includes(eid)) {
-                // Close animation
                 el.classList.add('vtab-leaving');
                 setTimeout(function() { if (el.parentNode) el.remove(); updateBlurs(); }, 200);
             }
@@ -16227,12 +16262,9 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             
             var existing = list.querySelector('.vtab-item[data-tab-id="' + tabId + '"]');
             if (existing) {
-                // Update active state
                 existing.classList.toggle('active', tabId === b.activeTabId);
-                // Update title
                 var titleEl = existing.querySelector('.vtab-title');
                 if (titleEl) titleEl.textContent = tab.title || 'New Tab';
-                // Update favicon
                 var favDiv = existing.querySelector('.vtab-fav');
                 var origFav = tab.element ? tab.element.querySelector('.tab-favicon img') : null;
                 if (favDiv && origFav && origFav.src) {
@@ -16252,7 +16284,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             el.className = 'vtab-item vtab-entering' + (tabId === b.activeTabId ? ' active' : '');
             el.dataset.tabId = tabId;
             
-            // Favicon
             var favDiv = document.createElement('div');
             favDiv.className = 'vtab-fav';
             var origFav = tab.element ? tab.element.querySelector('.tab-favicon img') : null;
@@ -16265,19 +16296,16 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             }
             el.appendChild(favDiv);
             
-            // Title
             var titleDiv = document.createElement('div');
             titleDiv.className = 'vtab-title';
             titleDiv.textContent = tab.title || 'New Tab';
             el.appendChild(titleDiv);
             
-            // Close btn
             var closeBtn = document.createElement('button');
             closeBtn.className = 'vtab-close';
             closeBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>';
             closeBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
-                // Animate close
                 el.classList.add('vtab-leaving');
                 setTimeout(function() {
                     b.closeTab(tabId);
@@ -16285,21 +16313,17 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             });
             el.appendChild(closeBtn);
             
-            // Click to switch - also make dragged inactive tabs active
             el.addEventListener('click', function(e) {
                 if (e.target.closest('.vtab-close')) return;
                 b.switchToTab(tabId);
             });
             
-            // Context menu - disable pin and split options in this mode
             el.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
-                // We could show a limited context menu but for now just prevent
             });
             
             list.appendChild(el);
             
-            // Trigger enter animation
             requestAnimationFrame(function() {
                 requestAnimationFrame(function() {
                     el.classList.add('vtab-enter-active');
@@ -16320,7 +16344,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         });
     }
     
-    // ===== MONKEY-PATCH BROWSER =====
     function patchBrowser() {
         var b = window.browser;
         if (!b || b._vtabPatched) return;
@@ -16351,7 +16374,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             if (state.active) setTimeout(syncTabs, 150);
         };
         
-        // Intercept pin/split in sidebar mode
         if (b.pinTab) {
             var origPin = b.pinTab.bind(b);
             b.pinTab = function(id) {
@@ -16368,7 +16390,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             };
         }
         
-        // Also observe the tab bar mutations
         var tabBar = document.getElementById('tabBar');
         if (tabBar) {
             var mo = new MutationObserver(function() {
@@ -16378,7 +16399,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         }
     }
     
-    // ===== RESIZE =====
     function setupResize() {
         var handle = document.getElementById('vtabResize');
         if (!handle) return;
@@ -16389,6 +16409,7 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             resizing = true; startX = e.clientX; startW = sidebar.offsetWidth;
             document.body.style.cursor = 'col-resize';
             document.body.style.userSelect = 'none';
+            document.body.classList.add('vtab-resizing');
         });
         document.addEventListener('mousemove', function(e) {
             if (!resizing) return;
@@ -16409,10 +16430,10 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             resizing = false;
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
+            document.body.classList.remove('vtab-resizing');
         });
     }
     
-    // ===== VERTICAL DRAG =====
     function setupDrag() {
         if (!list) return;
         var d = { el: null, id: null, startY: 0, dragging: false, positions: [], switchedActive: false };
@@ -16457,7 +16478,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             });
             ni = di - sc;
             
-            // Reorder in DOM
             var items = Array.from(list.querySelectorAll('.vtab-item:not(.vtab-leaving)'));
             list.querySelectorAll('.vtab-item').forEach(function(el) {
                 el.classList.remove('vtab-dragging', 'vtab-shifting');
@@ -16470,7 +16490,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
                 if (ni >= remaining.length) list.appendChild(d.el);
                 else list.insertBefore(d.el, remaining[ni]);
                 
-                // Also reorder in original tab bar
                 var b = window.browser;
                 if (b && b.tabBar) {
                     var tab = b.tabs.get(d.id);
@@ -16510,7 +16529,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             d.el = null; d.id = null; d.dragging = false; d.switchedActive = false;
         }
         
-        // Mouse
         list.addEventListener('mousedown', function(e) {
             if (e.target.closest('.vtab-close')) return;
             var item = e.target.closest('.vtab-item');
@@ -16526,7 +16544,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             var dy = d.currentY - d.startY;
             if (!d.dragging && Math.abs(dy) > 3) {
                 d.dragging = true;
-                // Switch to this tab when starting to drag (like real browser)
                 if (!d.switchedActive && window.browser) {
                     window.browser.switchToTab(d.id);
                     d.switchedActive = true;
@@ -16545,7 +16562,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
             reset();
         });
         
-        // Touch
         list.addEventListener('touchstart', function(e) {
             if (e.target.closest('.vtab-close')) return;
             var item = e.target.closest('.vtab-item');
@@ -16576,11 +16592,9 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         });
     }
     
-    // ===== INIT =====
     function init() {
         createSidebar();
         
-        // Restore state
         var sw = localStorage.getItem(KEYS.width);
         if (sw) state.width = Math.max(48, Math.min(340, parseInt(sw) || 240));
         state.collapsed = localStorage.getItem(KEYS.collapsed) === 'true';
@@ -16592,7 +16606,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         }
     }
     
-    // Alt+Shift+V keybinding
     document.addEventListener('keydown', function(e) {
         if (e.altKey && e.shiftKey && e.key.toLowerCase() === 'v' && !e.ctrlKey && !e.metaKey) {
             e.preventDefault();
@@ -16601,7 +16614,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         }
     });
     
-    // Wait for browser
     function waitForBrowser() {
         if (window.browser && window.browser.tabs && window.browser.switchToTab) {
             init();
@@ -16617,11 +16629,9 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
 </script>
 
 <script id="vtab-gesture-overrides">
-// ===== VERTICAL GESTURE OVERRIDES =====
 (function() {
     'use strict';
     
-    // Alt + vertical scroll (2 fingers on trackpad) switches tabs in vertical mode
     document.addEventListener('wheel', function(e) {
         if (!window._verticalTabs || !window._verticalTabs.isActive()) return;
         if (!e.altKey) return;
@@ -16654,7 +16664,6 @@ body.vtab-dragging-active * { cursor: grabbing !important; }
         if (ni >= 0 && ni < ids.length) b.switchToTab(ids[ni]);
     }, { passive: false, capture: true });
     
-    // Alt + vertical 2-finger touch swipe
     var ts = { sy: 0, lastY: 0, locked: false, dir: null };
     document.addEventListener('touchstart', function(e) {
         if (!window._verticalTabs || !window._verticalTabs.isActive()) return;
