@@ -5718,17 +5718,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="menu-label">Panic</span>
                 <span class="menu-shortcut">-</span>
             </button>
-            <div class="browser-menu-separator"></div>
-            <button class="browser-menu-item" id="openFileMenuItem">
-                <i data-lucide="file-up" width="18" height="18"></i>
-                <span class="menu-label">Open File...</span>
-                <span class="menu-shortcut">Alt + O</span>
-            </button>
-            <button class="browser-menu-item" id="viewSourceMenuItem">
-                <i data-lucide="code" width="18" height="18"></i>
-                <span class="menu-label">View Page Source</span>
-                <span class="menu-shortcut">Alt + U</span>
-            </button>
         </div>
 
         <div class="final-tab-notification" id="finalTabNotification">
@@ -7751,10 +7740,15 @@ if (this.isBlockedUrl(url)) {
                         'ghost://restart': '/welcomer.html?resetagain',
                         'ghost://streaming': '/main/events/sidebar/apps/movie.html',
                         'ghost://docs': '/main/events/sidebar/apps/docs.html',
-                        'ghost://music': '/main/events/sidebar/apps/music.html'
+                        'ghost://music': '/main/events/sidebar/apps/music.html',
+                        'ghost://flags': '__GHOST_FLAGS_INTERNAL__'
                     };
                     var ghostTarget = ghostRoutes[url.toLowerCase()];
                     if (ghostTarget) {
+                        if (ghostTarget === '__GHOST_FLAGS_INTERNAL__') {
+                            this._openFlagsPage();
+                            return;
+                        }
                         this.loadUrl(ghostTarget);
                         return;
                     }
@@ -7889,6 +7883,153 @@ if (this.isBlockedUrl(url)) {
                 this.historyIndex[this.activeTabId] = history.length - 1;
                 
                 this.updateNavigationButtons();
+            }
+
+
+            _openFlagsPage() {
+                const tab = this.tabs.get(this.activeTabId);
+                if (!tab) return;
+                this.showLoading();
+                this.setTabLoading(this.activeTabId);
+                tab.url = 'ghost://flags';
+                this.addressBar.value = 'ghost://flags';
+                const savedFlags = JSON.parse(localStorage.getItem('ghost_flags') || '{}');
+                const flagsDef = [
+                    { id: 'vertical-tabs', name: 'Vertical Tab Strip', desc: 'Moves the tab bar to a vertical sidebar on the left side of the window.', category: 'UI', default: 'Disabled' },
+                    { id: 'smooth-scrolling', name: 'Smooth Scrolling', desc: 'Animate page scrolling with smooth transitions instead of jumping.', category: 'Rendering', default: 'Enabled' },
+                    { id: 'parallel-downloading', name: 'Parallel Downloading', desc: 'Enable downloading multiple files simultaneously for faster downloads.', category: 'Network', default: 'Disabled' },
+                    { id: 'tab-groups', name: 'Tab Groups', desc: 'Allow grouping tabs by color and label for better organization.', category: 'UI', default: 'Disabled' },
+                    { id: 'reader-mode', name: 'Reader Mode', desc: 'Add a reader mode button to simplify article pages for distraction-free reading.', category: 'UI', default: 'Disabled' },
+                    { id: 'experimental-canvas', name: 'Experimental Canvas Features', desc: 'Enable experimental HTML5 canvas rendering features for better graphics performance.', category: 'Rendering', default: 'Disabled' },
+                    { id: 'force-dark-mode', name: 'Force Dark Mode for Web Contents', desc: 'Automatically apply dark theme to all web pages.', category: 'Rendering', default: 'Disabled' },
+                    { id: 'back-forward-cache', name: 'Back-Forward Cache', desc: 'Cache pages in memory for instant back/forward navigation.', category: 'Performance', default: 'Enabled' },
+                    { id: 'lazy-loading', name: 'Lazy Image Loading', desc: 'Defer loading offscreen images until they are scrolled into view.', category: 'Performance', default: 'Enabled' },
+                    { id: 'gpu-rasterization', name: 'GPU Rasterization', desc: 'Use the GPU to rasterize web content for smoother scrolling and animations.', category: 'Rendering', default: 'Enabled' },
+                    { id: 'prerender-pages', name: 'Prerender Pages', desc: 'Speculatively prerender linked pages for near-instant page loads.', category: 'Performance', default: 'Disabled' },
+                    { id: 'heavy-ad-blocking', name: 'Heavy Ad Intervention', desc: 'Automatically unload ads that use too many resources.', category: 'Performance', default: 'Disabled' },
+                    { id: 'tab-hover-cards', name: 'Tab Hover Cards', desc: 'Show a preview card with page thumbnail when hovering over tabs.', category: 'UI', default: 'Disabled' },
+                    { id: 'touch-ui-layout', name: 'Touch-Optimized UI', desc: 'Enlarge UI elements and spacing for touch-friendly interaction.', category: 'UI', default: 'Disabled' },
+                    { id: 'webgpu', name: 'WebGPU', desc: 'Enable the experimental WebGPU API for high-performance graphics and compute on the web.', category: 'Rendering', default: 'Disabled' },
+                    { id: 'dns-over-https', name: 'DNS-over-HTTPS', desc: 'Encrypt DNS queries for improved privacy and security.', category: 'Network', default: 'Disabled' }
+                ];
+                let flagsHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Flags</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Google Sans','Segoe UI',Roboto,sans-serif;background:#fff;color:#202124;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:auto}
+.flags-header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e0e0e0;padding:24px 32px 16px}
+.flags-header h1{font-size:22px;font-weight:400;color:#202124;margin-bottom:4px}
+.flags-header p{font-size:13px;color:#5f6368;margin-bottom:16px}
+.flags-search{width:100%;max-width:600px;padding:10px 16px;border:1px solid #dadce0;border-radius:24px;font-size:14px;outline:none;font-family:inherit;background:#f8f9fa;transition:all .2s}
+.flags-search:focus{border-color:#4285f4;background:#fff;box-shadow:0 1px 6px rgba(66,133,244,.28)}
+.flags-body{padding:16px 32px 48px;max-width:960px}
+.flags-category{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:#5f6368;margin:24px 0 8px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
+.flag-card{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 0;border-bottom:1px solid #f1f3f4;gap:16px}
+.flag-card.hidden{display:none}
+.flag-info{flex:1;min-width:0}
+.flag-name{font-size:14px;font-weight:500;color:#202124;margin-bottom:2px}
+.flag-desc{font-size:13px;color:#5f6368;line-height:1.5}
+.flag-default{font-size:11px;color:#9aa0a6;margin-top:4px}
+.flag-toggle{flex-shrink:0}
+.flag-select{padding:6px 28px 6px 12px;border:1px solid #dadce0;border-radius:6px;font-size:13px;font-family:inherit;background:#fff;color:#202124;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center}
+.flag-select:focus{border-color:#4285f4}
+.flag-select.modified{border-color:#1a73e8;background:#e8f0fe;color:#1a73e8;font-weight:500}
+.flags-reset-bar{position:sticky;bottom:0;background:#fff;border-top:1px solid #e0e0e0;padding:12px 32px;display:none;align-items:center;justify-content:space-between;z-index:10}
+.flags-reset-bar.show{display:flex}
+.flags-reset-bar span{font-size:13px;color:#5f6368}
+.reset-btn{padding:8px 24px;border:none;border-radius:20px;font-size:13px;font-family:inherit;cursor:pointer;font-weight:500;background:#1a73e8;color:#fff;transition:background .2s}
+.reset-btn:hover{background:#1557b0}
+.reset-all-btn{padding:8px 24px;border:1px solid #dadce0;border-radius:20px;font-size:13px;font-family:inherit;cursor:pointer;color:#5f6368;background:#fff;transition:all .2s}
+.reset-all-btn:hover{background:#f1f3f4}
+.no-results{text-align:center;padding:48px 0;color:#9aa0a6;font-size:15px}
+</style></head><body>
+<div class="flags-header">
+<h1>⚑ Experiments</h1>
+<p>These features are experimental and may change, break, or disappear at any time. Use with caution.</p>
+<input type="text" class="flags-search" id="flagsSearch" placeholder="Search flags..." autocomplete="off" spellcheck="false">
+</div>
+<div class="flags-body" id="flagsBody"></div>
+<div class="flags-reset-bar" id="flagsResetBar"><span id="modifiedCount">0 flags modified</span><div style="display:flex;gap:8px"><button class="reset-all-btn" onclick="resetAll()">Reset All</button></div></div>
+<script>
+var flags = ${JSON.stringify(flagsDef)};
+var saved = ${JSON.stringify(savedFlags)};
+var body = document.getElementById('flagsBody');
+var searchInput = document.getElementById('flagsSearch');
+var resetBar = document.getElementById('flagsResetBar');
+var modifiedCountEl = document.getElementById('modifiedCount');
+
+function getVal(f){return saved[f.id]||f.default}
+function render(){
+    var cats={};
+    flags.forEach(function(f){if(!cats[f.category])cats[f.category]=[];cats[f.category].push(f)});
+    var html='';
+    Object.keys(cats).sort().forEach(function(cat){
+        html+='<div class="flags-category" data-cat="'+cat+'">'+cat+'</div>';
+        cats[cat].forEach(function(f){
+            var val=getVal(f);
+            var mod=saved[f.id]&&saved[f.id]!==f.default;
+            html+='<div class="flag-card" data-flag="'+f.id+'" data-search="'+(f.name+' '+f.desc+' '+f.category).toLowerCase()+'">'+
+            '<div class="flag-info"><div class="flag-name">'+f.name+'</div><div class="flag-desc">'+f.desc+'</div><div class="flag-default">Default: '+f.default+'</div></div>'+
+            '<div class="flag-toggle"><select class="flag-select'+(mod?' modified':'')+'" data-id="'+f.id+'" data-default="'+f.default+'">'+
+            '<option value="Enabled"'+(val==='Enabled'?' selected':'')+'>Enabled</option>'+
+            '<option value="Disabled"'+(val==='Disabled'?' selected':'')+'>Disabled</option>'+
+            '</select></div></div>';
+        });
+    });
+    body.innerHTML=html;
+    body.querySelectorAll('.flag-select').forEach(function(sel){
+        sel.addEventListener('change',function(){
+            var id=this.dataset.id;
+            var def=this.dataset.default;
+            saved[id]=this.value;
+            if(this.value===def)delete saved[id];
+            localStorage.setItem('ghost_flags',JSON.stringify(saved));
+            this.classList.toggle('modified',this.value!==def);
+            updateResetBar();
+        });
+    });
+    updateResetBar();
+}
+function updateResetBar(){
+    var c=Object.keys(saved).length;
+    modifiedCountEl.textContent=c+' flag'+(c!==1?'s':'')+' modified';
+    resetBar.classList.toggle('show',c>0);
+}
+function resetAll(){
+    saved={};localStorage.setItem('ghost_flags',JSON.stringify(saved));render();
+}
+searchInput.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    body.querySelectorAll('.flag-card').forEach(function(card){
+        card.classList.toggle('hidden',q&&card.dataset.search.indexOf(q)===-1);
+    });
+    body.querySelectorAll('.flags-category').forEach(function(catEl){
+        var cat=catEl.dataset.cat;
+        var anyVisible=false;
+        body.querySelectorAll('.flag-card').forEach(function(card){
+            if(!card.classList.contains('hidden')){
+                var prev=card.previousElementSibling;
+                while(prev&&!prev.classList.contains('flags-category'))prev=prev.previousElementSibling;
+                if(prev&&prev.dataset.cat===cat)anyVisible=true;
+            }
+        });
+        catEl.style.display=anyVisible||!q?'':'none';
+    });
+    var noRes=document.getElementById('noResults');
+    var anyShown=body.querySelector('.flag-card:not(.hidden)');
+    if(!anyShown&&q){if(!noRes){noRes=document.createElement('div');noRes.id='noResults';noRes.className='no-results';noRes.textContent='No flags match your search.';body.appendChild(noRes);}}
+    else if(noRes)noRes.remove();
+});
+render();
+\x3c/script></body></html>`;
+                tab.iframe.srcdoc = flagsHtml;
+                this.updateTabTitle(this.activeTabId, 'Flags');
+                this.updateTabFavicon(this.activeTabId, '');
+                const history = this.history[this.activeTabId];
+                const currentIndex = this.historyIndex[this.activeTabId];
+                history.splice(currentIndex + 1);
+                history.push('ghost://flags');
+                this.historyIndex[this.activeTabId] = history.length - 1;
+                this.updateNavigationButtons();
+                setTimeout(() => { this.hideLoading(); this.clearTabLoading(this.activeTabId); }, 300);
             }
 
             extractOriginalUrl(proxyUrl) {
@@ -15503,8 +15644,15 @@ setInterval(async () => {
     }
 
     document.addEventListener('wheel', function(e) {
-        if (altHeld && Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
-            e.preventDefault();
+        var _vtOn = (function(){ try { var fl = JSON.parse(localStorage.getItem('ghost_flags')||'{}'); return fl['vertical-tabs'] === 'Enabled'; } catch(e){return false;} })();
+        if (_vtOn) {
+            if (altHeld && Math.abs(e.deltaY) > 10 && Math.abs(e.deltaY) > Math.abs(e.deltaX) * 0.8) {
+                e.preventDefault();
+            }
+        } else {
+            if (altHeld && Math.abs(e.deltaX) > 10 && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.8) {
+                e.preventDefault();
+            }
         }
     }, { passive: false });
 
@@ -15520,6 +15668,7 @@ setInterval(async () => {
             touchState.startX = t.clientX;
             touchState.startY = t.clientY;
             touchState.lastSwitchX = t.clientX;
+            touchState.lastSwitchY = t.clientY;
             touchState.locked = false;
             touchState.direction = null;
         }, { passive: false });
@@ -15534,6 +15683,19 @@ setInterval(async () => {
                 touchState.locked = true;
                 touchState.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
             }
+            var verticalTabsOn = (function(){ try { var fl = JSON.parse(localStorage.getItem('ghost_flags')||'{}'); return fl['vertical-tabs'] === 'Enabled'; } catch(e){return false;} })();
+            if (verticalTabsOn) {
+                if (touchState.direction === 'vertical' && (altHeld || e.altKey)) {
+                    e.preventDefault();
+                    if (!touchState.lastSwitchY) touchState.lastSwitchY = touchState.startY;
+                    var dySinceLast = t.clientY - touchState.lastSwitchY;
+                    if (Math.abs(dySinceLast) >= GESTURE_CONFIG.swipeThreshold) {
+                        var dir = dySinceLast > 0 ? 'left' : 'right';
+                        trigger(dir);
+                        touchState.lastSwitchY = t.clientY;
+                    }
+                }
+            } else {
             if (touchState.direction === 'horizontal' && (altHeld || e.altKey)) {
                 e.preventDefault();
                 var dxSinceLast = t.clientX - touchState.lastSwitchX;
@@ -15542,6 +15704,7 @@ setInterval(async () => {
                     trigger(dir);
                     touchState.lastSwitchX = t.clientX;
                 }
+            }
             }
         }, { passive: false });
     }
@@ -15781,395 +15944,6 @@ setInterval(async () => {
         updateSplitBg();
     })();
 
-})();
-</script>
-
-<script>
-// === OPENAS://GHOST FILE RUNNER (Light & Clean) ===
-(function() {
-    function waitForBrowser(cb) {
-        if (window.browser) return cb(window.browser);
-        var interval = setInterval(function() {
-            if (window.browser) { clearInterval(interval); cb(window.browser); }
-        }, 100);
-    }
-
-    function openFileRunnerPage(b) {
-        var tab = b.tabs.get(b.activeTabId);
-        if (!tab) return;
-
-        var pageHtml = '<!DOCTYPE html><html><head><style>' +
-            '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");' +
-            '*{margin:0;padding:0;box-sizing:border-box}' +
-            'body{background:#fafafa;color:#1a1a1a;font-family:"Inter",system-ui,-apple-system,sans-serif;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;user-select:none;overflow:hidden}' +
-            '.container{text-align:center;padding:40px}' +
-            '.icon-ring{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#f0f4ff,#e8ecff);display:flex;align-items:center;justify-content:center;margin:0 auto 28px;box-shadow:0 2px 20px rgba(99,102,241,0.12);transition:transform 0.3s,box-shadow 0.3s}' +
-            'body:hover .icon-ring{transform:scale(1.05);box-shadow:0 4px 30px rgba(99,102,241,0.2)}' +
-            '.icon-ring svg{width:36px;height:36px;color:#6366f1}' +
-            'h1{font-size:22px;font-weight:600;color:#111;margin-bottom:6px;letter-spacing:-0.3px}' +
-            'p{font-size:14px;color:#888;margin-bottom:36px;font-weight:400}' +
-            '.drop-zone{width:340px;padding:28px;border:2px dashed #e0e0e0;border-radius:16px;color:#aaa;font-size:13px;font-weight:500;transition:all 0.25s;background:#fff}' +
-            'body:hover .drop-zone{border-color:#6366f1;color:#6366f1;background:#f8f7ff}' +
-            '.drop-zone .label{display:flex;align-items:center;justify-content:center;gap:8px}' +
-            '.file-card{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#fff;padding:14px 20px;border-radius:14px;display:none;align-items:center;gap:14px;font-size:13px;box-shadow:0 4px 24px rgba(0,0,0,0.08);border:1px solid #f0f0f0}' +
-            '.file-card.show{display:flex}' +
-            '.file-card .fname{color:#111;font-weight:600}' +
-            '.file-card .fsize{color:#999;font-size:12px}' +
-            '.run-btn{background:#6366f1;color:#fff;border:none;padding:8px 18px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:background 0.2s;font-family:inherit}' +
-            '.run-btn:hover{background:#4f46e5}' +
-            'input[type=file]{display:none}' +
-            '</style></head><body>' +
-            '<div class="container">' +
-            '<div class="icon-ring"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.542l.857 6a2.25 2.25 0 0 0 2.227 1.932H19.05a2.25 2.25 0 0 0 2.227-1.932l.857-6a2.25 2.25 0 0 0-1.883-2.542m-16.5 0V6A2.25 2.25 0 0 1 6 3.75h3.879a1.5 1.5 0 0 1 1.06.44l2.122 2.12a1.5 1.5 0 0 0 1.06.44H18A2.25 2.25 0 0 1 20.25 9v.776"/></svg></div>' +
-            '<h1>Open a File</h1>' +
-            '<p>Click anywhere to browse your files</p>' +
-            '<div class="drop-zone"><div class="label"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14m-7-7h14"/></svg>Choose a file</div></div>' +
-            '</div>' +
-            '<div class="file-card" id="fileInfo">' +
-            '  <span class="fname" id="fileName"></span>' +
-            '  <span class="fsize" id="fileSize"></span>' +
-            '  <button class="run-btn" id="runBtn">Open</button>' +
-            '</div>' +
-            '<input type="file" id="filePicker" accept="*/*">' +
-            '<script>' +
-            'var picker=document.getElementById("filePicker"),info=document.getElementById("fileInfo"),nameEl=document.getElementById("fileName"),sizeEl=document.getElementById("fileSize"),runBtn=document.getElementById("runBtn"),currentFile=null;' +
-            'document.body.addEventListener("click",function(e){if(e.target===runBtn||info.contains(e.target))return;picker.click();});' +
-            'picker.addEventListener("change",function(){if(!picker.files.length)return;currentFile=picker.files[0];nameEl.textContent=currentFile.name;var kb=(currentFile.size/1024).toFixed(1);sizeEl.textContent=kb>1024?(kb/1024).toFixed(1)+" MB":kb+" KB";info.classList.add("show");});' +
-            'runBtn.addEventListener("click",function(){if(!currentFile)return;var url=URL.createObjectURL(currentFile),type=currentFile.type;if(type.startsWith("image/")||type==="application/pdf"||type.startsWith("video/")||type.startsWith("audio/")||type.startsWith("text/")||currentFile.name.endsWith(".html")||currentFile.name.endsWith(".svg")){window.location.href=url;}else{var a=document.createElement("a");a.href=url;a.download=currentFile.name;a.click();}});' +
-            '<\/script></body></html>';
-
-        var blob = new Blob([pageHtml], { type: 'text/html' });
-        var blobUrl = URL.createObjectURL(blob);
-        tab.url = blobUrl;
-        tab.iframe.src = blobUrl;
-        tab.title = 'Open File';
-        tab.currentUrl = 'openas://ghost';
-        var titleEl = tab.element.querySelector('.tab-title');
-        if (titleEl) titleEl.textContent = 'Open File';
-        if (b.addressBar) b.addressBar.value = 'openas://ghost';
-        if (!b.history[b.activeTabId]) b.history[b.activeTabId] = [];
-        b.history[b.activeTabId].push('openas://ghost');
-        b.historyIndex[b.activeTabId] = b.history[b.activeTabId].length - 1;
-    }
-
-    waitForBrowser(function(b) {
-        var origNavigate = b.navigate.bind(b);
-        b.navigate = function(input) {
-            var url = (input || '').trim();
-            if (url.toLowerCase().startsWith('openas://')) {
-                var route = url.toLowerCase().replace('openas://', '');
-                if (route === 'ghost' || route === 'ghost/') {
-                    openFileRunnerPage(b);
-                    return;
-                }
-            }
-            return origNavigate(url);
-        };
-
-        var openFileBtn = document.getElementById('openFileMenuItem');
-        if (openFileBtn) {
-            openFileBtn.addEventListener('click', function() {
-                b.navigate('openas://ghost');
-                var menu = document.getElementById('browserMenu');
-                if (menu) menu.classList.remove('open');
-            });
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if (e.altKey && e.key === 'o') {
-                e.preventDefault();
-                b.navigate('openas://ghost');
-            }
-        });
-
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-    });
-})();
-</script>
-
-<script>
-// === VIEW SOURCE SIDEBAR (Chrome DevTools / Eruda style) ===
-(function() {
-    var sidebarEl = null;
-    var fileHistory = [];
-    var historyIdx = -1;
-    var currentSource = '';
-
-    function createSidebar() {
-        if (sidebarEl) return sidebarEl;
-        sidebarEl = document.createElement('div');
-        sidebarEl.id = 'devSourceSidebar';
-        sidebarEl.innerHTML =
-            '<div class="ds-header">' +
-            '  <div class="ds-nav">' +
-            '    <button class="ds-nav-btn" id="dsBack" title="Back" disabled><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7"/></svg></button>' +
-            '    <button class="ds-nav-btn" id="dsForward" title="Forward" disabled><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>' +
-            '  </div>' +
-            '  <div class="ds-title" id="dsTitle">Source</div>' +
-            '  <button class="ds-close-btn" id="dsClose"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg></button>' +
-            '</div>' +
-            '<div class="ds-tabs">' +
-            '  <button class="ds-tab active" data-tab="source">Source</button>' +
-            '  <button class="ds-tab" data-tab="resources">Resources</button>' +
-            '</div>' +
-            '<div class="ds-body">' +
-            '  <div class="ds-panel" id="dsSourcePanel"></div>' +
-            '  <div class="ds-panel" id="dsResourcesPanel" style="display:none"></div>' +
-            '</div>';
-
-        var style = document.createElement('style');
-        style.textContent =
-            '#devSourceSidebar{position:fixed;top:0;right:0;width:420px;max-width:45vw;height:100vh;background:#fff;border-left:1px solid #e5e5e5;z-index:99999;display:flex;flex-direction:column;font-family:"Inter",system-ui,-apple-system,sans-serif;box-shadow:-4px 0 24px rgba(0,0,0,0.08);transition:transform 0.25s cubic-bezier(0.4,0,0.2,1);transform:translateX(100%)}' +
-            '#devSourceSidebar.open{transform:translateX(0)}' +
-            '.ds-header{display:flex;align-items:center;padding:8px 12px;background:#f8f9fa;border-bottom:1px solid #eee;gap:8px;flex-shrink:0}' +
-            '.ds-nav{display:flex;gap:2px}' +
-            '.ds-nav-btn{width:28px;height:28px;border:none;background:transparent;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#666;transition:all 0.15s}' +
-            '.ds-nav-btn:hover:not(:disabled){background:#eee;color:#333}' +
-            '.ds-nav-btn:disabled{opacity:0.3;cursor:default}' +
-            '.ds-title{flex:1;font-size:12px;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-            '.ds-close-btn{width:28px;height:28px;border:none;background:transparent;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#999;transition:all 0.15s}' +
-            '.ds-close-btn:hover{background:#fee;color:#e33}' +
-            '.ds-tabs{display:flex;border-bottom:1px solid #eee;background:#fafafa;flex-shrink:0}' +
-            '.ds-tab{padding:8px 16px;border:none;background:transparent;font-size:11px;font-weight:500;color:#888;cursor:pointer;position:relative;font-family:inherit;transition:color 0.15s}' +
-            '.ds-tab.active{color:#6366f1}' +
-            '.ds-tab.active::after{content:"";position:absolute;bottom:0;left:0;right:0;height:2px;background:#6366f1;border-radius:2px 2px 0 0}' +
-            '.ds-tab:hover{color:#333}' +
-            '.ds-body{flex:1;overflow:hidden;position:relative}' +
-            '.ds-panel{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden}' +
-            '.ds-code{margin:0;padding:16px;font-family:"SF Mono","Cascadia Code","Fira Code",monospace;font-size:11.5px;line-height:1.7;color:#1a1a1a;white-space:pre-wrap;word-wrap:break-word;tab-size:2;counter-reset:line}' +
-            '.ds-code .line{display:block;padding-left:48px;position:relative;min-height:1em}' +
-            '.ds-code .line::before{content:counter(line);counter-increment:line;position:absolute;left:0;width:36px;text-align:right;color:#c0c0c0;font-size:11px;padding-right:12px}' +
-            '.ds-code .line:hover{background:#f5f5ff}' +
-            '.ds-code .tag{color:#6366f1}.ds-code .attr{color:#d97706}.ds-code .str{color:#059669}.ds-code .cmt{color:#9ca3af;font-style:italic}' +
-            '.ds-resources-list{padding:8px}' +
-            '.ds-res-group{margin-bottom:4px}' +
-            '.ds-res-group-title{font-size:10px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.5px;padding:8px 12px 4px}' +
-            '.ds-res-item{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:12px;color:#444;transition:background 0.12s}' +
-            '.ds-res-item:hover{background:#f0f0ff;color:#6366f1}' +
-            '.ds-res-icon{width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}' +
-            '.ds-res-icon.html{background:#eef;color:#6366f1}.ds-res-icon.css{background:#fef3e2;color:#d97706}.ds-res-icon.js{background:#fef9c3;color:#a16207}.ds-res-icon.img{background:#e8faf0;color:#059669}.ds-res-icon.other{background:#f3f3f3;color:#888}' +
-            '.ds-res-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-            '.ds-empty{padding:40px;text-align:center;color:#bbb;font-size:12px}';
-        document.head.appendChild(style);
-        document.body.appendChild(sidebarEl);
-
-        // Tab switching
-        sidebarEl.querySelectorAll('.ds-tab').forEach(function(tab) {
-            tab.addEventListener('click', function() {
-                sidebarEl.querySelectorAll('.ds-tab').forEach(function(t){ t.classList.remove('active'); });
-                tab.classList.add('active');
-                var which = tab.getAttribute('data-tab');
-                document.getElementById('dsSourcePanel').style.display = which === 'source' ? '' : 'none';
-                document.getElementById('dsResourcesPanel').style.display = which === 'resources' ? '' : 'none';
-            });
-        });
-
-        document.getElementById('dsClose').addEventListener('click', closeSidebar);
-        document.getElementById('dsBack').addEventListener('click', function() {
-            if (historyIdx > 0) { historyIdx--; showFile(fileHistory[historyIdx], true); }
-        });
-        document.getElementById('dsForward').addEventListener('click', function() {
-            if (historyIdx < fileHistory.length - 1) { historyIdx++; showFile(fileHistory[historyIdx], true); }
-        });
-
-        return sidebarEl;
-    }
-
-    function updateNavButtons() {
-        var back = document.getElementById('dsBack');
-        var fwd = document.getElementById('dsForward');
-        if (back) back.disabled = historyIdx <= 0;
-        if (fwd) fwd.disabled = historyIdx >= fileHistory.length - 1;
-    }
-
-    function highlightHTML(src) {
-        var escaped = src.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        // Syntax highlight
-        escaped = escaped.replace(/(&lt;\/?)([\w-]+)/g, '$1<span class="tag">$2</span>');
-        escaped = escaped.replace(/([\w-]+)(=)/g, '<span class="attr">$1</span>$2');
-        escaped = escaped.replace(/(&quot;|")(.*?)(\1)/g, '<span class="str">$1$2$3</span>');
-        escaped = escaped.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span class="cmt">$1</span>');
-        // Wrap lines
-        var lines = escaped.split('\n');
-        return '<pre class="ds-code">' + lines.map(function(l) { return '<span class="line">' + (l || ' ') + '</span>'; }).join('') + '</pre>';
-    }
-
-    function showFile(entry, skipHistory) {
-        var panel = document.getElementById('dsSourcePanel');
-        if (!panel) return;
-        var title = document.getElementById('dsTitle');
-        if (title) title.textContent = entry.name || 'Source';
-        panel.innerHTML = highlightHTML(entry.source);
-
-        if (!skipHistory) {
-            // Trim forward history
-            fileHistory = fileHistory.slice(0, historyIdx + 1);
-            fileHistory.push(entry);
-            historyIdx = fileHistory.length - 1;
-        }
-        updateNavButtons();
-
-        // Switch to source tab
-        sidebarEl.querySelectorAll('.ds-tab').forEach(function(t){ t.classList.remove('active'); });
-        sidebarEl.querySelector('[data-tab="source"]').classList.add('active');
-        document.getElementById('dsSourcePanel').style.display = '';
-        document.getElementById('dsResourcesPanel').style.display = 'none';
-    }
-
-    function extractResources(doc) {
-        var resources = { stylesheets: [], scripts: [], images: [], other: [] };
-        try {
-            doc.querySelectorAll('link[rel="stylesheet"]').forEach(function(el) {
-                var href = el.getAttribute('href');
-                if (href) resources.stylesheets.push({ name: href.split('/').pop() || href, url: href, el: el });
-            });
-            doc.querySelectorAll('style').forEach(function(el, i) {
-                resources.stylesheets.push({ name: 'Inline style #' + (i+1), inline: true, source: el.textContent, el: el });
-            });
-            doc.querySelectorAll('script[src]').forEach(function(el) {
-                var src = el.getAttribute('src');
-                if (src) resources.scripts.push({ name: src.split('/').pop() || src, url: src, el: el });
-            });
-            doc.querySelectorAll('script:not([src])').forEach(function(el, i) {
-                if (el.textContent.trim()) resources.scripts.push({ name: 'Inline script #' + (i+1), inline: true, source: el.textContent, el: el });
-            });
-            doc.querySelectorAll('img[src]').forEach(function(el) {
-                var src = el.getAttribute('src');
-                if (src) resources.images.push({ name: src.split('/').pop() || src, url: src, el: el });
-            });
-        } catch(e) {}
-        return resources;
-    }
-
-    function buildResourceList(resources, doc) {
-        var panel = document.getElementById('dsResourcesPanel');
-        if (!panel) return;
-        var html = '';
-
-        function addGroup(title, items, type) {
-            if (!items.length) return;
-            html += '<div class="ds-res-group"><div class="ds-res-group-title">' + title + ' (' + items.length + ')</div>';
-            items.forEach(function(item, i) {
-                html += '<div class="ds-res-item" data-type="' + type + '" data-index="' + i + '"><div class="ds-res-icon ' + type + '">' + type.toUpperCase().charAt(0) + '</div><span class="ds-res-name" title="' + (item.url || item.name) + '">' + item.name + '</span></div>';
-            });
-            html += '</div>';
-        }
-
-        addGroup('Stylesheets', resources.stylesheets, 'css');
-        addGroup('Scripts', resources.scripts, 'js');
-        addGroup('Images', resources.images, 'img');
-
-        if (!html) html = '<div class="ds-empty">No resources found</div>';
-        panel.innerHTML = html;
-
-        // Click handlers to view resource source
-        panel.querySelectorAll('.ds-res-item').forEach(function(el) {
-            el.addEventListener('click', function() {
-                var type = el.getAttribute('data-type');
-                var idx = parseInt(el.getAttribute('data-index'));
-                var list = type === 'css' ? resources.stylesheets : type === 'js' ? resources.scripts : type === 'img' ? resources.images : [];
-                var item = list[idx];
-                if (!item) return;
-
-                if (item.inline && item.source) {
-                    showFile({ name: item.name, source: item.source });
-                } else if (item.url) {
-                    // Try to fetch the resource
-                    if (type === 'img') {
-                        showFile({ name: item.name, source: '[ Image: ' + item.url + ' ]\n\nCannot display image as source code.' });
-                        return;
-                    }
-                    try {
-                        // Try inline style/script from the doc
-                        if (type === 'css') {
-                            var sheets = doc.querySelectorAll('link[rel="stylesheet"]');
-                            var sheet = sheets[idx];
-                            if (sheet && sheet.sheet) {
-                                var rules = '';
-                                try {
-                                    Array.from(sheet.sheet.cssRules).forEach(function(r) { rules += r.cssText + '\n'; });
-                                    if (rules) { showFile({ name: item.name, source: rules }); return; }
-                                } catch(e2) {}
-                            }
-                        }
-                        // Fetch externally
-                        fetch(item.url).then(function(r) { return r.text(); }).then(function(text) {
-                            showFile({ name: item.name, source: text });
-                        }).catch(function() {
-                            showFile({ name: item.name, source: '// Could not load: ' + item.url });
-                        });
-                    } catch(e) {
-                        showFile({ name: item.name, source: '// Could not load: ' + item.url });
-                    }
-                }
-            });
-        });
-    }
-
-    function openSidebar(b) {
-        var sidebar = createSidebar();
-        var tab = b.tabs.get(b.activeTabId);
-        if (!tab) return;
-
-        fileHistory = [];
-        historyIdx = -1;
-
-        try {
-            var iframeDoc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
-            var source = iframeDoc.documentElement.outerHTML;
-            var pageName = tab.currentUrl || tab.title || 'Page Source';
-
-            showFile({ name: pageName, source: source });
-
-            var resources = extractResources(iframeDoc);
-            buildResourceList(resources, iframeDoc);
-        } catch(e) {
-            showFile({ name: 'Error', source: '// Cannot access page source:\n// ' + e.message });
-        }
-
-        // Shrink iframe area
-        var contentArea = document.querySelector('.content-area') || document.querySelector('.browser-content');
-        if (contentArea) contentArea.style.marginRight = '420px';
-
-        requestAnimationFrame(function() {
-            sidebar.classList.add('open');
-        });
-    }
-
-    function closeSidebar() {
-        if (!sidebarEl) return;
-        sidebarEl.classList.remove('open');
-        var contentArea = document.querySelector('.content-area') || document.querySelector('.browser-content');
-        if (contentArea) contentArea.style.marginRight = '';
-    }
-
-    function waitForBrowser(cb) {
-        if (window.browser) return cb(window.browser);
-        var interval = setInterval(function() {
-            if (window.browser) { clearInterval(interval); cb(window.browser); }
-        }, 100);
-    }
-
-    waitForBrowser(function(b) {
-        // Expose globally
-        window._viewSource = function() { openSidebar(b); };
-
-        var viewSrcBtn = document.getElementById('viewSourceMenuItem');
-        if (viewSrcBtn) {
-            viewSrcBtn.addEventListener('click', function() {
-                openSidebar(b);
-                var menu = document.getElementById('browserMenu');
-                if (menu) menu.classList.remove('open');
-            });
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if (e.altKey && e.key === 'u') {
-                e.preventDefault();
-                openSidebar(b);
-            }
-        });
-    });
 })();
 </script>
 
