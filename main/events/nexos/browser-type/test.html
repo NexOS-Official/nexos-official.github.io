@@ -6074,47 +6074,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     this.browserMenu.classList.remove('visible');
                 });
 
-                document.getElementById('openFileMenuItem').addEventListener('click', () => {
-                    this.navigate('openas://ghost');
-                    document.getElementById('browserMenu').classList.remove('open');
-                });
-                document.getElementById('viewSourceMenuItem').addEventListener('click', () => {
-                    var tab = this.tabs.get(this.activeTabId);
-                    if (tab) {
-                        var currentUrl = tab.currentUrl || tab.iframe.src || '';
-                        if (currentUrl.includes('/active/embed.html?url=')) {
-                            var realUrl = decodeURIComponent(currentUrl.split('url=')[1]);
-                            this.navigate('view-source:' + realUrl);
-                        } else {
-                            try {
-                                var iframeDoc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
-                                var source = iframeDoc.documentElement.outerHTML;
-                                var blob = new Blob(['<html><head><title>View Source</title><style>body{background:#1e1e2e;color:#cdd6f4;font-family:monospace;font-size:13px;white-space:pre-wrap;word-wrap:break-word;padding:20px;margin:0;line-height:1.6;}</style></head><body>' + source.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</body></html>'], {type:'text/html'});
-                                var blobUrl = URL.createObjectURL(blob);
-                                tab.iframe.src = blobUrl;
-                                tab.title = 'View Source';
-                                var titleEl = tab.element.querySelector('.tab-title');
-                                if (titleEl) titleEl.textContent = 'View Source';
-                            } catch(e) {
-                                console.log('Cannot access source:', e);
-                            }
-                        }
-                    }
-                    document.getElementById('browserMenu').classList.remove('open');
-                });
-
-                document.addEventListener('keydown', (e) => {
-                    if (e.altKey && e.key === 'o') {
-                        e.preventDefault();
-                        this.navigate('openas://ghost');
-                    }
-                    if (e.altKey && e.key === 'u') {
-                        e.preventDefault();
-                        document.getElementById('viewSourceMenuItem').click();
-                    }
-                });
-
-
                 document.getElementById('newWindowMenuItem').addEventListener('click', () => {
                     window.open(window.location.href, '_blank');
                     this.browserMenu.classList.remove('visible');
@@ -7765,121 +7724,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 setTimeout(cleanup, 320);
             }
 
-
-            _openFileRunnerPage() {
-                var tab = this.tabs.get(this.activeTabId);
-                if (!tab) return;
-                
-                var pageHtml = `<!DOCTYPE html>
-<html><head><style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { 
-    background: #1a1d29; color: #fff; font-family: 'Segoe UI', sans-serif;
-    height: 100vh; display: flex; flex-direction: column; align-items: center; 
-    justify-content: center; cursor: pointer; user-select: none; overflow: hidden;
-}
-.ghost-icon { font-size: 72px; margin-bottom: 24px; animation: float 3s ease-in-out infinite; }
-@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
-h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
-p { font-size: 15px; color: #8b8fa3; margin-bottom: 32px; }
-.hint { 
-    padding: 12px 28px; border: 2px dashed #3b3f54; border-radius: 16px;
-    color: #6c7085; font-size: 14px; transition: all 0.3s;
-}
-body:hover .hint { border-color: #5865f2; color: #5865f2; }
-.file-info {
-    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
-    background: #2a2d3a; padding: 14px 24px; border-radius: 12px;
-    display: none; align-items: center; gap: 12px; font-size: 14px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-}
-.file-info.show { display: flex; }
-.file-info .fname { color: #5865f2; font-weight: 600; }
-.file-info .fsize { color: #8b8fa3; }
-.run-btn {
-    background: #5865f2; color: #fff; border: none; padding: 8px 20px;
-    border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
-    transition: background 0.2s;
-}
-.run-btn:hover { background: #4752c4; }
-input[type=file] { display: none; }
-</style></head><body>
-<div class="ghost-icon">👻</div>
-<h1>Ghost File Runner</h1>
-<p>Open and preview any file instantly</p>
-<div class="hint">Click anywhere to select a file</div>
-<div class="file-info" id="fileInfo">
-    <span class="fname" id="fileName"></span>
-    <span class="fsize" id="fileSize"></span>
-    <button class="run-btn" id="runBtn">Run / Preview</button>
-</div>
-<input type="file" id="filePicker" accept="*/*">
-<script>
-var picker = document.getElementById('filePicker');
-var info = document.getElementById('fileInfo');
-var nameEl = document.getElementById('fileName');
-var sizeEl = document.getElementById('fileSize');
-var runBtn = document.getElementById('runBtn');
-var currentFile = null;
-
-document.body.addEventListener('click', function(e) {
-    if (e.target === runBtn || info.contains(e.target)) return;
-    picker.click();
-});
-
-picker.addEventListener('change', function() {
-    if (!picker.files.length) return;
-    currentFile = picker.files[0];
-    nameEl.textContent = currentFile.name;
-    var kb = (currentFile.size / 1024).toFixed(1);
-    sizeEl.textContent = kb > 1024 ? (kb/1024).toFixed(1) + ' MB' : kb + ' KB';
-    info.classList.add('show');
-});
-
-runBtn.addEventListener('click', function() {
-    if (!currentFile) return;
-    var url = URL.createObjectURL(currentFile);
-    var type = currentFile.type;
-    if (type.startsWith('image/') || type === 'application/pdf' || type.startsWith('video/') || type.startsWith('audio/') || type.startsWith('text/') || currentFile.name.endsWith('.html') || currentFile.name.endsWith('.svg')) {
-        window.location.href = url;
-    } else {
-        var a = document.createElement('a');
-        a.href = url; a.download = currentFile.name; a.click();
-    }
-});
-</script></body></html>`;
-                
-                var blob = new Blob([pageHtml], { type: 'text/html' });
-                var blobUrl = URL.createObjectURL(blob);
-                tab.url = blobUrl;
-                tab.iframe.src = blobUrl;
-                tab.title = 'Ghost File Runner';
-                tab.currentUrl = 'openas://ghost';
-                var titleEl = tab.element.querySelector('.tab-title');
-                if (titleEl) titleEl.textContent = 'Ghost File Runner';
-                this.addressBar.value = 'openas://ghost';
-                if (!this.history[this.activeTabId]) this.history[this.activeTabId] = [];
-                this.history[this.activeTabId].push('openas://ghost');
-                this.historyIndex[this.activeTabId] = this.history[this.activeTabId].length - 1;
-            }
-
-            _showDownloadBar(filename, url) {
-                var existing = document.getElementById('ghostDownloadBar');
-                if (existing) existing.remove();
-                
-                var bar = document.createElement('div');
-                bar.id = 'ghostDownloadBar';
-                bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:44px;background:#2a2d3a;border-top:1px solid #3b3f54;display:flex;align-items:center;padding:0 16px;gap:12px;z-index:9000;font-family:sans-serif;font-size:13px;color:#fff;animation:slideUpBar 0.2s ease-out;';
-                bar.innerHTML = '<i data-lucide="download" width="16" height="16" style="color:#5865f2;flex-shrink:0;"></i>' +
-                    '<span style="color:#8b8fa3;">Downloaded:</span>' +
-                    '<a href="' + url + '" download="' + filename + '" style="color:#5865f2;text-decoration:none;font-weight:600;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + filename + '</a>' +
-                    '<span style="flex:1;"></span>' +
-                    '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:#8b8fa3;cursor:pointer;padding:4px;"><i data-lucide="x" width="14" height="14"></i></button>';
-                document.body.appendChild(bar);
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-                setTimeout(function() { if (bar.parentElement) bar.remove(); }, 8000);
-            }
-
             navigate(input) {
                 if (!this.activeTabId) return;
 
@@ -7913,15 +7757,6 @@ if (this.isBlockedUrl(url)) {
                     var ghostTarget = ghostRoutes[url.toLowerCase()];
                     if (ghostTarget) {
                         this.loadUrl(ghostTarget);
-                        return;
-                    }
-                }
-
-
-                if (url.toLowerCase().startsWith('openas://')) {
-                    var openasRoute = url.toLowerCase().replace('openas://', '');
-                    if (openasRoute === 'ghost' || openasRoute === 'ghost/') {
-                        this._openFileRunnerPage();
                         return;
                     }
                 }
@@ -15947,6 +15782,140 @@ setInterval(async () => {
         updateSplitBg();
     })();
 
+})();
+</script>
+
+<script>
+// === OPENAS://GHOST FILE RUNNER ===
+(function() {
+    function waitForBrowser(cb) {
+        if (window.browser) return cb(window.browser);
+        var interval = setInterval(function() {
+            if (window.browser) { clearInterval(interval); cb(window.browser); }
+        }, 100);
+    }
+
+    function openFileRunnerPage(b) {
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab) return;
+
+        var pageHtml = '<!DOCTYPE html>\n<html><head><style>' +
+            '* { margin:0; padding:0; box-sizing:border-box; }' +
+            'body { background:#1a1d29; color:#fff; font-family:"Segoe UI",sans-serif; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; user-select:none; overflow:hidden; }' +
+            '.ghost-icon { font-size:72px; margin-bottom:24px; animation:float 3s ease-in-out infinite; }' +
+            '@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }' +
+            'h1 { font-size:28px; font-weight:600; margin-bottom:8px; }' +
+            'p { font-size:15px; color:#8b8fa3; margin-bottom:32px; }' +
+            '.hint { padding:12px 28px; border:2px dashed #3b3f54; border-radius:16px; color:#6c7085; font-size:14px; transition:all 0.3s; }' +
+            'body:hover .hint { border-color:#5865f2; color:#5865f2; }' +
+            '.file-info { position:fixed; bottom:40px; left:50%; transform:translateX(-50%); background:#2a2d3a; padding:14px 24px; border-radius:12px; display:none; align-items:center; gap:12px; font-size:14px; box-shadow:0 8px 32px rgba(0,0,0,0.4); }' +
+            '.file-info.show { display:flex; }' +
+            '.file-info .fname { color:#5865f2; font-weight:600; }' +
+            '.file-info .fsize { color:#8b8fa3; }' +
+            '.run-btn { background:#5865f2; color:#fff; border:none; padding:8px 20px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; transition:background 0.2s; }' +
+            '.run-btn:hover { background:#4752c4; }' +
+            'input[type=file] { display:none; }' +
+            '</style></head><body>' +
+            '<div class="ghost-icon">👻</div>' +
+            '<h1>Ghost File Runner</h1>' +
+            '<p>Open and preview any file instantly</p>' +
+            '<div class="hint">Click anywhere to select a file</div>' +
+            '<div class="file-info" id="fileInfo">' +
+            '  <span class="fname" id="fileName"></span>' +
+            '  <span class="fsize" id="fileSize"></span>' +
+            '  <button class="run-btn" id="runBtn">Run / Preview</button>' +
+            '</div>' +
+            '<input type="file" id="filePicker" accept="*/*">' +
+            '<script>' +
+            'var picker=document.getElementById("filePicker"),info=document.getElementById("fileInfo"),nameEl=document.getElementById("fileName"),sizeEl=document.getElementById("fileSize"),runBtn=document.getElementById("runBtn"),currentFile=null;' +
+            'document.body.addEventListener("click",function(e){if(e.target===runBtn||info.contains(e.target))return;picker.click();});' +
+            'picker.addEventListener("change",function(){if(!picker.files.length)return;currentFile=picker.files[0];nameEl.textContent=currentFile.name;var kb=(currentFile.size/1024).toFixed(1);sizeEl.textContent=kb>1024?(kb/1024).toFixed(1)+" MB":kb+" KB";info.classList.add("show");});' +
+            'runBtn.addEventListener("click",function(){if(!currentFile)return;var url=URL.createObjectURL(currentFile),type=currentFile.type;if(type.startsWith("image/")||type==="application/pdf"||type.startsWith("video/")||type.startsWith("audio/")||type.startsWith("text/")||currentFile.name.endsWith(".html")||currentFile.name.endsWith(".svg")){window.location.href=url;}else{var a=document.createElement("a");a.href=url;a.download=currentFile.name;a.click();}});' +
+            '<\/script></body></html>';
+
+        var blob = new Blob([pageHtml], { type: 'text/html' });
+        var blobUrl = URL.createObjectURL(blob);
+        tab.url = blobUrl;
+        tab.iframe.src = blobUrl;
+        tab.title = 'Ghost File Runner';
+        tab.currentUrl = 'openas://ghost';
+        var titleEl = tab.element.querySelector('.tab-title');
+        if (titleEl) titleEl.textContent = 'Ghost File Runner';
+        if (b.addressBar) b.addressBar.value = 'openas://ghost';
+        if (!b.history[b.activeTabId]) b.history[b.activeTabId] = [];
+        b.history[b.activeTabId].push('openas://ghost');
+        b.historyIndex[b.activeTabId] = b.history[b.activeTabId].length - 1;
+    }
+
+    function viewPageSource(b) {
+        var tab = b.tabs.get(b.activeTabId);
+        if (!tab) return;
+        try {
+            var iframeDoc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
+            var source = iframeDoc.documentElement.outerHTML;
+            var escaped = source.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            var srcHtml = '<!DOCTYPE html><html><head><title>View Source</title><style>body{background:#1e1e2e;color:#cdd6f4;font-family:monospace;font-size:13px;white-space:pre-wrap;word-wrap:break-word;padding:20px;margin:0;line-height:1.6;}</style></head><body>' + escaped + '</body></html>';
+            var blob = new Blob([srcHtml], {type:'text/html'});
+            var blobUrl = URL.createObjectURL(blob);
+            tab.iframe.src = blobUrl;
+            tab.title = 'View Source';
+            tab.currentUrl = 'view-source';
+            var titleEl = tab.element.querySelector('.tab-title');
+            if (titleEl) titleEl.textContent = 'View Source';
+            if (b.addressBar) b.addressBar.value = 'view-source:';
+        } catch(e) {
+            console.log('Cannot access source:', e);
+        }
+    }
+
+    waitForBrowser(function(b) {
+        // Hook into navigate to intercept openas:// protocol
+        var origNavigate = b.navigate.bind(b);
+        b.navigate = function(input) {
+            var url = (input || '').trim();
+            if (url.toLowerCase().startsWith('openas://')) {
+                var route = url.toLowerCase().replace('openas://', '');
+                if (route === 'ghost' || route === 'ghost/') {
+                    openFileRunnerPage(b);
+                    return;
+                }
+            }
+            return origNavigate(url);
+        };
+
+        // Menu button bindings
+        var openFileBtn = document.getElementById('openFileMenuItem');
+        if (openFileBtn) {
+            openFileBtn.addEventListener('click', function() {
+                b.navigate('openas://ghost');
+                var menu = document.getElementById('browserMenu');
+                if (menu) menu.classList.remove('open');
+            });
+        }
+
+        var viewSrcBtn = document.getElementById('viewSourceMenuItem');
+        if (viewSrcBtn) {
+            viewSrcBtn.addEventListener('click', function() {
+                viewPageSource(b);
+                var menu = document.getElementById('browserMenu');
+                if (menu) menu.classList.remove('open');
+            });
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.altKey && e.key === 'o') {
+                e.preventDefault();
+                b.navigate('openas://ghost');
+            }
+            if (e.altKey && e.key === 'u') {
+                e.preventDefault();
+                viewPageSource(b);
+            }
+        });
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
 })();
 </script>
 
