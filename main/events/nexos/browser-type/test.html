@@ -1,11 +1,12 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nexos by GhostEDU</title>
-    <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
     <link rel="manifest" href="../manifest.json">
     <style>
@@ -5718,6 +5719,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 <span class="menu-label">Panic</span>
                 <span class="menu-shortcut">-</span>
             </button>
+            <div class="browser-menu-separator"></div>
+            <button class="browser-menu-item" id="openFileMenuItem">
+                <i data-lucide="file-up" width="18" height="18"></i>
+                <span class="menu-label">Open File...</span>
+                <span class="menu-shortcut">Alt + O</span>
+            </button>
+            <button class="browser-menu-item" id="viewSourceMenuItem">
+                <i data-lucide="code" width="18" height="18"></i>
+                <span class="menu-label">View Page Source</span>
+                <span class="menu-shortcut">Alt + U</span>
+            </button>
         </div>
 
         <div class="final-tab-notification" id="finalTabNotification">
@@ -5937,8 +5949,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
                             if (securityIcon) {
                                 securityIcon.innerHTML = isSecure ? 
-                                    '<i data-lucide="lock" width="14" height="14" style="color: #000000;"></i>' : 
-                                    '<i data-lucide="info" width="14" height="14" style="color: #000000;"></i>';
+                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
                             }
                         }
@@ -6061,6 +6073,47 @@ document.addEventListener("DOMContentLoaded", () => {
                     this.createNewTab();
                     this.browserMenu.classList.remove('visible');
                 });
+
+                document.getElementById('openFileMenuItem').addEventListener('click', () => {
+                    this.navigate('openas://ghost');
+                    document.getElementById('browserMenu').classList.remove('open');
+                });
+                document.getElementById('viewSourceMenuItem').addEventListener('click', () => {
+                    var tab = this.tabs.get(this.activeTabId);
+                    if (tab) {
+                        var currentUrl = tab.currentUrl || tab.iframe.src || '';
+                        if (currentUrl.includes('/active/embed.html?url=')) {
+                            var realUrl = decodeURIComponent(currentUrl.split('url=')[1]);
+                            this.navigate('view-source:' + realUrl);
+                        } else {
+                            try {
+                                var iframeDoc = tab.iframe.contentDocument || tab.iframe.contentWindow.document;
+                                var source = iframeDoc.documentElement.outerHTML;
+                                var blob = new Blob(['<html><head><title>View Source</title><style>body{background:#1e1e2e;color:#cdd6f4;font-family:monospace;font-size:13px;white-space:pre-wrap;word-wrap:break-word;padding:20px;margin:0;line-height:1.6;}</style></head><body>' + source.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</body></html>'], {type:'text/html'});
+                                var blobUrl = URL.createObjectURL(blob);
+                                tab.iframe.src = blobUrl;
+                                tab.title = 'View Source';
+                                var titleEl = tab.element.querySelector('.tab-title');
+                                if (titleEl) titleEl.textContent = 'View Source';
+                            } catch(e) {
+                                console.log('Cannot access source:', e);
+                            }
+                        }
+                    }
+                    document.getElementById('browserMenu').classList.remove('open');
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    if (e.altKey && e.key === 'o') {
+                        e.preventDefault();
+                        this.navigate('openas://ghost');
+                    }
+                    if (e.altKey && e.key === 'u') {
+                        e.preventDefault();
+                        document.getElementById('viewSourceMenuItem').click();
+                    }
+                });
+
 
                 document.getElementById('newWindowMenuItem').addEventListener('click', () => {
                     window.open(window.location.href, '_blank');
@@ -7559,8 +7612,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
                             if (securityIcon) {
                                 securityIcon.innerHTML = isSecure ? 
-                                    '<i data-lucide="lock" width="14" height="14" style="color: #000000;"></i>' : 
-                                    '<i data-lucide="info" width="14" height="14" style="color: #000000;"></i>';
+                                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                 lucide.createIcons();
                             }
                             
@@ -7631,8 +7684,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
                         if (securityIcon) {
                             securityIcon.innerHTML = isSecure ? 
-                                '<i data-lucide="lock" width="14" height="14" style="color: #000000;"></i>' : 
-                                '<i data-lucide="info" width="14" height="14" style="color: #000000;"></i>';
+                                '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                             lucide.createIcons();
                         }
                     }
@@ -7712,6 +7765,121 @@ document.addEventListener("DOMContentLoaded", () => {
                 setTimeout(cleanup, 320);
             }
 
+
+            _openFileRunnerPage() {
+                var tab = this.tabs.get(this.activeTabId);
+                if (!tab) return;
+                
+                var pageHtml = `<!DOCTYPE html>
+<html><head><style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { 
+    background: #1a1d29; color: #fff; font-family: 'Segoe UI', sans-serif;
+    height: 100vh; display: flex; flex-direction: column; align-items: center; 
+    justify-content: center; cursor: pointer; user-select: none; overflow: hidden;
+}
+.ghost-icon { font-size: 72px; margin-bottom: 24px; animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+h1 { font-size: 28px; font-weight: 600; margin-bottom: 8px; }
+p { font-size: 15px; color: #8b8fa3; margin-bottom: 32px; }
+.hint { 
+    padding: 12px 28px; border: 2px dashed #3b3f54; border-radius: 16px;
+    color: #6c7085; font-size: 14px; transition: all 0.3s;
+}
+body:hover .hint { border-color: #5865f2; color: #5865f2; }
+.file-info {
+    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+    background: #2a2d3a; padding: 14px 24px; border-radius: 12px;
+    display: none; align-items: center; gap: 12px; font-size: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.file-info.show { display: flex; }
+.file-info .fname { color: #5865f2; font-weight: 600; }
+.file-info .fsize { color: #8b8fa3; }
+.run-btn {
+    background: #5865f2; color: #fff; border: none; padding: 8px 20px;
+    border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+    transition: background 0.2s;
+}
+.run-btn:hover { background: #4752c4; }
+input[type=file] { display: none; }
+</style></head><body>
+<div class="ghost-icon">👻</div>
+<h1>Ghost File Runner</h1>
+<p>Open and preview any file instantly</p>
+<div class="hint">Click anywhere to select a file</div>
+<div class="file-info" id="fileInfo">
+    <span class="fname" id="fileName"></span>
+    <span class="fsize" id="fileSize"></span>
+    <button class="run-btn" id="runBtn">Run / Preview</button>
+</div>
+<input type="file" id="filePicker" accept="*/*">
+<script>
+var picker = document.getElementById('filePicker');
+var info = document.getElementById('fileInfo');
+var nameEl = document.getElementById('fileName');
+var sizeEl = document.getElementById('fileSize');
+var runBtn = document.getElementById('runBtn');
+var currentFile = null;
+
+document.body.addEventListener('click', function(e) {
+    if (e.target === runBtn || info.contains(e.target)) return;
+    picker.click();
+});
+
+picker.addEventListener('change', function() {
+    if (!picker.files.length) return;
+    currentFile = picker.files[0];
+    nameEl.textContent = currentFile.name;
+    var kb = (currentFile.size / 1024).toFixed(1);
+    sizeEl.textContent = kb > 1024 ? (kb/1024).toFixed(1) + ' MB' : kb + ' KB';
+    info.classList.add('show');
+});
+
+runBtn.addEventListener('click', function() {
+    if (!currentFile) return;
+    var url = URL.createObjectURL(currentFile);
+    var type = currentFile.type;
+    if (type.startsWith('image/') || type === 'application/pdf' || type.startsWith('video/') || type.startsWith('audio/') || type.startsWith('text/') || currentFile.name.endsWith('.html') || currentFile.name.endsWith('.svg')) {
+        window.location.href = url;
+    } else {
+        var a = document.createElement('a');
+        a.href = url; a.download = currentFile.name; a.click();
+    }
+});
+</script></body></html>`;
+                
+                var blob = new Blob([pageHtml], { type: 'text/html' });
+                var blobUrl = URL.createObjectURL(blob);
+                tab.url = blobUrl;
+                tab.iframe.src = blobUrl;
+                tab.title = 'Ghost File Runner';
+                tab.currentUrl = 'openas://ghost';
+                var titleEl = tab.element.querySelector('.tab-title');
+                if (titleEl) titleEl.textContent = 'Ghost File Runner';
+                this.addressBar.value = 'openas://ghost';
+                if (!this.history[this.activeTabId]) this.history[this.activeTabId] = [];
+                this.history[this.activeTabId].push('openas://ghost');
+                this.historyIndex[this.activeTabId] = this.history[this.activeTabId].length - 1;
+            }
+
+            _showDownloadBar(filename, url) {
+                var existing = document.getElementById('ghostDownloadBar');
+                if (existing) existing.remove();
+                
+                var bar = document.createElement('div');
+                bar.id = 'ghostDownloadBar';
+                bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;height:44px;background:#2a2d3a;border-top:1px solid #3b3f54;display:flex;align-items:center;padding:0 16px;gap:12px;z-index:9000;font-family:sans-serif;font-size:13px;color:#fff;animation:slideUpBar 0.2s ease-out;';
+                bar.innerHTML = '<i data-lucide="download" width="16" height="16" style="color:#5865f2;flex-shrink:0;"></i>' +
+                    '<span style="color:#8b8fa3;">Downloaded:</span>' +
+                    '<a href="' + url + '" download="' + filename + '" style="color:#5865f2;text-decoration:none;font-weight:600;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + filename + '</a>' +
+                    '<span style="flex:1;"></span>' +
+                    '<button onclick="this.parentElement.remove()" style="background:none;border:none;color:#8b8fa3;cursor:pointer;padding:4px;"><i data-lucide="x" width="14" height="14"></i></button>';
+                document.body.appendChild(bar);
+                if (typeof lucide !== 'undefined') lucide.createIcons();
+                setTimeout(function() { if (bar.parentElement) bar.remove(); }, 8000);
+            }
+
             navigate(input) {
                 if (!this.activeTabId) return;
 
@@ -7745,6 +7913,15 @@ if (this.isBlockedUrl(url)) {
                     var ghostTarget = ghostRoutes[url.toLowerCase()];
                     if (ghostTarget) {
                         this.loadUrl(ghostTarget);
+                        return;
+                    }
+                }
+
+
+                if (url.toLowerCase().startsWith('openas://')) {
+                    var openasRoute = url.toLowerCase().replace('openas://', '');
+                    if (openasRoute === 'ghost' || openasRoute === 'ghost/') {
+                        this._openFileRunnerPage();
                         return;
                     }
                 }
@@ -8094,8 +8271,8 @@ if (this.isBlockedUrl(url)) {
                                     const securityIcon = this.addressBar.parentElement.querySelector('.security-icon');
                                     if (securityIcon) {
                                         securityIcon.innerHTML = isSecure ? 
-                                            '<i data-lucide="lock" width="14" height="14" style="color: #000000;"></i>' : 
-                                            '<i data-lucide="info" width="14" height="14" style="color: #000000;"></i>';
+                                            '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' : 
+                                            '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                                         lucide.createIcons();
                                     }
                                     
@@ -12294,8 +12471,8 @@ setInterval(async () => {
             var securityIcon = b.addressBar.parentElement.querySelector('.security-icon');
             if (securityIcon) {
                 securityIcon.innerHTML = isSecure ?
-                    '<i data-lucide="lock" width="14" height="14" style="color: #000000;"></i>' :
-                    '<i data-lucide="info" width="14" height="14" style="color: #000000;"></i>';
+                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' :
+                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                 lucide.createIcons();
             }
         };
@@ -13241,8 +13418,8 @@ setInterval(async () => {
             var securityIcon = b.addressBar.parentElement.querySelector('.security-icon');
             if (securityIcon) {
                 securityIcon.innerHTML = isSecure ?
-                    '<i data-lucide="lock" width="14" height="14" style="color: #000000;"></i>' :
-                    '<i data-lucide="info" width="14" height="14" style="color: #000000;"></i>';
+                    '<i data-lucide="lock" width="14" height="14" style="color: #10b981;"></i>' :
+                    '<i data-lucide="info" width="14" height="14" style="color: #6b7280;"></i>';
                 lucide.createIcons();
             }
         }
@@ -15770,155 +15947,6 @@ setInterval(async () => {
         updateSplitBg();
     })();
 
-})();
-</script>
-
-
-<!-- Security Icon Enhancement -->
-<style>
-.security-icon-wrapper {
-    position: absolute;
-    left: 6px;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 3;
-    display: flex;
-    align-items: center;
-    cursor: default;
-}
-.security-icon-wrapper .security-dropdown {
-    display: none;
-    position: absolute;
-    top: calc(100% + 10px);
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-    min-width: 250px;
-}
-.security-icon-wrapper:hover .security-dropdown.security-dropdown-http {
-    display: block;
-}
-.security-dropdown-arrow {
-    width: 12px;
-    height: 12px;
-    background: #ffffff;
-    position: absolute;
-    top: -5px;
-    left: 50%;
-    transform: translateX(-50%) rotate(45deg);
-    border-radius: 2px;
-    z-index: 0;
-    box-shadow: -1px -1px 3px rgba(0,0,0,0.06);
-}
-.security-dropdown-content {
-    background: #ffffff;
-    color: #333333;
-    font-size: 12px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    position: relative;
-    z-index: 1;
-    white-space: nowrap;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-    border: 1px solid rgba(0,0,0,0.08);
-}
-</style>
-
-<script>
-(function() {
-    // Wait for Browser instance
-    function waitForBrowser(cb) {
-        if (window.browserInstance) return cb(window.browserInstance);
-        var iv = setInterval(function() {
-            // find the browser instance from the global scope or DOM
-            var frames = document.querySelectorAll('.browser-frame');
-            if (frames.length) {
-                // try to grab it from the last script's closure
-                clearInterval(iv);
-                cb(null);
-            }
-        }, 200);
-        setTimeout(function() { clearInterval(iv); cb(null); }, 5000);
-    }
-
-    function init() {
-        // Find the address bar wrapper
-        var wrapper = document.querySelector('.address-bar-wrapper');
-        if (!wrapper) return;
-
-        // Check if security icon already exists
-        if (wrapper.querySelector('.security-icon-wrapper')) return;
-
-        // Create the security icon container
-        var iconEl = document.createElement('div');
-        iconEl.className = 'security-icon-wrapper security-icon';
-        wrapper.style.position = 'relative';
-        wrapper.insertBefore(iconEl, wrapper.firstChild);
-
-        // Also add left padding to address bar
-        var addressBar = wrapper.querySelector('.address-bar');
-        if (addressBar) {
-            addressBar.style.paddingLeft = '26px';
-        }
-
-        var dropdownHTML = '<div class="security-dropdown security-dropdown-http">' +
-            '<div class="security-dropdown-arrow"></div>' +
-            '<div class="security-dropdown-content">' +
-            '<i data-lucide="alert-triangle" width="14" height="14" style="color:#000000;flex-shrink:0;"></i>' +
-            '<span>This domain isn\'t marked as safe right now</span>' +
-            '</div></div>';
-
-        function updateIcon(url) {
-            if (!url || url === '' || url === 'about:blank' || url.includes('newtab') || url.includes('new-tab') || url === 'Search or enter a URL') {
-                iconEl.innerHTML = '<img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;border-radius:2px;" />';
-                if (addressBar) addressBar.style.paddingLeft = '26px';
-            } else if (url.startsWith('http://')) {
-                iconEl.innerHTML = '<i data-lucide="info" width="14" height="14" style="color:#000000;"></i>' + dropdownHTML;
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-                if (addressBar) addressBar.style.paddingLeft = '26px';
-            } else if (url.startsWith('https://')) {
-                iconEl.innerHTML = '<i data-lucide="lock" width="14" height="14" style="color:#000000;"></i>';
-                if (typeof lucide !== 'undefined') lucide.createIcons();
-                if (addressBar) addressBar.style.paddingLeft = '26px';
-            } else {
-                iconEl.innerHTML = '<img src="https://duckduckgo.com/favicon.ico" width="14" height="14" style="display:block;border-radius:2px;" />';
-                if (addressBar) addressBar.style.paddingLeft = '26px';
-            }
-        }
-
-        // Initial state
-        updateIcon(addressBar ? addressBar.value : '');
-
-        // Observe address bar value changes
-        if (addressBar) {
-            var lastVal = addressBar.value;
-            setInterval(function() {
-                var v = addressBar.value;
-                if (v !== lastVal) {
-                    lastVal = v;
-                    updateIcon(v);
-                }
-            }, 300);
-
-            // Also listen for focus/input events
-            addressBar.addEventListener('change', function() { updateIcon(addressBar.value); });
-        }
-
-        // Override the existing scattered security icon queries to use our element
-        var origQuerySelector = Element.prototype.querySelector;
-        // Patch: when code queries for '.security-icon', return our wrapper
-        // This makes the existing Browser class code work with our element
-    }
-
-    // Run after DOM is ready and other scripts have initialized
-    if (document.readyState === 'complete') {
-        setTimeout(init, 500);
-    } else {
-        window.addEventListener('load', function() { setTimeout(init, 500); });
-    }
 })();
 </script>
 
