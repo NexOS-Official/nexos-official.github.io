@@ -1,6 +1,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2862,95 +2864,150 @@ body.reduce-motion *::after {
   color: #999;
   font-size: 13px;
 }
-.annc-notification {
+.annc-stack {
   position: fixed;
-  bottom: 56px;
+  top: 16px;
   right: 16px;
-  width: 380px;
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.04);
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 40px 14px 16px;
+  flex-direction: column;
+  gap: 8px;
   z-index: 10001;
-  transform: translateY(calc(100% + 20px));
-  opacity: 0;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
+  pointer-events: none;
+  max-width: 360px;
+  width: 100%;
   font-family:
+    ui-sans-serif,
+    -apple-system,
+    "Inter",
     "Google Sans",
     "Segoe UI",
     sans-serif;
-  pointer-events: none;
-  color: #202124;
+}
+.annc-notification {
+  position: relative;
+  width: 360px;
+  max-width: 100%;
+  background: #0b0b0d;
+  color: #ededf0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 8px 24px -8px rgba(0, 0, 0, 0.55),
+    0 2px 6px -2px rgba(0, 0, 0, 0.35);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 10px;
+  padding: 12px 14px 12px 12px;
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  transition:
+    transform 0.22s cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 0.18s ease,
+    margin 0.22s cubic-bezier(0.32, 0.72, 0, 1),
+    max-height 0.22s cubic-bezier(0.32, 0.72, 0, 1),
+    padding 0.22s cubic-bezier(0.32, 0.72, 0, 1),
+    border-width 0.22s ease;
+  pointer-events: auto;
+  max-height: 200px;
+  overflow: hidden;
 }
 .annc-notification.visible {
-  transform: translateY(0);
+  transform: translateX(0);
   opacity: 1;
-  pointer-events: auto;
+}
+.annc-notification.leaving {
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  max-height: 0;
+  margin-top: -8px;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
 }
 .annc-notification-img {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  object-fit: cover;
-  flex-shrink: 0;
-  background: none;
+  display: none;
 }
 .annc-notification-body {
-  flex: 1;
   min-width: 0;
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 1px;
 }
 .annc-notification-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 3px;
+  gap: 8px;
+  margin-bottom: 2px;
 }
 .annc-notification-label {
-  font-size: 12px;
-  font-weight: 800;
-  color: #000;
-  font-family:
-    "Google Sans",
-    "Segoe UI",
-    sans-serif;
-  letter-spacing: 0.3px;
+  position: relative;
+  font-size: 11px;
+  font-weight: 600;
+  color: #a1a1aa;
+  letter-spacing: 0.2px;
+  text-transform: none;
+  padding-left: 14px;
+  font-family: inherit;
+}
+.annc-notification-label::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #34d399;
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.18);
 }
 .annc-notification-time {
+  margin-left: auto;
   font-size: 11px;
-  color: #5f6368;
+  color: #71717a;
+  font-variant-numeric: tabular-nums;
   flex-shrink: 0;
 }
 .annc-notification-text {
   font-size: 13px;
-  color: #3c4043;
-  line-height: 1.4;
+  line-height: 1.5;
+  color: #e4e4e7;
   word-wrap: break-word;
-  font-family:
-    "Google Sans",
-    "Segoe UI",
-    sans-serif;
+  font-family: inherit;
+}
+.annc-notification::before {
+  content: "";
+  grid-column: 1;
+  width: 2px;
+  align-self: stretch;
+  background: linear-gradient(to bottom, #34d399, transparent);
+  border-radius: 2px;
+  opacity: 0.9;
 }
 .annc-notification-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
+  grid-column: 3;
+  background: transparent;
   border: none;
-  color: #5f6368;
+  color: #71717a;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
+  padding: 3px;
+  margin: -2px -4px 0 0;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.12s ease, color 0.12s ease;
+  position: static;
+  top: auto;
+  right: auto;
 }
 .annc-notification-close:hover {
-  background: rgba(0, 0, 0, 0.06);
-  color: #202124;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ededf0;
 }
 @media (max-width: 600px) {
   .taskbar {
@@ -3041,9 +3098,15 @@ body.reduce-motion *::after {
     overflow-y: auto;
   }
   .annc-notification {
+    width: calc(100vw - 24px);
+    max-width: 340px;
+  }
+  .annc-stack {
+    top: 12px;
     right: 12px;
-    width: 340px;
-    bottom: 54px;
+    left: 12px;
+    max-width: none;
+    align-items: flex-end;
   }
   .annc-panel {
     max-height: 200px;
@@ -3058,8 +3121,8 @@ body.reduce-motion *::after {
   .annc-panel {
     max-height: 120px;
   }
-  .annc-notification {
-    bottom: 48px;
+  .annc-stack {
+    top: 12px;
   }
   .control-center-menu {
     padding: 8px;
@@ -9340,19 +9403,7 @@ menu.addEventListener("mouseleave", hideMenu);
 
     </div>
 
-    <div class="annc-notification" id="anncNotification">
-        <img class="annc-notification-img" id="anncNotifImg" src="/images/loader/annc.png" alt="Announcement">
-        <div class="annc-notification-body">
-            <div class="annc-notification-header">
-                <span class="annc-notification-label">IMPORTANT</span>
-                <span class="annc-notification-time" id="anncNotifTime"></span>
-            </div>
-            <div class="annc-notification-text" id="anncNotifText"></div>
-        </div>
-        <button class="annc-notification-close" id="anncNotifClose" title="Dismiss">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-    </div>
+    <div class="annc-stack" id="anncStack" aria-live="polite" aria-atomic="false"></div>
 
     <div class="focus-overlay" id="focusOverlay">
         <div class="focus-container">
@@ -10449,29 +10500,43 @@ menu.addEventListener("mouseleave", hideMenu);
       ).join("");
     }
   }
-  var anncNotification = document.getElementById("anncNotification");
-  var anncNotifText = document.getElementById("anncNotifText");
-  var anncNotifTime = document.getElementById("anncNotifTime");
-  var anncNotifClose = document.getElementById("anncNotifClose");
-  var anncNotifTimer = null;
-  function dismissAnncNotification() {
-    if (anncNotification) anncNotification.classList.remove("visible");
-    if (anncNotifTimer) {
-      clearTimeout(anncNotifTimer);
-      anncNotifTimer = null;
-    }
+  var anncStack = document.getElementById("anncStack");
+  var ANNC_MAX_VISIBLE = 4;
+  function dismissAnncCard(card) {
+    if (!card || card._leaving) return;
+    card._leaving = true;
+    if (card._timer) { clearTimeout(card._timer); card._timer = null; }
+    card.classList.remove("visible");
+    card.classList.add("leaving");
+    setTimeout(function() { if (card.parentNode) card.parentNode.removeChild(card); }, 400);
   }
   function showAnncNotification(msg, time) {
-    if (!anncNotification || !anncNotifText) return;
-    anncNotifText.textContent = msg;
-    if (anncNotifTime) anncNotifTime.textContent = time;
-    anncNotification.classList.remove("visible");
-    void anncNotification.offsetWidth;
-    anncNotification.classList.add("visible");
-    if (anncNotifTimer) clearTimeout(anncNotifTimer);
-    anncNotifTimer = setTimeout(dismissAnncNotification, 8e3);
+    if (!anncStack) return;
+    var card = document.createElement("div");
+    card.className = "annc-notification";
+    card.innerHTML =
+      '<img class="annc-notification-img" src="/images/loader/annc.png" alt="Announcement">' +
+      '<div class="annc-notification-body">' +
+        '<div class="annc-notification-header">' +
+          '<span class="annc-notification-label">IMPORTANT</span>' +
+          '<span class="annc-notification-time"></span>' +
+        '</div>' +
+        '<div class="annc-notification-text"></div>' +
+      '</div>' +
+      '<button class="annc-notification-close" title="Dismiss">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button>';
+    card.querySelector(".annc-notification-text").textContent = msg;
+    card.querySelector(".annc-notification-time").textContent = time || "";
+    card.querySelector(".annc-notification-close").addEventListener("click", function() { dismissAnncCard(card); });
+    anncStack.insertBefore(card, anncStack.firstChild);
+    var cards = anncStack.querySelectorAll(".annc-notification:not(.leaving)");
+    for (var i = ANNC_MAX_VISIBLE; i < cards.length; i++) dismissAnncCard(cards[i]);
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() { card.classList.add("visible"); });
+    });
+    card._timer = setTimeout(function() { dismissAnncCard(card); }, 8e3);
   }
-  if (anncNotifClose) anncNotifClose.addEventListener("click", dismissAnncNotification);
   function showAnnouncement(msg) {
     var time = formatAnncTime( new Date());
     announcements.unshift({ text: msg, time });
