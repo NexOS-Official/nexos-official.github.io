@@ -2864,33 +2864,54 @@ body.reduce-motion *::after {
   color: #999;
   font-size: 13px;
 }
-.annc-notification {
+.annc-stack {
   position: fixed;
-  bottom: 56px;
+  top: 16px;
   right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 10001;
+  pointer-events: none;
+  max-width: 380px;
+  width: 100%;
+}
+.annc-notification {
+  position: relative;
   width: 380px;
+  max-width: 100%;
   background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 40px 14px 16px;
-  z-index: 10001;
-  transform: translateY(calc(100% + 20px));
+  transform: translateX(calc(100% + 24px));
   opacity: 0;
-  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
-  font-family:
-    "Google Sans",
-    "Segoe UI",
-    sans-serif;
-  pointer-events: none;
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.3s ease,
+    margin 0.3s ease,
+    max-height 0.3s ease,
+    padding 0.3s ease;
+  font-family: "Google Sans", "Segoe UI", sans-serif;
+  pointer-events: auto;
   color: #202124;
+  max-height: 200px;
+  overflow: hidden;
 }
 .annc-notification.visible {
-  transform: translateY(0);
+  transform: translateX(0);
   opacity: 1;
-  pointer-events: auto;
+}
+.annc-notification.leaving {
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  max-height: 0;
+  margin-top: -10px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .annc-notification-img {
   width: 40px;
@@ -2914,10 +2935,7 @@ body.reduce-motion *::after {
   font-size: 12px;
   font-weight: 800;
   color: #000;
-  font-family:
-    "Google Sans",
-    "Segoe UI",
-    sans-serif;
+  font-family: "Google Sans", "Segoe UI", sans-serif;
   letter-spacing: 0.3px;
 }
 .annc-notification-time {
@@ -2930,10 +2948,7 @@ body.reduce-motion *::after {
   color: #3c4043;
   line-height: 1.4;
   word-wrap: break-word;
-  font-family:
-    "Google Sans",
-    "Segoe UI",
-    sans-serif;
+  font-family: "Google Sans", "Segoe UI", sans-serif;
 }
 .annc-notification-close {
   position: absolute;
@@ -3043,9 +3058,15 @@ body.reduce-motion *::after {
     overflow-y: auto;
   }
   .annc-notification {
+    width: calc(100vw - 24px);
+    max-width: 340px;
+  }
+  .annc-stack {
+    top: 12px;
     right: 12px;
-    width: 340px;
-    bottom: 54px;
+    left: 12px;
+    max-width: none;
+    align-items: flex-end;
   }
   .annc-panel {
     max-height: 200px;
@@ -3060,8 +3081,8 @@ body.reduce-motion *::after {
   .annc-panel {
     max-height: 120px;
   }
-  .annc-notification {
-    bottom: 48px;
+  .annc-stack {
+    top: 12px;
   }
   .control-center-menu {
     padding: 8px;
@@ -9342,19 +9363,7 @@ menu.addEventListener("mouseleave", hideMenu);
 
     </div>
 
-    <div class="annc-notification" id="anncNotification">
-        <img class="annc-notification-img" id="anncNotifImg" src="/images/loader/annc.png" alt="Announcement">
-        <div class="annc-notification-body">
-            <div class="annc-notification-header">
-                <span class="annc-notification-label">IMPORTANT</span>
-                <span class="annc-notification-time" id="anncNotifTime"></span>
-            </div>
-            <div class="annc-notification-text" id="anncNotifText"></div>
-        </div>
-        <button class="annc-notification-close" id="anncNotifClose" title="Dismiss">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
-    </div>
+    <div class="annc-stack" id="anncStack" aria-live="polite" aria-atomic="false"></div>
 
     <div class="focus-overlay" id="focusOverlay">
         <div class="focus-container">
@@ -10451,29 +10460,45 @@ menu.addEventListener("mouseleave", hideMenu);
       ).join("");
     }
   }
-  var anncNotification = document.getElementById("anncNotification");
-  var anncNotifText = document.getElementById("anncNotifText");
-  var anncNotifTime = document.getElementById("anncNotifTime");
-  var anncNotifClose = document.getElementById("anncNotifClose");
-  var anncNotifTimer = null;
-  function dismissAnncNotification() {
-    if (anncNotification) anncNotification.classList.remove("visible");
-    if (anncNotifTimer) {
-      clearTimeout(anncNotifTimer);
-      anncNotifTimer = null;
-    }
+  var anncStack = document.getElementById("anncStack");
+  var ANNC_MAX_VISIBLE = 4;
+  function dismissAnncCard(card) {
+    if (!card || card._leaving) return;
+    card._leaving = true;
+    if (card._timer) { clearTimeout(card._timer); card._timer = null; }
+    card.classList.remove("visible");
+    card.classList.add("leaving");
+    setTimeout(function() { if (card.parentNode) card.parentNode.removeChild(card); }, 400);
   }
   function showAnncNotification(msg, time) {
-    if (!anncNotification || !anncNotifText) return;
-    anncNotifText.textContent = msg;
-    if (anncNotifTime) anncNotifTime.textContent = time;
-    anncNotification.classList.remove("visible");
-    void anncNotification.offsetWidth;
-    anncNotification.classList.add("visible");
-    if (anncNotifTimer) clearTimeout(anncNotifTimer);
-    anncNotifTimer = setTimeout(dismissAnncNotification, 8e3);
+    if (!anncStack) return;
+    var card = document.createElement("div");
+    card.className = "annc-notification";
+    card.innerHTML =
+      '<img class="annc-notification-img" src="/images/loader/annc.png" alt="Announcement">' +
+      '<div class="annc-notification-body">' +
+        '<div class="annc-notification-header">' +
+          '<span class="annc-notification-label">IMPORTANT</span>' +
+          '<span class="annc-notification-time"></span>' +
+        '</div>' +
+        '<div class="annc-notification-text"></div>' +
+      '</div>' +
+      '<button class="annc-notification-close" title="Dismiss">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button>';
+    card.querySelector(".annc-notification-text").textContent = msg;
+    card.querySelector(".annc-notification-time").textContent = time || "";
+    card.querySelector(".annc-notification-close").addEventListener("click", function() { dismissAnncCard(card); });
+    anncStack.insertBefore(card, anncStack.firstChild);
+    // Trim overflow
+    var cards = anncStack.querySelectorAll(".annc-notification:not(.leaving)");
+    for (var i = ANNC_MAX_VISIBLE; i < cards.length; i++) dismissAnncCard(cards[i]);
+    // Trigger enter animation
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() { card.classList.add("visible"); });
+    });
+    card._timer = setTimeout(function() { dismissAnncCard(card); }, 8e3);
   }
-  if (anncNotifClose) anncNotifClose.addEventListener("click", dismissAnncNotification);
   function showAnnouncement(msg) {
     var time = formatAnncTime( new Date());
     announcements.unshift({ text: msg, time });
@@ -15931,13 +15956,6 @@ body.vtab-resizing #vtabSidebar {
       name: "Vertical Tabs",
       desc: "Show tabs in a collapsible sidebar on the left instead of the top bar. (Shortcut: Alt+Shift+V)",
       key: "nexos_flag_vertical_tabs"
-    },
-    {
-      id: "dark_mode_vtabs",
-      name: "Dark Mode (Vertical Tabs)",
-      desc: "Beta — dark theme for the vertical tabs sidebar and chrome. Only available while Vertical Tabs is enabled; cannot be applied to the standard top tab bar.",
-      key: "nexos_flag_dark_mode_vtabs",
-      requires: "vertical_tabs"
     }
   ];
   window._nexosFlags = FLAGS;
@@ -15960,29 +15978,6 @@ body.vtab-resizing #vtabSidebar {
 
       var t = document.getElementById("ccVerticalTabsToggle");
       if (t) setVtabToggleUI(t, on);
-
-      // If vertical tabs got disabled, force-disable the dark-mode flag too
-      // (dark mode is only allowed in vertical tabs mode).
-      if (!on) {
-        try { localStorage.setItem("nexos_flag_dark_mode_vtabs", "false"); } catch (e) {}
-        document.body.classList.remove("vtab-dark");
-      } else {
-        // Re-apply dark mode if it was previously enabled and vtabs just came back on
-        var darkOn = false;
-        try { darkOn = localStorage.getItem("nexos_flag_dark_mode_vtabs") === "true"; } catch (e) {}
-        document.body.classList.toggle("vtab-dark", !!darkOn);
-      }
-    } else if (f.id === "dark_mode_vtabs") {
-      // Guard: dark mode is only allowed while vertical tabs are active.
-      var vtabsOn = false;
-      try { vtabsOn = localStorage.getItem("nexos_flag_vertical_tabs") === "true"; } catch (e) {}
-      if (!vtabsOn) {
-        // Reject — clear the flag so it doesn't silently persist.
-        try { localStorage.setItem(f.key, "false"); } catch (e) {}
-        document.body.classList.remove("vtab-dark");
-        return;
-      }
-      document.body.classList.toggle("vtab-dark", !!on);
     }
   }
   window._nexosApplyFlag = applyFlag;
@@ -15996,27 +15991,17 @@ body.vtab-resizing #vtabSidebar {
   };
 
   var FLAG_META = {
-    vertical_tabs:    { category: "Available" },
-    dark_mode_vtabs:  { category: "Available" }
+    vertical_tabs: { category: "Available" }
   };
 
   window._nexosBuildFlagsPage = function() {
-    // Filter: only show flags whose `requires` prerequisite is satisfied.
-    var visibleFlags = FLAGS.filter(function(f) {
-      if (!f.requires) return true;
-      var req = FLAGS.find(function(x){return x.id===f.requires;});
-      return req ? readFlag(req) : false;
-    });
-    var rows = visibleFlags.map(function(f) {
+    var rows = FLAGS.map(function(f) {
       var on = readFlag(f);
       var meta = FLAG_META[f.id] || { category: "Available" };
-      var betaBadge = f.id === "dark_mode_vtabs"
-        ? '<span style="display:inline-block;margin-left:8px;padding:1px 7px;border-radius:10px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:500;vertical-align:middle;">Beta</span>'
-        : '';
       return '<div class="flag-row" data-id="' + escapeHtml(f.id) + '" data-search="' +
           escapeHtml((f.name + " " + f.desc + " " + f.id + " " + meta.category).toLowerCase()) + '">' +
         '<div class="flag-text">' +
-          '<div class="flag-name">' + escapeHtml(f.name) + betaBadge + '</div>' +
+          '<div class="flag-name">' + escapeHtml(f.name) + '</div>' +
           '<div class="flag-desc">' + escapeHtml(f.desc) + '</div>' +
           '<div class="flag-id">#' + escapeHtml(f.id) + '</div>' +
         '</div>' +
@@ -16214,51 +16199,9 @@ body.vtab-resizing #vtabSidebar {
     if (shouldBeOn && !window._verticalTabs.isActive()) window._verticalTabs.enable();
 
     try { localStorage.setItem("nexos_flag_vertical_tabs", shouldBeOn ? "true" : "false"); } catch (e) {}
-
-    // Apply dark-mode-vtabs flag on boot. Hard guard: only if vertical tabs are on.
-    var darkOn = false;
-    try { darkOn = localStorage.getItem("nexos_flag_dark_mode_vtabs") === "true"; } catch (e) {}
-    if (darkOn && shouldBeOn) {
-      document.body.classList.add("vtab-dark");
-    } else {
-      document.body.classList.remove("vtab-dark");
-      if (darkOn && !shouldBeOn) {
-        // Clean up — dark mode shouldn't persist while vtabs are off.
-        try { localStorage.setItem("nexos_flag_dark_mode_vtabs", "false"); } catch (e) {}
-      }
-    }
   }
   if (document.readyState === "complete") syncVtabFlagOnLoad();
   else window.addEventListener("load", syncVtabFlagOnLoad);
-
-  // Inject dark-mode stylesheet for vertical-tabs mode.
-  // Scoped strictly to `body.vtab-active.vtab-dark` so it can NEVER affect
-  // the standard top-tab layout, even if the class is applied by mistake.
-  (function injectVtabDarkStyles() {
-    if (document.getElementById("vtab-dark-styles")) return;
-    var s = document.createElement("style");
-    s.id = "vtab-dark-styles";
-    s.textContent = [
-      "body.vtab-active.vtab-dark { background:#1f1f1f; color:#e8eaed; }",
-      "body.vtab-active.vtab-dark .vtab-sidebar { background:#202124; border-right-color:#3c4043; color:#e8eaed; }",
-      "body.vtab-active.vtab-dark .vtab-header,",
-      "body.vtab-active.vtab-dark .vtab-header-label { color:#e8eaed; }",
-      "body.vtab-active.vtab-dark .vtab-icon-btn { color:#e8eaed; }",
-      "body.vtab-active.vtab-dark .vtab-icon-btn:hover { background:rgba(255,255,255,0.08); }",
-      "body.vtab-active.vtab-dark .vtab-item { color:#e8eaed; }",
-      "body.vtab-active.vtab-dark .vtab-item:hover { background:rgba(255,255,255,0.06); }",
-      "body.vtab-active.vtab-dark .vtab-item.active { background:#3c4043; color:#fff; }",
-      "body.vtab-active.vtab-dark .vtab-item .vtab-title { color:inherit; }",
-      "body.vtab-active.vtab-dark .vtab-list-wrapper .vtab-blur-top { background:linear-gradient(to bottom, #202124, transparent); }",
-      "body.vtab-active.vtab-dark .vtab-list-wrapper .vtab-blur-bottom { background:linear-gradient(to top, #202124, transparent); }",
-      "body.vtab-active.vtab-dark .browser-container { background:#1f1f1f; }",
-      "body.vtab-active.vtab-dark .address-bar-container { background:#2d2e30; color:#e8eaed; border-color:#3c4043; }",
-      "body.vtab-active.vtab-dark #addressBar { background:#3c4043; color:#e8eaed; border-color:#5f6368; }",
-      "body.vtab-active.vtab-dark #addressBar::placeholder { color:#9aa0a6; }",
-      "body.vtab-active.vtab-dark .content-area { background:#1f1f1f; }"
-    ].join("\n");
-    document.head.appendChild(s);
-  })();
 })();
 </script>
 
