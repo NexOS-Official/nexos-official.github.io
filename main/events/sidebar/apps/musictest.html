@@ -1285,51 +1285,60 @@ async function findSCStreams(artist, title) {
 }
 
 async function chocomilkResolve(scUrl) {
-  // Only pass actual track URLs (not search pages)
-  if (scUrl.includes('/search') || scUrl.includes('?q=')) {
-    console.warn('[Chocomilk] skipping non-track URL:', scUrl);
-    return null;
-  }
+  if (scUrl.includes('/search') || scUrl.includes('?q=')) return null;
 
   const directUrl = CHOCOMILK + '?url=' + encodeURIComponent(scUrl);
 
-  // Try through CORS proxies — Chocomilk itself blocks direct browser requests
+  // Proxies that actually allow chocomilk.amira.us.kg (corsproxy.io blocks it)
   const proxyWrappers = [
-    u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
     u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
     u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+    u => 'https://proxy.cors.sh/' + u,
+    u => 'https://yacdn.org/proxy/' + u,
+    u => 'https://crossorigin.me/' + u,
+    u => 'https://thingproxy.freeboard.io/fetch/' + u,
   ];
 
   for (const wrap of proxyWrappers) {
     const endpoint = wrap(directUrl);
     try {
+      console.log('[Chocomilk] trying proxy for:', scUrl.split('/').slice(-2).join('/'));
       const r = await fetch(endpoint, {
         headers: { 'Accept': 'application/json' },
         signal: AbortSignal.timeout(20000)
       });
-      if (!r.ok) continue;
+      if (!r.ok) {
+        console.warn('[Chocomilk] HTTP', r.status, 'from', endpoint.slice(0,40));
+        // 403 = proxy blocked this domain, try next proxy
+        // 404 = Chocomilk says track not found, bail entirely
+        if (r.status === 404) return null;
+        continue;
+      }
       const text = await r.text();
       let data;
-      try { data = JSON.parse(text); } catch { continue; }
-      
-      if (!data?.success && data?.code === 404) return null; // real 404, stop trying
-      
+      try { data = JSON.parse(text); } catch(je) {
+        console.warn('[Chocomilk] non-JSON:', text.slice(0, 100));
+        continue;
+      }
+      console.log('[Chocomilk] response:', data);
+      // success:false with code 404 = track URL doesn't exist on SC
+      if (data?.success === false) return null;
       const stream = data?.url || data?.stream_url || data?.download_url
         || data?.audio_url || data?.link || data?.direct_url
         || (Array.isArray(data?.urls) ? data.urls[0] : null)
         || null;
       if (stream && typeof stream === 'string' && stream.startsWith('http')) {
-        console.log('[Chocomilk] ✓', scUrl, '->', stream.slice(0, 60) + '...');
+        console.log('[Chocomilk] GOT STREAM:', stream.slice(0, 80));
         return stream;
       }
-      // If API returned success:false, this URL doesn't exist — stop trying proxies
-      if (data?.success === false) return null;
     } catch(e) {
-      console.warn('[Chocomilk]', scUrl, e?.name);
+      console.warn('[Chocomilk] error:', e?.name, e?.message?.slice(0,60));
     }
   }
   return null;
 }
+
 
 async function scrapeScSearch(artist, title) {
   const q = encodeURIComponent(artist + ' ' + title);
