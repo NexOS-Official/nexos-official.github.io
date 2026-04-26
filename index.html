@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -858,9 +857,33 @@ body {
     }
   }
 
+  function domainOnly(value){
+    var raw = cleanUrl(value);
+
+    if (!raw) return window.location.hostname || 'Unknown';
+
+    raw = raw.replace(/^view-source:/i, '');
+
+    try {
+      return new URL(raw).hostname || raw;
+    } catch(e) {}
+
+    try {
+      return new URL('https://' + raw).hostname || raw;
+    } catch(e) {}
+
+    return raw
+      .replace(/^https?:\/\//i, '')
+      .replace(/^\/\//, '')
+      .split('/')[0]
+      .split('?')[0]
+      .split('#')[0]
+      .replace(/\/+$/, '') || 'Unknown';
+  }
+
   function getShownUrl(){
     var params = new URLSearchParams(window.location.search);
-    return cleanUrl(params.get('url') || params.get('u') || params.get('target') || window.location.href);
+    return domainOnly(params.get('url') || params.get('u') || params.get('target') || window.location.href);
   }
 
   var entered = document.getElementById('overlayEnteredUrl');
