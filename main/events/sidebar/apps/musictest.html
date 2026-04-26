@@ -1224,7 +1224,7 @@ async function findSCStreams(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
   if (scCache[ck]?.length) return scCache[ck];
 
-  setStatus('loading', 'Searching SoundCloud…');
+  setStatus('loading', 'Resolving SoundCloud… (may take ~20s)');
 
   // Strategy 1: Try slug-based candidate URLs via Chocomilk
   const candidates = candidateScUrls(artist, title);
@@ -1262,35 +1262,40 @@ async function findSCStreams(artist, title) {
 
 async function chocomilkResolve(scUrl) {
   const endpoint = CHOCOMILK + '?url=' + encodeURIComponent(scUrl);
-  try {
-    const r = await fetch(endpoint, {
-      headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(10000)
-    });
-    if (!r.ok) {
-      console.warn('[Chocomilk]', scUrl, '→ HTTP', r.status);
+  // SC resolution can be slow — try with generous timeouts, retry once
+  for (const timeoutMs of [20000, 30000]) {
+    try {
+      const r = await fetch(endpoint, {
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(timeoutMs)
+      });
+      if (!r.ok) {
+        console.warn('[Chocomilk]', scUrl, '\u2192 HTTP', r.status);
+        return null;
+      }
+      const data = await r.json();
+      console.log('[Chocomilk]', scUrl, '\u2192', data);
+      const stream = data?.url || data?.stream_url || data?.download_url
+        || data?.audio_url || data?.link || data?.direct_url
+        || (Array.isArray(data?.urls) ? data.urls[0] : null)
+        || null;
+      if (stream && typeof stream === 'string' && stream.startsWith('http')) return stream;
+      return null;
+    } catch(e) {
+      if (e?.name === 'TimeoutError' || e?.name === 'AbortError') {
+        console.warn('[Chocomilk]', scUrl, '\u2192 timed out at', timeoutMs, 'ms, retrying...');
+        continue;
+      }
+      console.warn('[Chocomilk]', scUrl, '\u2192 error', e);
       return null;
     }
-    const data = await r.json();
-    console.log('[Chocomilk]', scUrl, '→', data);
-    // Try all known field names Chocomilk might use
-    const stream = data?.url || data?.stream_url || data?.download_url
-      || data?.audio_url || data?.link || data?.direct_url
-      || (Array.isArray(data?.urls) ? data.urls[0] : null)
-      || null;
-    if (stream && typeof stream === 'string' && stream.startsWith('http')) return stream;
-    return null;
-  } catch(e) {
-    console.warn('[Chocomilk]', scUrl, '→ error', e);
-    return null;
   }
+  console.warn('[Chocomilk]', scUrl, '\u2192 gave up after retries');
+  return null;
 }
 
 async function tryScOembed(artist, title) {
-  // SoundCloud oEmbed endpoint: resolves a URL and returns metadata including the page URL
-  // We can use it to validate a URL exists before passing to Chocomilk
-  // Not directly useful for stream resolution but confirms existence
-  return null; // placeholder — skip for now
+  return null; // placeholder
 }
 
 async function scrapeScSearch(artist, title) {
