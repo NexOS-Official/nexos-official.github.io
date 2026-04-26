@@ -1261,36 +1261,42 @@ async function findSCStreams(artist, title) {
 }
 
 async function chocomilkResolve(scUrl) {
-  const endpoint = CHOCOMILK + '?url=' + encodeURIComponent(scUrl);
-  // SC resolution can be slow — try with generous timeouts, retry once
-  for (const timeoutMs of [20000, 30000]) {
+  const directUrl = CHOCOMILK + '?url=' + encodeURIComponent(scUrl);
+
+  // Chocomilk blocks CORS — route through our proxy list
+  const proxyWrappers = [
+    u => u,  // try direct first (works if served from same origin)
+    u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+    u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+  ];
+
+  for (const wrap of proxyWrappers) {
+    const endpoint = wrap(directUrl);
     try {
+      console.log('[Chocomilk] trying', endpoint);
       const r = await fetch(endpoint, {
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(timeoutMs)
+        signal: AbortSignal.timeout(25000)
       });
       if (!r.ok) {
-        console.warn('[Chocomilk]', scUrl, '\u2192 HTTP', r.status);
-        return null;
+        console.warn('[Chocomilk]', endpoint, '\u2192 HTTP', r.status);
+        continue;
       }
-      const data = await r.json();
-      console.log('[Chocomilk]', scUrl, '\u2192', data);
+      const text = await r.text();
+      let data;
+      try { data = JSON.parse(text); } catch { console.warn('[Chocomilk] non-JSON response:', text.slice(0,200)); continue; }
+      console.log('[Chocomilk] success via', endpoint, '\u2192', data);
       const stream = data?.url || data?.stream_url || data?.download_url
         || data?.audio_url || data?.link || data?.direct_url
         || (Array.isArray(data?.urls) ? data.urls[0] : null)
         || null;
       if (stream && typeof stream === 'string' && stream.startsWith('http')) return stream;
-      return null;
+      console.warn('[Chocomilk] no stream field in response:', data);
     } catch(e) {
-      if (e?.name === 'TimeoutError' || e?.name === 'AbortError') {
-        console.warn('[Chocomilk]', scUrl, '\u2192 timed out at', timeoutMs, 'ms, retrying...');
-        continue;
-      }
-      console.warn('[Chocomilk]', scUrl, '\u2192 error', e);
-      return null;
+      console.warn('[Chocomilk]', endpoint, '\u2192', e?.name, e?.message);
     }
   }
-  console.warn('[Chocomilk]', scUrl, '\u2192 gave up after retries');
   return null;
 }
 
