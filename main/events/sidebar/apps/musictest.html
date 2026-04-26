@@ -1191,65 +1191,89 @@ function toSlug(s) {
   return s.toLowerCase()
     .replace(/&/g, 'and')
     .replace(/['']/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[^a-z0-9\s-]/g, ' ')
     .trim()
     .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
+    .replace(/-+/g, '-')
+    .replace(/-$/, '');
 }
 
-// Generate candidate SoundCloud track URLs from artist + title
+// Generate many candidate SC artist slugs (SC is inconsistent)
+function artistSlugs(artist) {
+  const base = toSlug(artist);
+  const noSpace = artist.toLowerCase().replace(/[^a-z0-9]/g, '');  // tatemcrae
+  const variants = new Set([
+    base,                                          // tate-mcrae
+    noSpace,                                       // tatemcrae
+    base.replace(/-/g, ''),                        // tatemcrae
+    base.replace(/-the-/, '-'),                    // remove "the"
+    base + 'official',
+    base + 'music',
+    base + '-official',
+    base + '-music',
+    noSpace + 'official',
+    noSpace + 'music',
+  ]);
+  return [...variants];
+}
+
+// Generate many candidate title slugs
+function titleSlugs(title) {
+  const base = toSlug(title);
+  const clean = base.replace(/-?(feat|ft|featuring|with|prod|x)-.*$/, '').replace(/-+$/, '');
+  const variants = new Set([
+    base,
+    clean,
+    clean + '-official',
+    clean + '-audio',
+    clean + '-official-audio',
+    clean + '-lyrics',
+    clean + '-music-video',
+    base + '-official',
+    base + '-audio',
+  ]);
+  return [...variants];
+}
+
 function candidateScUrls(artist, title) {
-  const a = toSlug(artist);
-  const t = toSlug(title);
-
-  // Strip feat/ft/with from title slug
-  const tClean = t.replace(/-?(feat|ft|featuring|with)-.*$/, '').replace(/-+$/, '');
-
-  // Strip common artist suffixes (official, music, etc) from artist slug
-  const aClean = a.replace(/-(official|music|vevo|records|band)$/, '');
-
-  const candidates = new Set();
-  // Most likely patterns first
-  for (const as of [aClean, a]) {
-    for (const ts of [tClean, t]) {
-      candidates.add(`https://soundcloud.com/${as}/${ts}`);
-      candidates.add(`https://soundcloud.com/${as}/${ts}-official`);
-      candidates.add(`https://soundcloud.com/${as}/${ts}-audio`);
+  const slugs = [];
+  for (const a of artistSlugs(artist)) {
+    for (const t of titleSlugs(title)) {
+      slugs.push(`https://soundcloud.com/${a}/${t}`);
     }
   }
-  return [...candidates].slice(0, 8);
+  // dedupe, limit to 20 most likely
+  return [...new Set(slugs)].slice(0, 20);
 }
 
 async function findSCStreams(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
   if (scCache[ck]?.length) return scCache[ck];
 
-  setStatus('loading', 'Resolving SoundCloud… (may take ~20s)');
+  setStatus('loading', 'Finding on SoundCloud...');
 
-  // Strategy 1: Try slug-based candidate URLs via Chocomilk
+  // Try all slug candidates in parallel batches of 4
   const candidates = candidateScUrls(artist, title);
-  for (const scUrl of candidates) {
-    const stream = await chocomilkResolve(scUrl);
-    if (stream) {
-      scCache[ck] = [stream];
-      return [stream];
+  console.log('[SC] Trying', candidates.length, 'candidate URLs for', artist, '-', title);
+  
+  for (let i = 0; i < candidates.length; i += 4) {
+    const batch = candidates.slice(i, i + 4);
+    const results = await Promise.allSettled(batch.map(url => chocomilkResolve(url)));
+    for (let j = 0; j < results.length; j++) {
+      if (results[j].status === 'fulfilled' && results[j].value) {
+        const stream = results[j].value;
+        console.log('[SC] Found stream via', batch[j]);
+        scCache[ck] = [stream];
+        return [stream];
+      }
     }
   }
 
-  // Strategy 2: Use SoundCloud oEmbed (no auth, public) via proxy
-  // oEmbed can resolve a search-style URL pattern
-  const oembed = await tryScOembed(artist, title);
-  if (oembed) {
-    const stream = await chocomilkResolve(oembed);
-    if (stream) {
-      scCache[ck] = [stream];
-      return [stream];
-    }
-  }
-
-  // Strategy 3: Scrape SC search via CORS proxies
+  // Fallback: scrape SC search page for real permalink
+  setStatus('loading', 'Searching SoundCloud...');
   const scraped = await scrapeScSearch(artist, title);
-  if (scraped) {
+  if (scraped && !scraped.includes('/search')) {
+    console.log('[SC] Got scraped URL:', scraped);
     const stream = await chocomilkResolve(scraped);
     if (stream) {
       scCache[ck] = [stream];
@@ -1261,78 +1285,79 @@ async function findSCStreams(artist, title) {
 }
 
 async function chocomilkResolve(scUrl) {
+  // Only pass actual track URLs (not search pages)
+  if (scUrl.includes('/search') || scUrl.includes('?q=')) {
+    console.warn('[Chocomilk] skipping non-track URL:', scUrl);
+    return null;
+  }
+
   const directUrl = CHOCOMILK + '?url=' + encodeURIComponent(scUrl);
 
-  // Chocomilk blocks CORS — route through our proxy list
+  // Try through CORS proxies — Chocomilk itself blocks direct browser requests
   const proxyWrappers = [
-    u => u,  // try direct first (works if served from same origin)
     u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
-    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
     u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
+    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
   ];
 
   for (const wrap of proxyWrappers) {
     const endpoint = wrap(directUrl);
     try {
-      console.log('[Chocomilk] trying', endpoint);
       const r = await fetch(endpoint, {
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(25000)
+        signal: AbortSignal.timeout(20000)
       });
-      if (!r.ok) {
-        console.warn('[Chocomilk]', endpoint, '\u2192 HTTP', r.status);
-        continue;
-      }
+      if (!r.ok) continue;
       const text = await r.text();
       let data;
-      try { data = JSON.parse(text); } catch { console.warn('[Chocomilk] non-JSON response:', text.slice(0,200)); continue; }
-      console.log('[Chocomilk] success via', endpoint, '\u2192', data);
+      try { data = JSON.parse(text); } catch { continue; }
+      
+      if (!data?.success && data?.code === 404) return null; // real 404, stop trying
+      
       const stream = data?.url || data?.stream_url || data?.download_url
         || data?.audio_url || data?.link || data?.direct_url
         || (Array.isArray(data?.urls) ? data.urls[0] : null)
         || null;
-      if (stream && typeof stream === 'string' && stream.startsWith('http')) return stream;
-      console.warn('[Chocomilk] no stream field in response:', data);
+      if (stream && typeof stream === 'string' && stream.startsWith('http')) {
+        console.log('[Chocomilk] ✓', scUrl, '->', stream.slice(0, 60) + '...');
+        return stream;
+      }
+      // If API returned success:false, this URL doesn't exist — stop trying proxies
+      if (data?.success === false) return null;
     } catch(e) {
-      console.warn('[Chocomilk]', endpoint, '\u2192', e?.name, e?.message);
+      console.warn('[Chocomilk]', scUrl, e?.name);
     }
   }
   return null;
 }
 
-async function tryScOembed(artist, title) {
-  return null; // placeholder
-}
-
 async function scrapeScSearch(artist, title) {
   const q = encodeURIComponent(artist + ' ' + title);
-  const urls = [
+  const searchUrls = [
     'https://soundcloud.com/search?q=' + q,
     'https://soundcloud.com/search/sounds?q=' + q,
   ];
-  for (const searchUrl of urls) {
+  for (const searchUrl of searchUrls) {
     try {
-      const r = await proxyFetch(searchUrl, {}, 8000);
+      const r = await proxyFetch(searchUrl, {}, 10000);
       const html = await r.text();
-      // Try to extract a permalink from embedded JSON
-      const patterns = [
-        /"permalink_url":"(https:\\?\/\\?\/soundcloud\.com\\?\/[^"]{5,80})"/,
-        /soundcloud\.com(\/[a-z0-9_-]{2,40}\/[a-z0-9_-]{2,80})(?=["?])/i,
-      ];
-      for (const pat of patterns) {
-        const m = html.match(pat);
-        if (m) {
-          const raw = m[1] || m[0];
-          const url = raw.startsWith('http')
-            ? raw.replace(/\\\/|\\\//g, '/').replace(/\\\//g, '/')
-            : 'https://soundcloud.com' + raw.replace(/\\\//g, '/');
-          if (url.includes('soundcloud.com/') && url.split('/').length >= 5) return url;
+      // Extract permalink_url from embedded JSON - SC stores it as escaped JSON
+      const m = html.match(/"permalink_url":"([^"]+)"/);
+      if (m) {
+        let url = m[1].replace(/\\/g, '');
+        if (url.startsWith('http') && url.includes('soundcloud.com/') && !url.includes('/search')) {
+          const parts = url.split('/');
+          if (parts.length >= 5) return url;
         }
       }
+      // Fallback: find any soundcloud.com/artist/track pattern
+      const m2 = html.match(/https?:\/\/soundcloud\.com\/([a-z0-9_-]{2,})\/([a-z0-9_-]{2,})/i);
+      if (m2 && !m2[0].includes('/search') && !m2[0].includes('/sets/')) return m2[0];
     } catch {}
   }
   return null;
 }
+
 let srchTmr=null;
 const qIn=G('q-in'), qDrp=G('q-drop'), qSpn=G('q-spin');
 qIn.addEventListener('input', e => {
