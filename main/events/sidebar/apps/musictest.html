@@ -1178,46 +1178,86 @@ SC_AUDIO.addEventListener('canplay', () => setStatus('ok', 'SoundCloud'));
 
 setStatus('ok', 'SoundCloud ♫');
 
-// ─── SoundCloud search + Chocomilk stream resolver ───────────────────────────
+// ─── SoundCloud + Chocomilk stream resolver ───────────────────────────────────
 const CHOCOMILK = 'https://chocomilk.amira.us.kg/v1/download/soundcloud';
-const SC_SEARCH  = 'https://soundcloud.com/search/sounds?q=';
-const scCache    = {};
+const scCache = {};
 
 async function findVideoIds(artist, title) {
-  // alias kept — returns stream URL(s) via scUrls on the track object
   return findSCStreams(artist, title);
+}
+
+// Turn a string into a soundcloud-style slug: lowercase, spaces→hyphens, strip special chars
+function toSlug(s) {
+  return s.toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+// Generate candidate SoundCloud track URLs from artist + title
+function candidateScUrls(artist, title) {
+  const a = toSlug(artist);
+  const t = toSlug(title);
+
+  // Strip feat/ft/with from title slug
+  const tClean = t.replace(/-?(feat|ft|featuring|with)-.*$/, '').replace(/-+$/, '');
+
+  // Strip common artist suffixes (official, music, etc) from artist slug
+  const aClean = a.replace(/-(official|music|vevo|records|band)$/, '');
+
+  const candidates = new Set();
+  // Most likely patterns first
+  for (const as of [aClean, a]) {
+    for (const ts of [tClean, t]) {
+      candidates.add(`https://soundcloud.com/${as}/${ts}`);
+      candidates.add(`https://soundcloud.com/${as}/${ts}-official`);
+      candidates.add(`https://soundcloud.com/${as}/${ts}-audio`);
+    }
+  }
+  return [...candidates].slice(0, 8);
 }
 
 async function findSCStreams(artist, title) {
   const ck = (artist + '||' + title).toLowerCase();
   if (scCache[ck]?.length) return scCache[ck];
 
-  const q = encodeURIComponent(artist + ' ' + title);
+  setStatus('loading', 'Searching SoundCloud…');
 
-  // 1) Search SoundCloud via proxy to grab track page URLs
-  let scTrackUrl = null;
-  try {
-    const searchUrl = SC_SEARCH + q;
-    const r = await proxyFetch(searchUrl, {}, 8000);
-    const html = await r.text();
-    // Pull first track permalink from JSON embedded in page
-    const m = html.match(/"permalink_url":"(https:\\\/\\\/soundcloud\.com\\\/[^"]+)"/);
-    if (m) scTrackUrl = m[1].replace(/\\\//g, '/');
-    if (!scTrackUrl) {
-      // fallback: bare href pattern
-      const m2 = html.match(/href="(\/[a-z0-9_-]+\/[a-z0-9_-]+(?:-[a-z0-9_-]+)*)"[^>]*aria-label/i);
-      if (m2) scTrackUrl = 'https://soundcloud.com' + m2[1];
+  // Strategy 1: Try slug-based candidate URLs via Chocomilk
+  const candidates = candidateScUrls(artist, title);
+  for (const scUrl of candidates) {
+    const stream = await chocomilkResolve(scUrl);
+    if (stream) {
+      scCache[ck] = [stream];
+      return [stream];
     }
-  } catch {}
+  }
 
-  if (!scTrackUrl) throw new Error('SoundCloud search failed');
+  // Strategy 2: Use SoundCloud oEmbed (no auth, public) via proxy
+  // oEmbed can resolve a search-style URL pattern
+  const oembed = await tryScOembed(artist, title);
+  if (oembed) {
+    const stream = await chocomilkResolve(oembed);
+    if (stream) {
+      scCache[ck] = [stream];
+      return [stream];
+    }
+  }
 
-  // 2) Resolve via Chocomilk
-  const streamUrl = await chocomilkResolve(scTrackUrl);
-  if (!streamUrl) throw new Error('Chocomilk resolve failed');
+  // Strategy 3: Scrape SC search via CORS proxies
+  const scraped = await scrapeScSearch(artist, title);
+  if (scraped) {
+    const stream = await chocomilkResolve(scraped);
+    if (stream) {
+      scCache[ck] = [stream];
+      return [stream];
+    }
+  }
 
-  scCache[ck] = [streamUrl];
-  return [streamUrl];
+  throw new Error('SoundCloud not found');
 }
 
 async function chocomilkResolve(scUrl) {
@@ -1225,13 +1265,62 @@ async function chocomilkResolve(scUrl) {
   try {
     const r = await fetch(endpoint, {
       headers: { 'Accept': 'application/json' },
-      signal: AbortSignal.timeout(12000)
+      signal: AbortSignal.timeout(10000)
     });
-    if (!r.ok) return null;
+    if (!r.ok) {
+      console.warn('[Chocomilk]', scUrl, '→ HTTP', r.status);
+      return null;
+    }
     const data = await r.json();
-    // Chocomilk returns { url: "...", ... } or { stream_url: "..." }
-    return data?.url || data?.stream_url || data?.download_url || null;
-  } catch { return null; }
+    console.log('[Chocomilk]', scUrl, '→', data);
+    // Try all known field names Chocomilk might use
+    const stream = data?.url || data?.stream_url || data?.download_url
+      || data?.audio_url || data?.link || data?.direct_url
+      || (Array.isArray(data?.urls) ? data.urls[0] : null)
+      || null;
+    if (stream && typeof stream === 'string' && stream.startsWith('http')) return stream;
+    return null;
+  } catch(e) {
+    console.warn('[Chocomilk]', scUrl, '→ error', e);
+    return null;
+  }
+}
+
+async function tryScOembed(artist, title) {
+  // SoundCloud oEmbed endpoint: resolves a URL and returns metadata including the page URL
+  // We can use it to validate a URL exists before passing to Chocomilk
+  // Not directly useful for stream resolution but confirms existence
+  return null; // placeholder — skip for now
+}
+
+async function scrapeScSearch(artist, title) {
+  const q = encodeURIComponent(artist + ' ' + title);
+  const urls = [
+    'https://soundcloud.com/search?q=' + q,
+    'https://soundcloud.com/search/sounds?q=' + q,
+  ];
+  for (const searchUrl of urls) {
+    try {
+      const r = await proxyFetch(searchUrl, {}, 8000);
+      const html = await r.text();
+      // Try to extract a permalink from embedded JSON
+      const patterns = [
+        /"permalink_url":"(https:\\?\/\\?\/soundcloud\.com\\?\/[^"]{5,80})"/,
+        /soundcloud\.com(\/[a-z0-9_-]{2,40}\/[a-z0-9_-]{2,80})(?=["?])/i,
+      ];
+      for (const pat of patterns) {
+        const m = html.match(pat);
+        if (m) {
+          const raw = m[1] || m[0];
+          const url = raw.startsWith('http')
+            ? raw.replace(/\\\/|\\\//g, '/').replace(/\\\//g, '/')
+            : 'https://soundcloud.com' + raw.replace(/\\\//g, '/');
+          if (url.includes('soundcloud.com/') && url.split('/').length >= 5) return url;
+        }
+      }
+    } catch {}
+  }
+  return null;
 }
 let srchTmr=null;
 const qIn=G('q-in'), qDrp=G('q-drop'), qSpn=G('q-spin');
@@ -1538,7 +1627,7 @@ async function loadTrack(idx) {
       setStatus('ok', 'SoundCloud ♫');
     } catch {
       setStatus('err', 'Not found');
-      toast('⚠ Could not find track on SoundCloud');
+      toast('⚠ Not found on SoundCloud — check DevTools console for details');
       return;
     }
   }
