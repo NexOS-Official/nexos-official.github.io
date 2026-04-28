@@ -1260,6 +1260,8 @@ body {
   width: 100%;
   height: 100%;
   border: none;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
   visibility: hidden;
   pointer-events: none;
 }
@@ -1597,6 +1599,8 @@ body {
   border: none;
   background: #ffffff;
   border-radius: 8px;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
 }
 .battery-notification {
   position: fixed;
@@ -5768,81 +5772,149 @@ body.reduce-motion *::after {
     this._startTabAutoSave();
     lucide.createIcons();
     // ===== Top-page zoom prevention (keyboard / wheel / double-tap) =====
+    const NEXOS_VIEWPORT_CONTENT = "width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover";
+    const lockTopViewport = () => {
+      const vp = document.querySelector('meta[name="viewport"]');
+      if (vp && vp.getAttribute("content") !== NEXOS_VIEWPORT_CONTENT) {
+        vp.setAttribute("content", NEXOS_VIEWPORT_CONTENT);
+      }
+    };
+    lockTopViewport();
     document.addEventListener("wheel", (e) => {
       if (e.ctrlKey || e.metaKey) e.preventDefault();
-    }, { passive: false });
+    }, { passive: false, capture: true });
     document.addEventListener("mousewheel", (e) => {
       if (e.ctrlKey || e.metaKey) e.preventDefault();
-    }, { passive: false });
+    }, { passive: false, capture: true });
     document.addEventListener("keydown", (e) => {
       if ((e.ctrlKey || e.metaKey) &&
           (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0" ||
            e.keyCode === 107 || e.keyCode === 109 || e.keyCode === 96)) {
         e.preventDefault();
       }
-    }, { passive: false });
+    }, { passive: false, capture: true });
     document.addEventListener("touchmove", (e) => {
       if (e.touches.length > 1) e.preventDefault();
-    }, { passive: false });
-    document.addEventListener("gesturestart",  (e) => e.preventDefault(), { passive: false });
-    document.addEventListener("gesturechange", (e) => e.preventDefault(), { passive: false });
-    document.addEventListener("gestureend",    (e) => e.preventDefault(), { passive: false });
+    }, { passive: false, capture: true });
+    document.addEventListener("gesturestart",  (e) => e.preventDefault(), { passive: false, capture: true });
+    document.addEventListener("gesturechange", (e) => e.preventDefault(), { passive: false, capture: true });
+    document.addEventListener("gestureend",    (e) => e.preventDefault(), { passive: false, capture: true });
     let lastTap = 0;
     document.addEventListener("touchend", (e) => {
       const now = Date.now();
       if (now - lastTap <= 500) e.preventDefault();
       lastTap = now;
-    }, { passive: false });
+    }, { passive: false, capture: true });
 
-    // ===== FIX: pinch-zoom inside iframes was zooming the whole page =====
-    // (1) Snap any leaked viewport zoom back to 1 using the Visual Viewport API.
+    // ===== Iframe pinch zoom: keep browser chrome/page zoom locked, zoom only the iframe element =====
+    const clampIframeZoom = (value) => Math.max(0.25, Math.min(3, value || 1));
+    const readIframeZoom = (iframe) => clampIframeZoom(parseFloat(iframe.dataset.nexosPinchZoom || iframe.dataset.nexosZoom || "1"));
+    const applyIframePinchZoom = (iframe, zoomLevel) => {
+      if (!iframe) return;
+      const nextZoom = clampIframeZoom(zoomLevel);
+      iframe.dataset.nexosPinchZoom = String(nextZoom);
+      iframe.style.transform = `scale(${nextZoom})`;
+      iframe.style.transformOrigin = "top left";
+      iframe.style.width = `${100 / nextZoom}%`;
+      iframe.style.height = `${100 / nextZoom}%`;
+      const tabId = iframe.dataset.tabId;
+      if (tabId && this.tabs && this.tabs.has(tabId)) {
+        this.tabs.get(tabId).zoomLevel = nextZoom;
+        this.updateZoomDisplay();
+      }
+    };
+    const wireIframeDocumentPinch = (doc, rootIframe) => {
+      if (!doc || doc.__nexosPinchZoomWired) return;
+      doc.__nexosPinchZoomWired = true;
+      const win = doc.defaultView || rootIframe.contentWindow;
+      const html = doc.documentElement;
+      if (html) html.style.touchAction = "pan-x pan-y";
+      if (doc.body) doc.body.style.touchAction = "pan-x pan-y";
+      const state = { active: false, startDistance: 0, startZoom: 1 };
+      const distance = (touches) => {
+        const dx = touches[0].clientX - touches[1].clientX;
+        const dy = touches[0].clientY - touches[1].clientY;
+        return Math.hypot(dx, dy) || 1;
+      };
+      const stopPageZoom = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+      };
+      const onTouchStart = (e) => {
+        if (!e.touches || e.touches.length < 2) return;
+        state.active = true;
+        state.startDistance = distance(e.touches);
+        state.startZoom = readIframeZoom(rootIframe);
+        stopPageZoom(e);
+      };
+      const onTouchMove = (e) => {
+        if (!state.active || !e.touches || e.touches.length < 2) return;
+        stopPageZoom(e);
+        applyIframePinchZoom(rootIframe, state.startZoom * (distance(e.touches) / state.startDistance));
+      };
+      const onTouchEnd = (e) => {
+        if (!e.touches || e.touches.length < 2) state.active = false;
+      };
+      const onGestureStart = (e) => {
+        state.active = true;
+        state.startZoom = readIframeZoom(rootIframe);
+        stopPageZoom(e);
+      };
+      const onGestureChange = (e) => {
+        if (!state.active) return;
+        stopPageZoom(e);
+        applyIframePinchZoom(rootIframe, state.startZoom * (e.scale || 1));
+      };
+      doc.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
+      doc.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+      doc.addEventListener("touchend", onTouchEnd, { passive: false, capture: true });
+      doc.addEventListener("touchcancel", onTouchEnd, { passive: false, capture: true });
+      doc.addEventListener("gesturestart", onGestureStart, { passive: false, capture: true });
+      doc.addEventListener("gesturechange", onGestureChange, { passive: false, capture: true });
+      doc.addEventListener("gestureend", onTouchEnd, { passive: false, capture: true });
+      const wireNestedIframes = () => {
+        doc.querySelectorAll("iframe").forEach((nested) => wireIframePinchZoom(nested, rootIframe));
+      };
+      wireNestedIframes();
+      try {
+        new win.MutationObserver(wireNestedIframes).observe(doc.documentElement || doc.body, { childList: true, subtree: true });
+      } catch (e) {
+      }
+    };
+    const wireIframePinchZoom = (iframe, rootIframe = iframe) => {
+      if (!iframe) return;
+      iframe.style.touchAction = "pan-x pan-y";
+      iframe.style.overscrollBehavior = "contain";
+      if (!iframe.dataset.nexosPinchListener) {
+        iframe.dataset.nexosPinchListener = "1";
+        iframe.addEventListener("load", () => setTimeout(() => wireIframePinchZoom(iframe, rootIframe), 0));
+      }
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        wireIframeDocumentPinch(doc, rootIframe);
+      } catch (e) {
+        // Cross-origin frames cannot be scripted; keep the top viewport locked and let VisualViewport undo leaks.
+      }
+    };
+    const wireAllIframePinchZoom = () => document.querySelectorAll("iframe").forEach((iframe) => wireIframePinchZoom(iframe));
+    wireAllIframePinchZoom();
+    new MutationObserver(wireAllIframePinchZoom).observe(document.body, { childList: true, subtree: true });
     if (window.visualViewport) {
-      const VP_CONTENT = "width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover";
-      const resetZoom = () => {
+      const resetLeakedZoom = () => {
+        lockTopViewport();
         if (window.visualViewport.scale !== 1) {
           const vp = document.querySelector('meta[name="viewport"]');
           if (vp) {
-            vp.setAttribute("content", VP_CONTENT + ", x=" + Date.now());
-            vp.setAttribute("content", VP_CONTENT);
+            vp.setAttribute("content", NEXOS_VIEWPORT_CONTENT + ", maximum-scale=1.0001");
+            requestAnimationFrame(() => vp.setAttribute("content", NEXOS_VIEWPORT_CONTENT));
           }
           window.scrollTo(0, 0);
         }
       };
-      window.visualViewport.addEventListener("resize", resetZoom);
-      window.visualViewport.addEventListener("scroll", resetZoom);
+      window.visualViewport.addEventListener("resize", resetLeakedZoom);
+      window.visualViewport.addEventListener("scroll", resetLeakedZoom);
     }
-
-    // (2) Per-iframe pinch shield: a transparent overlay activates only while
-    //     2+ fingers are down so single-finger taps/scrolls inside iframes
-    //     keep working, but pinches get absorbed by the parent document.
-    const shieldIframe = (iframe) => {
-      if (!iframe || iframe.dataset.pinchShielded) return;
-      iframe.dataset.pinchShielded = "1";
-      const parent = iframe.parentElement;
-      if (!parent) return;
-      if (getComputedStyle(parent).position === "static") {
-        parent.style.position = "relative";
-      }
-      const shield = document.createElement("div");
-      shield.style.cssText = "position:absolute;inset:0;z-index:9999;display:none;touch-action:none;background:transparent;";
-      parent.appendChild(shield);
-      const show = (e) => {
-        if (e.touches && e.touches.length > 1) {
-          shield.style.display = "block";
-          e.preventDefault();
-        }
-      };
-      const hide = (e) => {
-        if (!e.touches || e.touches.length < 2) shield.style.display = "none";
-      };
-      document.addEventListener("touchstart", show, { passive: false });
-      document.addEventListener("touchmove",  show, { passive: false });
-      document.addEventListener("touchend",   hide, { passive: false });
-      document.addEventListener("touchcancel",hide, { passive: false });
-    };
-    const shieldAllIframes = () => document.querySelectorAll("iframe").forEach(shieldIframe);
-    shieldAllIframes();
-    new MutationObserver(shieldAllIframes).observe(document.body, { childList: true, subtree: true });
   }
   initializeLoadingAnimation() {
     const overlay = document.getElementById("loadingOverlay");
@@ -8000,6 +8072,7 @@ body.reduce-motion *::after {
       currentTab.zoomLevel = 1;
     }
     currentTab.zoomLevel = Math.max(0.25, Math.min(3, currentTab.zoomLevel + delta));
+    currentTab.iframe.dataset.nexosPinchZoom = String(currentTab.zoomLevel);
     currentTab.iframe.style.transform = `scale(${currentTab.zoomLevel})`;
     currentTab.iframe.style.transformOrigin = "top left";
     const scale = currentTab.zoomLevel;
