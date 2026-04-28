@@ -5789,8 +5789,20 @@ body.reduce-motion *::after {
     }, { passive: false, capture: true });
     const isZoomKey = (e) => (
       e.key === "+" || e.key === "-" || e.key === "=" || e.key === "_" || e.key === "0" ||
+      e.code === "Equal" || e.code === "Minus" || e.code === "Digit0" ||
+      e.code === "NumpadAdd" || e.code === "NumpadSubtract" || e.code === "Numpad0" ||
       e.keyCode === 107 || e.keyCode === 109 || e.keyCode === 187 || e.keyCode === 189 ||
       e.keyCode === 96  || e.keyCode === 48
+    );
+    const isMinusKey = (e) => (
+      e.key === "-" || e.key === "_" ||
+      e.code === "Minus" || e.code === "NumpadSubtract" ||
+      e.keyCode === 109 || e.keyCode === 189
+    );
+    const isZeroKey = (e) => (
+      e.key === "0" ||
+      e.code === "Digit0" || e.code === "Numpad0" ||
+      e.keyCode === 48 || e.keyCode === 96
     );
     document.addEventListener("keydown", (e) => {
       if (!isZoomKey(e)) return;
@@ -5808,11 +5820,11 @@ body.reduce-motion *::after {
       if (e.altKey) {
         e.preventDefault();
         e.stopPropagation();
-        const app = window.__nexosApp;
+        const app = window.__nexosApp || window.browser;
         if (!app) return;
-        if (e.key === "0" || e.keyCode === 48 || e.keyCode === 96) {
+        if (isZeroKey(e)) {
           app.resetIframeZoom && app.resetIframeZoom();
-        } else if (e.key === "-" || e.key === "_" || e.keyCode === 109 || e.keyCode === 189) {
+        } else if (isMinusKey(e)) {
           app.zoomIframe(-0.1);
         } else {
           app.zoomIframe(0.1);
@@ -5977,12 +5989,18 @@ body.reduce-motion *::after {
       };
       const onWheel = (e) => {
         const currentZoom = readIframeZoom(rootIframe);
-        // Block native Ctrl/Cmd page zoom entirely.
+        // Ctrl/Cmd + wheel inside the iframe = trackpad pinch (or zoom intent).
+        // Always zoom the IFRAME (never the page), with a fast browser-like step.
         if (e.ctrlKey || e.metaKey) {
           stopPageZoom(e);
+          // Bigger jumps for snappy, real-browser feel. Trackpad pinch sends many
+          // small events, so cap |deltaY| to keep each tick punchy but stable.
+          const dy = Math.max(-50, Math.min(50, e.deltaY));
+          const factor = Math.exp(-dy * 0.02);
+          applyIframePinchZoom(rootIframe, currentZoom * factor, pointFromDocClient(e.clientX || 0, e.clientY || 0), { minZoom: 1 });
           return;
         }
-        // Alt + wheel -> fast, browser-like iframe zoom (large discrete-ish steps).
+        // Alt + wheel -> fast, browser-like iframe zoom (large discrete steps).
         if (e.altKey) {
           stopPageZoom(e);
           const factor = e.deltaY < 0 ? 1.25 : 1 / 1.25;
@@ -6008,11 +6026,11 @@ body.reduce-motion *::after {
           e.preventDefault();
           e.stopPropagation();
           if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
-          const app = window.__nexosApp;
+          const app = window.__nexosApp || window.browser;
           if (!app) return;
-          if (e.key === "0" || e.keyCode === 48 || e.keyCode === 96) {
+          if (isZeroKey(e)) {
             app.resetIframeZoom && app.resetIframeZoom();
-          } else if (e.key === "-" || e.key === "_" || e.keyCode === 109 || e.keyCode === 189) {
+          } else if (isMinusKey(e)) {
             app.zoomIframe(-0.1);
           } else {
             app.zoomIframe(0.1);
