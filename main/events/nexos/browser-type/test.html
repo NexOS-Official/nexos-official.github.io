@@ -5807,21 +5807,70 @@ body.reduce-motion *::after {
     }, { passive: false, capture: true });
 
     // ===== Iframe pinch zoom: keep browser chrome/page zoom locked, zoom only the iframe element =====
-    const clampIframeZoom = (value) => Math.max(0.25, Math.min(3, value || 1));
+    const clampIframeZoom = (value, minZoom = 0.25) => Math.max(minZoom, Math.min(3, Number.isFinite(value) ? value : 1));
     const readIframeZoom = (iframe) => clampIframeZoom(parseFloat(iframe.dataset.nexosPinchZoom || iframe.dataset.nexosZoom || "1"));
-    const applyIframePinchZoom = (iframe, zoomLevel) => {
-      if (!iframe) return;
-      const nextZoom = clampIframeZoom(zoomLevel);
-      iframe.dataset.nexosPinchZoom = String(nextZoom);
-      iframe.style.transform = `scale(${nextZoom})`;
-      iframe.style.transformOrigin = "top left";
-      iframe.style.width = `${100 / nextZoom}%`;
-      iframe.style.height = `${100 / nextZoom}%`;
+    const readIframePan = (iframe) => ({
+      x: parseFloat(iframe.dataset.nexosPanX || "0") || 0,
+      y: parseFloat(iframe.dataset.nexosPanY || "0") || 0
+    });
+    const getIframeBaseRect = (iframe) => {
+      const parent = iframe.parentElement;
+      const parentRect = parent ? parent.getBoundingClientRect() : iframe.getBoundingClientRect();
+      const left = parentRect.left + (iframe.offsetLeft || 0) - (parent ? parent.scrollLeft || 0 : 0);
+      const top = parentRect.top + (iframe.offsetTop || 0) - (parent ? parent.scrollTop || 0 : 0);
+      return {
+        left,
+        top,
+        width: iframe.offsetWidth || parentRect.width || window.innerWidth,
+        height: iframe.offsetHeight || parentRect.height || window.innerHeight
+      };
+    };
+    const clampIframePan = (iframe, zoomLevel, pan) => {
+      const rect = getIframeBaseRect(iframe);
+      if (zoomLevel <= 1) return { x: 0, y: 0 };
+      const minX = rect.width - rect.width * zoomLevel;
+      const minY = rect.height - rect.height * zoomLevel;
+      return {
+        x: Math.min(0, Math.max(minX, pan.x)),
+        y: Math.min(0, Math.max(minY, pan.y))
+      };
+    };
+    const syncIframeZoomDisplay = (iframe, zoomLevel) => {
       const tabId = iframe.dataset.tabId;
       if (tabId && this.tabs && this.tabs.has(tabId)) {
-        this.tabs.get(tabId).zoomLevel = nextZoom;
+        this.tabs.get(tabId).zoomLevel = zoomLevel;
         this.updateZoomDisplay();
       }
+    };
+    const applyIframeVisualTransform = (iframe, zoomLevel, pan) => {
+      iframe.dataset.nexosPinchZoom = String(zoomLevel);
+      iframe.dataset.nexosPanX = String(pan.x);
+      iframe.dataset.nexosPanY = String(pan.y);
+      iframe.style.transform = `matrix(${zoomLevel}, 0, 0, ${zoomLevel}, ${pan.x}, ${pan.y})`;
+      iframe.style.transformOrigin = "top left";
+      iframe.style.width = "100%";
+      iframe.style.height = "100%";
+      syncIframeZoomDisplay(iframe, zoomLevel);
+    };
+    const applyIframePan = (iframe, deltaX, deltaY) => {
+      const zoomLevel = readIframeZoom(iframe);
+      const pan = readIframePan(iframe);
+      applyIframeVisualTransform(iframe, zoomLevel, clampIframePan(iframe, zoomLevel, { x: pan.x + deltaX, y: pan.y + deltaY }));
+    };
+    const applyIframePinchZoom = (iframe, zoomLevel, focalPoint = null, options = {}) => {
+      if (!iframe) return;
+      const oldZoom = readIframeZoom(iframe);
+      const nextZoom = clampIframeZoom(zoomLevel, options.minZoom ?? 0.25);
+      const rect = getIframeBaseRect(iframe);
+      let pan = readIframePan(iframe);
+      if (focalPoint) {
+        const focusX = focalPoint.clientX - rect.left;
+        const focusY = focalPoint.clientY - rect.top;
+        const contentX = (focusX - pan.x) / oldZoom;
+        const contentY = (focusY - pan.y) / oldZoom;
+        pan = { x: focusX - contentX * nextZoom, y: focusY - contentY * nextZoom };
+      }
+      applyIframeVisualTransform(iframe, nextZoom, clampIframePan(iframe, nextZoom, pan));
     };
     const wireIframeDocumentPinch = (doc, rootIframe) => {
       if (!doc || doc.__nexosPinchZoomWired) return;
@@ -5830,31 +5879,64 @@ body.reduce-motion *::after {
       const html = doc.documentElement;
       if (html) html.style.touchAction = "pan-x pan-y";
       if (doc.body) doc.body.style.touchAction = "pan-x pan-y";
-      const state = { active: false, startDistance: 0, startZoom: 1 };
+      const state = { active: false, panning: false, startDistance: 0, startZoom: 1, lastPanPoint: null };
       const distance = (touches) => {
         const dx = touches[0].clientX - touches[1].clientX;
         const dy = touches[0].clientY - touches[1].clientY;
         return Math.hypot(dx, dy) || 1;
       };
+      const pointFromDocClient = (clientX, clientY) => {
+        const zoomLevel = readIframeZoom(rootIframe);
+        const pan = readIframePan(rootIframe);
+        const rect = getIframeBaseRect(rootIframe);
+        return {
+          clientX: rect.left + pan.x + clientX * zoomLevel,
+          clientY: rect.top + pan.y + clientY * zoomLevel
+        };
+      };
+      const centerFromTouches = (touches) => pointFromDocClient(
+        (touches[0].clientX + touches[1].clientX) / 2,
+        (touches[0].clientY + touches[1].clientY) / 2
+      );
       const stopPageZoom = (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
       };
       const onTouchStart = (e) => {
-        if (!e.touches || e.touches.length < 2) return;
-        state.active = true;
-        state.startDistance = distance(e.touches);
-        state.startZoom = readIframeZoom(rootIframe);
-        stopPageZoom(e);
+        if (!e.touches || !e.touches.length) return;
+        if (e.touches.length > 1) {
+          state.active = true;
+          state.panning = false;
+          state.startDistance = distance(e.touches);
+          state.startZoom = readIframeZoom(rootIframe);
+          stopPageZoom(e);
+          return;
+        }
+        if (readIframeZoom(rootIframe) > 1) {
+          state.panning = true;
+          state.lastPanPoint = pointFromDocClient(e.touches[0].clientX, e.touches[0].clientY);
+        }
       };
       const onTouchMove = (e) => {
-        if (!state.active || !e.touches || e.touches.length < 2) return;
-        stopPageZoom(e);
-        applyIframePinchZoom(rootIframe, state.startZoom * (distance(e.touches) / state.startDistance));
+        if (state.active && e.touches && e.touches.length > 1) {
+          stopPageZoom(e);
+          applyIframePinchZoom(rootIframe, state.startZoom * (distance(e.touches) / state.startDistance), centerFromTouches(e.touches), { minZoom: 1 });
+          return;
+        }
+        if (state.panning && e.touches && e.touches.length === 1 && readIframeZoom(rootIframe) > 1) {
+          const point = pointFromDocClient(e.touches[0].clientX, e.touches[0].clientY);
+          stopPageZoom(e);
+          if (state.lastPanPoint) applyIframePan(rootIframe, point.clientX - state.lastPanPoint.clientX, point.clientY - state.lastPanPoint.clientY);
+          state.lastPanPoint = point;
+        }
       };
       const onTouchEnd = (e) => {
         if (!e.touches || e.touches.length < 2) state.active = false;
+        if (!e.touches || e.touches.length === 0) {
+          state.panning = false;
+          state.lastPanPoint = null;
+        }
       };
       const onGestureStart = (e) => {
         state.active = true;
@@ -5864,14 +5946,20 @@ body.reduce-motion *::after {
       const onGestureChange = (e) => {
         if (!state.active) return;
         stopPageZoom(e);
-        applyIframePinchZoom(rootIframe, state.startZoom * (e.scale || 1));
+        applyIframePinchZoom(rootIframe, state.startZoom * (e.scale || 1), pointFromDocClient(e.clientX || 0, e.clientY || 0), { minZoom: 1 });
       };
       const onWheel = (e) => {
-        if (!e.ctrlKey && !e.metaKey) return;
-        stopPageZoom(e);
         const currentZoom = readIframeZoom(rootIframe);
-        const nextZoom = currentZoom * Math.exp(-e.deltaY * 0.0025);
-        applyIframePinchZoom(rootIframe, nextZoom);
+        if (e.ctrlKey || e.metaKey) {
+          stopPageZoom(e);
+          const nextZoom = currentZoom * Math.exp(-e.deltaY * 0.0025);
+          applyIframePinchZoom(rootIframe, nextZoom, pointFromDocClient(e.clientX || 0, e.clientY || 0), { minZoom: 1 });
+          return;
+        }
+        if (currentZoom > 1) {
+          stopPageZoom(e);
+          applyIframePan(rootIframe, -e.deltaX, -e.deltaY);
+        }
       };
       doc.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
       doc.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
@@ -8081,11 +8169,12 @@ body.reduce-motion *::after {
     }
     currentTab.zoomLevel = Math.max(0.25, Math.min(3, currentTab.zoomLevel + delta));
     currentTab.iframe.dataset.nexosPinchZoom = String(currentTab.zoomLevel);
-    currentTab.iframe.style.transform = `scale(${currentTab.zoomLevel})`;
+    currentTab.iframe.dataset.nexosPanX = "0";
+    currentTab.iframe.dataset.nexosPanY = "0";
+    currentTab.iframe.style.transform = `matrix(${currentTab.zoomLevel}, 0, 0, ${currentTab.zoomLevel}, 0, 0)`;
     currentTab.iframe.style.transformOrigin = "top left";
-    const scale = currentTab.zoomLevel;
-    currentTab.iframe.style.width = `${100 / scale}%`;
-    currentTab.iframe.style.height = `${100 / scale}%`;
+    currentTab.iframe.style.width = "100%";
+    currentTab.iframe.style.height = "100%";
     this.updateZoomDisplay();
   }
   updateZoomDisplay() {
@@ -13390,6 +13479,9 @@ loadTopRightProfilePfp();
       if (!activeTab || !targetTab) return;
       if (activeTab.zoomLevel && activeTab.zoomLevel !== 1) {
         activeTab.zoomLevel = 1;
+        activeTab.iframe.dataset.nexosPinchZoom = "1";
+        activeTab.iframe.dataset.nexosPanX = "0";
+        activeTab.iframe.dataset.nexosPanY = "0";
         activeTab.iframe.style.transform = "";
         activeTab.iframe.style.transformOrigin = "";
         activeTab.iframe.style.width = "";
@@ -13397,6 +13489,9 @@ loadTopRightProfilePfp();
       }
       if (targetTab.zoomLevel && targetTab.zoomLevel !== 1) {
         targetTab.zoomLevel = 1;
+        targetTab.iframe.dataset.nexosPinchZoom = "1";
+        targetTab.iframe.dataset.nexosPanX = "0";
+        targetTab.iframe.dataset.nexosPanY = "0";
         targetTab.iframe.style.transform = "";
         targetTab.iframe.style.transformOrigin = "";
         targetTab.iframe.style.width = "";
