@@ -5815,7 +5815,7 @@ body.reduce-motion *::after {
       if (e.altKey && e.shiftKey) {
         return;
       }
-      // Alt +/-/0  -> iframe zoom (fast, browser-like).
+        // Alt +/-/0  -> content zoom inside the iframe (browser-like, stacks with pinch).
       if (e.altKey) {
         e.preventDefault();
         e.stopPropagation();
@@ -5823,10 +5823,10 @@ body.reduce-motion *::after {
         if (!app) return;
         if (isZeroKey(e)) {
           app.resetIframeZoom && app.resetIframeZoom();
-        } else if (isMinusKey(e)) {
-          app.zoomIframe(-0.1);
+          } else if (isMinusKey(e)) {
+            app.zoomIframe(1 / 1.1);
         } else {
-          app.zoomIframe(0.1);
+            app.zoomIframe(1.1);
         }
       }
     }, { passive: false, capture: true });
@@ -5845,7 +5845,8 @@ body.reduce-motion *::after {
 
     // ===== Iframe pinch zoom: keep browser chrome/page zoom locked, zoom only the iframe element =====
     const clampIframeZoom = (value, minZoom = 0.25) => Math.max(minZoom, Math.min(3, Number.isFinite(value) ? value : 1));
-    const readIframeZoom = (iframe) => clampIframeZoom(parseFloat(iframe.dataset.nexosPinchZoom || iframe.dataset.nexosZoom || "1"));
+    const readIframeZoom = (iframe) => clampIframeZoom(parseFloat(iframe.dataset.nexosPinchZoom || "1"), 1);
+    const readIframeContentZoom = (iframe) => clampIframeZoom(parseFloat(iframe.dataset.nexosContentZoom || iframe.dataset.nexosZoom || "1"));
     const readIframePan = (iframe) => ({
       x: parseFloat(iframe.dataset.nexosPanX || "0") || 0,
       y: parseFloat(iframe.dataset.nexosPanY || "0") || 0
@@ -5872,11 +5873,30 @@ body.reduce-motion *::after {
         y: Math.min(0, Math.max(minY, pan.y))
       };
     };
-    const syncIframeZoomDisplay = (iframe, zoomLevel) => {
+    const syncIframeZoomDisplay = (iframe) => {
       const tabId = iframe.dataset.tabId;
       if (tabId && this.tabs && this.tabs.has(tabId)) {
-        this.tabs.get(tabId).zoomLevel = zoomLevel;
+        this.tabs.get(tabId).zoomLevel = readIframeZoom(iframe) * readIframeContentZoom(iframe);
         this.updateZoomDisplay();
+      }
+    };
+    const applyIframeContentZoom = (iframe, zoomLevel) => {
+      if (!iframe) return false;
+      const nextZoom = clampIframeZoom(zoomLevel);
+      iframe.dataset.nexosContentZoom = String(nextZoom);
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        const root = doc.documentElement;
+        if (root) {
+          root.style.zoom = nextZoom === 1 ? "" : String(nextZoom);
+          root.style.transformOrigin = "top left";
+        }
+        if (doc.body) doc.body.style.transformOrigin = "top left";
+        syncIframeZoomDisplay(iframe);
+        return true;
+      } catch (e) {
+        syncIframeZoomDisplay(iframe);
+        return false;
       }
     };
     const applyIframeVisualTransform = (iframe, zoomLevel, pan) => {
@@ -5888,7 +5908,7 @@ body.reduce-motion *::after {
       iframe.style.transformOrigin = "top left";
       iframe.style.width = "100%";
       iframe.style.height = "100%";
-      syncIframeZoomDisplay(iframe, zoomLevel);
+      syncIframeZoomDisplay(iframe);
     };
     const applyIframePan = (iframe, deltaX, deltaY) => {
       const zoomLevel = readIframeZoom(iframe);
@@ -5951,6 +5971,8 @@ body.reduce-motion *::after {
           stopPageZoom(e);
           return;
         }
+        // Only hijack single-finger touches when already zoomed in (for panning).
+        // Otherwise let them through so swipe-to-switch-tab gestures still work.
         if (readIframeZoom(rootIframe) > 1) {
           state.panning = true;
           state.lastPanPoint = pointFromDocClient(e.touches[0].clientX, e.touches[0].clientY);
@@ -5968,6 +5990,7 @@ body.reduce-motion *::after {
           if (state.lastPanPoint) applyIframePan(rootIframe, point.clientX - state.lastPanPoint.clientX, point.clientY - state.lastPanPoint.clientY);
           state.lastPanPoint = point;
         }
+        // else: do nothing — let the event bubble normally for swipe-tab gestures.
       };
       const onTouchEnd = (e) => {
         if (!e.touches || e.touches.length < 2) state.active = false;
@@ -5988,22 +6011,22 @@ body.reduce-motion *::after {
       };
       const onWheel = (e) => {
         const currentZoom = readIframeZoom(rootIframe);
-        // Ctrl/Cmd + wheel inside the iframe = trackpad pinch (or zoom intent).
-        // Always zoom the IFRAME (never the page), with a fast browser-like step.
+        // Ctrl/Cmd + wheel inside the iframe = trackpad pinch.
+        // Zoom the iframe viewport (never the page) with a controlled factor.
         if (e.ctrlKey || e.metaKey) {
           stopPageZoom(e);
-          // Bigger jumps for snappy, real-browser feel. Trackpad pinch sends many
-          // small events, so cap |deltaY| to keep each tick punchy but stable.
-          const dy = Math.max(-50, Math.min(50, e.deltaY));
-          const factor = Math.exp(-dy * 0.02);
+          const dy = Math.max(-40, Math.min(40, e.deltaY));
+          const factor = Math.exp(-dy * 0.003);
           applyIframePinchZoom(rootIframe, currentZoom * factor, pointFromDocClient(e.clientX || 0, e.clientY || 0), { minZoom: 1 });
           return;
         }
-        // Alt + wheel -> fast, browser-like iframe zoom (large discrete steps).
-        if (e.altKey) {
+        // Alt + horizontal wheel is reserved for tab swiping; vertical Alt wheel is content zoom.
+        if (e.altKey && Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+        if (e.altKey && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
           stopPageZoom(e);
-          const factor = e.deltaY < 0 ? 1.25 : 1 / 1.25;
-          applyIframePinchZoom(rootIframe, currentZoom * factor, pointFromDocClient(e.clientX || 0, e.clientY || 0), { minZoom: 1 });
+          const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+          const app = window.__nexosApp || window.browser;
+          if (app && typeof app.zoomIframe === "function") app.zoomIframe(factor);
           return;
         }
         if (currentZoom > 1) {
@@ -6030,13 +6053,14 @@ body.reduce-motion *::after {
           if (isZeroKey(e)) {
             app.resetIframeZoom && app.resetIframeZoom();
           } else if (isMinusKey(e)) {
-            app.zoomIframe(-0.1);
+            app.zoomIframe(1 / 1.1);
           } else {
-            app.zoomIframe(0.1);
+            app.zoomIframe(1.1);
           }
         }
       };
       doc.addEventListener("keydown", onIframeKeyDown, { capture: true });
+      applyIframeContentZoom(rootIframe, readIframeContentZoom(rootIframe));
       doc.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
       doc.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
       doc.addEventListener("touchend", onTouchEnd, { passive: false, capture: true });
@@ -6252,8 +6276,8 @@ body.reduce-motion *::after {
     document.getElementById("aiChatMinimizeBtn").addEventListener("click", () => {
       this.toggleAiSidebar(false);
     });
-    this.zoomInBtn.addEventListener("click", () => this.zoomIframe(0.1));
-    this.zoomOutBtn.addEventListener("click", () => this.zoomIframe(-0.1));
+    this.zoomInBtn.addEventListener("click", () => this.zoomIframe(1.1));
+    this.zoomOutBtn.addEventListener("click", () => this.zoomIframe(1 / 1.1));
     this.menuBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const rect = this.menuBtn.getBoundingClientRect();
@@ -6324,10 +6348,10 @@ body.reduce-motion *::after {
       window.location.href = "https://google.com";
     });
     this.zoomOutMenuBtn.addEventListener("click", () => {
-      this.zoomIframe(-0.1);
+      this.zoomIframe(1 / 1.1);
     });
     this.zoomInMenuBtn.addEventListener("click", () => {
-      this.zoomIframe(0.1);
+      this.zoomIframe(1.1);
     });
     this.fullscreenMenuBtn.addEventListener("click", () => {
       if (!document.fullscreenElement) {
@@ -8234,25 +8258,30 @@ body.reduce-motion *::after {
     }
     lucide.createIcons();
   }
-  zoomIframe(delta) {
+  zoomIframe(factor) {
     const currentTab = this.tabs.get(this.activeTabId);
     if (!currentTab || !currentTab.iframe) return;
     if (this._splitTabs && (this._splitTabs.has(this.activeTabId) || Array.from(this._splitTabs.values()).some((sd) => sd.leftTabId === this.activeTabId || sd.rightTabId === this.activeTabId))) {
       return;
     }
-    if (currentTab.zoomLevel === void 0) {
-      currentTab.zoomLevel = 1;
+    const iframe = currentTab.iframe;
+    const oldContentZoom = parseFloat(iframe.dataset.nexosContentZoom || iframe.dataset.nexosZoom || "1") || 1;
+    const multiplier = Number.isFinite(factor) && factor > 0 ? factor : 1;
+    const nextContentZoom = Math.max(0.25, Math.min(3, oldContentZoom * multiplier));
+    iframe.dataset.nexosContentZoom = String(nextContentZoom);
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      const root = doc.documentElement;
+      if (root) {
+        root.style.zoom = nextContentZoom === 1 ? "" : String(nextContentZoom);
+        root.style.transformOrigin = "top left";
+      }
+      if (doc.body) doc.body.style.transformOrigin = "top left";
+    } catch (e) {
+      return;
     }
-    currentTab.zoomLevel = Math.max(0.25, Math.min(3, currentTab.zoomLevel + delta));
-    currentTab.iframe.dataset.nexosPinchZoom = String(currentTab.zoomLevel);
-    currentTab.iframe.dataset.nexosPanX = "0";
-    currentTab.iframe.dataset.nexosPanY = "0";
-    // Browser-like snappy zoom: no CSS transition, immediate transform.
-    currentTab.iframe.style.transition = "none";
-    currentTab.iframe.style.transform = `matrix(${currentTab.zoomLevel}, 0, 0, ${currentTab.zoomLevel}, 0, 0)`;
-    currentTab.iframe.style.transformOrigin = "top left";
-    currentTab.iframe.style.width = "100%";
-    currentTab.iframe.style.height = "100%";
+    const visualZoom = Math.max(1, parseFloat(iframe.dataset.nexosPinchZoom || "1") || 1);
+    currentTab.zoomLevel = visualZoom * nextContentZoom;
     this.updateZoomDisplay();
   }
   resetIframeZoom() {
@@ -8260,6 +8289,7 @@ body.reduce-motion *::after {
     if (!currentTab || !currentTab.iframe) return;
     currentTab.zoomLevel = 1;
     currentTab.iframe.dataset.nexosPinchZoom = "1";
+    currentTab.iframe.dataset.nexosContentZoom = "1";
     currentTab.iframe.dataset.nexosPanX = "0";
     currentTab.iframe.dataset.nexosPanY = "0";
     currentTab.iframe.style.transition = "none";
@@ -8267,6 +8297,11 @@ body.reduce-motion *::after {
     currentTab.iframe.style.transformOrigin = "top left";
     currentTab.iframe.style.width = "100%";
     currentTab.iframe.style.height = "100%";
+    try {
+      const doc = currentTab.iframe.contentDocument || currentTab.iframe.contentWindow.document;
+      if (doc.documentElement) doc.documentElement.style.zoom = "";
+    } catch (e) {
+    }
     this.updateZoomDisplay();
   }
   updateZoomDisplay() {
@@ -13261,7 +13296,10 @@ loadTopRightProfilePfp();
                   shiftKey: e.shiftKey,
                   metaKey: e.metaKey
                 }, "*");
-                if (e.altKey) e.preventDefault();
+                var k = String(e.key || "").toLowerCase();
+                var c = String(e.code || "");
+                var isZoomKey = k === "+" || k === "=" || k === "-" || k === "_" || k === "0" || c === "Equal" || c === "Minus" || c === "Digit0" || c === "NumpadAdd" || c === "NumpadSubtract" || c === "Numpad0";
+                if (e.altKey && !(e.shiftKey && isZoomKey)) e.preventDefault();
               } catch (x) {
               }
             }
