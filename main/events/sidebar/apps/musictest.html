@@ -561,7 +561,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 .ctx-item.danger{color:var(--red)}
 .ctx-item.danger svg{color:var(--red)}
 
-#yt-host{position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;pointer-events:none}
+
 
 .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--s2);color:var(--ink);padding:10px 22px;border-radius:28px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;z-index:999;white-space:nowrap;transition:opacity .22s,transform .22s;backdrop-filter:blur(20px);border:1px solid var(--border)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -659,7 +659,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
 </head>
 <body>
 
-<audio id="sc-audio" preload="none" crossorigin="anonymous"></audio>
+<audio id="sc-audio" style="display:none" crossorigin="anonymous"></audio>
 <div class="toast" id="toast"></div>
 
 <div class="app">
@@ -681,7 +681,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helv
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       </button>
       <div class="status-pill">
-        <div class="st-dot loading" id="sc-dot"></div>
+        <div class="st-dot ok" id="sc-dot"></div>
         <span id="sc-status-txt">SoundCloud</span>
       </div>
     </div>
@@ -1103,45 +1103,26 @@ async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
   return Promise.any(PROXIES.map(tryOne));
 }
 
-// ─── SoundCloud audio player (replaces YouTube IFrame) ───────────────────────
-const SC_AUDIO = G('sc-audio');
-let ytReady = true; // alias kept so rest of code compiles unchanged
-let ticker = null;
-let _lastYtPollMs = 0, _lastYtPosMs = 0;
+// ── SoundCloud audio engine ──────────────────────────────────────────────────
+const SC_SEARCH   = '/v1/search/soundcloud';
+const SC_DOWNLOAD = '/v1/download/soundcloud';
 
-// Shim: YT_player API → HTMLAudioElement
-const YT_player = {
-  loadVideoById(src) {
-    SC_AUDIO.pause();
-    SC_AUDIO.src = src;
-    SC_AUDIO.load();
-    SC_AUDIO.play().catch(() => {});
-  },
-  playVideo()  { SC_AUDIO.play().catch(() => {}); },
-  pauseVideo() { SC_AUDIO.pause(); },
-  seekTo(sec)  { SC_AUDIO.currentTime = sec; },
-  getCurrentTime() { return SC_AUDIO.currentTime || 0; },
-  getDuration()    { return SC_AUDIO.duration || 0; },
-  setVolume(pct)   { SC_AUDIO.volume = Math.max(0, Math.min(1, pct / 100)); },
-  getPlayerState() { return SC_AUDIO.paused ? 2 : 1; },
-};
+const scAudio = G('sc-audio');
+let scReady = true; // always ready — no external API needed
+let ticker = null;
 
 function getPrecisePos() {
-  const direct = SC_AUDIO.currentTime * 1000;
-  if (ST.playing && direct > 0) { _lastYtPosMs = direct; _lastYtPollMs = performance.now(); return direct; }
-  const elapsed = performance.now() - _lastYtPollMs;
-  return _lastYtPosMs + (ST.playing ? Math.min(elapsed, 300) : 0);
+  return (scAudio.currentTime || 0) * 1000;
 }
 
-SC_AUDIO.addEventListener('play', () => {
+// Wire up the <audio> element events
+scAudio.addEventListener('play', () => {
   ST.playing = true; syncPP();
   G('cover-art').classList.add('playing');
   clearInterval(ticker);
   ticker = setInterval(() => {
-    ST.pos = SC_AUDIO.currentTime * 1000;
-    ST.dur = (SC_AUDIO.duration || 0) * 1000;
-    _lastYtPosMs = ST.pos;
-    _lastYtPollMs = performance.now();
+    ST.pos = scAudio.currentTime * 1000;
+    ST.dur = (scAudio.duration || 0) * 1000;
     syncBar();
   }, 100);
   if (!ST._rafRunning) {
@@ -1153,220 +1134,27 @@ SC_AUDIO.addEventListener('play', () => {
     requestAnimationFrame(rafLoop);
   }
 });
-SC_AUDIO.addEventListener('pause', () => {
+
+scAudio.addEventListener('pause', () => {
   ST.playing = false; syncPP();
   G('cover-art').classList.remove('playing');
   clearInterval(ticker);
 });
-SC_AUDIO.addEventListener('ended', () => {
+
+scAudio.addEventListener('ended', () => {
   ST.playing = false; syncPP();
   G('cover-art').classList.remove('playing');
   clearInterval(ticker); ST._rafRunning = false;
   if (ST.repeat || ST.smartRepeat) doSmartRepeat();
   else nextTrack();
 });
-SC_AUDIO.addEventListener('error', () => {
+
+scAudio.addEventListener('error', () => {
   setStatus('err', 'Stream error');
-  toast('⚠ Could not load audio stream — trying next source…');
-  const track = ST.queue[ST.idx];
-  if (track?.scUrls?.length > (track.scTry || 0) + 1) {
-    track.scTry = (track.scTry || 0) + 1;
-    YT_player.loadVideoById(track.scUrls[track.scTry]);
-  }
+  toast('⚠ Could not play track — try another');
 });
-SC_AUDIO.addEventListener('canplay', () => setStatus('ok', 'SoundCloud'));
 
-setStatus('ok', 'SoundCloud ♫');
-
-// ─── SoundCloud + Chocomilk stream resolver ───────────────────────────────────
-const CHOCOMILK = 'https://chocomilk.amira.us.kg/v1/download/soundcloud';
-const scCache = {};
-
-async function findVideoIds(artist, title) {
-  return findSCStreams(artist, title);
-}
-
-// Turn a string into a soundcloud-style slug: lowercase, spaces→hyphens, strip special chars
-function toSlug(s) {
-  return s.toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/['']/g, '')
-    .replace(/[^a-z0-9\s-]/g, ' ')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/-$/, '');
-}
-
-// Generate many candidate SC artist slugs (SC is inconsistent)
-function artistSlugs(artist) {
-  const base = toSlug(artist);
-  const noSpace = artist.toLowerCase().replace(/[^a-z0-9]/g, '');  // tatemcrae
-  const variants = new Set([
-    base,                                          // tate-mcrae
-    noSpace,                                       // tatemcrae
-    base.replace(/-/g, ''),                        // tatemcrae
-    base.replace(/-the-/, '-'),                    // remove "the"
-    base + 'official',
-    base + 'music',
-    base + '-official',
-    base + '-music',
-    noSpace + 'official',
-    noSpace + 'music',
-  ]);
-  return [...variants];
-}
-
-// Generate many candidate title slugs
-function titleSlugs(title) {
-  const base = toSlug(title);
-  const clean = base.replace(/-?(feat|ft|featuring|with|prod|x)-.*$/, '').replace(/-+$/, '');
-  const variants = new Set([
-    base,
-    clean,
-    clean + '-official',
-    clean + '-audio',
-    clean + '-official-audio',
-    clean + '-lyrics',
-    clean + '-music-video',
-    base + '-official',
-    base + '-audio',
-  ]);
-  return [...variants];
-}
-
-function candidateScUrls(artist, title) {
-  const slugs = [];
-  for (const a of artistSlugs(artist)) {
-    for (const t of titleSlugs(title)) {
-      slugs.push(`https://soundcloud.com/${a}/${t}`);
-    }
-  }
-  // dedupe, limit to 20 most likely
-  return [...new Set(slugs)].slice(0, 20);
-}
-
-async function findSCStreams(artist, title) {
-  const ck = (artist + '||' + title).toLowerCase();
-  if (scCache[ck]?.length) return scCache[ck];
-
-  setStatus('loading', 'Finding on SoundCloud...');
-
-  // Try all slug candidates in parallel batches of 4
-  const candidates = candidateScUrls(artist, title);
-  console.log('[SC] Trying', candidates.length, 'candidate URLs for', artist, '-', title);
-  
-  for (let i = 0; i < candidates.length; i += 4) {
-    const batch = candidates.slice(i, i + 4);
-    const results = await Promise.allSettled(batch.map(url => chocomilkResolve(url)));
-    for (let j = 0; j < results.length; j++) {
-      if (results[j].status === 'fulfilled' && results[j].value) {
-        const stream = results[j].value;
-        console.log('[SC] Found stream via', batch[j]);
-        scCache[ck] = [stream];
-        return [stream];
-      }
-    }
-  }
-
-  // Fallback: scrape SC search page for real permalink
-  setStatus('loading', 'Searching SoundCloud...');
-  const scraped = await scrapeScSearch(artist, title);
-  if (scraped && !scraped.includes('/search')) {
-    console.log('[SC] Got scraped URL:', scraped);
-    const stream = await chocomilkResolve(scraped);
-    if (stream) {
-      scCache[ck] = [stream];
-      return [stream];
-    }
-  }
-
-  throw new Error('SoundCloud not found');
-}
-
-async function chocomilkResolve(scUrl) {
-  if (scUrl.includes('/search') || scUrl.includes('?q=')) return null;
-
-  const directUrl = CHOCOMILK + '?url=' + encodeURIComponent(scUrl);
-
-  // Proxies that actually allow chocomilk.amira.us.kg (corsproxy.io blocks it)
-  const proxyWrappers = [
-    u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
-    u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-    u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
-    u => 'https://proxy.cors.sh/' + u,
-    u => 'https://yacdn.org/proxy/' + u,
-    u => 'https://crossorigin.me/' + u,
-    u => 'https://thingproxy.freeboard.io/fetch/' + u,
-  ];
-
-  for (const wrap of proxyWrappers) {
-    const endpoint = wrap(directUrl);
-    try {
-      console.log('[Chocomilk] trying proxy for:', scUrl.split('/').slice(-2).join('/'));
-      const r = await fetch(endpoint, {
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(20000)
-      });
-      if (!r.ok) {
-        console.warn('[Chocomilk] HTTP', r.status, 'from', endpoint.slice(0,40));
-        // 403 = proxy blocked this domain, try next proxy
-        // 404 = Chocomilk says track not found, bail entirely
-        if (r.status === 404) return null;
-        continue;
-      }
-      const text = await r.text();
-      let data;
-      try { data = JSON.parse(text); } catch(je) {
-        console.warn('[Chocomilk] non-JSON:', text.slice(0, 100));
-        continue;
-      }
-      console.log('[Chocomilk] response:', data);
-      // success:false with code 404 = track URL doesn't exist on SC
-      if (data?.success === false) return null;
-      const stream = data?.url || data?.stream_url || data?.download_url
-        || data?.audio_url || data?.link || data?.direct_url
-        || (Array.isArray(data?.urls) ? data.urls[0] : null)
-        || null;
-      if (stream && typeof stream === 'string' && stream.startsWith('http')) {
-        console.log('[Chocomilk] GOT STREAM:', stream.slice(0, 80));
-        return stream;
-      }
-    } catch(e) {
-      console.warn('[Chocomilk] error:', e?.name, e?.message?.slice(0,60));
-    }
-  }
-  return null;
-}
-
-
-async function scrapeScSearch(artist, title) {
-  const q = encodeURIComponent(artist + ' ' + title);
-  const searchUrls = [
-    'https://soundcloud.com/search?q=' + q,
-    'https://soundcloud.com/search/sounds?q=' + q,
-  ];
-  for (const searchUrl of searchUrls) {
-    try {
-      const r = await proxyFetch(searchUrl, {}, 10000);
-      const html = await r.text();
-      // Extract permalink_url from embedded JSON - SC stores it as escaped JSON
-      const m = html.match(/"permalink_url":"([^"]+)"/);
-      if (m) {
-        let url = m[1].replace(/\\/g, '');
-        if (url.startsWith('http') && url.includes('soundcloud.com/') && !url.includes('/search')) {
-          const parts = url.split('/');
-          if (parts.length >= 5) return url;
-        }
-      }
-      // Fallback: find any soundcloud.com/artist/track pattern
-      const m2 = html.match(/https?:\/\/soundcloud\.com\/([a-z0-9_-]{2,})\/([a-z0-9_-]{2,})/i);
-      if (m2 && !m2[0].includes('/search') && !m2[0].includes('/sets/')) return m2[0];
-    } catch {}
-  }
-  return null;
-}
-
+scAudio.volume = ST.vol;
 let srchTmr=null;
 const qIn=G('q-in'), qDrp=G('q-drop'), qSpn=G('q-spin');
 qIn.addEventListener('input', e => {
@@ -1404,32 +1192,24 @@ async function itunesFetch(url) {
 
 async function doSearch(q) {
   qSpn.style.display='block';
-  qDrp.innerHTML='<div class="drop-msg">Searching…</div>';
+  qDrp.innerHTML='<div class="drop-msg">Searching SoundCloud…</div>';
   qDrp.style.display='block';
 
-  
-  const itunesTracks = await searchItunes(q);
-  qSpn.style.display='none';
+  try {
+    const res = await fetch(SC_SEARCH + '?q=' + encodeURIComponent(q) + '&limit=20', {
+      signal: AbortSignal.timeout(8000)
+    });
+    const data = await res.json();
+    qSpn.style.display='none';
 
-  if (itunesTracks.length) {
-    
-    renderDrop(itunesTracks, []);
-
-    
-    searchMusicBrainz(q).then(mbTracks => {
-      const newMb = mbTracks.filter(mb =>
-        !itunesTracks.some(it =>
-          it.trackName.toLowerCase() === mb.trackName.toLowerCase() &&
-          it.artistName.toLowerCase() === mb.artistName.toLowerCase()
-        )
-      );
-      if (newMb.length) renderDrop(itunesTracks, newMb);
-    }).catch(() => {});
-
-  } else {
-    
-    
-    qDrp.innerHTML = '<div class="drop-msg">⚠ Search unavailable — check your connection and try again</div>';
+    if (!res.ok || data.status !== 'success' || !data.results?.length) {
+      qDrp.innerHTML = '<div class="drop-msg">No results found — try a different search</div>';
+      return;
+    }
+    renderDrop(data.results);
+  } catch (err) {
+    qSpn.style.display='none';
+    qDrp.innerHTML = '<div class="drop-msg">⚠ Search failed — check your connection</div>';
   }
 }
 
@@ -1580,39 +1360,31 @@ async function fetchCoverArt(track) {
   _artCache[ck] = null;
 }
 
-function renderDrop(itunesTracks, mbTracks) {
-  const tracks = [...itunesTracks, ...mbTracks];
-  const mbStart = itunesTracks.length;
-  const mbIds = [];
+function renderDrop(tracks) {
   window._td = window._td || {};
 
-  qDrp.innerHTML = tracks.map((t, idx) => {
-    const artSm = t.artworkUrl100 || '';
-    const artLg = t._artLgOverride || (artSm ? artSm.replace('100x100bb','600x600bb') : '');
+  qDrp.innerHTML = tracks.map((t) => {
+    const artSm = t.thumbnail || '';
     const id = 'tr_' + Math.random().toString(36).slice(2);
     window._td[id] = {
-      title: t.trackName, artist: t.artistName,
-      album: t.collectionName||'', artSm: artSm||null, artLg: artLg||null,
-      durMs: t.trackTimeMillis||null, _source: t._source||null,
-      _releaseMbid: t._releaseMbid||null, _ref: t
+      title:    t.title,
+      artist:   t.author || 'Unknown',
+      album:    t.album || '',
+      artSm:    artSm || null,
+      artLg:    artSm || null,
+      durMs:    t.duration || null,
+      permalink: t.permalink || null,
+      _scTrack: t,
     };
-    if (idx >= mbStart) mbIds.push(id);
-
-    const aName = (t.artistName||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const aName = (t.author||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const aArt  = artSm.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const srcBadge = (t._source && t._source !== 'itunes')
-      ? ` <span style="font-size:9px;opacity:.45;text-transform:uppercase;letter-spacing:.5px">[${t._source}]</span>` : '';
-    const sepHTML = (idx === mbStart && mbTracks.length > 0)
-      ? '<div style="padding:6px 13px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--ink3);text-transform:uppercase;opacity:.5;border-top:1px solid var(--s2);">More from MusicBrainz</div>' : '';
-    return sepHTML + `<div class="di" onclick="pickTrack('${id}')">
-      <div class="di-art" id="da_${id}">${artSm ? `<img src="${artSm}" data-src="${artSm}" onerror="proxyImgFallback(this)" alt="">` : '🎵'}</div>
-      <div class="di-inf"><div class="di-t">${x(t.trackName)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.artistName)}</span>${t.collectionName ? ' · '+x(t.collectionName) : ''}${srcBadge}</div></div>
-      <span class="di-dur">${ms2t(t.trackTimeMillis)}</span>
+    return `<div class="di" onclick="pickTrack('${id}')">
+      <div class="di-art">${artSm ? `<img src="${artSm}" alt="">` : '🎵'}</div>
+      <div class="di-inf"><div class="di-t">${x(t.title)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.author||'Unknown')}</span>${t.album ? ' · '+x(t.album) : ''}</div></div>
+      <span class="di-dur">${ms2t(t.duration)}</span>
       <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
     </div>`;
   }).join('');
-
-  hydrateArt(mbIds);
 }
 
 async function hydrateArt(ids) {
@@ -1634,7 +1406,22 @@ async function hydrateArt(ids) {
 async function pickTrack(id) { hideDrop(); qIn.value=''; const t=window._td?.[id]; if(t) addAndPlay(t); }
 function hideDrop() { qDrp.style.display='none'; }
 
-function addAndPlay(track) { const i=ST.queue.length; ST.queue.push(track); appendQI(track,i); loadTrack(i); }
+function addAndPlay(track) {
+  // Normalize field names from SC format
+  const normalized = {
+    title:     track.title || track.trackName || 'Untitled',
+    artist:    track.artist || track.author || track.artistName || 'Unknown',
+    album:     track.album || track.collectionName || '',
+    artSm:     track.artSm || track.artworkUrl100 || track.thumbnail || null,
+    artLg:     track.artLg || track._artLgOverride || track.artSm || track.thumbnail || null,
+    durMs:     track.durMs || track.duration || track.trackTimeMillis || null,
+    permalink: track.permalink || null,
+    _downloadUrl: track._downloadUrl || null,
+    _releaseMbid: track._releaseMbid || null,
+    _scTrack: track._scTrack || null,
+  };
+  const i=ST.queue.length; ST.queue.push(normalized); appendQI(normalized,i); loadTrack(i);
+}
 
 function appendQI(track, i) {
   const list=G('q-list'); list.querySelector('.q-empty-msg')?.remove();
@@ -1664,23 +1451,81 @@ async function loadTrack(idx) {
   markQI(idx); updateNP(track); syncHeartBtn();
   ST.playing=false; ST.pos=0; ST.dur=0; syncPP();
 
-  if (!track.scUrls) {
-    setStatus('loading', 'Finding on SoundCloud…');
-    try {
-      track.scUrls = await findVideoIds(track.artist, track.title);
-      track.scTry = 0;
-      setStatus('ok', 'SoundCloud ♫');
-    } catch {
-      setStatus('err', 'Not found');
-      toast('⚠ Not found on SoundCloud — check DevTools console for details');
-      return;
-    }
+  scAudio.pause();
+  scAudio.removeAttribute('src');
+
+  setStatus('loading', 'Loading…');
+
+  // If we already have a resolved download URL, use it directly
+  if (track._downloadUrl) {
+    scAudio.src = track._downloadUrl;
+    scAudio.volume = ST.muted ? 0 : ST.vol;
+    scAudio.play().catch(() => {});
+    setStatus('ok', 'SoundCloud');
+    fetchLyrics(track.title, track.artist);
+    return;
   }
 
-  YT_player.loadVideoById(track.scUrls[track.scTry]);
+  // Otherwise resolve via the SC download endpoint
+  let permalink = track.permalink || track._scTrack?.permalink;
+
+  // No permalink — try a SoundCloud search to find a matching track
+  if (!permalink) {
+    setStatus('loading', 'Searching…');
+    try {
+      const q = encodeURIComponent((track.artist||'') + ' ' + (track.title||''));
+      const sr = await fetch(SC_SEARCH + '?q=' + q + '&limit=5', { signal: AbortSignal.timeout(8000) });
+      const sd = await sr.json();
+      if (sr.ok && sd.status === 'success' && sd.results?.length) {
+        permalink = sd.results[0].permalink;
+        // Grab art if we don't have any
+        if (!track.artSm && sd.results[0].thumbnail) {
+          track.artSm = sd.results[0].thumbnail;
+          track.artLg = sd.results[0].thumbnail;
+          updateNP(track);
+        }
+      }
+    } catch {}
+  }
+
+  if (!permalink) {
+    setStatus('err', 'No link');
+    toast('⚠ Could not resolve track');
+    return;
+  }
+
+  try {
+    const res = await fetch(SC_DOWNLOAD + '?url=' + encodeURIComponent(permalink), {
+      signal: AbortSignal.timeout(15000)
+    });
+    const data = await res.json();
+    if (!res.ok || data.status !== 'success' || !data.download) {
+      setStatus('err', 'Unavailable');
+      toast('⚠ Track unavailable — try another');
+      return;
+    }
+
+    track._downloadUrl = data.download;
+    // Also enrich metadata if available
+    if (data.thumbnail && !track.artSm) {
+      track.artSm = data.thumbnail;
+      track.artLg = data.thumbnail;
+    }
+    if (data.duration && !track.durMs) track.durMs = data.duration;
+
+    scAudio.src = data.download;
+    scAudio.volume = ST.muted ? 0 : ST.vol;
+    scAudio.play().catch(() => {});
+    setStatus('ok', 'SoundCloud');
+  } catch (err) {
+    setStatus('err', 'Failed');
+    toast('⚠ Could not load track');
+    return;
+  }
+
   fetchLyrics(track.title, track.artist);
 
-  
+  // Hydrate cover art if missing
   if (!track.artSm && !track.artLg) {
     const _refTrack = {
       artworkUrl100: null, _artLgOverride: null,
@@ -1689,11 +1534,9 @@ async function loadTrack(idx) {
     };
     fetchCoverArt(_refTrack).then(() => {
       if (!_refTrack.artworkUrl100) return;
-      
       if (ST.queue[ST.idx] !== track) return;
       track.artSm = _refTrack.artworkUrl100;
       track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
-      
       const artUrl = track.artLg || track.artSm;
       G('cv-img').src = artUrl;
       G('cv-img').setAttribute('data-src', artUrl);
@@ -1703,7 +1546,6 @@ async function loadTrack(idx) {
       const lrcBg = G('lrc-bg');
       lrcBg.style.backgroundImage = `url('${artUrl}')`;
       lrcBg.classList.add('on');
-      
       const th = document.getElementById('qt' + idx);
       if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
     });
@@ -1739,8 +1581,8 @@ function resetNP() {
   ST.playing=false; syncPP();
 }
 
-function togglePlay() { if(!ytReady||ST.idx<0)return; ST.playing?YT_player.pauseVideo():YT_player.playVideo(); }
-function prevTrack() { if(!ST.queue.length)return; if(ST.pos>3000){YT_player.seekTo(0);return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
+function togglePlay() { if(ST.idx<0)return; ST.playing?scAudio.pause():scAudio.play().catch(()=>{}); }
+function prevTrack() { if(!ST.queue.length)return; if(ST.pos>3000){scAudio.currentTime=0;return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
 function nextTrack() { if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
 function rnd() { return Math.floor(Math.random()*ST.queue.length); }
 function syncPP() { G('pp-ico').innerHTML=ST.playing?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>'; }
@@ -1749,17 +1591,17 @@ function syncBar() { if(!ST.dur)return; G('prog-f').style.width=Math.min(100,ST.
 G('prog').addEventListener('click', e => {
   if(!ST.dur||ST.idx<0)return;
   const r=e.currentTarget.getBoundingClientRect();
-  YT_player.seekTo(Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(ST.dur/1000));
+  scAudio.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(ST.dur/1000);
 });
 G('vol-tr').addEventListener('click', e => {
   const r=e.currentTarget.getBoundingClientRect();
   ST.vol=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
   G('vol-f').style.width=(ST.vol*100)+'%';
-  if(ytReady&&!ST.muted) YT_player.setVolume(ST.vol*100);
+  if(!ST.muted) scAudio.volume=ST.vol;
 });
 G('btn-vol').addEventListener('click', () => {
   ST.muted=!ST.muted; G('btn-vol').classList.toggle('on',ST.muted);
-  if(ytReady) YT_player.setVolume(ST.muted?0:ST.vol*100);
+  scAudio.volume = ST.muted ? 0 : ST.vol;
   G('vol-ico').innerHTML=ST.muted
     ?'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2"/>'
     :'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>';
@@ -2082,7 +1924,7 @@ async function fetchLyrics(title, artist) {
   const plainData = [r1,r2,s1,s2].find(d => d?.plainLyrics);
   if (plainData?.plainLyrics) {
     scroll.innerHTML='<div class="lrc-empty"><p>Syncing lyrics with AI…</p></div>';
-    const dur = ST.queue[ST.idx]?.durMs || (ytReady && ST.dur ? ST.dur : 0);
+    const dur = ST.queue[ST.idx]?.durMs || (ST.dur ? ST.dur : 0);
     const lrcText = await aiGenerateSyncedLyrics(plainData.plainLyrics, title, artist, dur);
     if (lrcText) {
       const parsed = parseLRC(lrcText);
@@ -2540,7 +2382,7 @@ function seekLrc(i, evt) {
     el.appendChild(r);
     setTimeout(() => r.remove(), 600);
   }
-  YT_player.seekTo(ST.lrc[i].ms / 1000);
+  scAudio.currentTime = ST.lrc[i].ms / 1000;
 }
 
 const _lwState = {};
@@ -2794,7 +2636,7 @@ const _smartRepeatCache = {};
 
 async function doSmartRepeat() {
   const track = ST.queue[ST.idx];
-  if (!track) { YT_player.seekTo(0); YT_player.playVideo(); return; }
+  if (!track) { scAudio.currentTime=0; scAudio.play().catch(()=>{}); return; }
 
   const ck = (track.title + '||' + track.artist).toLowerCase();
   let seekMs = _smartRepeatCache[ck];
@@ -2862,58 +2704,51 @@ Reply with ONLY the ms integer of your chosen line. Nothing else.`;
 }
 
 async function _blendSeek(seekSec) {
-  if (!ytReady) { YT_player.seekTo(seekSec); YT_player.playVideo(); return; }
   ST._blending = true;
-  const targetVol = ST.muted ? 0 : ST.vol * 100;
+  const targetVol = ST.muted ? 0 : ST.vol;
   const lscroll   = G('lscroll');
 
-  
   if (lscroll) {
     lscroll.classList.remove('blend-in');
     lscroll.classList.add('blend-out');
   }
 
-  
+  // Fade out
   const OUT_STEPS = 48, OUT_MS = 25;
   for (let i = OUT_STEPS; i >= 0; i--) {
     const frac = i / OUT_STEPS;
-    YT_player.setVolume(targetVol * frac * frac);
+    scAudio.volume = targetVol * frac * frac;
     await new Promise(r => setTimeout(r, OUT_MS));
   }
-  YT_player.setVolume(0);
+  scAudio.volume = 0;
 
-  
-  await new Promise(r => setTimeout(r, 600));
+  await new Promise(r => setTimeout(r, 200));
 
-  
-  YT_player.seekTo(seekSec, true);
-  YT_player.playVideo();
+  scAudio.currentTime = seekSec;
+  scAudio.play().catch(()=>{});
 
-  
+  // Wait for playing
   await new Promise(resolve => {
     const deadline = Date.now() + 3000;
     const poll = setInterval(() => {
-      if (YT_player.getPlayerState?.() === 1 || Date.now() > deadline) {
-        clearInterval(poll); resolve();
-      }
+      if (!scAudio.paused || Date.now() > deadline) { clearInterval(poll); resolve(); }
     }, 40);
   });
 
-  
   if (lscroll) {
     lscroll.classList.remove('blend-out');
     lscroll.classList.add('blend-in');
     setTimeout(() => lscroll.classList.remove('blend-in'), 1300);
   }
 
-  
+  // Fade in
   const IN_STEPS = 40, IN_MS = 25;
   for (let i = 0; i <= IN_STEPS; i++) {
     const frac = i / IN_STEPS;
-    YT_player.setVolume(targetVol * (1 - Math.pow(1 - frac, 2.2)));
+    scAudio.volume = targetVol * (1 - Math.pow(1 - frac, 2.2));
     await new Promise(r => setTimeout(r, IN_MS));
   }
-  YT_player.setVolume(targetVol);
+  scAudio.volume = targetVol;
   ST._blending = false;
 }
 
@@ -3051,13 +2886,13 @@ function playAllArtist(key) {
 
 document.addEventListener('keydown', e => {
   if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
-  const ok=ytReady&&ST.idx>=0;
+  const ok=ST.idx>=0;
   switch(e.code){
     case 'Space': e.preventDefault(); togglePlay(); break;
-    case 'ArrowRight': e.preventDefault(); if(ok)YT_player.seekTo(YT_player.getCurrentTime()+10); break;
-    case 'ArrowLeft':  e.preventDefault(); if(ok)YT_player.seekTo(Math.max(0,YT_player.getCurrentTime()-10)); break;
-    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)YT_player.setVolume(ST.vol*100);break;
-    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(ytReady)YT_player.setVolume(ST.vol*100);break;
+    case 'ArrowRight': e.preventDefault(); if(ok)scAudio.currentTime+=10; break;
+    case 'ArrowLeft':  e.preventDefault(); if(ok)scAudio.currentTime=Math.max(0,scAudio.currentTime-10); break;
+    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(!ST.muted)scAudio.volume=ST.vol;break;
+    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(!ST.muted)scAudio.volume=ST.vol;break;
     case 'KeyN': nextTrack(); break;
     case 'KeyP': prevTrack(); break;
     case 'KeyS': G('btn-sf').click(); break;
