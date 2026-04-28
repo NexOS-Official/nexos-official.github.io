@@ -5866,6 +5866,13 @@ body.reduce-motion *::after {
         stopPageZoom(e);
         applyIframePinchZoom(rootIframe, state.startZoom * (e.scale || 1));
       };
+      const onWheel = (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+        stopPageZoom(e);
+        const currentZoom = readIframeZoom(rootIframe);
+        const nextZoom = currentZoom * Math.exp(-e.deltaY * 0.0025);
+        applyIframePinchZoom(rootIframe, nextZoom);
+      };
       doc.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
       doc.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
       doc.addEventListener("touchend", onTouchEnd, { passive: false, capture: true });
@@ -5873,6 +5880,7 @@ body.reduce-motion *::after {
       doc.addEventListener("gesturestart", onGestureStart, { passive: false, capture: true });
       doc.addEventListener("gesturechange", onGestureChange, { passive: false, capture: true });
       doc.addEventListener("gestureend", onTouchEnd, { passive: false, capture: true });
+      doc.addEventListener("wheel", onWheel, { passive: false, capture: true });
       const wireNestedIframes = () => {
         doc.querySelectorAll("iframe").forEach((nested) => wireIframePinchZoom(nested, rootIframe));
       };
