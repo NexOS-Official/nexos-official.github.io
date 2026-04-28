@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5786,11 +5787,36 @@ body.reduce-motion *::after {
     document.addEventListener("mousewheel", (e) => {
       if (e.ctrlKey || e.metaKey) e.preventDefault();
     }, { passive: false, capture: true });
+    const isZoomKey = (e) => (
+      e.key === "+" || e.key === "-" || e.key === "=" || e.key === "_" || e.key === "0" ||
+      e.keyCode === 107 || e.keyCode === 109 || e.keyCode === 187 || e.keyCode === 189 ||
+      e.keyCode === 96  || e.keyCode === 48
+    );
     document.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) &&
-          (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0" ||
-           e.keyCode === 107 || e.keyCode === 109 || e.keyCode === 96)) {
+      if (!isZoomKey(e)) return;
+      // Always block native Ctrl/Cmd zoom (page + iframe).
+      if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      // Alt+Shift +/-/0  -> let the real browser zoom (do nothing, do not preventDefault).
+      if (e.altKey && e.shiftKey) {
+        return;
+      }
+      // Alt +/-/0  -> iframe zoom (fast, browser-like).
+      if (e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const app = window.__nexosApp;
+        if (!app) return;
+        if (e.key === "0" || e.keyCode === 48 || e.keyCode === 96) {
+          app.resetIframeZoom && app.resetIframeZoom();
+        } else if (e.key === "-" || e.key === "_" || e.keyCode === 109 || e.keyCode === 189) {
+          app.zoomIframe(-0.1);
+        } else {
+          app.zoomIframe(0.1);
+        }
       }
     }, { passive: false, capture: true });
     document.addEventListener("touchmove", (e) => {
@@ -5846,6 +5872,7 @@ body.reduce-motion *::after {
       iframe.dataset.nexosPinchZoom = String(zoomLevel);
       iframe.dataset.nexosPanX = String(pan.x);
       iframe.dataset.nexosPanY = String(pan.y);
+      iframe.style.transition = "none";
       iframe.style.transform = `matrix(${zoomLevel}, 0, 0, ${zoomLevel}, ${pan.x}, ${pan.y})`;
       iframe.style.transformOrigin = "top left";
       iframe.style.width = "100%";
@@ -5950,10 +5977,16 @@ body.reduce-motion *::after {
       };
       const onWheel = (e) => {
         const currentZoom = readIframeZoom(rootIframe);
+        // Block native Ctrl/Cmd page zoom entirely.
         if (e.ctrlKey || e.metaKey) {
           stopPageZoom(e);
-          const nextZoom = currentZoom * Math.exp(-e.deltaY * 0.0025);
-          applyIframePinchZoom(rootIframe, nextZoom, pointFromDocClient(e.clientX || 0, e.clientY || 0), { minZoom: 1 });
+          return;
+        }
+        // Alt + wheel -> fast, browser-like iframe zoom (large discrete-ish steps).
+        if (e.altKey) {
+          stopPageZoom(e);
+          const factor = e.deltaY < 0 ? 1.25 : 1 / 1.25;
+          applyIframePinchZoom(rootIframe, currentZoom * factor, pointFromDocClient(e.clientX || 0, e.clientY || 0), { minZoom: 1 });
           return;
         }
         if (currentZoom > 1) {
@@ -5961,6 +5994,32 @@ body.reduce-motion *::after {
           applyIframePan(rootIframe, -e.deltaX, -e.deltaY);
         }
       };
+      // Block Ctrl/Cmd +/-/0 zoom keys inside the iframe; forward Alt +/-/0 to top-level zoom.
+      const onIframeKeyDown = (e) => {
+        if (!isZoomKey(e)) return;
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+          return;
+        }
+        if (e.altKey && e.shiftKey) return;
+        if (e.altKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+          const app = window.__nexosApp;
+          if (!app) return;
+          if (e.key === "0" || e.keyCode === 48 || e.keyCode === 96) {
+            app.resetIframeZoom && app.resetIframeZoom();
+          } else if (e.key === "-" || e.key === "_" || e.keyCode === 109 || e.keyCode === 189) {
+            app.zoomIframe(-0.1);
+          } else {
+            app.zoomIframe(0.1);
+          }
+        }
+      };
+      doc.addEventListener("keydown", onIframeKeyDown, { capture: true });
       doc.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
       doc.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
       doc.addEventListener("touchend", onTouchEnd, { passive: false, capture: true });
@@ -8171,7 +8230,23 @@ body.reduce-motion *::after {
     currentTab.iframe.dataset.nexosPinchZoom = String(currentTab.zoomLevel);
     currentTab.iframe.dataset.nexosPanX = "0";
     currentTab.iframe.dataset.nexosPanY = "0";
+    // Browser-like snappy zoom: no CSS transition, immediate transform.
+    currentTab.iframe.style.transition = "none";
     currentTab.iframe.style.transform = `matrix(${currentTab.zoomLevel}, 0, 0, ${currentTab.zoomLevel}, 0, 0)`;
+    currentTab.iframe.style.transformOrigin = "top left";
+    currentTab.iframe.style.width = "100%";
+    currentTab.iframe.style.height = "100%";
+    this.updateZoomDisplay();
+  }
+  resetIframeZoom() {
+    const currentTab = this.tabs.get(this.activeTabId);
+    if (!currentTab || !currentTab.iframe) return;
+    currentTab.zoomLevel = 1;
+    currentTab.iframe.dataset.nexosPinchZoom = "1";
+    currentTab.iframe.dataset.nexosPanX = "0";
+    currentTab.iframe.dataset.nexosPanY = "0";
+    currentTab.iframe.style.transition = "none";
+    currentTab.iframe.style.transform = "matrix(1, 0, 0, 1, 0, 0)";
     currentTab.iframe.style.transformOrigin = "top left";
     currentTab.iframe.style.width = "100%";
     currentTab.iframe.style.height = "100%";
@@ -8629,6 +8704,7 @@ body.reduce-motion *::after {
 }
 const browser = new Browser();
 window.browser = browser;
+window.__nexosApp = browser;
 if (browser._pendingRestore && browser._pendingRestore.length > 0) {
   setTimeout(function() {
     browser.showRestorePanel();
