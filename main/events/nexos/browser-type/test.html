@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16127,6 +16128,12 @@ body.vtab-resizing #vtabSidebar {
       name: "Themes",
       desc: "Enable the Themes panel inside Snapshots to recolor the browser chrome, address bar, bookmark star and more.",
       key: "nexos_flag_themes"
+    },
+    {
+      id: "smart_themes",
+      name: "Smart Themes",
+      desc: "Automatically theme the browser using the dominant color of your new-tab wallpaper. Only active on the new-tab page.",
+      key: "nexos_smart_theme"
     }
   ];
   window._nexosFlags = FLAGS;
@@ -16154,6 +16161,9 @@ body.vtab-resizing #vtabSidebar {
       if (typeof window._nexosSyncTheme === "function") window._nexosSyncTheme();
       if (typeof window._nexosUpdateThemesTab === "function") window._nexosUpdateThemesTab();
     }
+    if (f.id === "smart_themes") {
+      if (typeof window._nexosSetSmartTheme === "function") window._nexosSetSmartTheme(on);
+    }
   }
   window._nexosApplyFlag = applyFlag;
   window._nexosReadFlag = function(id) {
@@ -16167,7 +16177,8 @@ body.vtab-resizing #vtabSidebar {
 
   var FLAG_META = {
     vertical_tabs: { category: "Available" },
-    themes: { category: "Available" }
+    themes: { category: "Available" },
+    smart_themes: { category: "Available" }
   };
 
   window._nexosBuildFlagsPage = function() {
@@ -16428,6 +16439,12 @@ body.vtab-resizing #vtabSidebar {
   function getCurrent() {
     var id = null;
     try { id = localStorage.getItem(KEY); } catch(e){}
+    if (id === "custom") {
+      try {
+        var raw = localStorage.getItem("nexos_custom_theme");
+        if (raw) { var c = JSON.parse(raw); if (c && c.tabbar) return c; }
+      } catch(e){}
+    }
     return THEMES.find(function(t){return t.id===id;}) || DEFAULT_THEME;
   }
   function setCurrent(t) {
@@ -16460,10 +16477,48 @@ body.vtab-resizing #vtabSidebar {
   }
   window._nexosUpdateThemesTab = updateThemesTabVisibility;
 
+  function getCustomTheme(){
+    try {
+      var raw = localStorage.getItem("nexos_custom_theme");
+      if (!raw) return null;
+      var c = JSON.parse(raw);
+      if (c && c.tabbar) return c;
+    } catch(e){}
+    return null;
+  }
+  function buildThemeFromHex(hex){
+    var h = hex.replace('#','');
+    if (h.length===3) h = h.split('').map(function(c){return c+c;}).join('');
+    var r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+    function mix(c, w){ return Math.round(c + (255 - c) * w); }
+    function darken(c, w){ return Math.round(c * (1 - w)); }
+    function s(R,G,B){ return "rgb(" + R + "," + G + "," + B + ")"; }
+    return {
+      id: "custom", name: "Custom",
+      tabbar: s(mix(r,0.55),mix(g,0.55),mix(b,0.55)),
+      chrome: s(mix(r,0.70),mix(g,0.70),mix(b,0.70)),
+      content: "#ffffff",
+      accent: s(mix(r,0.55),mix(g,0.55),mix(b,0.55)),
+      addressbar: s(mix(r,0.78),mix(g,0.78),mix(b,0.78)),
+      addressbarFocus: "#ffffff",
+      star: s(darken(r,0.25),darken(g,0.25),darken(b,0.25)),
+      _seed: hex
+    };
+  }
+  window._nexosSetCustomTheme = function(hex){
+    var t = buildThemeFromHex(hex);
+    try { localStorage.setItem("nexos_custom_theme", JSON.stringify(t)); } catch(e){}
+    try { localStorage.setItem(KEY, "custom"); } catch(e){}
+    if (flagOn()) applyTheme(t);
+    render();
+  };
+
   function render() {
     var wrap = document.getElementById("recapThemesSection");
     if (!wrap) return;
     var current = getCurrent();
+    var custom = getCustomTheme();
+    var customSeed = (custom && custom._seed) || "#7aa6ff";
     var grid = '<div class="recap-theme-group-label">Choose a theme</div><div class="recap-theme-grid">';
     THEMES.forEach(function(t){
       grid += '<div>'
@@ -16474,15 +16529,31 @@ body.vtab-resizing #vtabSidebar {
         + '<div class="recap-theme-name">'+t.name+'</div>'
       + '</div>';
     });
+    // Custom theme tile
+    var customActive = current && current.id === "custom";
+    grid += '<div>'
+      + '<label class="recap-theme-swatch'+(customActive?' active':'')+'" data-theme-id="custom" style="cursor:pointer;display:block;position:relative;overflow:hidden;">'
+        + '<div class="swatch-top" style="background:'+(custom?custom.tabbar:customSeed)+';display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;font-weight:600;">+</div>'
+        + '<div class="swatch-bot" style="background:#fff;"></div>'
+        + '<input type="color" id="nexosCustomColor" value="'+customSeed+'" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;">'
+      + '</label>'
+      + '<div class="recap-theme-name">Custom</div>'
+    + '</div>';
     grid += '</div>';
     wrap.innerHTML = grid;
-    wrap.querySelectorAll('.recap-theme-swatch').forEach(function(el){
+    wrap.querySelectorAll('.recap-theme-swatch[data-theme-id]').forEach(function(el){
+      var id = el.getAttribute('data-theme-id');
+      if (id === 'custom') return;
       el.addEventListener('click', function(){
-        var id = el.getAttribute('data-theme-id');
         var t = THEMES.find(function(x){return x.id===id;});
         if (t) setCurrent(t);
       });
     });
+    var picker = wrap.querySelector('#nexosCustomColor');
+    if (picker) {
+      picker.addEventListener('input', function(){ window._nexosSetCustomTheme(picker.value); });
+      picker.addEventListener('change', function(){ window._nexosSetCustomTheme(picker.value); });
+    }
   }
 
   function bindTabs() {
@@ -16510,7 +16581,7 @@ body.vtab-resizing #vtabSidebar {
 
   // ---------- SMART THEMES ----------
   // Sampling runs INSIDE the welcomer iframe (same-origin to its own wallpaper),
-  // posts the dominant RGB up to this parent, which picks the closest theme.
+  // posts the dominant RGB up to this parent, which builds a custom theme.
   window._nexosThemes = THEMES;
   window._nexosApplyTheme = applyTheme;
 
@@ -16519,41 +16590,35 @@ body.vtab-resizing #vtabSidebar {
   var SMART_LAST_KEY = null;       // de-dupe key (rgb+url) so we don't re-apply
 
   function smartOn(){
-    try { var v = localStorage.getItem(SMART_KEY); return v===null ? true : v==="true"; }
-    catch(e){ return true; }
+    // Default OFF — must be enabled via ghost://flags
+    try { return localStorage.getItem(SMART_KEY) === "true"; }
+    catch(e){ return false; }
   }
   window._nexosSetSmartTheme = function(on){
     try { localStorage.setItem(SMART_KEY, on?"true":"false"); } catch(e){}
     if (!on){ SMART_ACTIVE=false; SMART_LAST_KEY=null; syncThemeApplied(); }
+    else { setTimeout(scan, 50); }
   };
   window._nexosGetSmartTheme = smartOn;
 
-  function hexToRgb(h){
-    h = h.replace('#','');
-    if (h.length===3) h = h.split('').map(function(c){return c+c;}).join('');
-    return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
-  }
-  function rgbToLab(r,g,b){
-    function f(c){c/=255; return c>0.04045?Math.pow((c+0.055)/1.055,2.4):c/12.92;}
-    var R=f(r),G=f(g),B=f(b);
-    var x=(R*0.4124+G*0.3576+B*0.1805)/0.95047;
-    var y=(R*0.2126+G*0.7152+B*0.0722);
-    var z=(R*0.0193+G*0.1192+B*0.9505)/1.08883;
-    function g3(t){return t>0.008856?Math.pow(t,1/3):(7.787*t)+16/116;}
-    var fx=g3(x),fy=g3(y),fz=g3(z);
-    return [116*fy-16, 500*(fx-fy), 200*(fy-fz)];
-  }
-  function pickClosestTheme(rgb){
-    var target = rgbToLab(rgb[0],rgb[1],rgb[2]);
-    var best=null,bestD=Infinity;
-    THEMES.forEach(function(t){
-      var trgb = hexToRgb(t.accent);
-      var lab = rgbToLab(trgb[0],trgb[1],trgb[2]);
-      var dl=target[0]-lab[0], da=target[1]-lab[1], db=target[2]-lab[2];
-      var d = dl*dl+da*da+db*db;
-      if (d<bestD){ bestD=d; best=t; }
-    });
-    return best;
+  // Build a soft, no-gradient theme from a single dominant RGB.
+  function buildThemeFromRgb(rgb){
+    var r=rgb[0], g=rgb[1], b=rgb[2];
+    function mix(c, w){ // mix channel toward white by amount w (0..1)
+      return Math.round(c + (255 - c) * w);
+    }
+    function darken(c, w){ return Math.round(c * (1 - w)); }
+    function rgbStr(R,G,B){ return "rgb(" + R + "," + G + "," + B + ")"; }
+    var tabbar      = rgbStr(mix(r,0.55), mix(g,0.55), mix(b,0.55));
+    var chrome      = rgbStr(mix(r,0.70), mix(g,0.70), mix(b,0.70));
+    var content     = "#ffffff";
+    var addressbar  = rgbStr(mix(r,0.78), mix(g,0.78), mix(b,0.78));
+    var star        = rgbStr(darken(r,0.25), darken(g,0.25), darken(b,0.25));
+    return {
+      id: "smart-custom", name: "Smart",
+      tabbar: tabbar, chrome: chrome, content: content, accent: tabbar,
+      addressbar: addressbar, addressbarFocus: "#ffffff", star: star
+    };
   }
 
   // The script that gets injected into welcomer.html. It samples the visible
@@ -16634,10 +16699,19 @@ body.vtab-resizing #vtabSidebar {
   }
 
   function isWelcomerFrame(f){
+    // Prefer the live URL — `src` may be stale after the user navigates the iframe.
+    try {
+      var href = f.contentWindow && f.contentWindow.location && f.contentWindow.location.href;
+      if (typeof href === 'string') {
+        return /\/welcomer\.html(\?|#|$)/i.test(href) || /^welcomer\.html(\?|#|$)/i.test(href);
+      }
+    } catch(e){
+      // Cross-origin frame (e.g. a real website loaded in the tab) — definitely NOT welcomer.
+      return false;
+    }
+    // Fallback: only trust src if we couldn't read live href at all.
     var src = f.getAttribute('src') || '';
-    if (src.indexOf('welcomer.html') !== -1) return true;
-    try { return f.contentWindow && f.contentWindow.location.href.indexOf('welcomer.html') !== -1; }
-    catch(e){ return false; }
+    return /\/?welcomer\.html(\?|#|$)/i.test(src);
   }
   function isVisibleFrame(f){
     var cs = window.getComputedStyle(f);
@@ -16680,13 +16754,14 @@ body.vtab-resizing #vtabSidebar {
       var key = d.rgb.join(',') + '|' + (d.url||'');
       if (key === SMART_LAST_KEY) return;
       SMART_LAST_KEY = key;
-      var t = pickClosestTheme(d.rgb);
+      var t = buildThemeFromRgb(d.rgb);
       if (!t) return;
       SMART_ACTIVE = true;
       applyTheme(t);
       try { render(); } catch(e){}
     } else if (d.type === 'nexos-smart-theme' && typeof d.on === 'boolean'){
       window._nexosSetSmartTheme(d.on);
+      window._nexosWriteFlag('smart_themes', d.on);
     }
   });
 })();
