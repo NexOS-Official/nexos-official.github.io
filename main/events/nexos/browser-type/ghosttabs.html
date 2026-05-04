@@ -1,4 +1,6 @@
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -133,6 +135,15 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+:root {
+  --nexos-tabbar: #dce9ff;
+  --nexos-chrome: #e3e3e3;
+  --nexos-content: #ffffff;
+  --nexos-accent: #dce9ff;
+  --nexos-addressbar: #eaf2ff;
+  --nexos-addressbar-focus: #ffffff;
+  --nexos-star: #A3ACFF;
+}
 .browser-container {
   height: 100vh;
   display: flex;
@@ -140,15 +151,15 @@ body {
   background:
     linear-gradient(
       to bottom,
-      #e3e3e3 0px,
-      #e3e3e3 43px,
-      #ffffff 43px,
-      #ffffff 100%);
+      var(--nexos-chrome) 0px,
+      var(--nexos-chrome) 43px,
+      var(--nexos-content) 43px,
+      var(--nexos-content) 100%);
   overflow: hidden;
   gap: 0;
 }
 .tab-bar {
-  background: #dce9ff;
+  background: var(--nexos-tabbar);
   display: flex;
   align-items: flex-end;
   padding: 0;
@@ -284,7 +295,7 @@ body {
   will-change: transform;
 }
 .tab.drag-settling {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 .tab.pinned .tab-close {
@@ -575,7 +586,7 @@ body {
     linear-gradient(
       to right,
       transparent,
-      #eaf2ff);
+      var(--nexos-addressbar));
   border-radius: 0 10px 10px 0;
   pointer-events: none;
   z-index: 1;
@@ -585,7 +596,7 @@ body {
     linear-gradient(
       to right,
       transparent,
-      #ffffff);
+      var(--nexos-addressbar-focus));
 }
 .open-external-btn {
   position: absolute;
@@ -610,7 +621,7 @@ body {
 .address-bar {
   flex: 1;
   height: 32px;
-  background: #eaf2ff;
+  background: var(--nexos-addressbar);
   border: none;
   border-radius: 10px;
   padding: 0 68px 0 16px;
@@ -621,7 +632,7 @@ body {
   font-family: google sans;
 }
 .address-bar:focus {
-  background: #ffffff;
+  background: var(--nexos-addressbar-focus);
 }
 .address-bar::placeholder {
   color: #7c7c7c;
@@ -1739,7 +1750,7 @@ body.reduce-motion *::after {
   align-items: center;
   gap: 4px;
   color: #000;
-  background-color: #dce9ff;
+  background-color: var(--nexos-accent);
   border-radius: 10px;
   padding: 5px;
 }
@@ -3302,10 +3313,10 @@ body.reduce-motion *::after {
   background: rgba(0, 0, 0, 0.06);
 }
 .bookmark-star.active {
-  color: #A3ACFF;
+  color: var(--nexos-star);
 }
 .bookmark-star.active svg {
-  fill: #A3ACFF;
+  fill: var(--nexos-star);
 }
 .bookmark-edit-popup {
   position: fixed;
@@ -5236,6 +5247,65 @@ body.reduce-motion *::after {
     sans-serif;
   color: #5f6368;
 }
+.recap-snap-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px 0;
+}
+.recap-snap-tab {
+  flex: 1;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #5f6368;
+  font-family: "Google Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.recap-snap-tab.active {
+  background: rgba(0,0,0,0.06);
+  color: #202124;
+}
+.recap-themes-section { display: none; flex-direction: column; flex: 1; padding: 12px 14px; overflow-y: auto; gap: 14px; }
+.recap-themes-section::-webkit-scrollbar { display: none; }
+.recap-themes-mode .recap-themes-section { display: flex; }
+.recap-themes-mode .recap-snapshot-save-bar,
+.recap-themes-mode .recap-snapshot-list,
+.recap-themes-mode .recap-snapshot-autosave { display: none; }
+.recap-theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.recap-theme-swatch {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  overflow: hidden;
+  transition: transform 0.15s, border-color 0.15s;
+  display: flex;
+  flex-direction: column;
+}
+.recap-theme-swatch:hover { transform: translateY(-1px); }
+.recap-theme-swatch.active { border-color: #202124; }
+.recap-theme-swatch .swatch-top { flex: 0 0 35%; }
+.recap-theme-swatch .swatch-bot { flex: 1; }
+.recap-theme-name {
+  font-size: 11px;
+  color: #5f6368;
+  text-align: center;
+  margin-top: 4px;
+  font-family: "Google Sans", sans-serif;
+}
+.recap-theme-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: "Google Sans", sans-serif;
+}
 </style>
 </head>
 <body>
@@ -5296,6 +5366,10 @@ body.reduce-motion *::after {
                 <div class="tab-restore-tabs-inner" id="restoreTabsList">
                 </div>
                 <div class="recap-snapshot-content">
+                    <div class="recap-snap-tabs">
+                        <button class="recap-snap-tab active" data-snap-tab="snapshots">Snapshots</button>
+                        <button class="recap-snap-tab" data-snap-tab="themes">Themes</button>
+                    </div>
                     <div class="recap-snapshot-save-bar">
                         <input class="recap-snapshot-save-input" id="recapSnapshotNameInput" type="text" placeholder="Snapshot name...">
                         <button class="recap-snapshot-save-btn" id="recapSnapshotSaveBtn">Save</button>
@@ -5304,6 +5378,7 @@ body.reduce-motion *::after {
                     <div class="recap-snapshot-autosave">
                         <button class="recap-snap-action-btn" id="recapSnapshotLoadLastBtn" title="Load last auto-save"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg></button>
                     </div>
+                    <div class="recap-themes-section" id="recapThemesSection"></div>
                 </div>
             </div>
         </div>
@@ -5893,6 +5968,12 @@ body.reduce-motion *::after {
       if (e.key === "Enter") {
         this.navigate(this.addressBar.value);
       }
+      if (e.altKey && e.key.toLowerCase() === "d" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const starBtn = document.getElementById("bookmarkStarBtn");
+        if (starBtn) starBtn.click();
+      }
     });
     document.getElementById("openExternalBtn").addEventListener("click", () => {
       const tab = this.tabs.get(this.activeTabId);
@@ -6123,6 +6204,12 @@ body.reduce-motion *::after {
         e.preventDefault();
         const tab = this.tabs.get(this.activeTabId);
         if (tab?.iframe) tab.iframe.src = "about:blank";
+      }
+      if (e.altKey && key === "d" && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const starBtn = document.getElementById("bookmarkStarBtn");
+        if (starBtn) starBtn.click();
       }
     });
     this.initializeTabDragging();
@@ -7050,13 +7137,14 @@ body.reduce-motion *::after {
       tab.element.style.transform = "";
     });
     this.reorderTabsInDOM(draggedIndex, newIndex);
-    const targetPos = draggedElement.getBoundingClientRect();
-    const currentLeft = targetPos.left - currentTransform;
-    const finalDelta = currentLeft - targetPos.left + currentTransform;
+    const draggedOrigPos = this.dragState.tabPositions.get(this.dragState.draggedTabId);
+    const newRect = draggedElement.getBoundingClientRect();
+    const visualLeft = (draggedOrigPos ? draggedOrigPos.left : newRect.left) + currentTransform;
+    const finalDelta = visualLeft - newRect.left;
     draggedElement.classList.remove("sliding");
     draggedElement.style.transition = "none";
     draggedElement.style.transform = `translateX(${finalDelta}px)`;
-    draggedElement.offsetHeight;
+    void draggedElement.offsetHeight;
     draggedElement.classList.add("drag-settling");
     draggedElement.style.transition = "";
     draggedElement.style.transform = "translateX(0)";
@@ -14896,7 +14984,7 @@ loadTopRightProfilePfp();
   left: 0;
   width: 240px;
   height: calc(100vh - 48px);
-  background: #ffffff;
+  background: var(--nexos-content, #ffffff);
   border-right: 0px solid #dce1e6;
   z-index: 600;
   display: none;
@@ -14905,7 +14993,8 @@ loadTopRightProfilePfp();
   transition:
     width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.22s ease;
+    opacity 0.22s ease,
+    background 0.25s ease;
   overflow: hidden;
   will-change: transform, opacity;
 }
@@ -14993,7 +15082,8 @@ body.vtab-active .content-area {
   overflow: hidden;
   margin: 0 6px;
   border-radius: 10px;
-  background: #d3dce6;
+  background: var(--nexos-tabbar, #d3dce6);
+  transition: background 0.25s ease;
 }
 .vtab-list-wrapper .vtab-blur-top,
 .vtab-list-wrapper .vtab-blur-bottom {
@@ -15011,7 +15101,7 @@ body.vtab-active .content-area {
   background:
     linear-gradient(
       to bottom,
-      #d3dce6 0%,
+      var(--nexos-tabbar, #d3dce6) 0%,
       transparent 100%);
 }
 .vtab-list-wrapper .vtab-blur-bottom {
@@ -15019,7 +15109,7 @@ body.vtab-active .content-area {
   background:
     linear-gradient(
       to top,
-      #d3dce6 0%,
+      var(--nexos-tabbar, #d3dce6) 0%,
       transparent 100%);
 }
 .vtab-list-wrapper .vtab-blur-top.visible,
@@ -16029,6 +16119,12 @@ body.vtab-resizing #vtabSidebar {
       name: "Vertical Tabs",
       desc: "Show tabs in a collapsible sidebar on the left instead of the top bar. (Shortcut: Alt+Shift+V)",
       key: "nexos_flag_vertical_tabs"
+    },
+    {
+      id: "themes",
+      name: "Themes",
+      desc: "Enable the Themes panel inside Snapshots to recolor the browser chrome, address bar, bookmark star and more.",
+      key: "nexos_flag_themes"
     }
   ];
   window._nexosFlags = FLAGS;
@@ -16052,6 +16148,10 @@ body.vtab-resizing #vtabSidebar {
       var t = document.getElementById("ccVerticalTabsToggle");
       if (t) setVtabToggleUI(t, on);
     }
+    if (f.id === "themes") {
+      if (typeof window._nexosSyncTheme === "function") window._nexosSyncTheme();
+      if (typeof window._nexosUpdateThemesTab === "function") window._nexosUpdateThemesTab();
+    }
   }
   window._nexosApplyFlag = applyFlag;
   window._nexosReadFlag = function(id) {
@@ -16064,7 +16164,8 @@ body.vtab-resizing #vtabSidebar {
   };
 
   var FLAG_META = {
-    vertical_tabs: { category: "Available" }
+    vertical_tabs: { category: "Available" },
+    themes: { category: "Available" }
   };
 
   window._nexosBuildFlagsPage = function() {
@@ -16278,6 +16379,133 @@ body.vtab-resizing #vtabSidebar {
 })();
 </script>
 
+<script>
+(function(){
+  var DEFAULT_THEME = {
+    id: "default", name: "Sky",
+    tabbar: "#dce9ff", chrome: "#e3e3e3", content: "#ffffff", accent: "#dce9ff",
+    addressbar: "#eaf2ff", addressbarFocus: "#ffffff", star: "#A3ACFF"
+  };
+  function mk(id, name, tabbar, chrome, content, accent, addressbar, star) {
+    return { id: id, name: name, tabbar: tabbar, chrome: chrome, content: content,
+      accent: accent, addressbar: addressbar, addressbarFocus: "#ffffff", star: star };
+  }
+  var THEMES = [
+    DEFAULT_THEME,
+    mk("mist",     "Mist",     "#e6ecf2", "#dde3ea", "#ffffff", "#e6ecf2", "#eef2f6", "#7a8a9c"),
+    mk("sage",     "Sage",     "#dde9dd", "#e2e8e2", "#ffffff", "#dde9dd", "#e8f0e8", "#6f9b6f"),
+    mk("sand",     "Sand",     "#ece4d4", "#e8e2d4", "#fbf8f1", "#ece4d4", "#f3ede0", "#b39668"),
+    mk("linen",    "Linen",    "#efeae2", "#e7e2da", "#fbf8f3", "#efeae2", "#f5f1ea", "#a8957a"),
+    mk("rose",     "Rose",     "#f1dde1", "#ebe2e3", "#ffffff", "#f1dde1", "#f7e8eb", "#c97a86"),
+    mk("lavender", "Lavender", "#e3dff0", "#e4e1ec", "#ffffff", "#e3dff0", "#ece8f7", "#9b8fcc"),
+    mk("mint",     "Mint",     "#d6ebe2", "#dee7e3", "#ffffff", "#d6ebe2", "#e3f2eb", "#5fae8e"),
+    mk("ocean",    "Ocean",    "#cfdfe8", "#dae3e8", "#ffffff", "#cfdfe8", "#dde9f0", "#4d7a96"),
+    mk("stone",    "Stone",    "#dcdcdc", "#e3e3e3", "#ffffff", "#dcdcdc", "#e8e8e8", "#7a7a7a"),
+    mk("fog",      "Fog",      "#dde1e4", "#e1e4e7", "#fafbfc", "#dde1e4", "#e8ebee", "#7d8590"),
+    mk("peach",    "Peach",    "#f3dfd0", "#ebe2db", "#ffffff", "#f3dfd0", "#f7e8db", "#cc8a66"),
+    mk("butter",   "Butter",   "#f1ead0", "#e9e4d3", "#fffefa", "#f1ead0", "#f5f0db", "#b39a4a"),
+    mk("slate",    "Slate",    "#d4d9df", "#dde1e6", "#ffffff", "#d4d9df", "#e0e5eb", "#5f6f80"),
+    mk("cocoa",    "Cocoa",    "#e0d4ca", "#dfd6cc", "#fbf7f3", "#e0d4ca", "#ebe0d6", "#8a6f5c"),
+    mk("ice",      "Ice",      "#e4eef5", "#e2e8ed", "#ffffff", "#e4eef5", "#ecf3f8", "#6b94b3")
+  ];
+  var KEY = "nexos_theme_v1";
+  var FLAG_KEY = "nexos_flag_themes";
+  function flagOn() {
+    try { return localStorage.getItem(FLAG_KEY) === "true"; } catch(e) { return false; }
+  }
+  function applyTheme(t) {
+    var r = document.documentElement.style;
+    r.setProperty("--nexos-tabbar", t.tabbar);
+    r.setProperty("--nexos-chrome", t.chrome);
+    r.setProperty("--nexos-content", t.content);
+    r.setProperty("--nexos-accent", t.accent);
+    r.setProperty("--nexos-addressbar", t.addressbar);
+    r.setProperty("--nexos-addressbar-focus", t.addressbarFocus);
+    r.setProperty("--nexos-star", t.star);
+  }
+  function getCurrent() {
+    var id = null;
+    try { id = localStorage.getItem(KEY); } catch(e){}
+    return THEMES.find(function(t){return t.id===id;}) || DEFAULT_THEME;
+  }
+  function setCurrent(t) {
+    try { localStorage.setItem(KEY, t.id); } catch(e){}
+    if (flagOn()) applyTheme(t);
+    render();
+  }
+  function syncThemeApplied() {
+    if (flagOn()) applyTheme(getCurrent());
+    else applyTheme(DEFAULT_THEME);
+  }
+  window._nexosSyncTheme = syncThemeApplied;
+  syncThemeApplied();
+
+  function updateThemesTabVisibility() {
+    var on = flagOn();
+    var tabBtn = document.querySelector('.recap-snap-tab[data-snap-tab="themes"]');
+    if (tabBtn) tabBtn.style.display = on ? "" : "none";
+    if (!on) {
+      var content = document.querySelector('.recap-snapshot-content');
+      if (content && content.classList.contains('recap-themes-mode')) {
+        content.classList.remove('recap-themes-mode');
+        var snapTab = document.querySelector('.recap-snap-tab[data-snap-tab="snapshots"]');
+        if (snapTab) {
+          document.querySelectorAll('.recap-snap-tab').forEach(function(t){t.classList.remove('active');});
+          snapTab.classList.add('active');
+        }
+      }
+    }
+  }
+  window._nexosUpdateThemesTab = updateThemesTabVisibility;
+
+  function render() {
+    var wrap = document.getElementById("recapThemesSection");
+    if (!wrap) return;
+    var current = getCurrent();
+    var grid = '<div class="recap-theme-group-label">Choose a theme</div><div class="recap-theme-grid">';
+    THEMES.forEach(function(t){
+      grid += '<div>'
+        + '<div class="recap-theme-swatch'+(t.id===current.id?' active':'')+'" data-theme-id="'+t.id+'">'
+          + '<div class="swatch-top" style="background:'+t.tabbar+'"></div>'
+          + '<div class="swatch-bot" style="background:'+t.content+'"></div>'
+        + '</div>'
+        + '<div class="recap-theme-name">'+t.name+'</div>'
+      + '</div>';
+    });
+    grid += '</div>';
+    wrap.innerHTML = grid;
+    wrap.querySelectorAll('.recap-theme-swatch').forEach(function(el){
+      el.addEventListener('click', function(){
+        var id = el.getAttribute('data-theme-id');
+        var t = THEMES.find(function(x){return x.id===id;});
+        if (t) setCurrent(t);
+      });
+    });
+  }
+
+  function bindTabs() {
+    var content = document.querySelector('.recap-snapshot-content');
+    if (!content) return;
+    var tabs = content.querySelectorAll('.recap-snap-tab');
+    tabs.forEach(function(tab){
+      tab.addEventListener('click', function(){
+        tabs.forEach(function(t){t.classList.remove('active');});
+        tab.classList.add('active');
+        var which = tab.getAttribute('data-snap-tab');
+        if (which === 'themes') {
+          content.classList.add('recap-themes-mode');
+          render();
+        } else {
+          content.classList.remove('recap-themes-mode');
+        }
+      });
+    });
+  }
+
+  function init(){ bindTabs(); render(); updateThemesTabVisibility(); }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') init();
+  else window.addEventListener('DOMContentLoaded', init);
+})();
+</script>
 </body>
 </html>
-
