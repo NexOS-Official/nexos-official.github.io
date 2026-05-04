@@ -16597,7 +16597,13 @@ body.vtab-resizing #vtabSidebar {
   window._nexosSetSmartTheme = function(on){
     try { localStorage.setItem(SMART_KEY, on?"true":"false"); } catch(e){}
     if (!on){ SMART_ACTIVE=false; SMART_LAST_KEY=null; syncThemeApplied(); }
-    else { setTimeout(scan, 50); }
+    else {
+      SMART_LAST_KEY = null;
+      scan();
+      setTimeout(scan, 50);
+      setTimeout(scan, 350);
+      setTimeout(scan, 1200);
+    }
   };
   window._nexosGetSmartTheme = smartOn;
 
@@ -16619,6 +16625,25 @@ body.vtab-resizing #vtabSidebar {
       tabbar: tabbar, chrome: chrome, content: content, accent: tabbar,
       addressbar: addressbar, addressbarFocus: "#ffffff", star: star
     };
+  }
+  function buildThemeFromUrlHint(url){
+    var u = String(url || '').toLowerCase();
+    if (!u) return null;
+    if (u.indexOf('windows-11-bloom') >= 0 || u.indexOf('bloom') >= 0) return buildThemeFromRgb([65, 74, 132]);
+    if (u.indexOf('forest') >= 0 || u.indexOf('leaf') >= 0 || u.indexOf('green') >= 0) return buildThemeFromRgb([54, 116, 82]);
+    if (u.indexOf('ocean') >= 0 || u.indexOf('sea') >= 0 || u.indexOf('water') >= 0) return buildThemeFromRgb([42, 111, 143]);
+    if (u.indexOf('sunset') >= 0 || u.indexOf('orange') >= 0 || u.indexOf('desert') >= 0) return buildThemeFromRgb([194, 104, 64]);
+    var h = 0;
+    for (var i=0; i<u.length; i++) h = ((h << 5) - h + u.charCodeAt(i)) | 0;
+    var palette = [[65,74,132],[42,111,143],[83,112,72],[142,87,105],[126,101,73],[89,95,108]];
+    return buildThemeFromRgb(palette[Math.abs(h) % palette.length]);
+  }
+  function applySmartTheme(rgb, url){
+    var t = Array.isArray(rgb) ? buildThemeFromRgb(rgb) : buildThemeFromUrlHint(url);
+    if (!t) return;
+    SMART_ACTIVE = true;
+    applyTheme(t);
+    try { render(); } catch(e){}
   }
 
   // The script that gets injected into welcomer.html. It samples the visible
@@ -16651,8 +16676,8 @@ body.vtab-resizing #vtabSidebar {
 "    if (new URL(url, location.href).origin !== location.origin) img.crossOrigin='anonymous';\n" +
 "    img.onload = function(){\n" +
 "      var w=80,h=80, c=document.createElement('canvas'); c.width=w; c.height=h;\n" +
-"      var ctx=c.getContext('2d'); try{ ctx.drawImage(img,0,0,w,h); }catch(e){return;}\n" +
-"      var data; try{ data=ctx.getImageData(0,0,w,h).data; }catch(e){return;}\n" +
+"      var ctx=c.getContext('2d'); try{ ctx.drawImage(img,0,0,w,h); }catch(e){ parent.postMessage({type:'nexos-smart-wallpaper-url', url:url}, '*'); return;}\n" +
+"      var data; try{ data=ctx.getImageData(0,0,w,h).data; }catch(e){ parent.postMessage({type:'nexos-smart-wallpaper-url', url:url}, '*'); return;}\n" +
 "      var b={};\n" +
 "      for (var i=0;i<data.length;i+=4){\n" +
 "        var r=data[i],g=data[i+1],bl=data[i+2],a=data[i+3];\n" +
@@ -16666,12 +16691,12 @@ body.vtab-resizing #vtabSidebar {
 "        e[0]+=r; e[1]+=g; e[2]+=bl; e[3]+=1;\n" +
 "      }\n" +
 "      var bk=null,bn=0; for (var kk in b){ if (b[kk][3]>bn){bn=b[kk][3]; bk=kk;} }\n" +
-"      if (bk===null) return;\n" +
+"      if (bk===null) { parent.postMessage({type:'nexos-smart-wallpaper-url', url:url}, '*'); return; }\n" +
 "      var be=b[bk];\n" +
 "      var rgb=[Math.round(be[0]/be[3]),Math.round(be[1]/be[3]),Math.round(be[2]/be[3])];\n" +
 "      parent.postMessage({type:'nexos-smart-rgb', rgb:rgb, url:url}, '*');\n" +
 "    };\n" +
-"    img.onerror=function(){};\n" +
+"    img.onerror=function(){ parent.postMessage({type:'nexos-smart-wallpaper-url', url:url}, '*'); };\n" +
 "    img.src = url;\n" +
 "  }\n" +
 "  function tick(){ sample(findWallpaperUrl()); }\n" +
@@ -16696,6 +16721,26 @@ body.vtab-resizing #vtabSidebar {
       s.textContent = buildSamplerSource();
       (doc.head || doc.documentElement).appendChild(s);
     } catch(e){ /* cross-origin — can't inject; nothing else we can do */ }
+  }
+
+  function getWallpaperUrlFromFrame(frame){
+    try {
+      var doc = frame.contentDocument;
+      if (!doc) return null;
+      var sels = ['[data-wallpaper]','#wallpaper','.wallpaper','#background','.background','#bg','.bg'];
+      for (var i=0;i<sels.length;i++){
+        var el = doc.querySelector(sels[i]);
+        if (!el) continue;
+        if (el.tagName === 'IMG' && el.src) return el.src;
+        var bg = frame.contentWindow.getComputedStyle(el).backgroundImage;
+        var m = bg && bg.match(/url\(["']?([^"')]+)["']?\)/);
+        if (m) return m[1];
+      }
+      var bodyBg = frame.contentWindow.getComputedStyle(doc.body).backgroundImage;
+      var bm = bodyBg && bodyBg.match(/url\(["']?([^"')]+)["']?\)/);
+      if (bm) return bm[1];
+    } catch(e){}
+    return null;
   }
 
   function isWelcomerFrame(f){
@@ -16730,6 +16775,14 @@ body.vtab-resizing #vtabSidebar {
       if (!isVisibleFrame(f)) continue;
       anyActiveWelcomer = true;
       injectInto(f);
+      (function(url){
+        if (!url) return;
+        setTimeout(function(){
+          if (!smartOn() || SMART_ACTIVE) return;
+          SMART_LAST_KEY = 'fallback|' + url;
+          applySmartTheme(null, url);
+        }, 250);
+      })(getWallpaperUrlFromFrame(f));
     }
     if (!anyActiveWelcomer && SMART_ACTIVE){
       // left welcomer — restore manual theme
@@ -16754,11 +16807,13 @@ body.vtab-resizing #vtabSidebar {
       var key = d.rgb.join(',') + '|' + (d.url||'');
       if (key === SMART_LAST_KEY) return;
       SMART_LAST_KEY = key;
-      var t = buildThemeFromRgb(d.rgb);
-      if (!t) return;
-      SMART_ACTIVE = true;
-      applyTheme(t);
-      try { render(); } catch(e){}
+      applySmartTheme(d.rgb, d.url);
+    } else if (d.type === 'nexos-smart-wallpaper-url' && d.url){
+      if (!smartOn()) return;
+      var urlKey = 'url|' + d.url;
+      if (urlKey === SMART_LAST_KEY) return;
+      SMART_LAST_KEY = urlKey;
+      applySmartTheme(null, d.url);
     } else if (d.type === 'nexos-smart-theme' && typeof d.on === 'boolean'){
       window._nexosSetSmartTheme(d.on);
       window._nexosWriteFlag('smart_themes', d.on);
