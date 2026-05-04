@@ -135,6 +135,12 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+:root {
+  --nexos-tabbar: #dce9ff;
+  --nexos-chrome: #e3e3e3;
+  --nexos-content: #ffffff;
+  --nexos-accent: #dce9ff;
+}
 .browser-container {
   height: 100vh;
   display: flex;
@@ -142,15 +148,15 @@ body {
   background:
     linear-gradient(
       to bottom,
-      #e3e3e3 0px,
-      #e3e3e3 43px,
-      #ffffff 43px,
-      #ffffff 100%);
+      var(--nexos-chrome) 0px,
+      var(--nexos-chrome) 43px,
+      var(--nexos-content) 43px,
+      var(--nexos-content) 100%);
   overflow: hidden;
   gap: 0;
 }
 .tab-bar {
-  background: #dce9ff;
+  background: var(--nexos-tabbar);
   display: flex;
   align-items: flex-end;
   padding: 0;
@@ -1260,8 +1266,6 @@ body {
   width: 100%;
   height: 100%;
   border: none;
-  touch-action: pan-x pan-y;
-  overscroll-behavior: contain;
   visibility: hidden;
   pointer-events: none;
 }
@@ -1599,8 +1603,6 @@ body {
   border: none;
   background: #ffffff;
   border-radius: 8px;
-  touch-action: pan-x pan-y;
-  overscroll-behavior: contain;
 }
 .battery-notification {
   position: fixed;
@@ -1745,7 +1747,7 @@ body.reduce-motion *::after {
   align-items: center;
   gap: 4px;
   color: #000;
-  background-color: #dce9ff;
+  background-color: var(--nexos-accent);
   border-radius: 10px;
   padding: 5px;
 }
@@ -5242,6 +5244,65 @@ body.reduce-motion *::after {
     sans-serif;
   color: #5f6368;
 }
+.recap-snap-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 14px 0;
+}
+.recap-snap-tab {
+  flex: 1;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #5f6368;
+  font-family: "Google Sans", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.recap-snap-tab.active {
+  background: rgba(0,0,0,0.06);
+  color: #202124;
+}
+.recap-themes-section { display: none; flex-direction: column; flex: 1; padding: 12px 14px; overflow-y: auto; gap: 14px; }
+.recap-themes-section::-webkit-scrollbar { display: none; }
+.recap-themes-mode .recap-themes-section { display: flex; }
+.recap-themes-mode .recap-snapshot-save-bar,
+.recap-themes-mode .recap-snapshot-list,
+.recap-themes-mode .recap-snapshot-autosave { display: none; }
+.recap-theme-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.recap-theme-swatch {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  overflow: hidden;
+  transition: transform 0.15s, border-color 0.15s;
+  display: flex;
+  flex-direction: column;
+}
+.recap-theme-swatch:hover { transform: translateY(-1px); }
+.recap-theme-swatch.active { border-color: #202124; }
+.recap-theme-swatch .swatch-top { flex: 0 0 35%; }
+.recap-theme-swatch .swatch-bot { flex: 1; }
+.recap-theme-name {
+  font-size: 11px;
+  color: #5f6368;
+  text-align: center;
+  margin-top: 4px;
+  font-family: "Google Sans", sans-serif;
+}
+.recap-theme-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5f6368;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: "Google Sans", sans-serif;
+}
 </style>
 </head>
 <body>
@@ -5256,10 +5317,26 @@ body.reduce-motion *::after {
                 <div class="updates-overlay" id="updatesOverlayPanel">
                     <h3>updates ∙ 📣</h3>
                     <ul>
-                        <li>ADDED VERTICAL TABS SETTING (alt+shift+v)</li>
-                        <li>I think some things load faster</li>
-                        <li>Bug fixes</li>
-                        <li>Fixed split tabs</li>
+                        <li>HIT 1000 MEMBERS!!! 🥳</li>
+                        <li>Added new chat features....</li>
+                        <li>Group Chats</li>
+                        <li>Message Deletion</li>
+                        <li>Mentioning/Pinging</li>
+                        <li>Honorable UI bug fixes</li>
+                        <li>Pinging sound on/off button</li>
+                        <li>Public chat resets later... I think..</li>
+                        <li>Coming soon [below]:</li>
+                        <li>Replying</li>
+                        <li>Formatting</li>
+                        <li>Possibly Forwarding</li>
+                        <li>Profile cards</li>
+                        <li>Calling in DMS // Group Chats</li>
+                        <li>Group Chat deleting</li>
+                        <li>IN nexOS announcements for chats, calls, and mentions</li>
+                        <li>Channels inside of public server</li>
+                        <li>GIFS</li>
+                        <li>Bigger Upload Sizes</li>
+                        <li>[possibly] &&& (you cant know until the 10th)</li>
                     </ul>
                     <button class="updates-back-btn" onclick="document.querySelector('.tab-restore-panel').classList.remove('updates-blur');document.getElementById('updatesOverlayPanel').classList.remove('visible');">Back</button>
                 </div>
@@ -5286,6 +5363,10 @@ body.reduce-motion *::after {
                 <div class="tab-restore-tabs-inner" id="restoreTabsList">
                 </div>
                 <div class="recap-snapshot-content">
+                    <div class="recap-snap-tabs">
+                        <button class="recap-snap-tab active" data-snap-tab="snapshots">Snapshots</button>
+                        <button class="recap-snap-tab" data-snap-tab="themes">Themes</button>
+                    </div>
                     <div class="recap-snapshot-save-bar">
                         <input class="recap-snapshot-save-input" id="recapSnapshotNameInput" type="text" placeholder="Snapshot name...">
                         <button class="recap-snapshot-save-btn" id="recapSnapshotSaveBtn">Save</button>
@@ -5294,6 +5375,7 @@ body.reduce-motion *::after {
                     <div class="recap-snapshot-autosave">
                         <button class="recap-snap-action-btn" id="recapSnapshotLoadLastBtn" title="Load last auto-save"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg></button>
                     </div>
+                    <div class="recap-themes-section" id="recapThemesSection"></div>
                 </div>
             </div>
         </div>
@@ -5771,343 +5853,54 @@ body.reduce-motion *::after {
     this.initializeLoadingAnimation();
     this._startTabAutoSave();
     lucide.createIcons();
-    const NEXOS_VIEWPORT_CONTENT = "width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover";
-    const lockTopViewport = () => {
-      const vp = document.querySelector('meta[name="viewport"]');
-      if (vp && vp.getAttribute("content") !== NEXOS_VIEWPORT_CONTENT) {
-        vp.setAttribute("content", NEXOS_VIEWPORT_CONTENT);
-      }
-    };
-    lockTopViewport();
     document.addEventListener("wheel", (e) => {
-      if (e.ctrlKey || e.metaKey) e.preventDefault();
-    }, { passive: false, capture: true });
-    document.addEventListener("mousewheel", (e) => {
-      if (e.ctrlKey || e.metaKey) e.preventDefault();
-    }, { passive: false, capture: true });
-    const isZoomKey = (e) => (
-      e.key === "+" || e.key === "-" || e.key === "=" || e.key === "_" || e.key === "0" ||
-      e.code === "Equal" || e.code === "Minus" || e.code === "Digit0" ||
-      e.code === "NumpadAdd" || e.code === "NumpadSubtract" || e.code === "Numpad0" ||
-      e.keyCode === 107 || e.keyCode === 109 || e.keyCode === 187 || e.keyCode === 189 ||
-      e.keyCode === 96  || e.keyCode === 48
-    );
-    const isMinusKey = (e) => (
-      e.key === "-" || e.key === "_" ||
-      e.code === "Minus" || e.code === "NumpadSubtract" ||
-      e.keyCode === 109 || e.keyCode === 189
-    );
-    const isZeroKey = (e) => (
-      e.key === "0" ||
-      e.code === "Digit0" || e.code === "Numpad0" ||
-      e.keyCode === 48 || e.keyCode === 96
-    );
-    const IFRAME_KEY_ZOOM_STEP = 1.1;
-    const stopShortcut = (e) => {
-      if (e && typeof e.preventDefault === "function") e.preventDefault();
-      if (e && typeof e.stopPropagation === "function") e.stopPropagation();
-      if (e && typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
-    };
-    const handleZoomShortcut = (e) => {
-      if (!isZoomKey(e)) return false;
       if (e.ctrlKey || e.metaKey) {
-        stopShortcut(e);
-        return true;
+        e.preventDefault();
       }
-      if (e.altKey && !e.shiftKey) {
-        stopShortcut(e);
-        if (isZeroKey(e)) {
-          this.resetIframeZoom();
-        } else {
-          this.zoomIframe(isMinusKey(e) ? 1 / IFRAME_KEY_ZOOM_STEP : IFRAME_KEY_ZOOM_STEP);
-        }
-        return true;
-      }
-      return false;
-    };
-    window.__nexosHandleZoomShortcut = handleZoomShortcut;
+    }, { passive: false });
     document.addEventListener("keydown", (e) => {
-      handleZoomShortcut(e);
-    }, { passive: false, capture: true });
+      if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "-" || e.key === "=" || e.key === "0")) {
+        e.preventDefault();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.keyCode === 107 || e.keyCode === 109 || e.keyCode === 96)) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+    let lastTouchDistance = 0;
     document.addEventListener("touchmove", (e) => {
-      if (e.touches.length > 1 && !(e.altKey || window.__nexosAltHeld)) e.preventDefault();
-    }, { passive: false, capture: true });
-    document.addEventListener("gesturestart",  (e) => e.preventDefault(), { passive: false, capture: true });
-    document.addEventListener("gesturechange", (e) => e.preventDefault(), { passive: false, capture: true });
-    document.addEventListener("gestureend",    (e) => e.preventDefault(), { passive: false, capture: true });
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+    document.addEventListener("touchstart", (e) => {
+      lastTouchDistance = 0;
+    }, { passive: false });
+    document.addEventListener("gesturestart", (e) => {
+      e.preventDefault();
+    }, { passive: false });
     let lastTap = 0;
     document.addEventListener("touchend", (e) => {
       const now = Date.now();
-      if (now - lastTap <= 500) e.preventDefault();
-      lastTap = now;
-    }, { passive: false, capture: true });
-
-    const clampIframeZoom = (value, minZoom = 0.25) => Math.max(minZoom, Math.min(3, Number.isFinite(value) ? value : 1));
-    const readIframeZoom = (iframe) => clampIframeZoom(parseFloat(iframe.dataset.nexosPinchZoom || "1"), 1);
-    const readIframeContentZoom = (iframe) => clampIframeZoom(parseFloat(iframe.dataset.nexosContentZoom || iframe.dataset.nexosZoom || "1"));
-    const readIframePan = (iframe) => ({
-      x: parseFloat(iframe.dataset.nexosPanX || "0") || 0,
-      y: parseFloat(iframe.dataset.nexosPanY || "0") || 0
-    });
-    const getIframeBaseRect = (iframe) => {
-      const parent = iframe.parentElement;
-      const parentRect = parent ? parent.getBoundingClientRect() : iframe.getBoundingClientRect();
-      const left = parentRect.left + (iframe.offsetLeft || 0) - (parent ? parent.scrollLeft || 0 : 0);
-      const top = parentRect.top + (iframe.offsetTop || 0) - (parent ? parent.scrollTop || 0 : 0);
-      return {
-        left,
-        top,
-        width: iframe.offsetWidth || parentRect.width || window.innerWidth,
-        height: iframe.offsetHeight || parentRect.height || window.innerHeight
-      };
-    };
-    const clampIframePan = (iframe, zoomLevel, pan) => {
-      const rect = getIframeBaseRect(iframe);
-      if (zoomLevel <= 1) return { x: 0, y: 0 };
-      const minX = rect.width - rect.width * zoomLevel;
-      const minY = rect.height - rect.height * zoomLevel;
-      return {
-        x: Math.min(0, Math.max(minX, pan.x)),
-        y: Math.min(0, Math.max(minY, pan.y))
-      };
-    };
-    const syncIframeZoomDisplay = (iframe) => {
-      const tabId = iframe.dataset.tabId;
-      if (tabId && this.tabs && this.tabs.has(tabId)) {
-        this.tabs.get(tabId).zoomLevel = readIframeZoom(iframe) * readIframeContentZoom(iframe);
-        this.updateZoomDisplay();
-      }
-    };
-    const applyIframeContentZoom = (iframe, zoomLevel) => {
-      if (!iframe) return false;
-      const nextZoom = clampIframeZoom(zoomLevel);
-      iframe.dataset.nexosContentZoom = String(nextZoom);
-      iframe.style.width = nextZoom === 1 ? "100%" : `${100 / nextZoom}%`;
-      iframe.style.height = nextZoom === 1 ? "100%" : `${100 / nextZoom}%`;
-      iframe.style.zoom = nextZoom === 1 ? "" : String(nextZoom);
-      iframe.style.transformOrigin = "top left";
-      try {
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        if (doc && doc.documentElement) doc.documentElement.style.zoom = "";
-        if (doc && doc.body) doc.body.style.zoom = "";
-      } catch (e) {
-      }
-      syncIframeZoomDisplay(iframe);
-      return true;
-    };
-    const applyIframeVisualTransform = (iframe, zoomLevel, pan) => {
-      const contentZoom = readIframeContentZoom(iframe);
-      iframe.dataset.nexosPinchZoom = String(zoomLevel);
-      iframe.dataset.nexosPanX = String(pan.x);
-      iframe.dataset.nexosPanY = String(pan.y);
-      iframe.style.transition = "none";
-      iframe.style.transform = `matrix(${zoomLevel}, 0, 0, ${zoomLevel}, ${pan.x}, ${pan.y})`;
-      iframe.style.transformOrigin = "top left";
-      iframe.style.width = contentZoom === 1 ? "100%" : `${100 / contentZoom}%`;
-      iframe.style.height = contentZoom === 1 ? "100%" : `${100 / contentZoom}%`;
-      iframe.style.zoom = contentZoom === 1 ? "" : String(contentZoom);
-      syncIframeZoomDisplay(iframe);
-    };
-    const applyIframePan = (iframe, deltaX, deltaY) => {
-      const zoomLevel = readIframeZoom(iframe);
-      const pan = readIframePan(iframe);
-      applyIframeVisualTransform(iframe, zoomLevel, clampIframePan(iframe, zoomLevel, { x: pan.x + deltaX, y: pan.y + deltaY }));
-    };
-    const applyIframePinchZoom = (iframe, zoomLevel, focalPoint = null, options = {}) => {
-      if (!iframe) return;
-      const oldZoom = readIframeZoom(iframe);
-      const nextZoom = clampIframeZoom(zoomLevel, options.minZoom ?? 0.25);
-      const rect = getIframeBaseRect(iframe);
-      let pan = readIframePan(iframe);
-      if (focalPoint) {
-        const focusX = focalPoint.clientX - rect.left;
-        const focusY = focalPoint.clientY - rect.top;
-        const contentX = (focusX - pan.x) / oldZoom;
-        const contentY = (focusY - pan.y) / oldZoom;
-        pan = { x: focusX - contentX * nextZoom, y: focusY - contentY * nextZoom };
-      }
-      applyIframeVisualTransform(iframe, nextZoom, clampIframePan(iframe, nextZoom, pan));
-    };
-    const wireIframeDocumentPinch = (doc, rootIframe) => {
-      if (!doc || doc.__nexosPinchZoomWired) return;
-      doc.__nexosPinchZoomWired = true;
-      const win = doc.defaultView || rootIframe.contentWindow;
-      const html = doc.documentElement;
-      if (html) html.style.touchAction = "pan-x pan-y";
-      if (doc.body) doc.body.style.touchAction = "pan-x pan-y";
-      const state = { active: false, panning: false, startDistance: 0, startZoom: 1, lastPanPoint: null };
-      const distance = (touches) => {
-        const dx = touches[0].clientX - touches[1].clientX;
-        const dy = touches[0].clientY - touches[1].clientY;
-        return Math.hypot(dx, dy) || 1;
-      };
-      const pointFromDocClient = (clientX, clientY) => {
-        const zoomLevel = readIframeZoom(rootIframe);
-        const pan = readIframePan(rootIframe);
-        const rect = getIframeBaseRect(rootIframe);
-        return {
-          clientX: rect.left + pan.x + clientX * zoomLevel,
-          clientY: rect.top + pan.y + clientY * zoomLevel
-        };
-      };
-      const centerFromTouches = (touches) => pointFromDocClient(
-        (touches[0].clientX + touches[1].clientX) / 2,
-        (touches[0].clientY + touches[1].clientY) / 2
-      );
-      const stopPageZoom = (e) => {
+      if (now - lastTap <= 500) {
         e.preventDefault();
-        e.stopPropagation();
-        if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
-      };
-      const onTouchStart = (e) => {
-        if (!e.touches || !e.touches.length) return;
-        const altSwipe = !!(e.altKey || window.__nexosAltHeld);
-        if (altSwipe && e.touches.length > 1) {
-          e.preventDefault();
-          state.active = false;
-          state.panning = false;
-          return;
-        }
-        if (e.touches.length > 1) {
-          state.active = true;
-          state.panning = false;
-          state.startDistance = distance(e.touches);
-          state.startZoom = readIframeZoom(rootIframe);
-          stopPageZoom(e);
-          return;
-        }
-        if (!altSwipe && readIframeZoom(rootIframe) > 1) {
-          state.panning = true;
-          state.lastPanPoint = pointFromDocClient(e.touches[0].clientX, e.touches[0].clientY);
-        }
-      };
-      const onTouchMove = (e) => {
-        const altSwipe = !!(e.altKey || window.__nexosAltHeld);
-        if (altSwipe && e.touches && e.touches.length > 1) {
-          e.preventDefault();
-          state.active = false;
-          state.panning = false;
-          return;
-        }
-        if (state.active && e.touches && e.touches.length > 1) {
-          stopPageZoom(e);
-          applyIframePinchZoom(rootIframe, state.startZoom * (distance(e.touches) / state.startDistance), centerFromTouches(e.touches), { minZoom: 1 });
-          return;
-        }
-        if (!altSwipe && state.panning && e.touches && e.touches.length === 1 && readIframeZoom(rootIframe) > 1) {
-          const point = pointFromDocClient(e.touches[0].clientX, e.touches[0].clientY);
-          stopPageZoom(e);
-          if (state.lastPanPoint) applyIframePan(rootIframe, point.clientX - state.lastPanPoint.clientX, point.clientY - state.lastPanPoint.clientY);
-          state.lastPanPoint = point;
-        }
-      };
-      const onTouchEnd = (e) => {
-        if (!e.touches || e.touches.length < 2) state.active = false;
-        if (!e.touches || e.touches.length === 0) {
-          state.panning = false;
-          state.lastPanPoint = null;
-        }
-      };
-      const onGestureStart = (e) => {
-        if (e.altKey || window.__nexosAltHeld) {
-          e.preventDefault();
-          state.active = false;
-          return;
-        }
-        state.active = true;
-        state.startZoom = readIframeZoom(rootIframe);
-        stopPageZoom(e);
-      };
-      const onGestureChange = (e) => {
-        if (e.altKey || window.__nexosAltHeld) {
-          e.preventDefault();
-          state.active = false;
-          return;
-        }
-        if (!state.active) return;
-        stopPageZoom(e);
-        applyIframePinchZoom(rootIframe, state.startZoom * (e.scale || 1), pointFromDocClient(e.clientX || 0, e.clientY || 0), { minZoom: 1 });
-      };
-      const onWheel = (e) => {
-        const currentZoom = readIframeZoom(rootIframe);
-        const altSwipe = !!(e.altKey || window.__nexosAltHeld);
-        if (altSwipe) {
-          if (e.ctrlKey || e.metaKey) e.preventDefault();
-          return;
-        }
-        if (e.ctrlKey || e.metaKey) {
-          stopPageZoom(e);
-          const dy = Math.max(-40, Math.min(40, e.deltaY));
-          const factor = Math.exp(-dy * 0.0065);
-          applyIframePinchZoom(rootIframe, currentZoom * factor, pointFromDocClient(e.clientX || 0, e.clientY || 0), { minZoom: 1 });
-          return;
-        }
-        if (currentZoom > 1) {
-          stopPageZoom(e);
-          applyIframePan(rootIframe, -e.deltaX, -e.deltaY);
-        }
-      };
-      const onIframeKeyDown = (e) => {
-        if (!isZoomKey(e)) return;
-        if (e.ctrlKey || e.metaKey) {
-          e.preventDefault();
-          e.stopPropagation();
-          if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
-          return;
-        }
-        handleZoomShortcut(e);
-      };
-      doc.addEventListener("keydown", onIframeKeyDown, { capture: true });
-      applyIframeContentZoom(rootIframe, readIframeContentZoom(rootIframe));
-      doc.addEventListener("touchstart", onTouchStart, { passive: false, capture: true });
-      doc.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
-      doc.addEventListener("touchend", onTouchEnd, { passive: false, capture: true });
-      doc.addEventListener("touchcancel", onTouchEnd, { passive: false, capture: true });
-      doc.addEventListener("gesturestart", onGestureStart, { passive: false, capture: true });
-      doc.addEventListener("gesturechange", onGestureChange, { passive: false, capture: true });
-      doc.addEventListener("gestureend", onTouchEnd, { passive: false, capture: true });
-      doc.addEventListener("wheel", onWheel, { passive: false, capture: true });
-      const wireNestedIframes = () => {
-        doc.querySelectorAll("iframe").forEach((nested) => wireIframePinchZoom(nested, rootIframe));
-      };
-      wireNestedIframes();
-      try {
-        new win.MutationObserver(wireNestedIframes).observe(doc.documentElement || doc.body, { childList: true, subtree: true });
-      } catch (e) {
       }
-    };
-    const wireIframePinchZoom = (iframe, rootIframe = iframe) => {
-      if (!iframe) return;
-      iframe.style.touchAction = "pan-x pan-y";
-      iframe.style.overscrollBehavior = "contain";
-      if (!iframe.dataset.nexosPinchListener) {
-        iframe.dataset.nexosPinchListener = "1";
-        iframe.addEventListener("load", () => setTimeout(() => wireIframePinchZoom(iframe, rootIframe), 0));
+      lastTap = now;
+    }, { passive: false });
+    document.addEventListener("pointerdown", () => {
+    }, { passive: false });
+    document.addEventListener("pointermove", (e) => {
+      if (e.pointerType === "touch" && e.isPrimary === false) {
+        e.preventDefault();
       }
-      try {
-        const doc = iframe.contentDocument || iframe.contentWindow.document;
-        wireIframeDocumentPinch(doc, rootIframe);
-      } catch (e) {
+    }, { passive: false });
+    document.addEventListener("mousewheel", (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
       }
-    };
-    const wireAllIframePinchZoom = () => document.querySelectorAll("iframe").forEach((iframe) => wireIframePinchZoom(iframe));
-    wireAllIframePinchZoom();
-    new MutationObserver(wireAllIframePinchZoom).observe(document.body, { childList: true, subtree: true });
-    if (window.visualViewport) {
-      const resetLeakedZoom = () => {
-        lockTopViewport();
-        if (window.visualViewport.scale !== 1) {
-          const vp = document.querySelector('meta[name="viewport"]');
-          if (vp) {
-            vp.setAttribute("content", NEXOS_VIEWPORT_CONTENT + ", maximum-scale=1.0001");
-            requestAnimationFrame(() => vp.setAttribute("content", NEXOS_VIEWPORT_CONTENT));
-          }
-          window.scrollTo(0, 0);
-        }
-      };
-      window.visualViewport.addEventListener("resize", resetLeakedZoom);
-      window.visualViewport.addEventListener("scroll", resetLeakedZoom);
-    }
+    }, { passive: false });
+    document.addEventListener("zoom", (e) => {
+      e.preventDefault();
+    }, { passive: false });
   }
   initializeLoadingAnimation() {
     const overlay = document.getElementById("loadingOverlay");
@@ -6273,8 +6066,8 @@ body.reduce-motion *::after {
     document.getElementById("aiChatMinimizeBtn").addEventListener("click", () => {
       this.toggleAiSidebar(false);
     });
-    this.zoomInBtn.addEventListener("click", () => this.zoomIframe(1.1));
-    this.zoomOutBtn.addEventListener("click", () => this.zoomIframe(1 / 1.1));
+    this.zoomInBtn.addEventListener("click", () => this.zoomIframe(0.1));
+    this.zoomOutBtn.addEventListener("click", () => this.zoomIframe(-0.1));
     this.menuBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const rect = this.menuBtn.getBoundingClientRect();
@@ -6344,14 +6137,11 @@ body.reduce-motion *::after {
       this._allowTopNavigation = true;
       window.location.href = "https://google.com";
     });
-    this.zoomLevelDisplay.addEventListener("click", () => {
-      this.resetIframeZoom();
-    });
     this.zoomOutMenuBtn.addEventListener("click", () => {
-      this.zoomIframe(1 / 1.1);
+      this.zoomIframe(-0.1);
     });
     this.zoomInMenuBtn.addEventListener("click", () => {
-      this.zoomIframe(1.1);
+      this.zoomIframe(0.1);
     });
     this.fullscreenMenuBtn.addEventListener("click", () => {
       if (!document.fullscreenElement) {
@@ -8258,81 +8048,26 @@ body.reduce-motion *::after {
     }
     lucide.createIcons();
   }
-  _getContentZoomLevel(iframe) {
-    const value = parseFloat(iframe?.dataset?.nexosContentZoom || iframe?.dataset?.nexosZoom || "1");
-    return Math.max(0.25, Math.min(3, Number.isFinite(value) ? value : 1));
-  }
-  _getVisualZoomLevel(iframe) {
-    const value = parseFloat(iframe?.dataset?.nexosPinchZoom || "1");
-    return Math.max(1, Math.min(3, Number.isFinite(value) ? value : 1));
-  }
-  _applyIframeContentZoom(iframe, zoomLevel) {
-    if (!iframe) return 1;
-    const nextZoom = Math.max(0.25, Math.min(3, Number.isFinite(zoomLevel) ? zoomLevel : 1));
-    iframe.dataset.nexosContentZoom = String(nextZoom);
-    iframe.dataset.nexosZoom = String(nextZoom);
-    iframe.style.width = nextZoom === 1 ? "100%" : `${100 / nextZoom}%`;
-    iframe.style.height = nextZoom === 1 ? "100%" : `${100 / nextZoom}%`;
-    iframe.style.zoom = nextZoom === 1 ? "" : String(nextZoom);
-    iframe.style.transformOrigin = "top left";
-    try {
-      const doc = iframe.contentDocument || iframe.contentWindow.document;
-      if (doc && doc.documentElement) doc.documentElement.style.zoom = "";
-      if (doc && doc.body) doc.body.style.zoom = "";
-    } catch (e) {
-    }
-    return nextZoom;
-  }
-  _syncTabZoomLevel(tab) {
-    if (!tab || !tab.iframe) return;
-    tab.zoomLevel = this._getVisualZoomLevel(tab.iframe) * this._getContentZoomLevel(tab.iframe);
-  }
-  zoomIframe(factor) {
+  zoomIframe(delta) {
     const currentTab = this.tabs.get(this.activeTabId);
     if (!currentTab || !currentTab.iframe) return;
     if (this._splitTabs && (this._splitTabs.has(this.activeTabId) || Array.from(this._splitTabs.values()).some((sd) => sd.leftTabId === this.activeTabId || sd.rightTabId === this.activeTabId))) {
       return;
     }
-    const iframe = currentTab.iframe;
-    const levels = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3];
-    const current = this._getContentZoomLevel(iframe);
-    let nextContentZoom = 1;
-    if (factor > 1) {
-      nextContentZoom = levels.find((level) => level > current + 0.001) || levels[levels.length - 1];
-    } else if (factor < 1) {
-      nextContentZoom = [...levels].reverse().find((level) => level < current - 0.001) || levels[0];
+    if (currentTab.zoomLevel === void 0) {
+      currentTab.zoomLevel = 1;
     }
-    this._applyIframeContentZoom(iframe, nextContentZoom);
-    this._syncTabZoomLevel(currentTab);
-    this.updateZoomDisplay();
-  }
-  resetIframeZoom() {
-    const currentTab = this.tabs.get(this.activeTabId);
-    if (!currentTab || !currentTab.iframe) return;
-    currentTab.zoomLevel = 1;
-    currentTab.iframe.dataset.nexosPinchZoom = "1";
-    currentTab.iframe.dataset.nexosContentZoom = "1";
-    currentTab.iframe.dataset.nexosZoom = "1";
-    currentTab.iframe.dataset.nexosPanX = "0";
-    currentTab.iframe.dataset.nexosPanY = "0";
-    currentTab.iframe.style.transition = "none";
-    currentTab.iframe.style.transform = "matrix(1, 0, 0, 1, 0, 0)";
+    currentTab.zoomLevel = Math.max(0.25, Math.min(3, currentTab.zoomLevel + delta));
+    currentTab.iframe.style.transform = `scale(${currentTab.zoomLevel})`;
     currentTab.iframe.style.transformOrigin = "top left";
-    currentTab.iframe.style.zoom = "";
-    currentTab.iframe.style.width = "100%";
-    currentTab.iframe.style.height = "100%";
-    try {
-      const doc = currentTab.iframe.contentDocument || currentTab.iframe.contentWindow.document;
-      if (doc.documentElement) doc.documentElement.style.zoom = "";
-      if (doc.body) doc.body.style.zoom = "";
-    } catch (e) {
-    }
+    const scale = currentTab.zoomLevel;
+    currentTab.iframe.style.width = `${100 / scale}%`;
+    currentTab.iframe.style.height = `${100 / scale}%`;
     this.updateZoomDisplay();
   }
   updateZoomDisplay() {
     const currentTab = this.tabs.get(this.activeTabId);
     if (!currentTab) return;
-    if (currentTab.iframe) this._syncTabZoomLevel(currentTab);
     const zoomLevel = (currentTab.zoomLevel || 1) * 100;
     const displayElement = document.getElementById("zoomLevelDisplay");
     if (displayElement) {
@@ -8782,7 +8517,6 @@ body.reduce-motion *::after {
 }
 const browser = new Browser();
 window.browser = browser;
-window.__nexosApp = browser;
 if (browser._pendingRestore && browser._pendingRestore.length > 0) {
   setTimeout(function() {
     browser.showRestorePanel();
@@ -13322,10 +13056,7 @@ loadTopRightProfilePfp();
                   shiftKey: e.shiftKey,
                   metaKey: e.metaKey
                 }, "*");
-                var k = String(e.key || "").toLowerCase();
-                var c = String(e.code || "");
-                var isZoomKey = k === "+" || k === "=" || k === "-" || k === "_" || k === "0" || c === "Equal" || c === "Minus" || c === "Digit0" || c === "NumpadAdd" || c === "NumpadSubtract" || c === "Numpad0";
-                if (e.altKey && !(e.shiftKey && isZoomKey)) e.preventDefault();
+                if (e.altKey) e.preventDefault();
               } catch (x) {
               }
             }
@@ -13636,9 +13367,6 @@ loadTopRightProfilePfp();
       if (!activeTab || !targetTab) return;
       if (activeTab.zoomLevel && activeTab.zoomLevel !== 1) {
         activeTab.zoomLevel = 1;
-        activeTab.iframe.dataset.nexosPinchZoom = "1";
-        activeTab.iframe.dataset.nexosPanX = "0";
-        activeTab.iframe.dataset.nexosPanY = "0";
         activeTab.iframe.style.transform = "";
         activeTab.iframe.style.transformOrigin = "";
         activeTab.iframe.style.width = "";
@@ -13646,9 +13374,6 @@ loadTopRightProfilePfp();
       }
       if (targetTab.zoomLevel && targetTab.zoomLevel !== 1) {
         targetTab.zoomLevel = 1;
-        targetTab.iframe.dataset.nexosPinchZoom = "1";
-        targetTab.iframe.dataset.nexosPanX = "0";
-        targetTab.iframe.dataset.nexosPanY = "0";
         targetTab.iframe.style.transform = "";
         targetTab.iframe.style.transformOrigin = "";
         targetTab.iframe.style.width = "";
@@ -14927,16 +14652,13 @@ loadTopRightProfilePfp();
   }
   var altHeld = false;
   document.addEventListener("keydown", function(e) {
-    if (e.altKey || e.key === "Alt") altHeld = true;
-    window.__nexosAltHeld = altHeld;
+    if (e.key === "Alt") altHeld = true;
   });
   document.addEventListener("keyup", function(e) {
     if (e.key === "Alt") altHeld = false;
-    window.__nexosAltHeld = altHeld;
   });
   window.addEventListener("blur", function() {
     altHeld = false;
-    window.__nexosAltHeld = false;
   });
   var lastTriggerTime = 0;
   function trigger(direction, forceAlt) {
@@ -15007,8 +14729,7 @@ loadTopRightProfilePfp();
     var trackpadAccum = 0;
     var trackpadTimeout = null;
     document.addEventListener("wheel", function(e) {
-      if (!(altHeld || e.altKey) || Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
-      e.preventDefault();
+      if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
       trackpadAccum += e.deltaX;
       if (Math.abs(trackpadAccum) >= GESTURE_CONFIG.wheelThreshold) {
         trigger(trackpadAccum > 0 ? "right" : "left");
@@ -15018,7 +14739,7 @@ loadTopRightProfilePfp();
       trackpadTimeout = setTimeout(function() {
         trackpadAccum = 0;
       }, 150);
-    }, { passive: false });
+    }, { passive: true });
   }
   if (GESTURE_CONFIG.enableTabBarScroll) {
     document.addEventListener("wheel", function(e) {
@@ -15046,12 +14767,10 @@ loadTopRightProfilePfp();
               ifs.lastSwitchX = e.touches[0].clientX;
               ifs.locked = false;
               ifs.dir = null;
-            }, { passive: false });
+            }, { passive: true });
             iframeDoc.addEventListener("touchmove", function(e) {
               if (!e.touches.length) return;
-              var parentAlt = false;
-              try { parentAlt = !!window.parent.__nexosAltHeld; } catch (x) {}
-              if (!e.altKey && !parentAlt) return;
+              if (!e.altKey) return;
               var dx = e.touches[0].clientX - ifs.startX;
               var dy = e.touches[0].clientY - ifs.startY;
               if (!ifs.locked && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
@@ -15061,15 +14780,14 @@ loadTopRightProfilePfp();
               if (ifs.dir !== "h") return;
               var dxSince = e.touches[0].clientX - ifs.lastSwitchX;
               if (Math.abs(dxSince) >= 28) {
-                e.preventDefault();
-                window.parent.postMessage({ type: "nexos-gesture", direction: dxSince > 0 ? "left" : "right", continuous: true, forceAlt: true }, "*");
+                window.parent.postMessage({ type: "nexos-gesture", direction: dxSince > 0 ? "left" : "right", continuous: true }, "*");
                 ifs.lastSwitchX = e.touches[0].clientX;
               }
-            }, { passive: false });
+            }, { passive: true });
             iframeDoc.addEventListener("wheel", function(e) {
               if (e.altKey && Math.abs(e.deltaX) > 28 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
                 e.preventDefault();
-                window.parent.postMessage({ type: "nexos-gesture", direction: e.deltaX > 0 ? "right" : "left", continuous: false, forceAlt: true }, "*");
+                window.parent.postMessage({ type: "nexos-gesture", direction: e.deltaX > 0 ? "right" : "left", continuous: false }, "*");
               }
               if (e.altKey && Math.abs(e.deltaY) > 5 && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
                 e.preventDefault();
@@ -15092,7 +14810,7 @@ loadTopRightProfilePfp();
     var injectIframeGestures = injectIframeGestures2, injectAll = injectAll2;
     window.addEventListener("message", function(e) {
       if (e.data && e.data.type === "nexos-gesture") {
-        trigger(e.data.direction, !!e.data.forceAlt);
+        trigger(e.data.direction);
       }
       if (e.data && e.data.type === "nexos-vtab-gesture") {
         if (!window._verticalTabs || !window._verticalTabs.isActive()) return;
@@ -16632,6 +16350,95 @@ body.vtab-resizing #vtabSidebar {
 })();
 </script>
 
+<script>
+(function(){
+  var THEMES = [
+    { id: "default",    name: "Sky",         tabbar: "#dce9ff", chrome: "#e3e3e3", content: "#ffffff", accent: "#dce9ff" },
+    { id: "mist",       name: "Mist",        tabbar: "#e6ecf2", chrome: "#dde3ea", content: "#ffffff", accent: "#e6ecf2" },
+    { id: "sage",       name: "Sage",        tabbar: "#dde9dd", chrome: "#e2e8e2", content: "#ffffff", accent: "#dde9dd" },
+    { id: "sand",       name: "Sand",        tabbar: "#ece4d4", chrome: "#e8e2d4", content: "#fbf8f1", accent: "#ece4d4" },
+    { id: "linen",      name: "Linen",       tabbar: "#efeae2", chrome: "#e7e2da", content: "#fbf8f3", accent: "#efeae2" },
+    { id: "rose",       name: "Rose",        tabbar: "#f1dde1", chrome: "#ebe2e3", content: "#ffffff", accent: "#f1dde1" },
+    { id: "lavender",   name: "Lavender",    tabbar: "#e3dff0", chrome: "#e4e1ec", content: "#ffffff", accent: "#e3dff0" },
+    { id: "mint",       name: "Mint",        tabbar: "#d6ebe2", chrome: "#dee7e3", content: "#ffffff", accent: "#d6ebe2" },
+    { id: "ocean",      name: "Ocean",       tabbar: "#cfdfe8", chrome: "#dae3e8", content: "#ffffff", accent: "#cfdfe8" },
+    { id: "stone",      name: "Stone",       tabbar: "#dcdcdc", chrome: "#e3e3e3", content: "#ffffff", accent: "#dcdcdc" },
+    { id: "fog",        name: "Fog",         tabbar: "#dde1e4", chrome: "#e1e4e7", content: "#fafbfc", accent: "#dde1e4" },
+    { id: "peach",      name: "Peach",       tabbar: "#f3dfd0", chrome: "#ebe2db", content: "#ffffff", accent: "#f3dfd0" },
+    { id: "butter",     name: "Butter",      tabbar: "#f1ead0", chrome: "#e9e4d3", content: "#fffefa", accent: "#f1ead0" },
+    { id: "slate",      name: "Slate",       tabbar: "#d4d9df", chrome: "#dde1e6", content: "#ffffff", accent: "#d4d9df" },
+    { id: "cocoa",      name: "Cocoa",       tabbar: "#e0d4ca", chrome: "#dfd6cc", content: "#fbf7f3", accent: "#e0d4ca" },
+    { id: "ice",        name: "Ice",         tabbar: "#e4eef5", chrome: "#e2e8ed", content: "#ffffff", accent: "#e4eef5" }
+  ];
+  var KEY = "nexos_theme_v1";
+  function applyTheme(t) {
+    var r = document.documentElement.style;
+    r.setProperty("--nexos-tabbar", t.tabbar);
+    r.setProperty("--nexos-chrome", t.chrome);
+    r.setProperty("--nexos-content", t.content);
+    r.setProperty("--nexos-accent", t.accent);
+  }
+  function getCurrent() {
+    var id = null;
+    try { id = localStorage.getItem(KEY); } catch(e){}
+    return THEMES.find(function(t){return t.id===id;}) || THEMES[0];
+  }
+  function setCurrent(t) {
+    try { localStorage.setItem(KEY, t.id); } catch(e){}
+    applyTheme(t);
+    render();
+  }
+  applyTheme(getCurrent());
+
+  function render() {
+    var wrap = document.getElementById("recapThemesSection");
+    if (!wrap) return;
+    var current = getCurrent();
+    var grid = '<div class="recap-theme-group-label">Choose a theme</div><div class="recap-theme-grid">';
+    THEMES.forEach(function(t){
+      grid += '<div>'
+        + '<div class="recap-theme-swatch'+(t.id===current.id?' active':'')+'" data-theme-id="'+t.id+'">'
+          + '<div class="swatch-top" style="background:'+t.tabbar+'"></div>'
+          + '<div class="swatch-bot" style="background:'+t.content+'"></div>'
+        + '</div>'
+        + '<div class="recap-theme-name">'+t.name+'</div>'
+      + '</div>';
+    });
+    grid += '</div>';
+    wrap.innerHTML = grid;
+    wrap.querySelectorAll('.recap-theme-swatch').forEach(function(el){
+      el.addEventListener('click', function(){
+        var id = el.getAttribute('data-theme-id');
+        var t = THEMES.find(function(x){return x.id===id;});
+        if (t) setCurrent(t);
+      });
+    });
+  }
+
+  function bindTabs() {
+    var content = document.querySelector('.recap-snapshot-content');
+    if (!content) return;
+    var tabs = content.querySelectorAll('.recap-snap-tab');
+    tabs.forEach(function(tab){
+      tab.addEventListener('click', function(){
+        tabs.forEach(function(t){t.classList.remove('active');});
+        tab.classList.add('active');
+        var which = tab.getAttribute('data-snap-tab');
+        if (which === 'themes') {
+          content.classList.add('recap-themes-mode');
+          render();
+        } else {
+          content.classList.remove('recap-themes-mode');
+        }
+      });
+    });
+  }
+
+  function init(){ bindTabs(); render(); }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') init();
+  else window.addEventListener('DOMContentLoaded', init);
+})();
+</script>
 </body>
 </html>
 
