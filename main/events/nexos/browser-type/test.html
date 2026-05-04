@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -294,7 +295,7 @@ body {
   will-change: transform;
 }
 .tab.drag-settling {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 .tab.pinned .tab-close {
@@ -7136,13 +7137,14 @@ body.reduce-motion *::after {
       tab.element.style.transform = "";
     });
     this.reorderTabsInDOM(draggedIndex, newIndex);
-    const targetPos = draggedElement.getBoundingClientRect();
-    const currentLeft = targetPos.left - currentTransform;
-    const finalDelta = currentLeft - targetPos.left + currentTransform;
+    const draggedOrigPos = this.dragState.tabPositions.get(this.dragState.draggedTabId);
+    const newRect = draggedElement.getBoundingClientRect();
+    const visualLeft = (draggedOrigPos ? draggedOrigPos.left : newRect.left) + currentTransform;
+    const finalDelta = visualLeft - newRect.left;
     draggedElement.classList.remove("sliding");
     draggedElement.style.transition = "none";
     draggedElement.style.transform = `translateX(${finalDelta}px)`;
-    draggedElement.offsetHeight;
+    void draggedElement.offsetHeight;
     draggedElement.classList.add("drag-settling");
     draggedElement.style.transition = "";
     draggedElement.style.transform = "translateX(0)";
@@ -14982,7 +14984,7 @@ loadTopRightProfilePfp();
   left: 0;
   width: 240px;
   height: calc(100vh - 48px);
-  background: #ffffff;
+  background: var(--nexos-content, #ffffff);
   border-right: 0px solid #dce1e6;
   z-index: 600;
   display: none;
@@ -14991,7 +14993,8 @@ loadTopRightProfilePfp();
   transition:
     width 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.22s ease;
+    opacity 0.22s ease,
+    background 0.25s ease;
   overflow: hidden;
   will-change: transform, opacity;
 }
@@ -15079,7 +15082,8 @@ body.vtab-active .content-area {
   overflow: hidden;
   margin: 0 6px;
   border-radius: 10px;
-  background: #d3dce6;
+  background: var(--nexos-tabbar, #d3dce6);
+  transition: background 0.25s ease;
 }
 .vtab-list-wrapper .vtab-blur-top,
 .vtab-list-wrapper .vtab-blur-bottom {
@@ -15097,7 +15101,7 @@ body.vtab-active .content-area {
   background:
     linear-gradient(
       to bottom,
-      #d3dce6 0%,
+      var(--nexos-tabbar, #d3dce6) 0%,
       transparent 100%);
 }
 .vtab-list-wrapper .vtab-blur-bottom {
@@ -15105,7 +15109,7 @@ body.vtab-active .content-area {
   background:
     linear-gradient(
       to top,
-      #d3dce6 0%,
+      var(--nexos-tabbar, #d3dce6) 0%,
       transparent 100%);
 }
 .vtab-list-wrapper .vtab-blur-top.visible,
