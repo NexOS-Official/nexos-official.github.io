@@ -139,6 +139,9 @@ body {
   --nexos-chrome: #e3e3e3;
   --nexos-content: #ffffff;
   --nexos-accent: #dce9ff;
+  --nexos-addressbar: #eaf2ff;
+  --nexos-addressbar-focus: #ffffff;
+  --nexos-star: #A3ACFF;
 }
 .browser-container {
   height: 100vh;
@@ -582,7 +585,7 @@ body {
     linear-gradient(
       to right,
       transparent,
-      #eaf2ff);
+      var(--nexos-addressbar));
   border-radius: 0 10px 10px 0;
   pointer-events: none;
   z-index: 1;
@@ -592,7 +595,7 @@ body {
     linear-gradient(
       to right,
       transparent,
-      #ffffff);
+      var(--nexos-addressbar-focus));
 }
 .open-external-btn {
   position: absolute;
@@ -617,7 +620,7 @@ body {
 .address-bar {
   flex: 1;
   height: 32px;
-  background: #eaf2ff;
+  background: var(--nexos-addressbar);
   border: none;
   border-radius: 10px;
   padding: 0 68px 0 16px;
@@ -628,7 +631,7 @@ body {
   font-family: google sans;
 }
 .address-bar:focus {
-  background: #ffffff;
+  background: var(--nexos-addressbar-focus);
 }
 .address-bar::placeholder {
   color: #7c7c7c;
@@ -3309,10 +3312,10 @@ body.reduce-motion *::after {
   background: rgba(0, 0, 0, 0.06);
 }
 .bookmark-star.active {
-  color: #A3ACFF;
+  color: var(--nexos-star);
 }
 .bookmark-star.active svg {
-  fill: #A3ACFF;
+  fill: var(--nexos-star);
 }
 .bookmark-edit-popup {
   position: fixed;
@@ -16100,6 +16103,12 @@ body.vtab-resizing #vtabSidebar {
       name: "Vertical Tabs",
       desc: "Show tabs in a collapsible sidebar on the left instead of the top bar. (Shortcut: Alt+Shift+V)",
       key: "nexos_flag_vertical_tabs"
+    },
+    {
+      id: "themes",
+      name: "Themes",
+      desc: "Enable the Themes panel inside Snapshots to recolor the browser chrome, address bar, bookmark star and more.",
+      key: "nexos_flag_themes"
     }
   ];
   window._nexosFlags = FLAGS;
@@ -16123,6 +16132,10 @@ body.vtab-resizing #vtabSidebar {
       var t = document.getElementById("ccVerticalTabsToggle");
       if (t) setVtabToggleUI(t, on);
     }
+    if (f.id === "themes") {
+      if (typeof window._nexosSyncTheme === "function") window._nexosSyncTheme();
+      if (typeof window._nexosUpdateThemesTab === "function") window._nexosUpdateThemesTab();
+    }
   }
   window._nexosApplyFlag = applyFlag;
   window._nexosReadFlag = function(id) {
@@ -16135,7 +16148,8 @@ body.vtab-resizing #vtabSidebar {
   };
 
   var FLAG_META = {
-    vertical_tabs: { category: "Available" }
+    vertical_tabs: { category: "Available" },
+    themes: { category: "Available" }
   };
 
   window._nexosBuildFlagsPage = function() {
@@ -16351,43 +16365,82 @@ body.vtab-resizing #vtabSidebar {
 
 <script>
 (function(){
+  var DEFAULT_THEME = {
+    id: "default", name: "Sky",
+    tabbar: "#dce9ff", chrome: "#e3e3e3", content: "#ffffff", accent: "#dce9ff",
+    addressbar: "#eaf2ff", addressbarFocus: "#ffffff", star: "#A3ACFF"
+  };
+  function mk(id, name, tabbar, chrome, content, accent, addressbar, star) {
+    return { id: id, name: name, tabbar: tabbar, chrome: chrome, content: content,
+      accent: accent, addressbar: addressbar, addressbarFocus: "#ffffff", star: star };
+  }
   var THEMES = [
-    { id: "default",    name: "Sky",         tabbar: "#dce9ff", chrome: "#e3e3e3", content: "#ffffff", accent: "#dce9ff" },
-    { id: "mist",       name: "Mist",        tabbar: "#e6ecf2", chrome: "#dde3ea", content: "#ffffff", accent: "#e6ecf2" },
-    { id: "sage",       name: "Sage",        tabbar: "#dde9dd", chrome: "#e2e8e2", content: "#ffffff", accent: "#dde9dd" },
-    { id: "sand",       name: "Sand",        tabbar: "#ece4d4", chrome: "#e8e2d4", content: "#fbf8f1", accent: "#ece4d4" },
-    { id: "linen",      name: "Linen",       tabbar: "#efeae2", chrome: "#e7e2da", content: "#fbf8f3", accent: "#efeae2" },
-    { id: "rose",       name: "Rose",        tabbar: "#f1dde1", chrome: "#ebe2e3", content: "#ffffff", accent: "#f1dde1" },
-    { id: "lavender",   name: "Lavender",    tabbar: "#e3dff0", chrome: "#e4e1ec", content: "#ffffff", accent: "#e3dff0" },
-    { id: "mint",       name: "Mint",        tabbar: "#d6ebe2", chrome: "#dee7e3", content: "#ffffff", accent: "#d6ebe2" },
-    { id: "ocean",      name: "Ocean",       tabbar: "#cfdfe8", chrome: "#dae3e8", content: "#ffffff", accent: "#cfdfe8" },
-    { id: "stone",      name: "Stone",       tabbar: "#dcdcdc", chrome: "#e3e3e3", content: "#ffffff", accent: "#dcdcdc" },
-    { id: "fog",        name: "Fog",         tabbar: "#dde1e4", chrome: "#e1e4e7", content: "#fafbfc", accent: "#dde1e4" },
-    { id: "peach",      name: "Peach",       tabbar: "#f3dfd0", chrome: "#ebe2db", content: "#ffffff", accent: "#f3dfd0" },
-    { id: "butter",     name: "Butter",      tabbar: "#f1ead0", chrome: "#e9e4d3", content: "#fffefa", accent: "#f1ead0" },
-    { id: "slate",      name: "Slate",       tabbar: "#d4d9df", chrome: "#dde1e6", content: "#ffffff", accent: "#d4d9df" },
-    { id: "cocoa",      name: "Cocoa",       tabbar: "#e0d4ca", chrome: "#dfd6cc", content: "#fbf7f3", accent: "#e0d4ca" },
-    { id: "ice",        name: "Ice",         tabbar: "#e4eef5", chrome: "#e2e8ed", content: "#ffffff", accent: "#e4eef5" }
+    DEFAULT_THEME,
+    mk("mist",     "Mist",     "#e6ecf2", "#dde3ea", "#ffffff", "#e6ecf2", "#eef2f6", "#7a8a9c"),
+    mk("sage",     "Sage",     "#dde9dd", "#e2e8e2", "#ffffff", "#dde9dd", "#e8f0e8", "#6f9b6f"),
+    mk("sand",     "Sand",     "#ece4d4", "#e8e2d4", "#fbf8f1", "#ece4d4", "#f3ede0", "#b39668"),
+    mk("linen",    "Linen",    "#efeae2", "#e7e2da", "#fbf8f3", "#efeae2", "#f5f1ea", "#a8957a"),
+    mk("rose",     "Rose",     "#f1dde1", "#ebe2e3", "#ffffff", "#f1dde1", "#f7e8eb", "#c97a86"),
+    mk("lavender", "Lavender", "#e3dff0", "#e4e1ec", "#ffffff", "#e3dff0", "#ece8f7", "#9b8fcc"),
+    mk("mint",     "Mint",     "#d6ebe2", "#dee7e3", "#ffffff", "#d6ebe2", "#e3f2eb", "#5fae8e"),
+    mk("ocean",    "Ocean",    "#cfdfe8", "#dae3e8", "#ffffff", "#cfdfe8", "#dde9f0", "#4d7a96"),
+    mk("stone",    "Stone",    "#dcdcdc", "#e3e3e3", "#ffffff", "#dcdcdc", "#e8e8e8", "#7a7a7a"),
+    mk("fog",      "Fog",      "#dde1e4", "#e1e4e7", "#fafbfc", "#dde1e4", "#e8ebee", "#7d8590"),
+    mk("peach",    "Peach",    "#f3dfd0", "#ebe2db", "#ffffff", "#f3dfd0", "#f7e8db", "#cc8a66"),
+    mk("butter",   "Butter",   "#f1ead0", "#e9e4d3", "#fffefa", "#f1ead0", "#f5f0db", "#b39a4a"),
+    mk("slate",    "Slate",    "#d4d9df", "#dde1e6", "#ffffff", "#d4d9df", "#e0e5eb", "#5f6f80"),
+    mk("cocoa",    "Cocoa",    "#e0d4ca", "#dfd6cc", "#fbf7f3", "#e0d4ca", "#ebe0d6", "#8a6f5c"),
+    mk("ice",      "Ice",      "#e4eef5", "#e2e8ed", "#ffffff", "#e4eef5", "#ecf3f8", "#6b94b3")
   ];
   var KEY = "nexos_theme_v1";
+  var FLAG_KEY = "nexos_flag_themes";
+  function flagOn() {
+    try { return localStorage.getItem(FLAG_KEY) === "true"; } catch(e) { return false; }
+  }
   function applyTheme(t) {
     var r = document.documentElement.style;
     r.setProperty("--nexos-tabbar", t.tabbar);
     r.setProperty("--nexos-chrome", t.chrome);
     r.setProperty("--nexos-content", t.content);
     r.setProperty("--nexos-accent", t.accent);
+    r.setProperty("--nexos-addressbar", t.addressbar);
+    r.setProperty("--nexos-addressbar-focus", t.addressbarFocus);
+    r.setProperty("--nexos-star", t.star);
   }
   function getCurrent() {
     var id = null;
     try { id = localStorage.getItem(KEY); } catch(e){}
-    return THEMES.find(function(t){return t.id===id;}) || THEMES[0];
+    return THEMES.find(function(t){return t.id===id;}) || DEFAULT_THEME;
   }
   function setCurrent(t) {
     try { localStorage.setItem(KEY, t.id); } catch(e){}
-    applyTheme(t);
+    if (flagOn()) applyTheme(t);
     render();
   }
-  applyTheme(getCurrent());
+  function syncThemeApplied() {
+    if (flagOn()) applyTheme(getCurrent());
+    else applyTheme(DEFAULT_THEME);
+  }
+  window._nexosSyncTheme = syncThemeApplied;
+  syncThemeApplied();
+
+  function updateThemesTabVisibility() {
+    var on = flagOn();
+    var tabBtn = document.querySelector('.recap-snap-tab[data-snap-tab="themes"]');
+    if (tabBtn) tabBtn.style.display = on ? "" : "none";
+    if (!on) {
+      var content = document.querySelector('.recap-snapshot-content');
+      if (content && content.classList.contains('recap-themes-mode')) {
+        content.classList.remove('recap-themes-mode');
+        var snapTab = document.querySelector('.recap-snap-tab[data-snap-tab="snapshots"]');
+        if (snapTab) {
+          document.querySelectorAll('.recap-snap-tab').forEach(function(t){t.classList.remove('active');});
+          snapTab.classList.add('active');
+        }
+      }
+    }
+  }
+  window._nexosUpdateThemesTab = updateThemesTabVisibility;
 
   function render() {
     var wrap = document.getElementById("recapThemesSection");
@@ -16433,7 +16486,7 @@ body.vtab-resizing #vtabSidebar {
     });
   }
 
-  function init(){ bindTabs(); render(); }
+  function init(){ bindTabs(); render(); updateThemesTabVisibility(); }
   if (document.readyState === 'complete' || document.readyState === 'interactive') init();
   else window.addEventListener('DOMContentLoaded', init);
 })();
