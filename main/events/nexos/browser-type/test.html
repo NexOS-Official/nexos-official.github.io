@@ -1,6 +1,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16394,8 +16396,8 @@ body.vtab-resizing #vtabSidebar {
     DEFAULT_THEME,
     mk("mist",     "Mist",     "#e6ecf2", "#dde3ea", "#ffffff", "#e6ecf2", "#eef2f6", "#7a8a9c"),
     mk("sage",     "Sage",     "#dde9dd", "#e2e8e2", "#ffffff", "#dde9dd", "#e8f0e8", "#6f9b6f"),
-    mk("sand",     "Sand",     "#ece4d4", "#e8e2d4", "#fbf8f1", "#ece4d4", "#f3ede0", "#b39668"),
-    mk("linen",    "Linen",    "#efeae2", "#e7e2da", "#fbf8f3", "#efeae2", "#f5f1ea", "#a8957a"),
+    mk("sand",     "Sand",     "#ece4d4", "#e8e2d4", "#ffffff", "#ece4d4", "#f3ede0", "#b39668"),
+    mk("linen",    "Linen",    "#efeae2", "#e7e2da", "#ffffff", "#efeae2", "#f5f1ea", "#a8957a"),
     mk("rose",     "Rose",     "#f1dde1", "#ebe2e3", "#ffffff", "#f1dde1", "#f7e8eb", "#c97a86"),
     mk("lavender", "Lavender", "#e3dff0", "#e4e1ec", "#ffffff", "#e3dff0", "#ece8f7", "#9b8fcc"),
     mk("mint",     "Mint",     "#d6ebe2", "#dee7e3", "#ffffff", "#d6ebe2", "#e3f2eb", "#5fae8e"),
@@ -16405,7 +16407,7 @@ body.vtab-resizing #vtabSidebar {
     mk("peach",    "Peach",    "#f3dfd0", "#ebe2db", "#ffffff", "#f3dfd0", "#f7e8db", "#cc8a66"),
     mk("butter",   "Butter",   "#f1ead0", "#e9e4d3", "#fffefa", "#f1ead0", "#f5f0db", "#b39a4a"),
     mk("slate",    "Slate",    "#d4d9df", "#dde1e6", "#ffffff", "#d4d9df", "#e0e5eb", "#5f6f80"),
-    mk("cocoa",    "Cocoa",    "#e0d4ca", "#dfd6cc", "#fbf7f3", "#e0d4ca", "#ebe0d6", "#8a6f5c"),
+    mk("cocoa",    "Cocoa",    "#e0d4ca", "#dfd6cc", "#ffffff", "#e0d4ca", "#ebe0d6", "#8a6f5c"),
     mk("ice",      "Ice",      "#e4eef5", "#e2e8ed", "#ffffff", "#e4eef5", "#ecf3f8", "#6b94b3")
   ];
   var KEY = "nexos_theme_v1";
@@ -16505,6 +16507,185 @@ body.vtab-resizing #vtabSidebar {
   function init(){ bindTabs(); render(); updateThemesTabVisibility(); }
   if (document.readyState === 'complete' || document.readyState === 'interactive') init();
   else window.addEventListener('DOMContentLoaded', init);
+
+  // ---------- SMART THEMES ----------
+  // Auto-pick the closest existing theme to the welcomer.html wallpaper's dominant color.
+  // Only runs when the active tab is welcomer.html. Falls back gracefully if image
+  // can't be sampled (CORS, etc.) — leaves the user's manual choice intact.
+  window._nexosThemes = THEMES;
+  window._nexosApplyTheme = applyTheme;
+  window._nexosSetCurrentTheme = setCurrent;
+
+  var SMART_KEY = "nexos_smart_theme";
+  var SMART_LAST_URL = null;
+  var SMART_LAST_PICK = null;
+
+  function smartOn() {
+    try {
+      var v = localStorage.getItem(SMART_KEY);
+      return v === null ? true : v === "true"; // default ON
+    } catch(e) { return true; }
+  }
+  window._nexosSetSmartTheme = function(on){
+    try { localStorage.setItem(SMART_KEY, on ? "true" : "false"); } catch(e){}
+    if (!on) { SMART_LAST_URL = null; syncThemeApplied(); }
+  };
+  window._nexosGetSmartTheme = smartOn;
+
+  function hexToRgb(h){
+    h = h.replace('#','');
+    if (h.length === 3) h = h.split('').map(function(c){return c+c;}).join('');
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+  }
+  // sRGB -> Lab (D65)
+  function rgbToLab(r,g,b){
+    function f(c){c/=255; return c>0.04045 ? Math.pow((c+0.055)/1.055,2.4) : c/12.92;}
+    var R=f(r),G=f(g),B=f(b);
+    var x=(R*0.4124+G*0.3576+B*0.1805)/0.95047;
+    var y=(R*0.2126+G*0.7152+B*0.0722)/1.00000;
+    var z=(R*0.0193+G*0.1192+B*0.9505)/1.08883;
+    function g3(t){return t>0.008856 ? Math.pow(t,1/3) : (7.787*t)+16/116;}
+    var fx=g3(x),fy=g3(y),fz=g3(z);
+    return [116*fy-16, 500*(fx-fy), 200*(fy-fz)];
+  }
+  function labDist(a,b){
+    var dl=a[0]-b[0], da=a[1]-b[1], db=a[2]-b[2];
+    return dl*dl + da*da + db*db;
+  }
+
+  function dominantColor(img){
+    var w = 64, h = 64;
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d');
+    try { ctx.drawImage(img, 0, 0, w, h); }
+    catch(e){ return null; }
+    var data;
+    try { data = ctx.getImageData(0,0,w,h).data; }
+    catch(e){ return null; } // tainted canvas
+    // 16-bin histogram, skip near-white/black/very-low-saturation
+    var buckets = {};
+    for (var i=0; i<data.length; i+=4){
+      var r=data[i], g=data[i+1], b=data[i+2], a=data[i+3];
+      if (a<200) continue;
+      var max=Math.max(r,g,b), min=Math.min(r,g,b);
+      if (max>245 && min>235) continue;          // near white
+      if (max<25) continue;                       // near black
+      if (max-min < 12 && max>180) continue;      // washed-out highlights
+      var rb=(r>>4), gb=(g>>4), bb=(b>>4);
+      var key = rb*256 + gb*16 + bb;
+      var e = buckets[key];
+      if (!e) buckets[key] = e = [0,0,0,0];
+      e[0]+=r; e[1]+=g; e[2]+=b; e[3]+=1;
+    }
+    var bestKey=null, bestN=0;
+    for (var k in buckets){ if (buckets[k][3]>bestN){ bestN=buckets[k][3]; bestKey=k; } }
+    if (bestKey===null) return null;
+    var be = buckets[bestKey];
+    return [Math.round(be[0]/be[3]), Math.round(be[1]/be[3]), Math.round(be[2]/be[3])];
+  }
+
+  function pickClosestTheme(rgb){
+    var target = rgbToLab(rgb[0],rgb[1],rgb[2]);
+    var best=null, bestD=Infinity;
+    THEMES.forEach(function(t){
+      // compare against the theme's accent (most saturated/identifying swatch)
+      var trgb = hexToRgb(t.accent);
+      var lab = rgbToLab(trgb[0],trgb[1],trgb[2]);
+      var d = labDist(target, lab);
+      if (d < bestD){ bestD = d; best = t; }
+    });
+    return best;
+  }
+
+  function applySmartFromUrl(url){
+    if (!url || url === SMART_LAST_URL) return;
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function(){
+      var rgb = dominantColor(img);
+      if (!rgb) return;
+      var t = pickClosestTheme(rgb);
+      if (!t) return;
+      SMART_LAST_URL = url;
+      SMART_LAST_PICK = t.id;
+      // Apply visually but DON'T overwrite user's saved manual theme key —
+      // smart theme is contextual to welcomer. Use applyTheme directly.
+      applyTheme(t);
+      // refresh swatch grid highlight if open
+      try { render(); } catch(e){}
+    };
+    img.onerror = function(){};
+    img.src = url;
+  }
+  window._nexosSmartApplyFromUrl = applySmartFromUrl;
+
+  // Auto-detect: scan iframes for an active welcomer.html, read its wallpaper.
+  function isWelcomerUrl(u){
+    if (!u) return false;
+    return u.indexOf('welcomer.html') !== -1;
+  }
+  function findActiveWelcomerWallpaper(){
+    var frames = document.querySelectorAll('iframe');
+    for (var i=0; i<frames.length; i++){
+      var f = frames[i];
+      // skip hidden iframes (inactive tabs)
+      var cs = window.getComputedStyle(f);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      var src = f.getAttribute('src') || '';
+      if (!isWelcomerUrl(src)) {
+        try { if (f.contentWindow && isWelcomerUrl(f.contentWindow.location.href)) {/*ok*/} else continue; } catch(e){ continue; }
+      }
+      try {
+        var doc = f.contentDocument;
+        if (!doc) continue;
+        // look for explicit wallpaper element first
+        var wp = doc.querySelector('[data-wallpaper], #wallpaper, .wallpaper, #background, .background');
+        var url = null;
+        if (wp){
+          var bg = window.getComputedStyle(wp).backgroundImage;
+          var m = bg && bg.match(/url\(["']?([^"')]+)["']?\)/);
+          if (m) url = m[1];
+          if (!url && wp.tagName === 'IMG') url = wp.src;
+        }
+        if (!url){
+          var bg2 = window.getComputedStyle(doc.body).backgroundImage;
+          var m2 = bg2 && bg2.match(/url\(["']?([^"')]+)["']?\)/);
+          if (m2) url = m2[1];
+        }
+        if (!url){
+          var imgEl = doc.querySelector('img.wallpaper, img[data-wallpaper], img#wallpaper');
+          if (imgEl) url = imgEl.src;
+        }
+        if (url) return url;
+      } catch(e) { /* cross-origin */ }
+    }
+    return null;
+  }
+
+  function smartTick(){
+    if (!smartOn()) return;
+    var url = findActiveWelcomerWallpaper();
+    if (url) applySmartFromUrl(url);
+    else if (SMART_LAST_URL){
+      // user navigated away from welcomer — restore manual theme
+      SMART_LAST_URL = null;
+      syncThemeApplied();
+    }
+  }
+  setInterval(smartTick, 1500);
+  setTimeout(smartTick, 400);
+
+  // Cross-frame trigger: welcomer.html can postMessage its wallpaper url
+  window.addEventListener('message', function(ev){
+    var d = ev.data;
+    if (!d || typeof d !== 'object') return;
+    if (d.type === 'nexos-wallpaper' && typeof d.url === 'string'){
+      if (smartOn()) applySmartFromUrl(d.url);
+    } else if (d.type === 'nexos-smart-theme' && typeof d.on === 'boolean'){
+      window._nexosSetSmartTheme(d.on);
+    }
+  });
 })();
 </script>
 </body>
