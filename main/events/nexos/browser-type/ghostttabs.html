@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6473,13 +6474,34 @@ body.reduce-motion *::after {
       const newTabId = this.createNewTab();
       const newTab = this.tabs.get(newTabId);
       if (newTab) {
+        newTab.iframe.remove();
+        const sidebarIframe = sb.iframe;
+        sidebarIframe.className = "tab-content";
+        sidebarIframe.dataset.tabId = newTabId;
+        sidebarIframe.style.visibility = "visible";
+        sidebarIframe.style.pointerEvents = "auto";
+        this.contentArea.appendChild(sidebarIframe);
+        newTab.iframe = sidebarIframe;
         newTab.title = sb.title;
         newTab.url = currentSrc;
-        newTab.iframe.src = currentSrc;
+        newTab.currentUrl = currentSrc;
         newTab.element.querySelector(".tab-title").textContent = sb.title;
+        sb.element.classList.remove("open", "minimized");
+        sb.isOpen = false;
+        sb.isMinimized = false;
+        setTimeout(() => {
+          sb.element.remove();
+          this.sidebars.delete(id);
+          this._repositionSidebars();
+          if (this.sidebars.size === 0) this.isSidebarFullscreen = false;
+        }, 400);
+        this._repositionSidebars();
+        if (this._getOpenSidebars().length === 0) {
+          this.clearActiveToolbarBtn();
+          this.isSidebarFullscreen = false;
+        }
         this.switchToTab(newTab.id);
       }
-      this.closeSidebarById(id);
     }
   }
   get sidebar() {
@@ -12381,20 +12403,22 @@ loadTopRightProfilePfp();
   });
 })();
 </script>
-<script>(function setupImageDragToTab() {
+<script>(function setupDragToTab() {
   var tabBar = document.getElementById("tabBar");
   var newTabBtn = document.getElementById("newTabBtn");
   var imgDragHoverTimer = null;
   var imgDragHoverTabId = null;
   var currentArrow = null;
   var currentHoverTab = null;
-  function hasImageData(e) {
+
+  function hasDraggableData(e) {
     if (!e.dataTransfer) return false;
     var types = e.dataTransfer.types;
     return types && Array.from(types).some(function(t) {
-      return t === "Files" || t.startsWith("image/") || t === "text/uri-list" || t === "text/html";
+      return t === "Files" || t.startsWith("image/") || t === "text/uri-list" || t === "text/html" || t === "text/plain";
     });
   }
+
   function showArrowUnder(el) {
     removeArrow();
     var arrow = document.createElement("div");
@@ -12412,12 +12436,14 @@ loadTopRightProfilePfp();
     document.body.appendChild(arrow);
     currentArrow = arrow;
   }
+
   function removeArrow() {
     if (currentArrow) {
       currentArrow.remove();
       currentArrow = null;
     }
   }
+
   function clearHoverTimer() {
     if (imgDragHoverTimer) {
       clearTimeout(imgDragHoverTimer);
@@ -12430,56 +12456,114 @@ loadTopRightProfilePfp();
     }
     removeArrow();
   }
-  function getImageFromDrop(e) {
+
+  function getDroppedContent(e) {
     return new Promise(function(resolve) {
       if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
         var file = e.dataTransfer.files[0];
         if (file.type.startsWith("image/")) {
           var reader = new FileReader();
           reader.onload = function(ev) {
-            resolve(ev.target.result);
+            resolve({ type: "image", data: ev.target.result });
           };
           reader.readAsDataURL(file);
           return;
         }
       }
       var uriData = e.dataTransfer.getData("text/uri-list");
-      if (uriData && /\.(png|jpe?g|gif|webp|svg|bmp|ico)/i.test(uriData)) {
-        resolve(uriData);
+      if (uriData) {
+        uriData = uriData.trim().split("\n")[0].trim();
+        if (/\.(png|jpe?g|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(uriData)) {
+          resolve({ type: "image", data: uriData });
+        } else if (/^https?:\/\//i.test(uriData)) {
+          resolve({ type: "link", data: uriData });
+        } else {
+          resolve({ type: "link", data: uriData });
+        }
         return;
       }
       var htmlData = e.dataTransfer.getData("text/html");
       if (htmlData) {
-        var m = htmlData.match(/<img[^>]+src=["']([^"']+)["']/i);
-        if (m) {
-          resolve(m[1]);
+        var imgMatch = htmlData.match(/<img[^>]+src=["']([^"']+)["']/i);
+        if (imgMatch) {
+          resolve({ type: "image", data: imgMatch[1] });
+          return;
+        }
+        var linkMatch = htmlData.match(/<a[^>]+href=["']([^"']+)["']/i);
+        if (linkMatch && /^https?:\/\//i.test(linkMatch[1])) {
+          resolve({ type: "link", data: linkMatch[1] });
           return;
         }
       }
       var textData = e.dataTransfer.getData("text/plain");
-      if (textData && /\.(png|jpe?g|gif|webp|svg|bmp|ico)/i.test(textData)) {
-        resolve(textData);
-        return;
+      if (textData) {
+        textData = textData.trim();
+        if (/\.(png|jpe?g|gif|webp|svg|bmp|ico)(\?.*)?$/i.test(textData)) {
+          resolve({ type: "image", data: textData });
+          return;
+        }
+        if (/^https?:\/\//i.test(textData)) {
+          resolve({ type: "link", data: textData });
+          return;
+        }
       }
       resolve(null);
     });
   }
-  function openImageInNewTab(imgSrc) {
+
+  function openContentInNewTab(content) {
+    if (!content) return;
     var tabId = window.browser.createNewTab();
-    if (tabId) {
-      var tab = window.browser.tabs.get(tabId);
-      if (tab && tab.iframe) {
-        tab.iframe.srcdoc = '<!DOCTYPE html><html><head><title>Dropped Image</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px;}</style></head><body><img src="' + imgSrc.replace(/"/g, "&quot;") + '" alt="Dropped image"></body></html>';
-        tab.title = "Dropped Image";
-        if (tab.element) {
-          var titleEl = tab.element.querySelector(".tab-title");
-          if (titleEl) titleEl.textContent = "Dropped Image";
-        }
+    if (!tabId) return;
+    var tab = window.browser.tabs.get(tabId);
+    if (!tab || !tab.iframe) return;
+    if (content.type === "image") {
+      tab.iframe.srcdoc = '<!DOCTYPE html><html><head><title>Dropped Image</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px;}</style></head><body><img src="' + content.data.replace(/"/g, "&quot;") + '" alt="Dropped image"></body></html>';
+      tab.title = "Dropped Image";
+      if (tab.element) {
+        var titleEl = tab.element.querySelector(".tab-title");
+        if (titleEl) titleEl.textContent = "Dropped Image";
+      }
+    } else {
+      tab.iframe.src = content.data;
+      tab.url = content.data;
+      tab.currentUrl = content.data;
+      tab.title = content.data;
+      if (tab.element) {
+        var titleEl = tab.element.querySelector(".tab-title");
+        if (titleEl) titleEl.textContent = content.data;
       }
     }
   }
+
+  function loadContentInTab(tabId, content) {
+    if (!content) return;
+    var tab = window.browser.tabs.get(tabId);
+    if (!tab || !tab.iframe) return;
+    if (content.type === "image") {
+      tab.iframe.srcdoc = '<!DOCTYPE html><html><head><title>Dropped Image</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#1a1a1a;display:flex;align-items:center;justify-content:center;min-height:100vh}img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px;}</style></head><body><img src="' + content.data.replace(/"/g, "&quot;") + '" alt="Dropped image"></body></html>';
+      tab.title = "Dropped Image";
+      tab.url = content.data;
+      tab.currentUrl = content.data;
+      if (tab.element) {
+        var titleEl = tab.element.querySelector(".tab-title");
+        if (titleEl) titleEl.textContent = "Dropped Image";
+      }
+    } else {
+      tab.iframe.src = content.data;
+      tab.url = content.data;
+      tab.currentUrl = content.data;
+      tab.title = content.data;
+      if (tab.element) {
+        var titleEl = tab.element.querySelector(".tab-title");
+        if (titleEl) titleEl.textContent = content.data;
+      }
+    }
+    window.browser.switchToTab(tabId);
+  }
+
   newTabBtn.addEventListener("dragover", function(e) {
-    if (!hasImageData(e)) return;
+    if (!hasDraggableData(e)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
     newTabBtn.style.background = "rgba(255, 255, 255, 0.1)";
@@ -12493,12 +12577,13 @@ loadTopRightProfilePfp();
     e.preventDefault();
     newTabBtn.style.background = "";
     removeArrow();
-    getImageFromDrop(e).then(function(imgSrc) {
-      if (imgSrc) openImageInNewTab(imgSrc);
+    getDroppedContent(e).then(function(content) {
+      if (content) openContentInNewTab(content);
     });
   });
+
   tabBar.addEventListener("dragover", function(e) {
-    if (!hasImageData(e)) return;
+    if (!hasDraggableData(e)) return;
     var tabEl = e.target.closest(".tab");
     if (!tabEl) {
       clearHoverTimer();
@@ -12507,10 +12592,6 @@ loadTopRightProfilePfp();
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
     var tabId = parseInt(tabEl.dataset.tabId);
-    if (tabId === window.browser.activeTabId) {
-      clearHoverTimer();
-      return;
-    }
     if (currentHoverTab && currentHoverTab !== tabEl) {
       currentHoverTab.classList.remove("__img-drag-hover");
     }
@@ -12525,7 +12606,7 @@ loadTopRightProfilePfp();
       imgDragHoverTimer = setTimeout(function() {
         window.browser.switchToTab(tabId);
         clearHoverTimer();
-      }, 1e3);
+      }, 1000);
     }
   });
   tabBar.addEventListener("dragleave", function(e) {
@@ -12540,11 +12621,37 @@ loadTopRightProfilePfp();
     if (tabEl) {
       e.preventDefault();
       var tabId = parseInt(tabEl.dataset.tabId);
-      if (tabId !== window.browser.activeTabId) {
-        window.browser.switchToTab(tabId);
-      }
+      getDroppedContent(e).then(function(content) {
+        if (content) {
+          loadContentInTab(tabId, content);
+        } else {
+          if (tabId !== window.browser.activeTabId) {
+            window.browser.switchToTab(tabId);
+          }
+        }
+      });
     }
   });
+
+  var contentArea = document.getElementById("content");
+  if (contentArea) {
+    contentArea.addEventListener("dragover", function(e) {
+      if (!hasDraggableData(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    });
+    contentArea.addEventListener("drop", function(e) {
+      if (!hasDraggableData(e)) return;
+      e.preventDefault();
+      var activeTabId = window.browser.activeTabId;
+      if (activeTabId) {
+        getDroppedContent(e).then(function(content) {
+          if (content) loadContentInTab(activeTabId, content);
+        });
+      }
+    });
+  }
+
   var style = document.createElement("style");
   style.textContent = '.tab.__img-drag-hover:not(.active){background:#ffffffa5 !important;}.tab.__img-drag-hover:not(.active)::before{content:"";position:absolute;bottom:0;left:-11.5px;width:12px;height:12px;background:#ffffffa5;mask-image:radial-gradient(circle at 0 0,transparent 12px,black 0);-webkit-mask-image:radial-gradient(circle at 0 0,transparent 12px,black 0);}.tab.__img-drag-hover:not(.active)::after{content:"";position:absolute;bottom:0;right:-12px;width:12px;height:12px;background:#ffffffa5;mask-image:radial-gradient(circle at 12px 0,transparent 12px,black 0);-webkit-mask-image:radial-gradient(circle at 12px 0,transparent 12px,black 0);}';
   document.head.appendChild(style);
