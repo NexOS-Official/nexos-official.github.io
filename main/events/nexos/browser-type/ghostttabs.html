@@ -4,7 +4,6 @@
 
 
 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1369,6 +1368,26 @@ body {
 }
 .sidebar.fullscreen.minimized {
   right: -800px !important;
+}
+.promoted-tab {
+  position: fixed !important;
+  display: flex;
+  flex-direction: column;
+  right: auto !important;
+  opacity: 1 !important;
+  transition: none !important;
+  z-index: 20;
+  background: #ffffff;
+}
+.promoted-tab::before,
+.promoted-tab .sidebar-header {
+  display: none !important;
+}
+.promoted-tab .sidebar-content {
+  padding: 0;
+}
+.promoted-tab .sidebar-iframe {
+  border-radius: 0;
 }
 .context-menu {
   position: fixed;
@@ -6228,6 +6247,9 @@ body.reduce-motion *::after {
       }
     });
     window.addEventListener("resize", () => this.updateTabSizes());
+    window.addEventListener("resize", () => {
+      for (const tab of this.tabs.values()) this._positionPromotedTabFrame(tab.iframe);
+    });
     document.addEventListener("keydown", (e) => {
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
@@ -6472,13 +6494,12 @@ body.reduce-motion *::after {
     if (!sb || !sb.iframe) return;
     const currentSrc = sb.iframe.src || sb.url;
     if (!currentSrc || currentSrc === "about:blank") return;
-    const navigatedUrl = this.getIframeCurrentUrl({ iframe: sb.iframe, url: currentSrc })
-      || this.extractOriginalUrl(currentSrc)
-      || currentSrc;
-    const openUrl = navigatedUrl || currentSrc;
+    const openUrl = this.getIframeCurrentUrl({ iframe: sb.iframe, url: currentSrc }) || this.extractOriginalUrl(currentSrc) || currentSrc;
     const newTabId = this.createNewTab({
       title: sb.title,
-      url: openUrl
+      url: openUrl,
+      iframe: sb.element,
+      promotedSidebar: true
     });
     const newTab = this.tabs.get(newTabId);
     if (newTab) {
@@ -6487,15 +6508,16 @@ body.reduce-motion *::after {
       newTab.currentUrl = openUrl;
       newTab.element.querySelector(".tab-title").textContent = sb.title;
     }
-    sb.element.classList.remove("open", "minimized");
-    sb.isOpen = false;
-    sb.isMinimized = false;
-    setTimeout(() => {
-      sb.element.remove();
-      this.sidebars.delete(id);
-      this._repositionSidebars();
-      if (this.sidebars.size === 0) this.isSidebarFullscreen = false;
-    }, 400);
+    sb.element.classList.remove("sidebar", "open", "minimized", "fullscreen");
+    sb.element.classList.add("tab-content", "promoted-tab");
+    sb.element.style.width = "";
+    sb.element.style.height = "";
+    sb.element.style.right = "";
+    sb.element.style.top = "";
+    sb.element.style.visibility = "";
+    sb.element.style.pointerEvents = "";
+    this._positionPromotedTabFrame(sb.element);
+    this.sidebars.delete(id);
     this._repositionSidebars();
     if (this._getOpenSidebars().length === 0) {
       this.clearActiveToolbarBtn();
@@ -6580,6 +6602,15 @@ body.reduce-motion *::after {
       }
     }
   }
+  _positionPromotedTabFrame(frame) {
+    if (!frame || !frame.classList || !frame.classList.contains("promoted-tab")) return;
+    const rect = this.contentArea.getBoundingClientRect();
+    frame.style.left = rect.left + "px";
+    frame.style.top = rect.top + "px";
+    frame.style.width = rect.width + "px";
+    frame.style.height = rect.height + "px";
+    frame.style.right = "auto";
+  }
   createNewTab(options = {}) {
     if (this.tabs.size >= 30) {
       console.log("30 is max tabs sry");
@@ -6588,6 +6619,7 @@ body.reduce-motion *::after {
     const existingIframe = options.iframe || null;
     const initialTitle = typeof options.title === "string" ? options.title : "ermmmm";
     const initialUrl = typeof options.url === "string" ? options.url : "welcomer.html";
+    const isPromotedSidebar = options.promotedSidebar === true;
     const shouldSwitchToTab = options.switchToTab !== false;
     const tabId = ++this.tabCounter;
     const tab = {
@@ -6637,13 +6669,19 @@ body.reduce-motion *::after {
       });
     });
     const iframe = existingIframe || document.createElement("iframe");
-    iframe.className = "tab-content";
+    iframe.classList.add("tab-content");
     iframe.dataset.tabId = tabId;
-    if (!existingIframe) {
+    if (isPromotedSidebar) {
+      const promotedIframe = iframe.querySelector(".sidebar-iframe");
+      if (promotedIframe) promotedIframe.dataset.tabId = tabId;
+      this._positionPromotedTabFrame(iframe);
+    } else if (!existingIframe) {
       iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-presentation allow-popups-to-escape-sandbox allow-downloads");
       iframe.src = tab.url;
     }
-    this.contentArea.appendChild(iframe);
+    if (!isPromotedSidebar) {
+      this.contentArea.appendChild(iframe);
+    }
     tab.element = tabElement;
     tab.iframe = iframe;
     this.tabs.set(tabId, tab);
@@ -7421,6 +7459,7 @@ body.reduce-motion *::after {
     if (this.activeTabId) {
       const currentTab = this.tabs.get(this.activeTabId);
       if (currentTab) {
+        this._positionPromotedTabFrame(currentTab.iframe);
         currentTab.element.classList.remove("active");
         currentTab.iframe.classList.remove("active");
         currentTab.iframe.style.visibility = "hidden";
@@ -7431,6 +7470,7 @@ body.reduce-motion *::after {
     if (newTab) {
       this.activeTabId = tabId;
       newTab.element.classList.add("active");
+      this._positionPromotedTabFrame(newTab.iframe);
       newTab.iframe.classList.add("active");
       newTab.iframe.style.visibility = "visible";
       newTab.iframe.style.pointerEvents = "auto";
@@ -7868,15 +7908,17 @@ body.reduce-motion *::after {
   }
   getIframeCurrentUrl(tab) {
     try {
-      const iframeHref = tab.iframe.contentWindow.location.href;
+      const readableIframe = tab.iframe.contentWindow ? tab.iframe : tab.iframe.querySelector && tab.iframe.querySelector(".sidebar-iframe");
+      if (!readableIframe) return null;
+      const iframeHref = readableIframe.contentWindow.location.href;
       if (iframeHref && iframeHref !== "about:blank") {
         const decoded = this.extractOriginalUrl(iframeHref);
         if (decoded !== iframeHref && decoded.startsWith("http")) {
           return decoded;
         }
         if (iframeHref === decoded) {
-          const fromSrc = this.extractOriginalUrl(tab.iframe.src || "");
-          if (fromSrc !== tab.iframe.src && fromSrc.startsWith("http")) {
+          const fromSrc = this.extractOriginalUrl(readableIframe.src || "");
+          if (fromSrc !== readableIframe.src && fromSrc.startsWith("http")) {
             return fromSrc;
           }
         }
