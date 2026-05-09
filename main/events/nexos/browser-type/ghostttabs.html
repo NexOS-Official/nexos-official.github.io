@@ -5951,6 +5951,10 @@ body.reduce-motion *::after {
     this.addressBarContainer = document.getElementById("addressBarContainer");
     this.addressBar = document.getElementById("addressBar");
     this.contentArea = document.getElementById("contentArea");
+    if (typeof ResizeObserver !== "undefined") {
+      this._promotedTabResizeObserver = new ResizeObserver(() => this._schedulePromotedTabFrameSync(80));
+      this._promotedTabResizeObserver.observe(this.contentArea);
+    }
     this.loadingIndicator = document.getElementById("loadingIndicator");
     this.backBtn = document.getElementById("backBtn");
     this.forwardBtn = document.getElementById("forwardBtn");
@@ -6247,9 +6251,7 @@ body.reduce-motion *::after {
       }
     });
     window.addEventListener("resize", () => this.updateTabSizes());
-    window.addEventListener("resize", () => {
-      for (const tab of this.tabs.values()) this._positionPromotedTabFrame(tab.iframe);
-    });
+    window.addEventListener("resize", () => this._schedulePromotedTabFrameSync(160));
     document.addEventListener("keydown", (e) => {
       if (e.ctrlKey || e.metaKey) {
         switch (e.key) {
@@ -6323,6 +6325,7 @@ body.reduce-motion *::after {
       this.contentArea.style.borderTopRightRadius = "";
       this.contentArea.style.borderBottomRightRadius = "";
     }
+    this._schedulePromotedTabFrameSync();
   }
   _createSidebarElement(id, title, url) {
     const sidebarEl = document.createElement("div");
@@ -6409,6 +6412,7 @@ body.reduce-motion *::after {
       requestAnimationFrame(() => {
         sidebarEl.classList.add("open");
         this._repositionSidebars();
+        this._schedulePromotedTabFrameSync();
       });
     });
     return id;
@@ -6428,6 +6432,7 @@ body.reduce-motion *::after {
       sb.element.remove();
       this.sidebars.delete(id);
       this._repositionSidebars();
+      this._schedulePromotedTabFrameSync();
       if (this.sidebars.size === 0) {
         this.isSidebarFullscreen = false;
       }
@@ -6446,6 +6451,7 @@ body.reduce-motion *::after {
     sb.element.classList.add("minimized");
     sb.element.classList.remove("open");
     this._repositionSidebars();
+    this._schedulePromotedTabFrameSync();
   }
   closeSidebar() {
     const allIds = Array.from(this.sidebars.keys());
@@ -6488,6 +6494,7 @@ body.reduce-motion *::after {
     }
     lucide.createIcons();
     this._repositionSidebars();
+    this._schedulePromotedTabFrameSync();
   }
   openSidebarInNewTabById(id) {
     const sb = this.sidebars.get(id);
@@ -6519,6 +6526,7 @@ body.reduce-motion *::after {
     this._positionPromotedTabFrame(sb.element);
     this.sidebars.delete(id);
     this._repositionSidebars();
+    this._schedulePromotedTabFrameSync();
     if (this._getOpenSidebars().length === 0) {
       this.clearActiveToolbarBtn();
       this.isSidebarFullscreen = false;
@@ -6601,6 +6609,7 @@ body.reduce-motion *::after {
         this.contentArea.style.borderBottomRightRadius = "";
       }
     }
+    this._schedulePromotedTabFrameSync();
   }
   _positionPromotedTabFrame(frame) {
     if (!frame || !frame.classList || !frame.classList.contains("promoted-tab")) return;
@@ -6610,6 +6619,35 @@ body.reduce-motion *::after {
     frame.style.width = rect.width + "px";
     frame.style.height = rect.height + "px";
     frame.style.right = "auto";
+  }
+  _notifyTabFrameResize(frame) {
+    try {
+      const targetFrame = frame.contentWindow ? frame : frame.querySelector && frame.querySelector(".sidebar-iframe");
+      if (targetFrame && targetFrame.contentWindow) {
+        targetFrame.contentWindow.dispatchEvent(new Event("resize"));
+      }
+    } catch (e) {
+    }
+  }
+  _syncPromotedTabFrames() {
+    for (const tab of this.tabs.values()) {
+      this._positionPromotedTabFrame(tab.iframe);
+      this._notifyTabFrameResize(tab.iframe);
+    }
+  }
+  _schedulePromotedTabFrameSync(duration = 520) {
+    this._promotedTabSyncUntil = Math.max(this._promotedTabSyncUntil || 0, performance.now() + duration);
+    if (this._promotedTabSyncRaf) return;
+    const sync = () => {
+      this._syncPromotedTabFrames();
+      if (performance.now() < this._promotedTabSyncUntil) {
+        this._promotedTabSyncRaf = requestAnimationFrame(sync);
+      } else {
+        this._promotedTabSyncRaf = null;
+        this._syncPromotedTabFrames();
+      }
+    };
+    this._promotedTabSyncRaf = requestAnimationFrame(sync);
   }
   createNewTab(options = {}) {
     if (this.tabs.size >= 30) {
