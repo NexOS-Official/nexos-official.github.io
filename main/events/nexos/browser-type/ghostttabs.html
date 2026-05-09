@@ -4,6 +4,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6470,36 +6471,35 @@ body.reduce-motion *::after {
     const sb = this.sidebars.get(id);
     if (!sb || !sb.iframe) return;
     const currentSrc = sb.iframe.src || sb.url;
-    if (currentSrc && currentSrc !== "about:blank") {
-      const currentUrl = this.getIframeCurrentUrl({ iframe: sb.iframe, url: currentSrc }) || this.extractOriginalUrl(currentSrc) || currentSrc;
-      const newTabId = this.createNewTab({
-        title: sb.title,
-        url: currentSrc,
-        iframe: sb.iframe
-      });
-      const newTab = this.tabs.get(newTabId);
-      if (newTab) {
-        newTab.title = sb.title;
-        newTab.url = currentSrc;
-        newTab.currentUrl = currentUrl;
-        newTab.element.querySelector(".tab-title").textContent = sb.title;
-        sb.iframe = null;
-        sb.content = null;
-        sb.element.classList.remove("open", "minimized");
-        sb.isOpen = false;
-        sb.isMinimized = false;
-        setTimeout(() => {
-          sb.element.remove();
-          this.sidebars.delete(id);
-          this._repositionSidebars();
-          if (this.sidebars.size === 0) this.isSidebarFullscreen = false;
-        }, 400);
-        this._repositionSidebars();
-        if (this._getOpenSidebars().length === 0) {
-          this.clearActiveToolbarBtn();
-          this.isSidebarFullscreen = false;
-        }
-      }
+    if (!currentSrc || currentSrc === "about:blank") return;
+    const navigatedUrl = this.getIframeCurrentUrl({ iframe: sb.iframe, url: currentSrc })
+      || this.extractOriginalUrl(currentSrc)
+      || currentSrc;
+    const openUrl = navigatedUrl || currentSrc;
+    const newTabId = this.createNewTab({
+      title: sb.title,
+      url: openUrl
+    });
+    const newTab = this.tabs.get(newTabId);
+    if (newTab) {
+      newTab.title = sb.title;
+      newTab.url = openUrl;
+      newTab.currentUrl = openUrl;
+      newTab.element.querySelector(".tab-title").textContent = sb.title;
+    }
+    sb.element.classList.remove("open", "minimized");
+    sb.isOpen = false;
+    sb.isMinimized = false;
+    setTimeout(() => {
+      sb.element.remove();
+      this.sidebars.delete(id);
+      this._repositionSidebars();
+      if (this.sidebars.size === 0) this.isSidebarFullscreen = false;
+    }, 400);
+    this._repositionSidebars();
+    if (this._getOpenSidebars().length === 0) {
+      this.clearActiveToolbarBtn();
+      this.isSidebarFullscreen = false;
     }
   }
   get sidebar() {
