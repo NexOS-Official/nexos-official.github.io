@@ -6,6 +6,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4772,14 +4773,10 @@ body.reduce-motion *::after {
   height: 100%;
   border: none;
   position: relative;
-  top: auto;
-  left: auto;
-  inset: auto;
   visibility: visible;
   pointer-events: auto;
   border-radius: inherit;
   background: #ffffff;
-  display: block;
 }
 .split-pane .tab-content.active {
   visibility: visible;
@@ -6682,22 +6679,16 @@ body.reduce-motion *::after {
     const tabElement = document.createElement("div");
     tabElement.className = "tab tab-entering";
     tabElement.dataset.tabId = tabId;
-    const isNewTabPage = typeof initialUrl === "string" && (initialUrl === "welcomer.html" || initialUrl.startsWith("welcomer") || initialUrl.startsWith("/welcomer"));
-    const faviconMarkup = isNewTabPage
-      ? `<div class="tab-favicon"><img src="/assets/ghostincimgs/ghost_dark_logo.svg" width="16" height="16" alt=""></div>`
-      : `<div class="tab-favicon loading"><i data-lucide="globe" width="20" height="20"></i></div>`;
     tabElement.innerHTML = `
                     <div class="tab-hover-bg"></div>
-                    ${faviconMarkup}
+                    <div class="tab-favicon loading">
+                        <i data-lucide="globe" width="20" height="20"></i>
+                    </div>
                     <div class="tab-title">${tab.title}</div>
                     <div class="tab-close">
                         <i data-lucide="x" width="12" height="12"></i>
                     </div>
                 `;
-    if (isNewTabPage) {
-      tab.faviconUrl = "/assets/ghostincimgs/ghost_dark_logo.svg";
-      tab.isLoading = false;
-    }
     if (tab.pinned) {
       const pinnedTabs = Array.from(this.tabs.values()).filter((t) => t.pinned);
       if (pinnedTabs.length > 0) {
@@ -7875,6 +7866,8 @@ body.reduce-motion *::after {
       const newDomain = this.extractDomain(originalUrl);
       if (newDomain && newDomain !== tab.faviconDomain) {
         this.updateFavicon(tab, originalUrl);
+      } else if (!newDomain && typeof originalUrl === "string" && (originalUrl.includes("welcomer.html") || originalUrl.includes("/newtab/pages/landing.html")) && tab.faviconDomain !== "ghost-newtab") {
+        this.updateFavicon(tab, originalUrl);
       }
       this.updateTabTitle(tab, originalUrl);
       if (tab.id === this.activeTabId) {
@@ -7930,6 +7923,13 @@ body.reduce-motion *::after {
   }
   updateFavicon(tab, url) {
     const realUrl = this.extractOriginalUrl(url);
+    if (typeof realUrl === "string" && (realUrl.includes("welcomer.html") || realUrl.includes("/newtab/pages/landing.html"))) {
+      const faviconElement = tab.element.querySelector(".tab-favicon");
+      if (!faviconElement) return;
+      tab.faviconDomain = "ghost-newtab";
+      this.tryFaviconSources(faviconElement, ["/assets/ghostincimgs/ghost_dark_logo.svg"], 0, tab);
+      return;
+    }
     const domain = this.extractDomain(realUrl);
     if (!domain) return;
     const faviconElement = tab.element.querySelector(".tab-favicon");
@@ -13510,33 +13510,27 @@ loadTopRightProfilePfp();
       });
     }
     function moveIframeIntoPane(splitData, side) {
-      if (!splitData || !splitData.splitContainer) return;
-      var pane = splitData.splitContainer.querySelector('.split-pane[data-side="' + side + '"]');
-      var iframe = side === "left" ? splitData.leftIframe : splitData.rightIframe;
       var bottomTab = side === "left" ? splitData.leftBottomTab : splitData.rightBottomTab;
-      if (pane && iframe && iframe.parentNode !== pane) {
-        pane.appendChild(iframe);
-      }
-      if (bottomTab && bottomTab.parentNode !== splitData.splitContainer) {
+      if (!bottomTab) return;
+      if (bottomTab.parentNode !== splitData.splitContainer) {
         splitData.splitContainer.appendChild(bottomTab);
       }
-      if (iframe) {
-        iframe.style.position = "";
-        iframe.style.top = "";
-        iframe.style.left = "";
-        iframe.style.right = "";
-        iframe.style.bottom = "";
-        iframe.style.width = "";
-        iframe.style.height = "";
-        iframe.style.zIndex = "";
-        iframe.style.visibility = "";
-        iframe.style.pointerEvents = "";
-        iframe.style.clipPath = "";
-        iframe.style.border = "";
-        iframe.style.borderRadius = "18px";
-        iframe.style.background = "#ffffff";
-        iframe.classList.add("active");
-      }
+    }
+    function applySplitIframeLayout(iframe, paneRect, contentRect) {
+      if (!iframe || !paneRect) return;
+      iframe.style.position = "absolute";
+      iframe.style.top = paneRect.top - contentRect.top + "px";
+      iframe.style.left = paneRect.left - contentRect.left + "px";
+      iframe.style.width = paneRect.width + "px";
+      iframe.style.height = paneRect.height + "px";
+      iframe.style.visibility = "visible";
+      iframe.style.pointerEvents = "auto";
+      iframe.classList.add("active");
+      iframe.style.zIndex = "2";
+      iframe.style.border = "0";
+      iframe.style.borderRadius = "18px";
+      iframe.style.clipPath = "inset(0 round 18px)";
+      iframe.style.background = "#ffffff";
     }
     function positionSplitBottomTabs(splitData, leftPane, rightPane, containerRect) {
       [
@@ -13552,7 +13546,6 @@ loadTopRightProfilePfp();
     }
     function positionSplitIframes(splitData) {
       var container = splitData.splitContainer;
-      if (!container) return;
       var rect = container.getBoundingClientRect();
       if (rect.width === 0) {
         requestAnimationFrame(function() {
@@ -13562,41 +13555,43 @@ loadTopRightProfilePfp();
         });
         return;
       }
+      var contentRect = b.contentArea.getBoundingClientRect();
       var leftPane = container.querySelector('[data-side="left"]');
       var rightPane = container.querySelector('[data-side="right"]');
       if (!leftPane || !rightPane) return;
-
-      if (splitData.leftIframe && splitData.leftIframe.parentNode !== leftPane) {
-        moveIframeIntoPane(splitData, "left");
-      }
-      if (splitData.rightIframe && splitData.rightIframe.parentNode !== rightPane) {
-        moveIframeIntoPane(splitData, "right");
-      }
+      applySplitIframeLayout(splitData.leftIframe, leftPane.getBoundingClientRect(), contentRect);
+      applySplitIframeLayout(splitData.rightIframe, rightPane.getBoundingClientRect(), contentRect);
       positionSplitBottomTabs(splitData, leftPane, rightPane, rect);
     }
     function hideSplitIframes(splitData) {
-      ["leftIframe", "rightIframe"].forEach(function(key) {
-        var iframe = splitData[key];
-        if (!iframe) return;
-        iframe.classList.remove("active");
-        iframe.style.position = "";
-        iframe.style.top = "";
-        iframe.style.left = "";
-        iframe.style.right = "";
-        iframe.style.bottom = "";
-        iframe.style.width = "";
-        iframe.style.height = "";
-        iframe.style.zIndex = "";
-        iframe.style.visibility = "hidden";
-        iframe.style.pointerEvents = "none";
-        iframe.style.border = "";
-        iframe.style.borderRadius = "";
-        iframe.style.clipPath = "";
-        iframe.style.background = "";
-        if (b.contentArea && iframe.parentNode !== b.contentArea) {
-          b.contentArea.appendChild(iframe);
-        }
-      });
+      if (splitData.leftIframe) {
+        splitData.leftIframe.style.visibility = "hidden";
+        splitData.leftIframe.style.pointerEvents = "none";
+        splitData.leftIframe.style.position = "";
+        splitData.leftIframe.style.top = "";
+        splitData.leftIframe.style.left = "";
+        splitData.leftIframe.style.width = "";
+        splitData.leftIframe.style.height = "";
+        splitData.leftIframe.style.zIndex = "";
+        splitData.leftIframe.style.border = "";
+        splitData.leftIframe.style.borderRadius = "";
+        splitData.leftIframe.style.clipPath = "";
+        splitData.leftIframe.style.background = "";
+      }
+      if (splitData.rightIframe) {
+        splitData.rightIframe.style.visibility = "hidden";
+        splitData.rightIframe.style.pointerEvents = "none";
+        splitData.rightIframe.style.position = "";
+        splitData.rightIframe.style.top = "";
+        splitData.rightIframe.style.left = "";
+        splitData.rightIframe.style.width = "";
+        splitData.rightIframe.style.height = "";
+        splitData.rightIframe.style.zIndex = "";
+        splitData.rightIframe.style.border = "";
+        splitData.rightIframe.style.borderRadius = "";
+        splitData.rightIframe.style.clipPath = "";
+        splitData.rightIframe.style.background = "";
+      }
     }
     function createSplitView(targetTabId) {
       var activeTabId = b.activeTabId;
