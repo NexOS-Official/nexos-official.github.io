@@ -1,17 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8236,9 +8222,26 @@ body.reduce-motion *::after {
     this.battery.addEventListener("chargingchange", () => {
       this.updateBatteryIcon();
       if (this.battery.charging) {
+        this.playChargingSound();
         this.showChargingAnimation(Math.round(this.battery.level * 100));
       }
     });
+  }
+  playChargingSound() {
+    try {
+      if (typeof window._nexosReadFlag === "function" && !window._nexosReadFlag("charging_sound")) return;
+    } catch (e) {}
+    try {
+      var a = this._chargingAudio;
+      if (!a) {
+        a = new Audio("/main/events/charging/mp3/iphone-charge-sound.mp3");
+        a.preload = "auto";
+        this._chargingAudio = a;
+      }
+      a.currentTime = 0;
+      var p = a.play();
+      if (p && typeof p.catch === "function") p.catch(function(){});
+    } catch (e) {}
   }
   showChargingAnimation(level) {
     try {
@@ -9501,6 +9504,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           iconName = "battery-empty";
         }
+
         let iconEl = document.getElementById("battery-icon");
         if (iconEl) {
           const fresh = document.createElement("i");
@@ -16499,21 +16503,49 @@ body.vtab-resizing #vtabSidebar {
       desc: "Show the full-screen charging ring animation when your device starts charging. Uses your current theme accent color.",
       key: "nexos_flag_charging_animation",
       defaultOn: true
+    },
+    {
+      id: "charging_sound",
+      name: "Charging Sound",
+      desc: "Play the iPhone charge sound when your device starts charging. Plays independently of the charging animation flag.",
+      key: "nexos_flag_charging_sound",
+      type: "select",
+      options: [
+        { value: "default", label: "Default (On)" },
+        { value: "on", label: "On" },
+        { value: "off", label: "Off" }
+      ],
+      defaultValue: "default",
+      onValues: ["default", "on"]
     }
   ];
   window._nexosFlags = FLAGS;
 
-  function readFlag(f) {
+  function readFlagRaw(f) {
     try {
       var v = localStorage.getItem(f.key);
+      if (f.type === "select") return v === null ? f.defaultValue : v;
       if (v === null) return f.defaultOn === true;
       return v === "true";
-    } catch (e) { return f.defaultOn === true; }
+    } catch (e) {
+      return f.type === "select" ? f.defaultValue : (f.defaultOn === true);
+    }
   }
-  function writeFlag(f, on) {
-    try { localStorage.setItem(f.key, on ? "true" : "false"); } catch (e) {}
-    applyFlag(f, on);
+  function readFlag(f) {
+    var raw = readFlagRaw(f);
+    if (f.type === "select") {
+      return (f.onValues || []).indexOf(raw) >= 0;
+    }
+    return !!raw;
   }
+  function writeFlagRaw(f, value) {
+    try {
+      if (f.type === "select") localStorage.setItem(f.key, String(value));
+      else localStorage.setItem(f.key, value ? "true" : "false");
+    } catch (e) {}
+    applyFlag(f, f.type === "select" ? readFlag(f) : !!value);
+  }
+  function writeFlag(f, on) { writeFlagRaw(f, on); }
   function applyFlag(f, on) {
     if (f.id === "vertical_tabs") {
       var vt = window._verticalTabs;
@@ -16536,21 +16568,43 @@ body.vtab-resizing #vtabSidebar {
     var f = FLAGS.find(function(x){return x.id===id;});
     return f ? readFlag(f) : false;
   };
+  window._nexosReadFlagValue = function(id) {
+    var f = FLAGS.find(function(x){return x.id===id;});
+    return f ? readFlagRaw(f) : null;
+  };
   window._nexosWriteFlag = function(id, on) {
     var f = FLAGS.find(function(x){return x.id===id;});
-    if (f) writeFlag(f, !!on);
+    if (!f) return;
+    if (f.type === "select") writeFlagRaw(f, on);
+    else writeFlag(f, !!on);
   };
 
   var FLAG_META = {
     vertical_tabs: { category: "Available" },
     themes: { category: "Available" },
-    charging_animation: { category: "Available" }
+    charging_animation: { category: "Available" },
+    charging_sound: { category: "Available" }
   };
 
   window._nexosBuildFlagsPage = function() {
     var rows = FLAGS.map(function(f) {
       var on = readFlag(f);
       var meta = FLAG_META[f.id] || { category: "Available" };
+      var selectHtml;
+      if (f.type === "select") {
+        var raw = readFlagRaw(f);
+        selectHtml = '<select class="flag-select' + (on ? ' on' : '') + '" data-id="' + escapeHtml(f.id) + '" data-kind="select">' +
+          f.options.map(function(opt){
+            return '<option value="' + escapeHtml(opt.value) + '"' + (raw === opt.value ? ' selected' : '') + '>' + escapeHtml(opt.label) + '</option>';
+          }).join("") +
+        '</select>';
+      } else {
+        selectHtml = '<select class="flag-select' + (on ? ' on' : '') + '" data-id="' + escapeHtml(f.id) + '">' +
+            '<option value="default"' + (!on ? ' selected' : '') + '>Default</option>' +
+            '<option value="enabled"' + (on ? ' selected' : '') + '>Enabled</option>' +
+            '<option value="disabled">Disabled</option>' +
+          '</select>';
+      }
       return '<div class="flag-row" data-id="' + escapeHtml(f.id) + '" data-search="' +
           escapeHtml((f.name + " " + f.desc + " " + f.id + " " + meta.category).toLowerCase()) + '">' +
         '<div class="flag-text">' +
@@ -16558,13 +16612,7 @@ body.vtab-resizing #vtabSidebar {
           '<div class="flag-desc">' + escapeHtml(f.desc) + '</div>' +
           '<div class="flag-id">#' + escapeHtml(f.id) + '</div>' +
         '</div>' +
-        '<div class="flag-control">' +
-          '<select class="flag-select' + (on ? ' on' : '') + '" data-id="' + escapeHtml(f.id) + '">' +
-            '<option value="default"' + (!on ? ' selected' : '') + '>Default</option>' +
-            '<option value="enabled"' + (on ? ' selected' : '') + '>Enabled</option>' +
-            '<option value="disabled">Disabled</option>' +
-          '</select>' +
-        '</div>' +
+        '<div class="flag-control">' + selectHtml + '</div>' +
       '</div>';
     }).join("");
     return '<!doctype html><html><head><meta charset="utf-8"><title>Experiments</title>' +
@@ -16623,9 +16671,14 @@ body.vtab-resizing #vtabSidebar {
           '});' +
           'list.addEventListener("change",function(e){' +
             'var s=e.target.closest(".flag-select");if(!s)return;' +
-            'var on=s.value==="enabled";' +
-            's.classList.toggle("on",on);' +
-            'parent.postMessage({type:"nexos-set-flag",id:s.dataset.id,value:on?"enabled":"disabled"},"*");' +
+            'var kind=s.dataset.kind;' +
+            'if(kind==="select"){' +
+              'parent.postMessage({type:"nexos-set-flag",id:s.dataset.id,kind:"select",value:s.value},"*");' +
+            '}else{' +
+              'var on=s.value==="enabled";' +
+              's.classList.toggle("on",on);' +
+              'parent.postMessage({type:"nexos-set-flag",id:s.dataset.id,value:on?"enabled":"disabled"},"*");' +
+            '}' +
           '});' +
         '})();' +
       '<\/script></body></html>';
@@ -16637,8 +16690,12 @@ body.vtab-resizing #vtabSidebar {
     if (d.type === "nexos-run-command" && d.cmd && window.browser) {
       window.browser.navigate(String(d.cmd));
     } else if (d.type === "nexos-set-flag" && d.id) {
-      var on = d.value === "enabled";
-      window._nexosWriteFlag(d.id, on);
+      if (d.kind === "select") {
+        window._nexosWriteFlag(d.id, d.value);
+      } else {
+        var on = d.value === "enabled";
+        window._nexosWriteFlag(d.id, on);
+      }
     }
   });
 
