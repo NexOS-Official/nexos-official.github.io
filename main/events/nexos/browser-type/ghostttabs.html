@@ -17193,19 +17193,18 @@ body.vtab-resizing #vtabSidebar {
 })();
 </script>
 <style>
-#nexosSleepMode{position:fixed;inset:0;z-index:99999;background:#000;opacity:0;pointer-events:none;transition:opacity 0.9s ease;overflow:hidden;will-change:transform,opacity;}
+#nexosSleepMode{position:fixed;inset:0;z-index:99999;background:#000;opacity:0;pointer-events:none;transition:opacity 0.9s ease;overflow:visible;will-change:transform,opacity;}
 #nexosSleepMode.active{opacity:1;pointer-events:auto;}
 #nexosSleepWall{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;transition:opacity 1.2s ease;will-change:transform;}
 #nexosSleepWallNext{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0;transition:opacity 1.2s ease;}
-#nexosSleepBlur{position:absolute;left:-10%;right:-10%;bottom:0;height:55%;pointer-events:none;background-size:cover;background-position:center bottom;background-repeat:no-repeat;filter:blur(28px) saturate(1.05);opacity:0;transition:opacity 0.35s ease;will-change:opacity,transform;-webkit-mask-image:linear-gradient(to top,rgba(0,0,0,1) 35%,rgba(0,0,0,0) 100%);mask-image:linear-gradient(to top,rgba(0,0,0,1) 35%,rgba(0,0,0,0) 100%);}
-#nexosSleepBlurTint{position:absolute;left:0;right:0;bottom:0;height:35%;pointer-events:none;background:linear-gradient(to top,rgba(0,0,0,0.25),rgba(0,0,0,0));opacity:0;transition:opacity 0.35s ease;}
+#nexosSleepTrail{position:absolute;left:-6%;right:-6%;bottom:0;height:60vh;pointer-events:none;background-size:100% 100vh;background-position:center bottom;background-repeat:no-repeat;transform:translateY(100%) scaleY(-1);transform-origin:center top;filter:blur(34px) saturate(1.08) brightness(0.96);-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,1) 0%,rgba(0,0,0,0.92) 35%,rgba(0,0,0,0.55) 65%,rgba(0,0,0,0) 100%);mask-image:linear-gradient(to bottom,rgba(0,0,0,1) 0%,rgba(0,0,0,0.92) 35%,rgba(0,0,0,0.55) 65%,rgba(0,0,0,0) 100%);will-change:transform,opacity;}
 #nexosSleepClock{position:absolute;right:36px;bottom:42px;color:#fff;text-align:right;font-family:google sans,-apple-system,sans-serif;text-shadow:0 2px 18px rgba(0,0,0,0.5);user-select:none;will-change:transform,opacity;}
 #nexosSleepTime{font-size:64px;font-weight:300;letter-spacing:-2px;line-height:1;display:flex;align-items:flex-end;justify-content:flex-end;gap:8px;}
 #nexosSleepAmpm{font-size:20px;font-weight:400;opacity:0.85;padding-bottom:8px;}
 #nexosSleepDate{font-size:16px;font-weight:400;opacity:0.85;margin-top:8px;}
 #nexosSleepHint{position:absolute;left:0;right:0;bottom:14px;text-align:center;color:rgba(255,255,255,0.7);font-family:google sans,sans-serif;font-size:12px;letter-spacing:0.5px;pointer-events:none;animation:nexosSleepHintPulse 2.4s ease-in-out infinite;}
 @keyframes nexosSleepHintPulse{0%,100%{opacity:0.35;transform:translateY(0);}50%{opacity:0.85;transform:translateY(-4px);}}
-#nexosSleepMode.dragging #nexosSleepWall,#nexosSleepMode.dragging #nexosSleepWallNext,#nexosSleepMode.dragging #nexosSleepClock,#nexosSleepMode.dragging #nexosSleepBlur,#nexosSleepMode.dragging #nexosSleepBlurTint{transition:none;}
+#nexosSleepMode.dragging #nexosSleepWall,#nexosSleepMode.dragging #nexosSleepWallNext,#nexosSleepMode.dragging #nexosSleepClock,#nexosSleepMode.dragging #nexosSleepTrail,#nexosSleepMode.dragging{transition:none;}
 </style>
 <script>
 (function(){
@@ -17220,7 +17219,7 @@ body.vtab-resizing #vtabSidebar {
   var IDLE_MS = 5 * 60 * 1000;
   var ROTATE_MS = 20 * 1000;
   var idleTimer = null, rotateTimer = null, clockTimer = null;
-  var overlay, wallA, wallB, blur, blurTint, clockEl, timeEl, ampmEl, dateEl, hintEl;
+  var overlay, wallA, wallB, trail, clockEl, timeEl, ampmEl, dateEl, hintEl;
   var photoIdx = -1, activeWall = "A", isActive = false, currentUrl = "";
   function validPhotos(){
     var out = [];
@@ -17237,8 +17236,7 @@ body.vtab-resizing #vtabSidebar {
     overlay.innerHTML =
       '<div id="nexosSleepWall"></div>' +
       '<div id="nexosSleepWallNext"></div>' +
-      '<div id="nexosSleepBlur"></div>' +
-      '<div id="nexosSleepBlurTint"></div>' +
+      '<div id="nexosSleepTrail"></div>' +
       '<div id="nexosSleepClock">' +
         '<div id="nexosSleepTime"><span class="t"></span><span id="nexosSleepAmpm"></span></div>' +
         '<div id="nexosSleepDate"></div>' +
@@ -17247,8 +17245,7 @@ body.vtab-resizing #vtabSidebar {
     document.body.appendChild(overlay);
     wallA = overlay.querySelector("#nexosSleepWall");
     wallB = overlay.querySelector("#nexosSleepWallNext");
-    blur = overlay.querySelector("#nexosSleepBlur");
-    blurTint = overlay.querySelector("#nexosSleepBlurTint");
+    trail = overlay.querySelector("#nexosSleepTrail");
     clockEl = overlay.querySelector("#nexosSleepClock");
     timeEl = overlay.querySelector("#nexosSleepTime .t");
     ampmEl = overlay.querySelector("#nexosSleepAmpm");
@@ -17272,7 +17269,7 @@ body.vtab-resizing #vtabSidebar {
     var cur = activeWall === "A" ? wallA : wallB;
     var nxt = activeWall === "A" ? wallB : wallA;
     nxt.style.backgroundImage = 'url("' + url + '")';
-    if (blur) blur.style.backgroundImage = 'url("' + url + '")';
+    if (trail) trail.style.backgroundImage = 'url("' + url + '")';
     if (immediate){
       cur.style.opacity = "0";
       nxt.style.opacity = "1";
@@ -17315,17 +17312,32 @@ body.vtab-resizing #vtabSidebar {
     isActive = false;
     overlay.classList.remove("active");
     overlay.style.transform = "";
+    overlay.style.opacity = "";
     if (wallA) wallA.style.transform = "";
     if (wallB) wallB.style.transform = "";
     if (clockEl) clockEl.style.transform = "";
-    if (blur) { blur.style.opacity = "0"; }
-    if (blurTint) { blurTint.style.opacity = "0"; }
     stopRotation();
     stopClock();
     resetIdle();
   }
   function attachDrag(){
-    var startY = 0, curY = 0, dragging = false, pid = null;
+    var startY = 0, curY = 0, dragging = false, pid = null, rafPending = false, lastDy = 0;
+    function applyFrame(){
+      rafPending = false;
+      var dy = lastDy;
+      var tr = "translate3d(0," + dy + "px,0)";
+      overlay.style.transform = tr;
+      if (clockEl) clockEl.style.transform = tr;
+      var h = window.innerHeight || 1;
+      var prog = Math.min(1, Math.abs(dy) / h);
+      if (clockEl) clockEl.style.opacity = String(Math.max(0, 1 - prog * 1.4));
+      if (hintEl) hintEl.style.opacity = String(Math.max(0, 1 - prog * 2));
+    }
+    function schedule(){
+      if (rafPending) return;
+      rafPending = true;
+      requestAnimationFrame(applyFrame);
+    }
     function onStart(e){
       if (!isActive) return;
       var t = e.touches ? e.touches[0] : e;
@@ -17334,6 +17346,7 @@ body.vtab-resizing #vtabSidebar {
       dragging = true;
       startY = t.clientY;
       curY = 0;
+      lastDy = 0;
       overlay.classList.add("dragging");
       if (e.pointerId !== undefined){ pid = e.pointerId; try{ overlay.setPointerCapture(pid); }catch(_){} }
     }
@@ -17341,17 +17354,11 @@ body.vtab-resizing #vtabSidebar {
       if (!dragging) return;
       var t = e.touches ? e.touches[0] : e;
       var dy = t.clientY - startY;
-      if (dy > 0) dy = 0;
+      if (dy > 0) dy = dy * 0.18;
       curY = dy;
-      var abs = Math.min(Math.abs(dy), window.innerHeight);
-      var prog = abs / window.innerHeight;
-      overlay.style.transform = "translateY(" + dy + "px)";
-      if (clockEl) clockEl.style.transform = "translateY(" + dy + "px)";
-      var fade = Math.min(1, prog * 2.6);
-      if (blur) blur.style.opacity = String(fade);
-      if (blurTint) blurTint.style.opacity = String(Math.min(1, prog * 2));
-      overlay.style.opacity = String(Math.max(0.25, 1 - prog * 0.9));
-      e.preventDefault && e.preventDefault();
+      lastDy = dy;
+      schedule();
+      if (e.cancelable && e.preventDefault) e.preventDefault();
     }
     function onEnd(){
       if (!dragging) return;
@@ -17359,26 +17366,30 @@ body.vtab-resizing #vtabSidebar {
       overlay.classList.remove("dragging");
       var abs = Math.abs(curY);
       if (pid !== null){ try{ overlay.releasePointerCapture(pid); }catch(_){} pid = null; }
-      if (abs > window.innerHeight * 0.22){
-        overlay.style.transition = "transform 0.45s ease, opacity 0.5s ease";
-        overlay.style.transform = "translateY(-" + window.innerHeight + "px)";
+      var ease = "cubic-bezier(0.22,1,0.36,1)";
+      if (curY < 0 && abs > window.innerHeight * 0.22){
+        overlay.style.transition = "transform 0.55s " + ease + ", opacity 0.5s ease";
+        if (clockEl) clockEl.style.transition = "transform 0.55s " + ease + ", opacity 0.4s ease";
+        overlay.style.transform = "translate3d(0,-" + (window.innerHeight + 60) + "px,0)";
         overlay.style.opacity = "0";
-        setTimeout(function(){
-          overlay.style.transition = "";
-          overlay.style.opacity = "";
-          exitSleep();
-        }, 450);
-      } else {
-        overlay.style.transition = "transform 0.35s ease, opacity 0.35s ease";
-        overlay.style.transform = "";
-        overlay.style.opacity = "";
-        if (clockEl){ clockEl.style.transition = "transform 0.35s ease"; clockEl.style.transform = ""; }
-        if (blur) blur.style.opacity = "0";
-        if (blurTint) blurTint.style.opacity = "0";
+        if (clockEl){ clockEl.style.transform = "translate3d(0,-" + (window.innerHeight + 60) + "px,0)"; clockEl.style.opacity = "0"; }
         setTimeout(function(){
           overlay.style.transition = "";
           if (clockEl) clockEl.style.transition = "";
-        }, 360);
+          exitSleep();
+        }, 560);
+      } else {
+        overlay.style.transition = "transform 0.5s " + ease;
+        if (clockEl) clockEl.style.transition = "transform 0.5s " + ease + ", opacity 0.35s ease";
+        overlay.style.transform = "translate3d(0,0,0)";
+        if (clockEl){ clockEl.style.transform = "translate3d(0,0,0)"; clockEl.style.opacity = ""; }
+        if (hintEl) hintEl.style.opacity = "";
+        setTimeout(function(){
+          overlay.style.transition = "";
+          if (clockEl) clockEl.style.transition = "";
+          overlay.style.transform = "";
+          if (clockEl) clockEl.style.transform = "";
+        }, 520);
       }
     }
     if (window.PointerEvent){
