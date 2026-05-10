@@ -10,6 +10,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -134,12 +136,12 @@ body {
 }
 .charging-ring-fg {
   fill: none;
-  stroke: #30d158;
+  stroke: var(--nexos-accent, #30d158);
   stroke-width: 16;
   stroke-linecap: round;
   stroke-dasharray: 678.58;
   stroke-dashoffset: 678.58;
-  transition: stroke-dashoffset 1.6s cubic-bezier(.2,.9,.25,1);
+  transition: stroke-dashoffset 1.6s cubic-bezier(.2,.9,.25,1), stroke 0.3s ease;
 }
 .charging-bolt {
   position: absolute;
@@ -147,7 +149,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #30d158;
+  color: var(--nexos-accent, #30d158);
+  transition: color 0.3s ease;
 }
 .charging-bolt svg { width: 70px; height: 92px; }
 .charging-label {
@@ -8238,6 +8241,9 @@ body.reduce-motion *::after {
     });
   }
   showChargingAnimation(level) {
+    try {
+      if (typeof window._nexosReadFlag === "function" && !window._nexosReadFlag("charging_animation")) return;
+    } catch (e) {}
     const loading = document.getElementById("loadingOverlay");
     if (loading && loading.style.display !== "none" && !loading.classList.contains("fade-out")) return;
     const overlay = document.getElementById("chargingBlur");
@@ -16473,12 +16479,23 @@ body.vtab-resizing #vtabSidebar {
       name: "Themes",
       desc: "Enable the Themes panel inside Snapshots to recolor the browser chrome, address bar, bookmark star and more.",
       key: "nexos_flag_themes"
+    },
+    {
+      id: "charging_animation",
+      name: "Charging Animation",
+      desc: "Show the full-screen charging ring animation when your device starts charging. Uses your current theme accent color.",
+      key: "nexos_flag_charging_animation",
+      defaultOn: true
     }
   ];
   window._nexosFlags = FLAGS;
 
   function readFlag(f) {
-    try { return localStorage.getItem(f.key) === "true"; } catch (e) { return false; }
+    try {
+      var v = localStorage.getItem(f.key);
+      if (v === null) return f.defaultOn === true;
+      return v === "true";
+    } catch (e) { return f.defaultOn === true; }
   }
   function writeFlag(f, on) {
     try { localStorage.setItem(f.key, on ? "true" : "false"); } catch (e) {}
@@ -16513,7 +16530,8 @@ body.vtab-resizing #vtabSidebar {
 
   var FLAG_META = {
     vertical_tabs: { category: "Available" },
-    themes: { category: "Available" }
+    themes: { category: "Available" },
+    charging_animation: { category: "Available" }
   };
 
   window._nexosBuildFlagsPage = function() {
