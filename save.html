@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,16 +8,17 @@
 @font-face{font-family:gs;src:url("/assets/ghostincimgs/GoogleSans-Regular.ttf") format("truetype");font-display:swap}
 *{box-sizing:border-box;font-family:gs,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100dvh;overflow:hidden;background:#fff;color:#111}
-body{display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:20px 18px env(safe-area-inset-bottom,18px)}
-.logo{width:30px;height:30px;opacity:.9}
-.head{display:flex;flex-direction:column;align-items:center;gap:6px;margin-top:4px}
-.title{font-size:18px;font-weight:600;letter-spacing:-.2px}
-.sub{font-size:11px;color:#888}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:340px}
-.tile{aspect-ratio:1/1;border:1px solid #ececec;border-radius:14px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;transition:transform .12s ease,background .12s ease,border-color .12s ease}
-.tile:active{transform:scale(.96);background:#fafafa}
-.tile svg{width:26px;height:26px;stroke:#111;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.tile span{font-size:11px;color:#333;font-weight:500}
+body{display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 10px 10px}
+.head{display:flex;align-items:center;gap:6px;margin:0}
+.logo{width:16px;height:16px;opacity:.9}
+.title{font-size:13px;font-weight:600;letter-spacing:-.2px;line-height:1}
+.sub{font-size:9.5px;color:#888;line-height:1}
+.head-col{display:flex;flex-direction:column;gap:2px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:100%}
+.tile{aspect-ratio:1/1;border:1px solid #ececec;border-radius:10px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:transform .12s,background .12s;position:relative}
+.tile:active{transform:scale(.95);background:#fafafa}
+.tile svg{width:18px;height:18px;stroke:#111;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.tile span{font-size:9px;color:#333;font-weight:500;line-height:1}
 .tile.dark{background:#000;border-color:#000}
 .tile.dark svg{stroke:#fff}
 .tile.dark span{color:#fff}
@@ -26,10 +26,9 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:space
 .tile.danger svg{stroke:#d11}
 .tile.danger span{color:#d11}
 .file{display:none}
-.loaded{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#22c55e;display:none}
-.tile{position:relative}
+.loaded{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:#22c55e;display:none}
 .tile.has-file .loaded{display:block}
-.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);background:#000;color:#fff;font-size:12px;padding:9px 14px;border-radius:999px;opacity:0;pointer-events:none;transition:all .22s ease}
+.toast{position:fixed;left:50%;bottom:8px;transform:translateX(-50%) translateY(14px);background:#000;color:#fff;font-size:10px;padding:6px 10px;border-radius:999px;opacity:0;pointer-events:none;transition:all .22s}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
@@ -37,40 +36,42 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:space
 
 <div class="head">
 <img class="logo" src="/assets/ghostincimgs/ghost_dark_logo.svg" alt="">
+<div class="head-col">
 <div class="title">Backup</div>
 <div class="sub">Manage your Ghost data</div>
+</div>
 </div>
 
 <div class="grid">
 
-<div class="tile dark" id="exportFull" title="Download full backup">
+<div class="tile dark" id="exportFull" title="Export">
 <svg viewBox="0 0 24 24"><path d="M12 4v12"/><path d="M6 12l6 6 6-6"/><path d="M5 20h14"/></svg>
 <span>Export</span>
 </div>
 
-<label class="tile" id="importTile" for="importFile" title="Load backup file">
+<label class="tile" id="importTile" for="importFile" title="Import">
 <svg viewBox="0 0 24 24"><path d="M12 20V8"/><path d="M6 14l6-6 6 6"/><path d="M5 4h14"/></svg>
 <span>Import</span>
 <div class="loaded"></div>
 </label>
 <input type="file" id="importFile" class="file" accept=".json,.ghost">
 
-<div class="tile" id="restoreAll" title="Restore everything">
+<div class="tile" id="restoreAll" title="Restore All">
 <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
-<span>Restore All</span>
+<span>Restore</span>
 </div>
 
-<div class="tile muted" id="restoreStorage" title="Restore localStorage">
+<div class="tile muted" id="restoreStorage" title="Storage">
 <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="1"/><rect x="3" y="14" width="18" height="6" rx="1"/><path d="M7 7h.01"/><path d="M7 17h.01"/></svg>
 <span>Storage</span>
 </div>
 
-<div class="tile muted" id="restoreCookies" title="Restore cookies">
+<div class="tile muted" id="restoreCookies" title="Cookies">
 <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10 5 5 0 0 1-5-5 5 5 0 0 1-5-5z"/><circle cx="9" cy="11" r=".8"/><circle cx="14" cy="14" r=".8"/><circle cx="10" cy="16" r=".8"/></svg>
 <span>Cookies</span>
 </div>
 
-<div class="tile danger" id="wipeAll" title="Factory reset">
+<div class="tile danger" id="wipeAll" title="Reset">
 <svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>
 <span>Reset</span>
 </div>
@@ -80,7 +81,7 @@ body{display:flex;flex-direction:column;align-items:center;justify-content:space
 <div class="toast" id="toast"></div>
 
 <script>
-const toast=(m)=>{const e=document.getElementById("toast");e.textContent=m;e.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove("show"),2200)};
+const toast=(m)=>{const e=document.getElementById("toast");e.textContent=m;e.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove("show"),2000)};
 
 async function exportIndexedDB(){
   if(!indexedDB.databases)return{};
@@ -110,7 +111,7 @@ const BackupSystem={
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     const url=URL.createObjectURL(blob);const a=document.createElement("a");
     a.href=url;a.download=`ghost-backup-${Date.now()}.ghost`;a.click();URL.revokeObjectURL(url);
-    toast("Backup downloaded");
+    toast("Downloaded");
   },
   readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{try{res(JSON.parse(r.result))}catch{rej()}};r.onerror=rej;r.readAsText(f)})},
   validate(d){if(!d.meta||!d.localStorage||!d.cookies)throw new Error("bad")},
@@ -127,30 +128,30 @@ document.getElementById("exportFull").onclick=()=>BackupSystem.download();
 
 document.getElementById("importFile").onchange=async(e)=>{
   const f=e.target.files[0];if(!f)return;
-  try{importedData=await BackupSystem.readFile(f);BackupSystem.validate(importedData);importTile.classList.add("has-file");toast("Backup loaded")}
+  try{importedData=await BackupSystem.readFile(f);BackupSystem.validate(importedData);importTile.classList.add("has-file");toast("Loaded")}
   catch{importedData=null;importTile.classList.remove("has-file");toast("Invalid file")}
 };
 
 document.getElementById("restoreAll").onclick=()=>{
-  if(!importedData)return toast("Import a backup first");
+  if(!importedData)return toast("Import first");
   if(!confirm("Restore EVERYTHING?"))return;
   BackupSystem.restoreStorage(importedData);BackupSystem.restoreSession(importedData);BackupSystem.restoreCookies(importedData);
-  toast("Restoring...");setTimeout(()=>location.reload(),1100);
+  toast("Restoring...");setTimeout(()=>location.reload(),1000);
 };
 
 document.getElementById("restoreStorage").onclick=()=>{
-  if(!importedData)return toast("Import a backup first");
+  if(!importedData)return toast("Import first");
   BackupSystem.restoreStorage(importedData);toast("Storage restored");
 };
 
 document.getElementById("restoreCookies").onclick=()=>{
-  if(!importedData)return toast("Import a backup first");
+  if(!importedData)return toast("Import first");
   BackupSystem.restoreCookies(importedData);toast("Cookies restored");
 };
 
 document.getElementById("wipeAll").onclick=()=>{
-  if(!confirm("Factory reset? This cannot be undone."))return;
-  BackupSystem.wipe();toast("All data wiped");setTimeout(()=>location.reload(),1100);
+  if(!confirm("Factory reset?"))return;
+  BackupSystem.wipe();toast("Wiped");setTimeout(()=>location.reload(),1000);
 };
 </script>
 </body>
