@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Ghost</title>
+<style>
+@font-face{font-family:gs;src:url(/assets/ghostincimgs/GoogleSans-Bold.ttf) format("truetype");font-weight:700}
+@font-face{font-family:gs;src:url(/assets/ghostincimgs/GoogleSans-Regular.ttf) format("truetype");font-weight:400}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#fff;color:#111;font-family:gs,sans-serif}
+.stage{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px}
+.pfp{width:128px;height:128px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#f1f1f3;font-size:56px;font-weight:700}
+.pfp img{width:100%;height:100%;object-fit:cover;display:block}
+.name{font-family:gs,sans-serif;font-weight:700;font-size:28px;letter-spacing:-.5px}
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="pfp" id="pfp"><span>G</span></div>
+<div class="name" id="name">Ghost User</div>
+</div>
+<script>
+function esc(s){return String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;')}
+function firstLetter(n){const v=String(n||'').trim();return v?v[0].toUpperCase():'G'}
+async function loadCurrentAccount(){
+  try{
+    const res=await fetch('/auth/session',{method:'GET',credentials:'same-origin',headers:{'Accept':'application/json'}});
+    if(!res.ok)return;
+    const data=await res.json();
+    if(!data||!data.logged_in)return;
+    const displayName=data.display_name||data.name||'Ghost User';
+    const pfp=document.getElementById('pfp');
+    pfp.innerHTML=data.avatar_url
+      ?`<img src="${esc(data.avatar_url)}" alt="${esc(displayName)}">`
+      :`<span>${esc(firstLetter(displayName))}</span>`;
+    document.getElementById('name').textContent=displayName;
+  }catch(e){}
+}
+loadCurrentAccount();
+</script>
+</body>
+</html>
