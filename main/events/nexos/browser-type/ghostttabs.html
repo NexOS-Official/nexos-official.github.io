@@ -2,6 +2,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10624,7 +10626,7 @@ menu.addEventListener("mouseleave", hideMenu);
       powerDropdown.addEventListener("click", function(e) {
         e.stopPropagation();
         openSubPanel(
-          `<div style="padding:4px 0;"><button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='none'" onclick="window.location.href='/login'"><i data-lucide="power" width="14" height="14" style="color:#555;"></i><span>Sign Out</span></button><button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='none'" onclick="window.location.href='/index.html'"><i data-lucide="log-out" width="14" height="14" style="color:#555;"></i><span>Lock</span></button></div>`,
+          `<div style="padding:4px 0;"><button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='none'" onclick="window.location.href='/login'"><i data-lucide="power" width="14" height="14" style="color:#555;"></i><span>Sign Out</span></button><button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='none'" onclick="window.__nexosEnterSleep&&window.__nexosEnterSleep()"><i data-lucide="moon" width="14" height="14" style="color:#555;"></i><span>Sleep</span></button><button class="cc-power-option" style="display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:13px;font-family:google sans;color:#1d1d1f;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background 0.12s;border-radius:8px;" onmouseover="this.style.background='rgba(0,0,0,0.04)'" onmouseout="this.style.background='none'" onclick="window.location.href='/index.html'"><i data-lucide="log-out" width="14" height="14" style="color:#555;"></i><span>Lock</span></button></div>`,
           90
         );
       });
@@ -17188,6 +17190,208 @@ body.vtab-resizing #vtabSidebar {
   function init(){ bindTabs(); render(); updateThemesTabVisibility(); }
   if (document.readyState === 'complete' || document.readyState === 'interactive') init();
   else window.addEventListener('DOMContentLoaded', init);
+})();
+</script>
+<style>
+#nexosSleepMode{position:fixed;inset:0;z-index:99999;background:#000;opacity:0;pointer-events:none;transition:opacity 0.9s ease;overflow:hidden;will-change:transform,opacity;}
+#nexosSleepMode.active{opacity:1;pointer-events:auto;}
+#nexosSleepWall{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;transition:opacity 1.2s ease;will-change:transform;}
+#nexosSleepWallNext{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;opacity:0;transition:opacity 1.2s ease;}
+#nexosSleepBlur{position:absolute;left:0;right:0;bottom:0;height:25%;pointer-events:none;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);background:linear-gradient(to top,rgba(0,0,0,0.35),rgba(0,0,0,0));opacity:0;transition:opacity 0.25s ease;}
+#nexosSleepClock{position:absolute;right:36px;bottom:42px;color:#fff;text-align:right;font-family:google sans,-apple-system,sans-serif;text-shadow:0 2px 18px rgba(0,0,0,0.5);user-select:none;will-change:transform,opacity;}
+#nexosSleepTime{font-size:64px;font-weight:300;letter-spacing:-2px;line-height:1;display:flex;align-items:flex-end;justify-content:flex-end;gap:8px;}
+#nexosSleepAmpm{font-size:20px;font-weight:400;opacity:0.85;padding-bottom:8px;}
+#nexosSleepDate{font-size:16px;font-weight:400;opacity:0.85;margin-top:8px;}
+#nexosSleepHint{position:absolute;left:0;right:0;bottom:14px;text-align:center;color:rgba(255,255,255,0.7);font-family:google sans,sans-serif;font-size:12px;letter-spacing:0.5px;pointer-events:none;animation:nexosSleepHintPulse 2.4s ease-in-out infinite;}
+@keyframes nexosSleepHintPulse{0%,100%{opacity:0.35;transform:translateY(0);}50%{opacity:0.85;transform:translateY(-4px);}}
+#nexosSleepMode.dragging #nexosSleepWall,#nexosSleepMode.dragging #nexosSleepWallNext,#nexosSleepMode.dragging #nexosSleepClock,#nexosSleepMode.dragging #nexosSleepBlur{transition:none;}
+</style>
+<script>
+(function(){
+  var PHOTOS = [
+    "13k.jpg",
+    "14k.jpg",
+    "15k.avif",
+    "16k.jpg",
+    "17k.jpg",
+    "18.jpg",
+    "19k.jpg",
+  ];
+  var IDLE_MS = 5 * 60 * 1000;
+  var ROTATE_MS = 20 * 1000;
+  var idleTimer = null, rotateTimer = null, clockTimer = null;
+  var overlay, wallA, wallB, blur, clockEl, timeEl, ampmEl, dateEl, hintEl;
+  var photoIdx = 0, activeWall = "A", isActive = false;
+  function buildOverlay(){
+    if (overlay) return;
+    overlay = document.createElement("div");
+    overlay.id = "nexosSleepMode";
+    overlay.innerHTML =
+      '<div id="nexosSleepWall"></div>' +
+      '<div id="nexosSleepWallNext"></div>' +
+      '<div id="nexosSleepBlur"></div>' +
+      '<div id="nexosSleepClock">' +
+        '<div id="nexosSleepTime"><span class="t"></span><span id="nexosSleepAmpm"></span></div>' +
+        '<div id="nexosSleepDate"></div>' +
+      '</div>' +
+      '<div id="nexosSleepHint">Swipe up to wake</div>';
+    document.body.appendChild(overlay);
+    wallA = overlay.querySelector("#nexosSleepWall");
+    wallB = overlay.querySelector("#nexosSleepWallNext");
+    blur = overlay.querySelector("#nexosSleepBlur");
+    clockEl = overlay.querySelector("#nexosSleepClock");
+    timeEl = overlay.querySelector("#nexosSleepTime .t");
+    ampmEl = overlay.querySelector("#nexosSleepAmpm");
+    dateEl = overlay.querySelector("#nexosSleepDate");
+    hintEl = overlay.querySelector("#nexosSleepHint");
+    attachDrag();
+  }
+  function pickPhoto(){
+    if (!PHOTOS.length) return "";
+    var i = Math.floor(Math.random() * PHOTOS.length);
+    if (PHOTOS.length > 1 && i === photoIdx) i = (i + 1) % PHOTOS.length;
+    photoIdx = i;
+    return PHOTOS[i];
+  }
+  function setWallpaper(url, immediate){
+    if (!url) return;
+    var cur = activeWall === "A" ? wallA : wallB;
+    var nxt = activeWall === "A" ? wallB : wallA;
+    nxt.style.backgroundImage = 'url("' + url + '")';
+    if (immediate){
+      cur.style.opacity = "0";
+      nxt.style.opacity = "1";
+    } else {
+      nxt.style.opacity = "1";
+      cur.style.opacity = "0";
+    }
+    activeWall = activeWall === "A" ? "B" : "A";
+  }
+  function updateClock(){
+    if (!timeEl) return;
+    var d = new Date();
+    var h = d.getHours();
+    var m = d.getMinutes();
+    var ap = h >= 12 ? "PM" : "AM";
+    var h12 = h % 12; if (h12 === 0) h12 = 12;
+    timeEl.textContent = h12 + ":" + (m < 10 ? "0" + m : m);
+    ampmEl.textContent = ap;
+    var opts = { weekday:"long", month:"long", day:"numeric" };
+    dateEl.textContent = d.toLocaleDateString(undefined, opts);
+  }
+  function startRotation(){
+    stopRotation();
+    setWallpaper(pickPhoto(), true);
+    rotateTimer = setInterval(function(){ setWallpaper(pickPhoto(), false); }, ROTATE_MS);
+  }
+  function stopRotation(){ if (rotateTimer){ clearInterval(rotateTimer); rotateTimer = null; } }
+  function startClock(){ updateClock(); if (clockTimer) clearInterval(clockTimer); clockTimer = setInterval(updateClock, 1000); }
+  function stopClock(){ if (clockTimer){ clearInterval(clockTimer); clockTimer = null; } }
+  function enterSleep(){
+    if (isActive) return;
+    buildOverlay();
+    isActive = true;
+    startClock();
+    startRotation();
+    requestAnimationFrame(function(){ overlay.classList.add("active"); });
+  }
+  function exitSleep(){
+    if (!isActive || !overlay) return;
+    isActive = false;
+    overlay.classList.remove("active");
+    overlay.style.transform = "";
+    if (wallA) wallA.style.transform = "";
+    if (wallB) wallB.style.transform = "";
+    if (clockEl) clockEl.style.transform = "";
+    if (blur) { blur.style.opacity = "0"; blur.style.backdropFilter = "blur(0px)"; blur.style.webkitBackdropFilter = "blur(0px)"; }
+    stopRotation();
+    stopClock();
+    resetIdle();
+  }
+  function attachDrag(){
+    var startY = 0, curY = 0, dragging = false, pid = null;
+    function onStart(e){
+      if (!isActive) return;
+      var t = e.touches ? e.touches[0] : e;
+      var h = window.innerHeight;
+      if (t.clientY < h * 0.65) return;
+      dragging = true;
+      startY = t.clientY;
+      curY = 0;
+      overlay.classList.add("dragging");
+      if (e.pointerId !== undefined){ pid = e.pointerId; try{ overlay.setPointerCapture(pid); }catch(_){} }
+    }
+    function onMove(e){
+      if (!dragging) return;
+      var t = e.touches ? e.touches[0] : e;
+      var dy = t.clientY - startY;
+      if (dy > 0) dy = 0;
+      curY = dy;
+      var abs = Math.min(Math.abs(dy), window.innerHeight);
+      var prog = abs / window.innerHeight;
+      overlay.style.transform = "translateY(" + dy + "px)";
+      if (clockEl) clockEl.style.transform = "translateY(" + dy + "px)";
+      var bl = Math.min(24, prog * 40);
+      blur.style.opacity = String(Math.min(1, prog * 3));
+      blur.style.backdropFilter = "blur(" + bl + "px)";
+      blur.style.webkitBackdropFilter = "blur(" + bl + "px)";
+      overlay.style.opacity = String(Math.max(0.25, 1 - prog * 0.9));
+      e.preventDefault && e.preventDefault();
+    }
+    function onEnd(){
+      if (!dragging) return;
+      dragging = false;
+      overlay.classList.remove("dragging");
+      var abs = Math.abs(curY);
+      if (pid !== null){ try{ overlay.releasePointerCapture(pid); }catch(_){} pid = null; }
+      if (abs > window.innerHeight * 0.22){
+        overlay.style.transition = "transform 0.45s ease, opacity 0.5s ease";
+        overlay.style.transform = "translateY(-" + window.innerHeight + "px)";
+        overlay.style.opacity = "0";
+        setTimeout(function(){
+          overlay.style.transition = "";
+          overlay.style.opacity = "";
+          exitSleep();
+        }, 450);
+      } else {
+        overlay.style.transition = "transform 0.35s ease, opacity 0.35s ease";
+        overlay.style.transform = "";
+        overlay.style.opacity = "";
+        if (clockEl){ clockEl.style.transition = "transform 0.35s ease"; clockEl.style.transform = ""; }
+        blur.style.opacity = "0";
+        blur.style.backdropFilter = "blur(0px)";
+        blur.style.webkitBackdropFilter = "blur(0px)";
+        setTimeout(function(){
+          overlay.style.transition = "";
+          if (clockEl) clockEl.style.transition = "";
+        }, 360);
+      }
+    }
+    if (window.PointerEvent){
+      overlay.addEventListener("pointerdown", onStart);
+      overlay.addEventListener("pointermove", onMove);
+      overlay.addEventListener("pointerup", onEnd);
+      overlay.addEventListener("pointercancel", onEnd);
+    } else {
+      overlay.addEventListener("touchstart", onStart, { passive:true });
+      overlay.addEventListener("touchmove", onMove, { passive:false });
+      overlay.addEventListener("touchend", onEnd);
+      overlay.addEventListener("mousedown", onStart);
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onEnd);
+    }
+  }
+  function resetIdle(){
+    if (isActive) return;
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(enterSleep, IDLE_MS);
+  }
+  ["mousemove","mousedown","keydown","wheel","touchstart","scroll","pointerdown"].forEach(function(ev){
+    window.addEventListener(ev, function(){ if (!isActive) resetIdle(); }, { passive:true });
+  });
+  window.__nexosEnterSleep = enterSleep;
+  window.__nexosExitSleep = exitSleep;
+  resetIdle();
 })();
 </script>
 </body>
