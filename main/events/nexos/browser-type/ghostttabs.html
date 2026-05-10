@@ -7,6 +7,9 @@
 
 
 
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -90,6 +93,74 @@ body {
 .tab.pinned .tab-audio-icon {
   display: none;
 }
+
+#chargingBlur {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: #1c1110;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+}
+#chargingBlur.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.charging-ring-wrap {
+  position: relative;
+  width: 230px;
+  height: 230px;
+  transform: scale(0.85);
+  opacity: 0;
+  transition: transform 0.6s cubic-bezier(.2,.9,.25,1.2), opacity 0.45s ease;
+}
+#chargingBlur.show .charging-ring-wrap { transform: scale(1); opacity: 1; }
+.charging-ring-wrap > svg {
+  width: 100%; height: 100%;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+.charging-ring-bg {
+  fill: none;
+  stroke: #4a3f3e;
+  stroke-width: 16;
+  stroke-linecap: round;
+}
+.charging-ring-fg {
+  fill: none;
+  stroke: #30d158;
+  stroke-width: 16;
+  stroke-linecap: round;
+  stroke-dasharray: 678.58;
+  stroke-dashoffset: 678.58;
+  transition: stroke-dashoffset 1.6s cubic-bezier(.2,.9,.25,1);
+}
+.charging-bolt {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #30d158;
+}
+.charging-bolt svg { width: 70px; height: 92px; }
+.charging-label {
+  color: #fff;
+  font-family: "google sans", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+  transform: translateY(10px);
+  opacity: 0;
+  transition: transform 0.5s ease 0.2s, opacity 0.5s ease 0.2s;
+}
+#chargingBlur.show .charging-label { transform: translateY(0); opacity: 1; }
 .site-toast {
   position: fixed;
   bottom: 60px;
@@ -5341,6 +5412,19 @@ body.reduce-motion *::after {
         <div class="loading-banner" id="loadingBanner"></div>
     </div>
 
+    <div id="chargingBlur" aria-hidden="true">
+      <div class="charging-ring-wrap">
+        <svg viewBox="0 0 240 240">
+          <circle class="charging-ring-bg" cx="120" cy="120" r="108"></circle>
+          <circle class="charging-ring-fg" id="chargingRingFg" cx="120" cy="120" r="108"></circle>
+        </svg>
+        <div class="charging-bolt">
+          <svg viewBox="0 0 48 64" fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M28 2 6 36h14L20 62l22-34H28l0-26z"/></svg>
+        </div>
+      </div>
+      <div class="charging-label"><span id="chargingPercentValue">0</span>% Charged</div>
+    </div>
+
     <div class="tab-restore-overlay" id="tabRestoreOverlay">
         <div class="tab-restore-panel recap-tabs-mode" id="recapPanel">
             <div class="tab-restore-left">
@@ -8148,7 +8232,45 @@ body.reduce-motion *::after {
     });
     this.battery.addEventListener("chargingchange", () => {
       this.updateBatteryIcon();
+      if (this.battery.charging) {
+        this.showChargingAnimation(Math.round(this.battery.level * 100));
+      }
     });
+  }
+  showChargingAnimation(level) {
+    const loading = document.getElementById("loadingOverlay");
+    if (loading && loading.style.display !== "none" && !loading.classList.contains("fade-out")) return;
+    const overlay = document.getElementById("chargingBlur");
+    const ring = document.getElementById("chargingRingFg");
+    const valueEl = document.getElementById("chargingPercentValue");
+    if (!overlay || !ring || !valueEl) return;
+    if (this._chargingTickRaf) cancelAnimationFrame(this._chargingTickRaf);
+    if (this._chargingHideTimer) clearTimeout(this._chargingHideTimer);
+    if (this._chargingDoneTimer) clearTimeout(this._chargingDoneTimer);
+    overlay.classList.remove("show");
+    const C = 2 * Math.PI * 108;
+    ring.style.transition = "none";
+    ring.style.strokeDasharray = C;
+    ring.style.strokeDashoffset = C;
+    valueEl.textContent = "0";
+    void overlay.offsetWidth;
+    ring.style.transition = "";
+    overlay.classList.add("show");
+    requestAnimationFrame(() => {
+      ring.style.strokeDashoffset = C * (1 - level / 100);
+    });
+    const start = performance.now();
+    const dur = 1600;
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / dur);
+      const eased = 1 - Math.pow(1 - t, 3);
+      valueEl.textContent = Math.round(level * eased);
+      if (t < 1) this._chargingTickRaf = requestAnimationFrame(tick);
+    };
+    this._chargingTickRaf = requestAnimationFrame(tick);
+    this._chargingHideTimer = setTimeout(() => {
+      overlay.classList.remove("show");
+    }, 2800);
   }
   checkBatteryStatus() {
     if (!this.battery) return;
