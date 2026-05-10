@@ -8229,28 +8229,57 @@ body.reduce-motion *::after {
       }
     });
   }
+  _dimMedia(m, state) {
+    var self = this;
+    if (m === self._chargingAudio) return;
+    var rec = { el: m, prevVolume: m.volume, prevMuted: m.muted, filter: null, gain: null, src: null, ctx: null };
+    try {
+      if (!m._nexosAudioCtx) {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) {
+          var ctx = new Ctx();
+          var src = ctx.createMediaElementSource(m);
+          var filter = ctx.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 400;
+          var gain = ctx.createGain();
+          gain.gain.value = 0.15;
+          src.connect(filter).connect(gain).connect(ctx.destination);
+          m._nexosAudioCtx = { ctx: ctx, src: src, filter: filter, gain: gain };
+        }
+      } else {
+        var n = m._nexosAudioCtx;
+        rec.prevFreq = n.filter.frequency.value;
+        rec.prevGain = n.gain.gain.value;
+        n.filter.frequency.value = 400;
+        n.gain.gain.value = 0.15;
+        rec.node = n;
+      }
+    } catch(e){}
+    try { m.volume = Math.min(m.volume, 0.1); m.muted = false; } catch(e){}
+    state.push({ media: [rec] });
+  }
   _muteAllIframeAudio() {
     if (this._iframeMuteState) return;
     var state = [];
+    var self = this;
     var frames = document.querySelectorAll("iframe");
     frames.forEach(function(f){
       var entry = { frame: f, media: [], crossOrigin: false };
       try {
         var doc = f.contentDocument;
         if (doc) {
-          var media = doc.querySelectorAll("audio,video");
-          media.forEach(function(m){
-            entry.media.push({ el: m, prevMuted: m.muted, prevVolume: m.volume });
-            try { m.muted = true; m.volume = 0; } catch(e){}
+          doc.querySelectorAll("audio,video").forEach(function(m){
+            entry.media.push({ el: m, prevVolume: m.volume, prevMuted: m.muted });
+            try { m.volume = 0.08; } catch(e){}
           });
-          var nested = doc.querySelectorAll("iframe");
-          nested.forEach(function(nf){
+          doc.querySelectorAll("iframe").forEach(function(nf){
             try {
               var ndoc = nf.contentDocument;
               if (ndoc) {
                 ndoc.querySelectorAll("audio,video").forEach(function(m){
-                  entry.media.push({ el: m, prevMuted: m.muted, prevVolume: m.volume });
-                  try { m.muted = true; m.volume = 0; } catch(e){}
+                  entry.media.push({ el: m, prevVolume: m.volume, prevMuted: m.muted });
+                  try { m.volume = 0.08; } catch(e){}
                 });
               }
             } catch(e){}
@@ -8263,17 +8292,13 @@ body.reduce-motion *::after {
       }
       if (entry.crossOrigin) {
         try {
-          f.contentWindow && f.contentWindow.postMessage({ type: "nexos:mute" }, "*");
+          f.contentWindow && f.contentWindow.postMessage({ type: "nexos:dim", volume: 0.08 }, "*");
         } catch(e){}
       }
       state.push(entry);
     });
-    var hostMedia = document.querySelectorAll("audio,video");
-    var self = this;
-    hostMedia.forEach(function(m){
-      if (m === self._chargingAudio) return;
-      state.push({ host: true, media: [{ el: m, prevMuted: m.muted, prevVolume: m.volume }] });
-      try { m.muted = true; m.volume = 0; } catch(e){}
+    document.querySelectorAll("audio,video").forEach(function(m){
+      self._dimMedia(m, state);
     });
     this._iframeMuteState = state;
   }
@@ -8282,11 +8307,20 @@ body.reduce-motion *::after {
     if (!state) return;
     state.forEach(function(entry){
       (entry.media || []).forEach(function(rec){
-        try { rec.el.muted = rec.prevMuted; rec.el.volume = rec.prevVolume; } catch(e){}
+        try {
+          if (rec.node) {
+            rec.node.filter.frequency.value = rec.prevFreq != null ? rec.prevFreq : 22000;
+            rec.node.gain.gain.value = rec.prevGain != null ? rec.prevGain : 1;
+          }
+          if (rec.el) {
+            rec.el.volume = rec.prevVolume;
+            rec.el.muted = rec.prevMuted;
+          }
+        } catch(e){}
       });
       if (entry.crossOrigin && entry.frame) {
         try {
-          entry.frame.contentWindow && entry.frame.contentWindow.postMessage({ type: "nexos:unmute" }, "*");
+          entry.frame.contentWindow && entry.frame.contentWindow.postMessage({ type: "nexos:undim" }, "*");
         } catch(e){}
       }
     });
