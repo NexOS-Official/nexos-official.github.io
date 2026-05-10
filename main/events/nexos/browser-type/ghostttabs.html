@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8227,6 +8229,69 @@ body.reduce-motion *::after {
       }
     });
   }
+  _muteAllIframeAudio() {
+    if (this._iframeMuteState) return;
+    var state = [];
+    var frames = document.querySelectorAll("iframe");
+    frames.forEach(function(f){
+      var entry = { frame: f, media: [], crossOrigin: false };
+      try {
+        var doc = f.contentDocument;
+        if (doc) {
+          var media = doc.querySelectorAll("audio,video");
+          media.forEach(function(m){
+            entry.media.push({ el: m, prevMuted: m.muted, prevVolume: m.volume });
+            try { m.muted = true; m.volume = 0; } catch(e){}
+          });
+          var nested = doc.querySelectorAll("iframe");
+          nested.forEach(function(nf){
+            try {
+              var ndoc = nf.contentDocument;
+              if (ndoc) {
+                ndoc.querySelectorAll("audio,video").forEach(function(m){
+                  entry.media.push({ el: m, prevMuted: m.muted, prevVolume: m.volume });
+                  try { m.muted = true; m.volume = 0; } catch(e){}
+                });
+              }
+            } catch(e){}
+          });
+        } else {
+          entry.crossOrigin = true;
+        }
+      } catch (e) {
+        entry.crossOrigin = true;
+      }
+      if (entry.crossOrigin) {
+        try {
+          f.contentWindow && f.contentWindow.postMessage({ type: "nexos:mute" }, "*");
+        } catch(e){}
+      }
+      state.push(entry);
+    });
+    var hostMedia = document.querySelectorAll("audio,video");
+    var self = this;
+    hostMedia.forEach(function(m){
+      if (m === self._chargingAudio) return;
+      state.push({ host: true, media: [{ el: m, prevMuted: m.muted, prevVolume: m.volume }] });
+      try { m.muted = true; m.volume = 0; } catch(e){}
+    });
+    this._iframeMuteState = state;
+  }
+  _unmuteAllIframeAudio() {
+    var state = this._iframeMuteState;
+    if (!state) return;
+    state.forEach(function(entry){
+      (entry.media || []).forEach(function(rec){
+        try { rec.el.muted = rec.prevMuted; rec.el.volume = rec.prevVolume; } catch(e){}
+      });
+      if (entry.crossOrigin && entry.frame) {
+        try {
+          entry.frame.contentWindow && entry.frame.contentWindow.postMessage({ type: "nexos:unmute" }, "*");
+        } catch(e){}
+      }
+    });
+    this._iframeMuteState = null;
+  }
   playChargingSound() {
     try {
       if (typeof window._nexosReadFlag === "function" && !window._nexosReadFlag("charging_sound")) return;
@@ -8237,11 +8302,34 @@ body.reduce-motion *::after {
         a = new Audio("/main/events/charging/mp3/charging.mp3");
         a.preload = "auto";
         this._chargingAudio = a;
+        var self = this;
+        var restore = function(){ self._unmuteAllIframeAudio(); };
+        a.addEventListener("ended", restore);
+        a.addEventListener("pause", function(){
+          if (a.currentTime === 0 || a.ended) restore();
+        });
+        a.addEventListener("error", restore);
       }
+      this._muteAllIframeAudio();
+      if (this._chargingRestoreTimer) clearTimeout(this._chargingRestoreTimer);
+      a.volume = 1;
+      a.muted = false;
       a.currentTime = 0;
       var p = a.play();
       if (p && typeof p.catch === "function") p.catch(function(){});
-    } catch (e) {}
+      var self2 = this;
+      var fallbackMs = 15000;
+      try {
+        if (!isNaN(a.duration) && isFinite(a.duration) && a.duration > 0) {
+          fallbackMs = Math.ceil(a.duration * 1000) + 500;
+        }
+      } catch(e){}
+      this._chargingRestoreTimer = setTimeout(function(){
+        self2._unmuteAllIframeAudio();
+      }, fallbackMs);
+    } catch (e) {
+      try { this._unmuteAllIframeAudio(); } catch(_){}
+    }
   }
   showChargingAnimation(level) {
     try {
