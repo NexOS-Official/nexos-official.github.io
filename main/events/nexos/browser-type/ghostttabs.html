@@ -136,7 +136,7 @@ body {
 }
 .charging-ring-fg {
   fill: none;
-  stroke: var(--nexos-accent, #30d158);
+  stroke: var(--nexos-star, #30d158);
   stroke-width: 16;
   stroke-linecap: round;
   stroke-dasharray: 678.58;
@@ -149,7 +149,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--nexos-accent, #30d158);
+  color: var(--nexos-star, #30d158);
   transition: color 0.3s ease;
 }
 .charging-bolt svg { width: 70px; height: 92px; }
@@ -9501,17 +9501,30 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           iconName = "battery-empty";
         }
-        batteryIconElement.setAttribute("data-lucide", iconName);
-        window.lucide.createIcons({ icons: { [iconName]: window.lucide.icons[iconName] }, attrs: { class: "icon" } });
+        
+        let iconEl = document.getElementById("battery-icon");
+        if (iconEl) {
+          const fresh = document.createElement("i");
+          fresh.id = "battery-icon";
+          fresh.className = "icon";
+          fresh.setAttribute("data-lucide", iconName);
+          fresh.setAttribute("aria-label", "Battery status");
+          iconEl.replaceWith(fresh);
+          if (window.lucide && window.lucide.createIcons) {
+            window.lucide.createIcons({ icons: { [iconName]: window.lucide.icons[iconName] }, attrs: { class: "icon" } });
+          }
+        }
       }).catch((error) => {
         console.error("Error accessing battery status:", error);
         batteryLevelElement.textContent = "";
-        batteryIconElement.style.display = "none";
+        const iconEl = document.getElementById("battery-icon");
+        if (iconEl) iconEl.style.display = "none";
       });
     } else {
       console.warn("Battery Status API is not supported in this browser.");
       batteryLevelElement.textContent = "";
-      batteryIconElement.style.display = "none";
+      const iconEl = document.getElementById("battery-icon");
+      if (iconEl) iconEl.style.display = "none";
     }
   };
   updateBatteryStatus();
