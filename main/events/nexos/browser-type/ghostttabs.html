@@ -8229,99 +8229,178 @@ body.reduce-motion *::after {
       }
     });
   }
-  _dimMedia(m, state) {
-    var self = this;
-    if (m === self._chargingAudio) return;
-    var rec = { el: m, prevVolume: m.volume, prevMuted: m.muted, filter: null, gain: null, src: null, ctx: null };
+  _getChargingDuckConfig(options) {
+    var o = options || {};
+    return {
+      volume: typeof o.volume === "number" ? Math.max(0, Math.min(0.05, o.volume)) : 0.012,
+      gain: typeof o.gain === "number" ? Math.max(0.001, Math.min(0.08, o.gain)) : 0.02,
+      frequency: typeof o.frequency === "number" ? Math.max(60, Math.min(600, o.frequency)) : 160,
+      heartbeatMs: typeof o.heartbeatMs === "number" ? Math.max(60, Math.min(1000, o.heartbeatMs)) : 140
+    };
+  }
+  _dimMedia(m, state, options) {
+    if (!m || m === this._chargingAudio) return;
+    var cfg = this._getChargingDuckConfig(options || (state && state.config));
+    if (!state.records) state.records = [];
+    if (!state.recordMap) state.recordMap = new WeakMap();
+    var rec = state.recordMap.get(m);
+    if (!rec) {
+      rec = {
+        el: m,
+        prevVolume: typeof m.volume === "number" ? m.volume : 1,
+        prevMuted: !!m.muted,
+        prevFreq: null,
+        prevGain: null,
+        node: null
+      };
+      state.recordMap.set(m, rec);
+      state.records.push(rec);
+    }
     try {
-      if (!m._nexosAudioCtx) {
-        var Ctx = window.AudioContext || window.webkitAudioContext;
-        if (Ctx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        if (!m._nexosAudioCtx) {
           var ctx = new Ctx();
           var src = ctx.createMediaElementSource(m);
           var filter = ctx.createBiquadFilter();
           filter.type = "lowpass";
-          filter.frequency.value = 400;
           var gain = ctx.createGain();
-          gain.gain.value = 0.15;
-          src.connect(filter).connect(gain).connect(ctx.destination);
+          src.connect(filter);
+          filter.connect(gain);
+          gain.connect(ctx.destination);
           m._nexosAudioCtx = { ctx: ctx, src: src, filter: filter, gain: gain };
         }
-      } else {
-        var n = m._nexosAudioCtx;
-        rec.prevFreq = n.filter.frequency.value;
-        rec.prevGain = n.gain.gain.value;
-        n.filter.frequency.value = 400;
-        n.gain.gain.value = 0.15;
-        rec.node = n;
-      }
-    } catch(e){}
-    try { m.volume = Math.min(m.volume, 0.1); m.muted = false; } catch(e){}
-    state.push({ media: [rec] });
-  }
-  _muteAllIframeAudio() {
-    if (this._iframeMuteState) return;
-    var state = [];
-    var self = this;
-    var frames = document.querySelectorAll("iframe");
-    frames.forEach(function(f){
-      var entry = { frame: f, media: [], crossOrigin: false };
-      try {
-        var doc = f.contentDocument;
-        if (doc) {
-          doc.querySelectorAll("audio,video").forEach(function(m){
-            entry.media.push({ el: m, prevVolume: m.volume, prevMuted: m.muted });
-            try { m.volume = 0.08; } catch(e){}
-          });
-          doc.querySelectorAll("iframe").forEach(function(nf){
-            try {
-              var ndoc = nf.contentDocument;
-              if (ndoc) {
-                ndoc.querySelectorAll("audio,video").forEach(function(m){
-                  entry.media.push({ el: m, prevVolume: m.volume, prevMuted: m.muted });
-                  try { m.volume = 0.08; } catch(e){}
-                });
-              }
-            } catch(e){}
-          });
-        } else {
-          entry.crossOrigin = true;
-        }
-      } catch (e) {
-        entry.crossOrigin = true;
-      }
-      if (entry.crossOrigin) {
+        var node = m._nexosAudioCtx;
+        rec.node = node;
+        if (rec.prevFreq == null) rec.prevFreq = node.filter.frequency.value;
+        if (rec.prevGain == null) rec.prevGain = node.gain.gain.value;
         try {
-          f.contentWindow && f.contentWindow.postMessage({ type: "nexos:dim", volume: 0.08 }, "*");
-        } catch(e){}
+          if (node.ctx && node.ctx.state === "suspended") {
+            var resumeResult = node.ctx.resume();
+            if (resumeResult && typeof resumeResult.catch === "function") resumeResult.catch(function(){});
+          }
+        } catch (e) {}
+        try {
+          if (node.filter.frequency && typeof node.filter.frequency.cancelScheduledValues === "function") {
+            node.filter.frequency.cancelScheduledValues(node.ctx.currentTime);
+          }
+          if (node.gain.gain && typeof node.gain.gain.cancelScheduledValues === "function") {
+            node.gain.gain.cancelScheduledValues(node.ctx.currentTime);
+          }
+          if (typeof node.filter.frequency.setTargetAtTime === "function") {
+            node.filter.frequency.setTargetAtTime(cfg.frequency, node.ctx.currentTime, 0.01);
+          } else {
+            node.filter.frequency.value = cfg.frequency;
+          }
+          if (typeof node.gain.gain.setTargetAtTime === "function") {
+            node.gain.gain.setTargetAtTime(cfg.gain, node.ctx.currentTime, 0.01);
+          } else {
+            node.gain.gain.value = cfg.gain;
+          }
+        } catch (e) {}
       }
-      state.push(entry);
-    });
-    document.querySelectorAll("audio,video").forEach(function(m){
-      self._dimMedia(m, state);
-    });
-    this._iframeMuteState = state;
+    } catch (e) {}
+    try {
+      m.muted = false;
+      m.volume = Math.min(rec.prevVolume, cfg.volume);
+    } catch (e) {}
   }
-  _unmuteAllIframeAudio() {
+  _scanFrameForDucking(frame, state, options) {
+    if (!frame) return;
+    var cfg = this._getChargingDuckConfig(options || (state && state.config));
+    try {
+      var doc = frame.contentDocument || (frame.contentWindow && frame.contentWindow.document);
+      if (doc) {
+        var self = this;
+        doc.querySelectorAll("audio,video").forEach(function(m){
+          self._dimMedia(m, state, cfg);
+        });
+        doc.querySelectorAll("iframe").forEach(function(nf){
+          self._scanFrameForDucking(nf, state, cfg);
+        });
+        return;
+      }
+    } catch (e) {}
+    if (!state.frameEntries) state.frameEntries = [];
+    if (!state.frameSet) state.frameSet = new WeakSet();
+    if (!state.frameSet.has(frame)) {
+      state.frameSet.add(frame);
+      state.frameEntries.push({ frame: frame, crossOrigin: true });
+    }
+    try {
+      frame.contentWindow && frame.contentWindow.postMessage({
+        type: "nexos:dim",
+        volume: cfg.volume,
+        gain: cfg.gain,
+        frequency: cfg.frequency
+      }, "*");
+    } catch (e) {}
+  }
+  _refreshChargingAudioDucking(options) {
     var state = this._iframeMuteState;
     if (!state) return;
-    state.forEach(function(entry){
-      (entry.media || []).forEach(function(rec){
-        try {
-          if (rec.node) {
+    var cfg = this._getChargingDuckConfig(options || state.config);
+    state.config = cfg;
+    var self = this;
+    document.querySelectorAll("audio,video").forEach(function(m){
+      self._dimMedia(m, state, cfg);
+    });
+    document.querySelectorAll("iframe").forEach(function(frame){
+      self._scanFrameForDucking(frame, state, cfg);
+    });
+  }
+  _muteAllIframeAudio(options) {
+    var cfg = this._getChargingDuckConfig(options);
+    if (!this._iframeMuteState) {
+      this._iframeMuteState = {
+        config: cfg,
+        records: [],
+        recordMap: new WeakMap(),
+        frameEntries: [],
+        frameSet: new WeakSet()
+      };
+    } else {
+      this._iframeMuteState.config = cfg;
+    }
+    this._refreshChargingAudioDucking(cfg);
+    if (this._chargingDuckInterval) clearInterval(this._chargingDuckInterval);
+    var self = this;
+    this._chargingDuckInterval = setInterval(function() {
+      self._refreshChargingAudioDucking();
+    }, cfg.heartbeatMs);
+  }
+  _unmuteAllIframeAudio() {
+    if (this._chargingDuckInterval) {
+      clearInterval(this._chargingDuckInterval);
+      this._chargingDuckInterval = null;
+    }
+    var state = this._iframeMuteState;
+    if (!state) return;
+    (state.records || []).forEach(function(rec){
+      try {
+        if (rec.node) {
+          if (typeof rec.node.filter.frequency.setTargetAtTime === "function") {
+            rec.node.filter.frequency.setTargetAtTime(rec.prevFreq != null ? rec.prevFreq : 22000, rec.node.ctx.currentTime, 0.02);
+          } else {
             rec.node.filter.frequency.value = rec.prevFreq != null ? rec.prevFreq : 22000;
+          }
+          if (typeof rec.node.gain.gain.setTargetAtTime === "function") {
+            rec.node.gain.gain.setTargetAtTime(rec.prevGain != null ? rec.prevGain : 1, rec.node.ctx.currentTime, 0.02);
+          } else {
             rec.node.gain.gain.value = rec.prevGain != null ? rec.prevGain : 1;
           }
-          if (rec.el) {
-            rec.el.volume = rec.prevVolume;
-            rec.el.muted = rec.prevMuted;
-          }
-        } catch(e){}
-      });
+        }
+        if (rec.el) {
+          rec.el.volume = rec.prevVolume;
+          rec.el.muted = rec.prevMuted;
+        }
+      } catch (e) {}
+    });
+    (state.frameEntries || []).forEach(function(entry){
       if (entry.crossOrigin && entry.frame) {
         try {
           entry.frame.contentWindow && entry.frame.contentWindow.postMessage({ type: "nexos:undim" }, "*");
-        } catch(e){}
+        } catch (e) {}
       }
     });
     this._iframeMuteState = null;
@@ -8337,14 +8416,20 @@ body.reduce-motion *::after {
         a.preload = "auto";
         this._chargingAudio = a;
         var self = this;
-        var restore = function(){ self._unmuteAllIframeAudio(); };
+        var restore = function(){
+          if (self._chargingRestoreTimer) {
+            clearTimeout(self._chargingRestoreTimer);
+            self._chargingRestoreTimer = null;
+          }
+          self._unmuteAllIframeAudio();
+        };
         a.addEventListener("ended", restore);
         a.addEventListener("pause", function(){
           if (a.currentTime === 0 || a.ended) restore();
         });
         a.addEventListener("error", restore);
       }
-      this._muteAllIframeAudio();
+      this._muteAllIframeAudio({ volume: 0.012, gain: 0.02, frequency: 160, heartbeatMs: 120 });
       if (this._chargingRestoreTimer) clearTimeout(this._chargingRestoreTimer);
       a.volume = 1;
       a.muted = false;
@@ -8360,6 +8445,7 @@ body.reduce-motion *::after {
       } catch(e){}
       this._chargingRestoreTimer = setTimeout(function(){
         self2._unmuteAllIframeAudio();
+        self2._chargingRestoreTimer = null;
       }, fallbackMs);
     } catch (e) {
       try { this._unmuteAllIframeAudio(); } catch(_){}
@@ -16820,6 +16906,43 @@ body.vtab-resizing #vtabSidebar {
       }
     }
   });
+
+  (function(){
+    var remoteUndimTimer = null;
+    window.addEventListener("message", function(e) {
+      var d = e.data;
+      if (!d || typeof d !== "object" || !window.browser) return;
+      if (d.type === "nexos:dim") {
+        try {
+          window.browser._muteAllIframeAudio({
+            volume: typeof d.volume === "number" ? d.volume : 0.012,
+            gain: typeof d.gain === "number" ? d.gain : 0.02,
+            frequency: typeof d.frequency === "number" ? d.frequency : 160,
+            heartbeatMs: 120
+          });
+          if (remoteUndimTimer) clearTimeout(remoteUndimTimer);
+          remoteUndimTimer = setTimeout(function() {
+            try {
+              if (window.browser && typeof window.browser._unmuteAllIframeAudio === "function") {
+                window.browser._unmuteAllIframeAudio();
+              }
+            } catch (err) {}
+            remoteUndimTimer = null;
+          }, 18000);
+        } catch (err) {}
+      } else if (d.type === "nexos:undim") {
+        if (remoteUndimTimer) {
+          clearTimeout(remoteUndimTimer);
+          remoteUndimTimer = null;
+        }
+        try {
+          if (typeof window.browser._unmuteAllIframeAudio === "function") {
+            window.browser._unmuteAllIframeAudio();
+          }
+        } catch (err) {}
+      }
+    });
+  })();
 
   function iconForCmd(cmdStr) {
     var s = cmdStr.toLowerCase();
