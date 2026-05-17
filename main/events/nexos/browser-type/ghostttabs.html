@@ -1,6 +1,9 @@
 
 
 
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1189,6 +1192,143 @@ body {
   color: #aaa;
   padding: 4px 4px 0;
 }
+.ai-plus-popover, .ai-tab-picker {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.12);
+  padding: 6px;
+  z-index: 50;
+  animation: ai-pop 0.14s ease-out;
+}
+.ai-tab-picker { min-width: 280px; max-width: 320px; }
+.ai-tab-picker-head {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 10px 4px;
+}
+.ai-tab-picker-list { max-height: 260px; overflow-y: auto; }
+.ai-plus-popover button, .ai-tab-picker-item, .ai-personality-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  color: #222;
+  text-align: left;
+}
+.ai-plus-popover button:hover, .ai-tab-picker-item:hover, .ai-personality-item:hover {
+  background: #f3f4f6;
+}
+.ai-plus-popover button svg { flex-shrink: 0; color: #555; }
+.ai-plus-popover button span { flex: 1; font-size: 13px; }
+.ai-plus-tag {
+  flex: 0 0 auto !important;
+  font-size: 11px !important;
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.ai-tab-picker-item img, .ai-tab-picker-item .ai-tab-fav {
+  width: 16px; height: 16px; flex-shrink: 0; border-radius: 3px; object-fit: cover;
+}
+.ai-tab-picker-item .ai-tab-fav {
+  background: #eee; display: inline-flex; align-items: center; justify-content: center;
+  color: #777;
+}
+.ai-tab-picker-item-title {
+  flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ai-tab-picker-item.active { background: #eff6ff; color: #1d4ed8; }
+.ai-tab-picker-empty { padding: 12px; font-size: 12px; color: #888; text-align: center; }
+@keyframes ai-pop {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+iframe.ai-attached-tab-outline {
+  outline: 1.5px solid #38bdf8 !important;
+  outline-offset: -1.5px;
+  border-radius: 10px !important;
+  transition: outline-color 0.2s ease;
+}
+.ai-thinking-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #555;
+  cursor: pointer;
+  margin-bottom: 6px;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+.ai-thinking-bubble:hover { background: #e9ebef; }
+.ai-thinking-bubble.collapsed {
+  padding: 2px 6px;
+  background: transparent;
+  border-color: transparent;
+  color: #9ca3af;
+}
+.ai-thinking-bubble.collapsed .ai-think-label,
+.ai-thinking-bubble.collapsed .ai-typing-dots { display: none; }
+.ai-thinking-bubble .ai-think-chevron {
+  width: 14px; height: 14px; transition: transform 0.2s;
+}
+.ai-thinking-bubble.collapsed .ai-think-chevron { transform: rotate(0deg); }
+.ai-thinking-bubble:not(.collapsed) .ai-think-chevron { transform: rotate(180deg); }
+.ai-answer-headline {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #111;
+}
+.ai-answer-more {
+  margin-top: 8px;
+  display: none;
+}
+.ai-answer-more.show { display: block; }
+.ai-show-more-btn {
+  margin-top: 6px;
+  background: none;
+  border: none;
+  color: #6b7280;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ai-show-more-btn:hover { background: #f3f4f6; color: #111; }
+.ai-show-more-btn svg { transition: transform 0.2s; }
+.ai-show-more-btn.open svg { transform: rotate(180deg); }
+.ai-reveal-word {
+  opacity: 0;
+  transition: opacity 0.28s ease-out;
+}
+.ai-reveal-word.show { opacity: 1; }
+.ai-chat-messages.ai-dimming > .ai-msg-row:not(.ai-active-reveal) {
+  opacity: 0.32;
+  transition: opacity 0.35s ease;
+}
+.ai-chat-messages > .ai-msg-row { transition: opacity 0.35s ease; }
 @media (max-width: 500px) {
   .ai-menu-modal {
     width: 100vw;
@@ -5769,12 +5909,37 @@ body.reduce-motion *::after {
             </div>
             <textarea id="aiChatPrompt" placeholder="Message Ghost AI..." rows="1"></textarea>
             <div class="ai-chat-bottom-bar">
-                <div class="ai-left-dock">
-                    <button class="ai-chat-icon-btn" id="aiChatUploadBtn" title="Upload file">
+                <div class="ai-left-dock" style="position:relative;">
+                    <button class="ai-chat-icon-btn" id="aiChatPlusBtn" title="Add">
                         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                     </button>
+                    <button class="ai-chat-icon-btn" id="aiChatUploadBtn" title="Upload file" style="display:none;"></button>
                     <span class="ai-file-name" id="aiChatFileName"></span>
                     <input type="file" id="aiChatFileInput" multiple accept="image/*,.txt,.md,.js,.ts,.jsx,.tsx,.py,.css,.html,.json,.xml,.csv,.yaml,.yml,.log,.sql,.sh,.c,.cpp,.java,.rb,.go,.rs,.php,.swift,.kt,.dart,.r,.lua,.pl,.m,.h,.cs,.scala,.toml,.ini,.cfg,.env,.dockerfile,.makefile,.gitignore,.bat,.ps1,.pdf,.doc,.docx" style="display:none">
+                    <div id="aiPlusPopover" class="ai-plus-popover" style="display:none;">
+                        <button type="button" data-plus-action="file">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <span>Attach file</span>
+                        </button>
+                        <button type="button" data-plus-action="personality">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                            <span>Change Personality</span>
+                            <span class="ai-plus-tag" id="aiPersonalityTag">Default</span>
+                        </button>
+                        <button type="button" data-plus-action="tab">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg>
+                            <span>Attach Tab</span>
+                            <span class="ai-plus-tag" id="aiAttachedTabTag" style="display:none;"></span>
+                        </button>
+                    </div>
+                    <div id="aiTabPicker" class="ai-tab-picker" style="display:none;">
+                        <div class="ai-tab-picker-head">Attach a tab</div>
+                        <div id="aiTabPickerList" class="ai-tab-picker-list"></div>
+                    </div>
+                    <div id="aiPersonalityPicker" class="ai-tab-picker" style="display:none;">
+                        <div class="ai-tab-picker-head">Personality</div>
+                        <div id="aiPersonalityList" class="ai-tab-picker-list"></div>
+                    </div>
                 </div>
                 <button class="ai-chat-icon-btn ai-chat-send-btn" id="aiChatSendBtn" title="Send">
                     <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
@@ -13254,6 +13419,129 @@ loadTopRightProfilePfp();
   var filePreviewContainer = document.getElementById("aiChatFilePreview");
   var fileLabel = document.getElementById("aiChatFileLabel");
   var removeTextFileBtn = document.getElementById("aiChatRemoveTextFile");
+  var plusBtn = document.getElementById("aiChatPlusBtn");
+  var plusPopover = document.getElementById("aiPlusPopover");
+  var tabPicker = document.getElementById("aiTabPicker");
+  var tabPickerList = document.getElementById("aiTabPickerList");
+  var personalityPicker = document.getElementById("aiPersonalityPicker");
+  var personalityList = document.getElementById("aiPersonalityList");
+  var personalityTag = document.getElementById("aiPersonalityTag");
+  var attachedTabTag = document.getElementById("aiAttachedTabTag");
+  var attachedTabId = null;
+  var attachedTabOutlineEl = null;
+  var PERSONALITIES = [
+    { id: "default",  name: "Default",   prompt: "" },
+    { id: "concise",  name: "Concise",   prompt: " Always reply as briefly as possible, no fluff." },
+    { id: "tutor",    name: "Tutor",     prompt: " Teach like a patient tutor with simple examples and analogies." },
+    { id: "coder",    name: "Coder",     prompt: " Be a senior engineer: code-first answers, minimal prose." },
+    { id: "sassy",    name: "Sassy",     prompt: " Be witty, sarcastic, and a little dramatic — but still correct." },
+    { id: "formal",   name: "Formal",    prompt: " Use formal, professional language and full sentences." }
+  ];
+  var currentPersonality = PERSONALITIES[0];
+  function closeAllPlusUi() {
+    plusPopover.style.display = "none";
+    tabPicker.style.display = "none";
+    personalityPicker.style.display = "none";
+  }
+  document.addEventListener("click", function(e) {
+    if (!e.target.closest("#aiChatPlusBtn") && !e.target.closest("#aiPlusPopover") && !e.target.closest("#aiTabPicker") && !e.target.closest("#aiPersonalityPicker")) {
+      closeAllPlusUi();
+    }
+  });
+  function clearAttachedTabOutline() {
+    if (attachedTabOutlineEl) {
+      attachedTabOutlineEl.classList.remove("ai-attached-tab-outline");
+      attachedTabOutlineEl = null;
+    }
+  }
+  function setAttachedTab(tabId) {
+    clearAttachedTabOutline();
+    attachedTabId = tabId;
+    if (!tabId) { attachedTabTag.style.display = "none"; return; }
+    var b = window.browser;
+    if (!b) return;
+    var tab = b.tabs.get(tabId);
+    if (!tab) { attachedTabId = null; return; }
+    try { b.switchToTab(tabId); } catch (e) {}
+    if (tab.iframe) {
+      tab.iframe.classList.add("ai-attached-tab-outline");
+      attachedTabOutlineEl = tab.iframe;
+    }
+    attachedTabTag.textContent = (tab.title || "Tab").slice(0, 18);
+    attachedTabTag.style.display = "inline-block";
+  }
+
+  var MAX_TAB_TEXT_CHARS = 4000;
+  function extractIframeText(iframe) {
+    try {
+      var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+      if (!doc) return "";
+      var root = doc.querySelector("main") || doc.querySelector("article") || doc.body;
+      if (!root) return "";
+      var clone = root.cloneNode(true);
+      clone.querySelectorAll("script,style,noscript,svg,iframe").forEach(function(n){ n.remove(); });
+      return (clone.innerText || clone.textContent || "");
+    } catch (_) {
+      return "";
+    }
+  }
+  function getAttachedTabContext() {
+    if (!attachedTabId || !window.browser) return null;
+    var tab = window.browser.tabs.get(attachedTabId);
+    if (!tab || !tab.iframe) return null;
+    var title = tab.title || "Tab";
+    var url = tab.url || (tab.iframe.src || "");
+    var text = extractIframeText(tab.iframe)
+      .replace(/[ \t]+/g, " ")
+      .replace(/\s+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    if (!text) {
+      text = "[Tab content not readable — cross-origin or still loading. Use the title and URL as context.]";
+    } else if (text.length > MAX_TAB_TEXT_CHARS) {
+      text = text.slice(0, MAX_TAB_TEXT_CHARS) + "\n[truncated to keep request under token limit]";
+    }
+    return { title: title, url: url, text: text };
+  }
+  function renderTabPicker() {
+    var b = window.browser;
+    tabPickerList.innerHTML = "";
+    if (!b || !b.tabs || !b.tabs.size) {
+      tabPickerList.innerHTML = '<div class="ai-tab-picker-empty">No open tabs.</div>';
+      return;
+    }
+    b.tabs.forEach(function(tab) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ai-tab-picker-item" + (tab.id === attachedTabId ? " active" : "");
+      var favHtml = tab.faviconUrl
+        ? '<img src="' + esc(tab.faviconUrl) + '" alt="" onerror="this.style.display=\'none\'">'
+        : '<span class="ai-tab-fav"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg></span>';
+      btn.innerHTML = favHtml + '<span class="ai-tab-picker-item-title">' + esc(tab.title || "Untitled") + '</span>';
+      btn.addEventListener("click", function() {
+        if (tab.id === attachedTabId) { setAttachedTab(null); }
+        else { setAttachedTab(tab.id); }
+        closeAllPlusUi();
+      });
+      tabPickerList.appendChild(btn);
+    });
+  }
+  function renderPersonalityPicker() {
+    personalityList.innerHTML = "";
+    PERSONALITIES.forEach(function(p) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ai-personality-item" + (p.id === currentPersonality.id ? " active" : "");
+      btn.innerHTML = '<span class="ai-tab-picker-item-title">' + esc(p.name) + '</span>';
+      if (p.id === currentPersonality.id) btn.style.color = "#1d4ed8";
+      btn.addEventListener("click", function() {
+        currentPersonality = p;
+        personalityTag.textContent = p.name;
+        closeAllPlusUi();
+      });
+      personalityList.appendChild(btn);
+    });
+  }
   var conversationHistory = [];
   var currentUserAvatar = "/ghost.svg";
   var pendingAttachments = [];
@@ -13410,20 +13698,120 @@ loadTopRightProfilePfp();
     scrollBottom();
     return { row, bubble };
   }
-  function addTyping() {
-    return addMessage("assistant", '<div style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:12px;color:#999">Thinking</span><span class="ai-typing-dots"><span></span><span></span><span></span></span></div>', false);
+  function addTyping(thinkLabel) {
+    var label = thinkLabel || "Thinking";
+    var html = ''
+      + '<div class="ai-thinking-bubble" data-think-bubble>'
+      +   '<span class="ai-think-label">' + esc(label) + '</span>'
+      +   '<span class="ai-typing-dots"><span></span><span></span><span></span></span>'
+      +   '<svg class="ai-think-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
+      + '</div>'
+      + '<div class="ai-answer-slot"></div>';
+    var ref = addMessage("assistant", html, false);
+    var thinkEl = ref.bubble.querySelector("[data-think-bubble]");
+    thinkEl.addEventListener("click", function() {
+      thinkEl.classList.toggle("collapsed");
+    });
+    ref.thinkEl = thinkEl;
+    ref.slot = ref.bubble.querySelector(".ai-answer-slot");
+    return ref;
   }
-  async function typewriter(bubble, fullText, speed) {
-    var current = "";
-    var i = 0;
-    speed = speed || 6;
-    while (i < fullText.length) {
-      current += fullText[i];
-      i++;
-      bubble.innerHTML = '<div class="ai-md">' + renderMarkdown(current) + "</div>";
-      scrollBottom();
-      await new Promise(function(r) { setTimeout(r, speed); });
+  function splitHeadlineAndRest(text) {
+    var t = String(text || "").trim();
+    if (!t) return { head: "", rest: "" };
+    var paraEnd = t.search(/\n\s*\n/);
+    var head = paraEnd === -1 ? t : t.slice(0, paraEnd);
+    var rest = paraEnd === -1 ? "" : t.slice(paraEnd).replace(/^\s+/, "");
+    if (head.length > 280 && !rest) {
+      var m = head.match(/^([\s\S]+?[.!?])(\s+)([\s\S]+)$/);
+      if (m) { head = m[1]; rest = m[3]; }
     }
+    return { head: head, rest: rest };
+  }
+  async function fadeRevealInto(container, html) {
+    container.innerHTML = html;
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+    var nodes = []; var n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    var spans = [];
+    nodes.forEach(function(tn) {
+      var p = tn.parentNode;
+      if (!p) return;
+      if (p.closest && p.closest("pre, code")) return;
+      var parts = tn.nodeValue.split(/(\s+)/);
+      var frag = document.createDocumentFragment();
+      parts.forEach(function(piece) {
+        if (!piece) return;
+        if (/^\s+$/.test(piece)) {
+          frag.appendChild(document.createTextNode(piece));
+        } else {
+          var s = document.createElement("span");
+          s.className = "ai-reveal-word";
+          s.textContent = piece;
+          frag.appendChild(s);
+          spans.push(s);
+        }
+      });
+      p.replaceChild(frag, tn);
+    });
+    container.querySelectorAll("pre, .ai-code-block").forEach(function(el) {
+      el.classList.add("ai-reveal-word");
+      spans.push(el);
+    });
+    var batch = Math.max(2, Math.ceil(spans.length / 60));
+    for (var i = 0; i < spans.length; i += batch) {
+      for (var j = i; j < i + batch && j < spans.length; j++) {
+        spans[j].classList.add("show");
+      }
+      scrollBottom();
+      await new Promise(function(r) { setTimeout(r, 22); });
+    }
+  }
+  async function renderAssistantAnswer(ref, fullText) {
+    var split = splitHeadlineAndRest(fullText);
+    var headHtml = '<div class="ai-answer-headline ai-md">' + renderMarkdown(split.head) + '</div>';
+    var moreHtml = "";
+    var hasMore = !!split.rest;
+    if (hasMore) {
+      moreHtml = ''
+        + '<button type="button" class="ai-show-more-btn" data-show-more>'
+        +   '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>'
+        +   '<span>Show more</span>'
+        + '</button>'
+        + '<div class="ai-answer-more ai-md" data-more-body>' + renderMarkdown(split.rest) + '</div>';
+    }
+    ref.slot.innerHTML = headHtml + moreHtml;
+    if (ref.thinkEl) {
+      var dots = ref.thinkEl.querySelector(".ai-typing-dots");
+      if (dots) dots.remove();
+      ref.thinkEl.classList.add("collapsed");
+    }
+    ref.row.classList.add("ai-active-reveal");
+    messagesEl.classList.add("ai-dimming");
+    var headlineEl = ref.slot.querySelector(".ai-answer-headline");
+    var headHtmlInner = headlineEl.innerHTML;
+    await fadeRevealInto(headlineEl, headHtmlInner);
+    if (hasMore) {
+      var moreEl = ref.slot.querySelector("[data-more-body]");
+      var moreInner = moreEl.innerHTML;
+      moreEl.innerHTML = moreInner;
+      var btn = ref.slot.querySelector("[data-show-more]");
+      btn.addEventListener("click", function() {
+        var open = moreEl.classList.toggle("show");
+        btn.classList.toggle("open", open);
+        btn.querySelector("span").textContent = open ? "Show less" : "Show more";
+        if (open && !moreEl.dataset.revealed) {
+          moreEl.dataset.revealed = "1";
+          fadeRevealInto(moreEl, moreEl.innerHTML);
+        }
+      });
+    }
+    setTimeout(function() {
+      messagesEl.classList.remove("ai-dimming");
+      ref.row.classList.remove("ai-active-reveal");
+    }, 250);
+  }
+  async function typewriter(bubble, fullText) {
     bubble.innerHTML = '<div class="ai-md">' + renderMarkdown(fullText) + "</div>";
     scrollBottom();
   }
@@ -13434,6 +13822,7 @@ loadTopRightProfilePfp();
     promptEl.value = "";
     promptEl.style.height = "auto";
     clearAttachments();
+    setAttachedTab(null);
     bindSuggestions();
   }
   function clearAttachments() {
@@ -13520,6 +13909,12 @@ loadTopRightProfilePfp();
     var userContent = textParts.join("\n\n");
     var imageAttachments = attachments.filter(function(a){ return a.kind === "image"; });
 
+    var tabCtx = getAttachedTabContext();
+    if (tabCtx) {
+      var tabBlock = "--- ATTACHED TAB ---\nTitle: " + tabCtx.title + "\nURL: " + tabCtx.url + "\n\n" + tabCtx.text + "\n--- END TAB ---";
+      userContent = userContent ? (userContent + "\n\n" + tabBlock) : tabBlock;
+    }
+
     conversationHistory.push({ role: "user", content: userContent });
     pruneConversationHistory();
 
@@ -13527,63 +13922,189 @@ loadTopRightProfilePfp();
     promptEl.style.height = "auto";
     clearAttachments();
     sendBtn.disabled = true;
-    var typing = addTyping();
+    var typing = addTyping(tabCtx ? "Reading tab" : "Thinking");
 
     try {
-      var GROQ_API_KEY = "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";
-      var GROQ_TEXT_MODEL = "llama-3.3-70b-versatile";
-      var GROQ_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
       var systemPrompt = "You are Ghost AI, an expert coding assistant and general-purpose AI built into the Ghost browser. You have deep expertise in JavaScript, TypeScript, Python, React, Node.js, HTML, CSS, SQL, and all major programming languages and frameworks. You write clean, efficient, well-commented code. You can debug complex issues, explain algorithms, review code, suggest improvements, refactor code, and build full applications. You also excel at: writing essays, summarizing content, translating text, analyzing images in detail (describe every element you see), brainstorming ideas, solving math problems, explaining concepts simply, and helping with research. When analyzing images, be extremely thorough - describe colors, text, layout, objects, people, context, and any relevant details. When writing code, always include comments and explain your approach. Keep responses clear, well-formatted with markdown, and helpful.";
-      var groqMessages = [{ role: "system", content: systemPrompt }];
-      conversationHistory.slice(0, -1).forEach(function(m) {
-        groqMessages.push({ role: m.role, content: m.content || "" });
+      systemPrompt += (currentPersonality && currentPersonality.prompt) || "";
+      systemPrompt += " IMPORTANT FORMAT: Begin your reply with a SINGLE concise sentence that directly answers the user (this is the headline). Then leave a blank line and add any extra detail, reasoning, or examples afterward. The headline must stand alone.";
+      if (tabCtx) {
+        systemPrompt += " The user has attached a browser tab. Its title, URL, and visible text are included in their message between '--- ATTACHED TAB ---' markers. Use it as primary context.";
+      }
+
+      var baseMessages = [{ role: "system", content: systemPrompt }];
+      var historyForRequest = conversationHistory.slice(0, -1);
+      if (tabCtx) historyForRequest = historyForRequest.slice(-2);
+      historyForRequest.forEach(function(m) {
+        baseMessages.push({ role: m.role, content: m.content || "" });
       });
       if (imageAttachments.length) {
         var parts = [{ type: "text", text: userContent || "Analyze the attached image(s) in detail." }];
         imageAttachments.forEach(function(a) {
           parts.push({ type: "image_url", image_url: { url: a.dataUrl } });
         });
-        groqMessages.push({ role: "user", content: parts });
+        baseMessages.push({ role: "user", content: parts });
       } else {
-        groqMessages.push({ role: "user", content: userContent });
+        baseMessages.push({ role: "user", content: userContent });
       }
-      var res, data, reply;
-      try {
-        res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + GROQ_API_KEY
+
+      var providers = [
+        {
+          name: "Pollinations (openai)",
+          url: "https://text.pollinations.ai/openai",
+          model: "openai",
+          vision: true,
+          build: function(msgs, model) {
+            return {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                model: model, messages: msgs, temperature: 0.7,
+                max_tokens: tabCtx ? 1024 : 4096
+              })
+            };
           },
-          body: JSON.stringify({
-            model: imageAttachments.length ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL,
-            messages: groqMessages,
-            temperature: 0.7,
-            max_tokens: 4096
-          })
-        });
-        data = await res.json().catch(function(){ return {}; });
-      } catch (netErr) {
-        res = { ok: false, status: 0 };
-        data = { error: { message: "Network error: " + (netErr && netErr.message || netErr) } };
+          parse: function(d) {
+            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+          }
+        },
+        {
+          name: "Pollinations (openai-fast)",
+          url: "https://text.pollinations.ai/openai",
+          model: "openai-fast",
+          vision: true,
+          build: function(msgs, model) {
+            return {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ model: model, messages: msgs, temperature: 0.7 })
+            };
+          },
+          parse: function(d) {
+            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+          }
+        },
+        {
+          name: "Pollinations (claude)",
+          url: "https://text.pollinations.ai/openai",
+          model: "claude-hybridspace",
+          vision: true,
+          build: function(msgs, model) {
+            return {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ model: model, messages: msgs, temperature: 0.7 })
+            };
+          },
+          parse: function(d) {
+            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+          }
+        },
+        {
+          name: "Pollinations (mistral)",
+          url: "https://text.pollinations.ai/openai",
+          model: "mistral",
+          vision: false,
+          build: function(msgs, model) {
+            return {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ model: model, messages: msgs, temperature: 0.7 })
+            };
+          },
+          parse: function(d) {
+            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+          }
+        },
+        {
+          name: "Pollinations (llama)",
+          url: "https://text.pollinations.ai/openai",
+          model: "llama",
+          vision: false,
+          build: function(msgs, model) {
+            return {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ model: model, messages: msgs, temperature: 0.7 })
+            };
+          },
+          parse: function(d) {
+            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+          }
+        },
+        {
+          name: "Pollinations (text GET)",
+          url: "https://text.pollinations.ai/",
+          model: "openai",
+          vision: false,
+          isFlatPrompt: true,
+          build: function(msgs, model) {
+            var flat = msgs.map(function(m){
+              var c = typeof m.content === "string" ? m.content
+                : (Array.isArray(m.content) ? m.content.filter(function(p){return p.type==="text";}).map(function(p){return p.text;}).join("\n") : "");
+              return "[" + m.role.toUpperCase() + "]\n" + c;
+            }).join("\n\n") + "\n\n[ASSISTANT]\n";
+            var u = "https://text.pollinations.ai/" + encodeURIComponent(flat) + "?model=" + encodeURIComponent(model);
+            return { __url: u, method: "GET" };
+          },
+          parse: function(d) { return typeof d === "string" ? d : null; }
+        }
+      ];
+
+      var reply = null, lastErr = null, usedProvider = null;
+      for (var i = 0; i < providers.length; i++) {
+        var p = providers[i];
+        if (imageAttachments.length && !p.vision) continue;
+        try {
+          var opts = p.build(baseMessages, p.model);
+          var endpoint = opts.__url || p.url;
+          var fetchOpts = opts.__url ? { method: "GET" } : { method: opts.method, headers: opts.headers, body: opts.body };
+          var r = await fetch(endpoint, fetchOpts);
+          if (!r.ok) {
+            lastErr = p.name + " returned HTTP " + r.status;
+            continue;
+          }
+          var parsed;
+          if (opts.__url) {
+            parsed = await r.text();
+          } else {
+            parsed = await r.json().catch(function(){ return null; });
+          }
+          var out = p.parse(parsed);
+          if (out && String(out).trim()) {
+            reply = String(out).trim();
+            usedProvider = p.name;
+            break;
+          }
+          lastErr = p.name + " returned empty response";
+        } catch (e) {
+          lastErr = p.name + ": " + (e && e.message || e);
+        }
       }
-      reply = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
-        || (data && data.error && data.error.message)
-        || "No response.";
-      if (!res.ok) {
+
+      if (!reply) {
         conversationHistory.pop();
-        reply = "⚠️ " + reply;
+        if (imageAttachments.length) {
+          reply = "⚠️ Couldn't reach any free vision provider right now. Try again in a moment, or send the question without the image.\n\n_Last error: " + (lastErr || "unknown") + "_";
+        } else {
+          reply = "⚠️ Couldn't reach any free AI provider right now. Try again in a moment.\n\n_Last error: " + (lastErr || "unknown") + "_";
+        }
       } else {
         conversationHistory.push({ role: "assistant", content: reply });
         pruneConversationHistory();
+        try { console.log("[Ghost AI] reply via:", usedProvider); } catch(_){}
       }
-      typing.bubble.innerHTML = '<div class="ai-md"></div>';
-      await typewriter(typing.bubble, reply, 6);
+      await renderAssistantAnswer(typing, reply);
     } catch (err) {
       if (conversationHistory.length && conversationHistory[conversationHistory.length - 1].role === "user") {
         conversationHistory.pop();
       }
-      typing.bubble.innerHTML = '<div class="ai-md"><p>⚠️ Request failed: ' + esc(err && err.message || String(err)) + '</p></div>';
+      if (typing && typing.slot) {
+        typing.slot.innerHTML = '<div class="ai-md"><p>⚠️ Request failed: ' + esc(err && err.message || String(err)) + '</p></div>';
+        if (typing.thinkEl) typing.thinkEl.classList.add("collapsed");
+      } else {
+        typing.bubble.innerHTML = '<div class="ai-md"><p>⚠️ Request failed: ' + esc(err && err.message || String(err)) + '</p></div>';
+      }
     } finally {
       sendBtn.disabled = false;
       promptEl.focus();
@@ -13607,6 +14128,28 @@ loadTopRightProfilePfp();
   });
   uploadBtn.addEventListener("click", function() {
     fileInput.click();
+  });
+  plusBtn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    var open = plusPopover.style.display === "block";
+    closeAllPlusUi();
+    if (!open) plusPopover.style.display = "block";
+  });
+  plusPopover.addEventListener("click", function(e) {
+    var btn = e.target.closest("[data-plus-action]");
+    if (!btn) return;
+    e.stopPropagation();
+    var action = btn.getAttribute("data-plus-action");
+    closeAllPlusUi();
+    if (action === "file") {
+      fileInput.click();
+    } else if (action === "personality") {
+      renderPersonalityPicker();
+      personalityPicker.style.display = "block";
+    } else if (action === "tab") {
+      renderTabPicker();
+      tabPicker.style.display = "block";
+    }
   });
   fileInput.addEventListener("change", async function() {
     var files = Array.from(fileInput.files || []);
