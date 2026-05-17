@@ -4,6 +4,8 @@
 
 
 
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,6 +20,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nexos by GhostEDU</title>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js"></script>
     <link rel="icon" href="/images/logos/chrome.png" type="image/x-icon" />
     <link rel="manifest" href="../manifest.json">
     <style>@font-face {
@@ -5838,7 +5841,7 @@ body.reduce-motion *::after {
     <div class="ai-chat-header">
         <div class="ai-chat-header-left">
             <strong>Ghost AI</strong>
-            <span id="aiChatModelLabel">gpt-4o-mini</span>
+            <span id="aiChatModelLabel">gpt-4o + vision</span>
         </div>
         <div class="ai-chat-header-actions">
             <button id="aiChatClearBtn" title="Clear chat">
@@ -13485,7 +13488,44 @@ loadTopRightProfilePfp();
       return "";
     }
   }
-  function getAttachedTabContext() {
+  async function captureIframeScreenshot(iframe) {
+    try {
+      if (typeof html2canvas !== "function") return null;
+      var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+      if (!doc || !doc.body) return null; 
+      var target = doc.documentElement || doc.body;
+      var vw = iframe.clientWidth || doc.documentElement.clientWidth || 1280;
+      var vh = iframe.clientHeight || doc.documentElement.clientHeight || 800;
+      var canvas = await html2canvas(target, {
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        width: vw,
+        height: vh,
+        windowWidth: vw,
+        windowHeight: vh,
+        scale: 1,
+        x: (iframe.contentWindow && iframe.contentWindow.scrollX) || 0,
+        y: (iframe.contentWindow && iframe.contentWindow.scrollY) || 0
+      });
+      var maxDim = 1280;
+      var w = canvas.width, h = canvas.height;
+      if (Math.max(w, h) > maxDim) {
+        var ratio = maxDim / Math.max(w, h);
+        var scaled = document.createElement("canvas");
+        scaled.width = Math.round(w * ratio);
+        scaled.height = Math.round(h * ratio);
+        scaled.getContext("2d").drawImage(canvas, 0, 0, scaled.width, scaled.height);
+        canvas = scaled;
+      }
+      return canvas.toDataURL("image/jpeg", 0.78);
+    } catch (e) {
+      console.warn("[Ghost AI] iframe screenshot failed", e);
+      return null;
+    }
+  }
+  async function getAttachedTabContext() {
     if (!attachedTabId || !window.browser) return null;
     var tab = window.browser.tabs.get(attachedTabId);
     if (!tab || !tab.iframe) return null;
@@ -13496,12 +13536,14 @@ loadTopRightProfilePfp();
       .replace(/\s+\n/g, "\n")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
-    if (!text) {
-      text = "[Tab content not readable — cross-origin or still loading. Use the title and URL as context.]";
-    } else if (text.length > MAX_TAB_TEXT_CHARS) {
+    var screenshot = await captureIframeScreenshot(tab.iframe);
+    if (text.length > MAX_TAB_TEXT_CHARS) {
       text = text.slice(0, MAX_TAB_TEXT_CHARS) + "\n[truncated to keep request under token limit]";
     }
-    return { title: title, url: url, text: text };
+    if (!text && !screenshot) {
+      text = "[Tab content not readable — cross-origin or still loading. Use the title and URL as context.]";
+    }
+    return { title: title, url: url, text: text, screenshot: screenshot };
   }
   function renderTabPicker() {
     var b = window.browser;
@@ -13909,7 +13951,8 @@ loadTopRightProfilePfp();
     var userContent = textParts.join("\n\n");
     var imageAttachments = attachments.filter(function(a){ return a.kind === "image"; });
 
-    var tabCtx = getAttachedTabContext();
+    sendBtn.disabled = true;
+    var tabCtx = await getAttachedTabContext();
     if (tabCtx) {
       var tabBlock = "--- ATTACHED TAB ---\nTitle: " + tabCtx.title + "\nURL: " + tabCtx.url + "\n\n" + tabCtx.text + "\n--- END TAB ---";
       userContent = userContent ? (userContent + "\n\n" + tabBlock) : tabBlock;
@@ -13921,15 +13964,17 @@ loadTopRightProfilePfp();
     promptEl.value = "";
     promptEl.style.height = "auto";
     clearAttachments();
-    sendBtn.disabled = true;
-    var typing = addTyping(tabCtx ? "Reading tab" : "Thinking");
+    var typing = addTyping(tabCtx ? "Looking at tab" : "Thinking");
+
+    var allImages = imageAttachments.map(function(a){ return a.dataUrl; });
+    if (tabCtx && tabCtx.screenshot) allImages.push(tabCtx.screenshot);
 
     try {
       var systemPrompt = "You are Ghost AI, an expert coding assistant and general-purpose AI built into the Ghost browser. You have deep expertise in JavaScript, TypeScript, Python, React, Node.js, HTML, CSS, SQL, and all major programming languages and frameworks. You write clean, efficient, well-commented code. You can debug complex issues, explain algorithms, review code, suggest improvements, refactor code, and build full applications. You also excel at: writing essays, summarizing content, translating text, analyzing images in detail (describe every element you see), brainstorming ideas, solving math problems, explaining concepts simply, and helping with research. When analyzing images, be extremely thorough - describe colors, text, layout, objects, people, context, and any relevant details. When writing code, always include comments and explain your approach. Keep responses clear, well-formatted with markdown, and helpful.";
       systemPrompt += (currentPersonality && currentPersonality.prompt) || "";
       systemPrompt += " IMPORTANT FORMAT: Begin your reply with a SINGLE concise sentence that directly answers the user (this is the headline). Then leave a blank line and add any extra detail, reasoning, or examples afterward. The headline must stand alone.";
       if (tabCtx) {
-        systemPrompt += " The user has attached a browser tab. Its title, URL, and visible text are included in their message between '--- ATTACHED TAB ---' markers. Use it as primary context.";
+        systemPrompt += " The user has attached a browser tab. Its title, URL, and a rendered SCREENSHOT of the tab are provided so you can SEE the page (images, layout, links, text). Extracted text is also included between '--- ATTACHED TAB ---' markers as a secondary reference. Treat the screenshot as primary visual context — describe what is on the page when relevant.";
       }
 
       var baseMessages = [{ role: "system", content: systemPrompt }];
@@ -13938,100 +13983,46 @@ loadTopRightProfilePfp();
       historyForRequest.forEach(function(m) {
         baseMessages.push({ role: m.role, content: m.content || "" });
       });
-      if (imageAttachments.length) {
+      if (allImages.length) {
         var parts = [{ type: "text", text: userContent || "Analyze the attached image(s) in detail." }];
-        imageAttachments.forEach(function(a) {
-          parts.push({ type: "image_url", image_url: { url: a.dataUrl } });
+        allImages.forEach(function(url) {
+          parts.push({ type: "image_url", image_url: { url: url } });
         });
         baseMessages.push({ role: "user", content: parts });
       } else {
         baseMessages.push({ role: "user", content: userContent });
       }
 
+      var POLLI_REFERRER = "ghost-ai-embed";
+      function mkBuild(extra) {
+        return function(msgs, model) {
+          var body = Object.assign({
+            model: model, messages: msgs, temperature: 0.7,
+            max_tokens: 4096,
+            referrer: POLLI_REFERRER,
+            private: true
+          }, extra || {});
+          return {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+            __qs: "?referrer=" + encodeURIComponent(POLLI_REFERRER)
+          };
+        };
+      }
+      function mkParse() {
+        return function(d) {
+          return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
+        };
+      }
       var providers = [
-        {
-          name: "Pollinations (openai)",
-          url: "https://text.pollinations.ai/openai",
-          model: "openai",
-          vision: true,
-          build: function(msgs, model) {
-            return {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                model: model, messages: msgs, temperature: 0.7,
-                max_tokens: tabCtx ? 1024 : 4096
-              })
-            };
-          },
-          parse: function(d) {
-            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-          }
-        },
-        {
-          name: "Pollinations (openai-fast)",
-          url: "https://text.pollinations.ai/openai",
-          model: "openai-fast",
-          vision: true,
-          build: function(msgs, model) {
-            return {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: model, messages: msgs, temperature: 0.7 })
-            };
-          },
-          parse: function(d) {
-            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-          }
-        },
-        {
-          name: "Pollinations (claude)",
-          url: "https://text.pollinations.ai/openai",
-          model: "claude-hybridspace",
-          vision: true,
-          build: function(msgs, model) {
-            return {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: model, messages: msgs, temperature: 0.7 })
-            };
-          },
-          parse: function(d) {
-            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-          }
-        },
-        {
-          name: "Pollinations (mistral)",
-          url: "https://text.pollinations.ai/openai",
-          model: "mistral",
-          vision: false,
-          build: function(msgs, model) {
-            return {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: model, messages: msgs, temperature: 0.7 })
-            };
-          },
-          parse: function(d) {
-            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-          }
-        },
-        {
-          name: "Pollinations (llama)",
-          url: "https://text.pollinations.ai/openai",
-          model: "llama",
-          vision: false,
-          build: function(msgs, model) {
-            return {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ model: model, messages: msgs, temperature: 0.7 })
-            };
-          },
-          parse: function(d) {
-            return d && d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content;
-          }
-        },
+        { name: "Pollinations (openai-large/gpt-4o)", url: "https://text.pollinations.ai/openai", model: "openai-large", vision: true, build: mkBuild(), parse: mkParse() },
+        { name: "Pollinations (openai/gpt-4o-mini)",  url: "https://text.pollinations.ai/openai", model: "openai",       vision: true, build: mkBuild(), parse: mkParse() },
+        { name: "Pollinations (openai-fast)",         url: "https://text.pollinations.ai/openai", model: "openai-fast",  vision: true, build: mkBuild(), parse: mkParse() },
+        { name: "Pollinations (openai-reasoning)",    url: "https://text.pollinations.ai/openai", model: "openai-reasoning", vision: true, build: mkBuild(), parse: mkParse() },
+        { name: "Pollinations (gemini)",              url: "https://text.pollinations.ai/openai", model: "gemini",       vision: true, build: mkBuild(), parse: mkParse() },
+        { name: "Pollinations (mistral)",             url: "https://text.pollinations.ai/openai", model: "mistral",      vision: false, build: mkBuild(), parse: mkParse() },
+        { name: "Pollinations (llama)",               url: "https://text.pollinations.ai/openai", model: "llama",        vision: false, build: mkBuild(), parse: mkParse() },
         {
           name: "Pollinations (text GET)",
           url: "https://text.pollinations.ai/",
@@ -14044,7 +14035,7 @@ loadTopRightProfilePfp();
                 : (Array.isArray(m.content) ? m.content.filter(function(p){return p.type==="text";}).map(function(p){return p.text;}).join("\n") : "");
               return "[" + m.role.toUpperCase() + "]\n" + c;
             }).join("\n\n") + "\n\n[ASSISTANT]\n";
-            var u = "https://text.pollinations.ai/" + encodeURIComponent(flat) + "?model=" + encodeURIComponent(model);
+            var u = "https://text.pollinations.ai/" + encodeURIComponent(flat) + "?model=" + encodeURIComponent(model) + "&referrer=" + encodeURIComponent(POLLI_REFERRER);
             return { __url: u, method: "GET" };
           },
           parse: function(d) { return typeof d === "string" ? d : null; }
@@ -14054,10 +14045,10 @@ loadTopRightProfilePfp();
       var reply = null, lastErr = null, usedProvider = null;
       for (var i = 0; i < providers.length; i++) {
         var p = providers[i];
-        if (imageAttachments.length && !p.vision) continue;
+        if (allImages.length && !p.vision) continue;
         try {
           var opts = p.build(baseMessages, p.model);
-          var endpoint = opts.__url || p.url;
+          var endpoint = opts.__url || (p.url + (opts.__qs || ""));
           var fetchOpts = opts.__url ? { method: "GET" } : { method: opts.method, headers: opts.headers, body: opts.body };
           var r = await fetch(endpoint, fetchOpts);
           if (!r.ok) {
@@ -14084,8 +14075,8 @@ loadTopRightProfilePfp();
 
       if (!reply) {
         conversationHistory.pop();
-        if (imageAttachments.length) {
-          reply = "⚠️ Couldn't reach any free vision provider right now. Try again in a moment, or send the question without the image.\n\n_Last error: " + (lastErr || "unknown") + "_";
+        if (allImages.length) {
+          reply = "⚠️ Couldn't reach any free vision provider right now. Try again in a moment, or send the question without the image/tab.\n\n_Last error: " + (lastErr || "unknown") + "_";
         } else {
           reply = "⚠️ Couldn't reach any free AI provider right now. Try again in a moment.\n\n_Last error: " + (lastErr || "unknown") + "_";
         }
