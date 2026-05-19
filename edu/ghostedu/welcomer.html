@@ -1,0 +1,198 @@
+    <link rel="icon" href="/images/logos/eclipse.png" type="image/x-icon" />
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Welcome!</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<div class="top-hint" role="button" tabindex="0" aria-label="Click the search bar or click this text to continue">
+  click the search bar above or click the text to continue
+</div>
+
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: url('/images/backgrounds/blue-carplay-dark-wallpaper.jpeg') no-repeat center center fixed;
+    background-size: cover;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    font-family: 'Pacifico', cursive;
+    cursor: pointer;
+  }
+
+  .container {
+    text-align: center;
+    color: white;
+    opacity: 0;
+    animation: fadeIn 2s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  svg {
+    width: 80vw;
+    max-width: 500px;
+    height: 150px;
+    display: block;
+    margin: 0 auto;
+  }
+
+  text {
+    fill: none;
+    stroke: white;
+    stroke-width: 2.5;
+    stroke-dasharray: 1500;
+    stroke-dashoffset: 1500;
+    font-family: 'Pacifico', cursive;
+    font-size: 100px;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    opacity: 1;
+    transition: opacity 1s ease;
+  }
+
+  .drawing {
+    animation: draw 6s ease forwards;
+  }
+
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  .fade-out {
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+
+  .tap-text {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    text-align: center;
+    color: rgba(255,255,255,0.7);
+    font-size: 18px;
+    animation: blink 2s infinite;
+    pointer-events: none;
+  }
+
+    .top-hint{
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ffffff;
+    background: rgba(255,255,255,0);
+    font-family: "Pacifico", "Brush Script MT", "Segoe Script", cursive;
+    font-size: 18px;
+    line-height: 1;
+    text-align: center;
+    padding: 6px 12px;
+    border-radius: 10px;
+    pointer-events: auto;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    z-index: 9999;
+    white-space: nowrap;
+  }
+  .top-hint:focus {
+    outline: 2px solid rgba(255,255,255,0.85);
+    outline-offset: 4px;
+    border-radius: 8px;
+  }
+
+  @media (max-width:480px){
+    .top-hint{ font-size:16px; padding:5px 8px; top:10px; }
+  }
+
+  @keyframes blink {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+  <div class="container" id="welcome-container">
+    <svg viewBox="0 0 600 150" lang="en">
+      <text x="50%" y="50%" id="helloText">hello</text>
+    </svg>
+  </div>
+  <div class="tap-text" id="tapText" style="display:none;">Click anywhere to continue</div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const isTest = params.has('test');
+  const isReset = params.has('resetagain');
+  if (isReset) {
+    localStorage.setItem('welcomeViewsRemaining', '2');
+    localStorage.removeItem('welcomeSeen');
+    alert('Local storage reset. You now have 2 more views.');
+  }
+  let remaining = parseInt(localStorage.getItem('welcomeViewsRemaining') || '0');
+  const seen = localStorage.getItem('welcomeSeen') === 'true';
+  if (!isTest && seen && remaining <= 0) {
+    window.location.href = '/newtab/pages/landing.html';
+  }
+
+  if (isTest) document.getElementById('tapText').style.display = 'block';
+
+  const words = [
+    'hello', 'welcome', 'hola', 'bonjour', 'ciao', 'hallo', 'こんにちは', '안녕하세요', 'добро пожаловать', 'مرحبا'
+  ];
+
+  let index = 0;
+  const textEl = document.getElementById('helloText');
+
+  function cycleWord() {
+    textEl.style.opacity = 0;
+    setTimeout(() => {
+      index = (index + 1) % words.length;
+      textEl.textContent = words[index];
+      textEl.classList.remove('drawing');
+      void textEl.offsetWidth; // reflow
+      textEl.classList.add('drawing');
+      textEl.style.opacity = 1;
+    }, 1000);
+  }
+
+  setTimeout(() => {
+    textEl.classList.add('drawing');
+  }, 5000);
+
+  setInterval(cycleWord, 8000);
+
+  document.body.addEventListener('click', () => {
+    if (!isTest) {
+      if (remaining > 0) {
+        remaining--;
+        localStorage.setItem('welcomeViewsRemaining', remaining.toString());
+        if (remaining === 0) {
+          localStorage.setItem('welcomeSeen', 'true');
+        }
+      } else {
+        localStorage.setItem('welcomeSeen', 'true');
+      }
+    }
+
+    document.getElementById('welcome-container').classList.add('fade-out');
+    document.getElementById('tapText').classList.add('fade-out');
+    setTimeout(() => {
+      window.location.href = '/newtab/pages/landing.html';
+    }, 500);
+  }, { once: true });
+</script>
+</body>
+</html>
