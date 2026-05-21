@@ -1,2 +1,2 @@
-importScripts("/education/school/uv.sw.js"); const sw = new UVServiceWorker(); self.addEventListener("fetch", (event) => event.respondWith(sw.fetch(event)));
+importScripts("/education/uv/uv.sw.js"); const sw = new UVServiceWorker(); self.addEventListener("fetch", (event) => event.respondWith(sw.fetch(event)));
 
