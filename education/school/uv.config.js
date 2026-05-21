@@ -1,1 +1,0 @@
-self.__uv$config = { prefix: '/education/go/', bare:'/bare/', encodeUrl: Ultraviolet.codec.xor.encode, decodeUrl: Ultraviolet.codec.xor.decode, handler: '/education/school/uv.handler.js', bundle: '/education/school/uv.bundle.js', config: '/education/school/uv.config.js', sw: '/education/school/uv.sw.js', };
