@@ -1,14 +1,14 @@
-importScripts('/active/uv/uv.bundle.js');
-importScripts('/active/uv/uv.config.js');
+importScripts('/education/school/uv.bundle.js');
+importScripts('/education/school/uv.config.js');
 
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open("uv-core").then(cache =>
       cache.addAll([
-        "/active/uv/uv.bundle.js",
-        "/active/uv/uv.client.js",
-        "/active/uv/uv.handler.js",
-        "/active/uv/uv.config.js"
+        "/education/school/uv.bundle.js",
+        "/education/school/uv.client.js",
+        "/education/school/uv.handler.js",
+        "/education/school/uv.config.js"
       ])
     )
   );
