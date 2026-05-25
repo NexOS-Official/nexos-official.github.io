@@ -18111,74 +18111,103 @@ body.vtab-resizing #vtabSidebar {
 (function(){
   var KEY = 'nexos_welcome_seen_v1';
   var FLAGS_KEY = 'nexos_flags';
-  if (localStorage.getItem(KEY) === 'true') return;
 
-  var root = document.getElementById('nxWelcomeRoot');
-  var slides = document.getElementById('nxSlides');
-  root.classList.add('show');
-  root.setAttribute('aria-hidden','false');
+  function init(){
+    try {
+      var qs = new URLSearchParams(window.location.search);
+      var force = qs.has('welcome');
+      var seen = false;
+      try { seen = (localStorage.getItem(KEY) === 'true'); } catch(e){}
+      if (seen && !force) { console.log('[nxWelcome] already seen, skipping'); return; }
 
-  // --- Slide 0: cycle hello words with smooth draw on every word ---
-  var words = ['hello','welcome','hola','bonjour','ciao','hallo','こんにちは','안녕하세요','здравствуйте','مرحبا','olá','नमस्ते'];
-  var i = 0;
-  var helloEl = document.getElementById('nxHelloText');
-  function cycleHello(){
-    i = (i + 1) % words.length;
-    helloEl.classList.remove('drawing');
-    helloEl.textContent = words[i];
-    // force reflow then re-add to restart animation
-    void helloEl.getBoundingClientRect();
-    helloEl.classList.add('drawing');
-  }
-  var helloTimer = setInterval(cycleHello, 2600);
+      var root = document.getElementById('nxWelcomeRoot');
+      var slides = document.getElementById('nxSlides');
+      if (!root || !slides) { console.warn('[nxWelcome] overlay DOM missing'); return; }
+      console.log('[nxWelcome] showing first-run overlay');
 
-  // --- Slide 1: flags ---
-  var defaultFlags = [
-    { id: 'smooth-scrolling',   name: 'Smooth Scrolling',     desc: 'Enables smooth scrolling on pages.', def: true },
-    { id: 'dark-ui',            name: 'Force Dark UI',        desc: 'Apply a dark theme everywhere possible.', def: false },
-    { id: 'experimental-tabs',  name: 'Experimental Tabs',    desc: 'Try the new tab grouping prototype.', def: false },
-    { id: 'gpu-accel',          name: 'GPU Acceleration',     desc: 'Use hardware acceleration for rendering.', def: true },
-    { id: 'autoplay-block',     name: 'Block Autoplay Media', desc: 'Stops audio/video from auto-playing.', def: true },
-    { id: 'lazy-images',        name: 'Lazy-load Images',     desc: 'Defer offscreen images for faster pages.', def: true }
-  ];
-  var saved = {};
-  try { saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}') || {}; } catch(e){ saved = {}; }
-  var flagsList = document.getElementById('nxFlagsList');
-  defaultFlags.forEach(function(f){
-    var on = (f.id in saved) ? !!saved[f.id] : !!f.def;
-    saved[f.id] = on;
-    var row = document.createElement('div');
-    row.className = 'nx-flag';
-    row.innerHTML =
-      '<div class="nx-flag-info"><div class="nx-flag-name">'+f.name+'</div>'+
-      '<div class="nx-flag-desc">'+f.desc+'</div></div>'+
-      '<div class="nx-flag-toggle '+(on?'on':'')+'" role="switch" aria-checked="'+on+'"></div>';
-    var toggle = row.querySelector('.nx-flag-toggle');
-    toggle.addEventListener('click', function(){
-      saved[f.id] = !saved[f.id];
-      toggle.classList.toggle('on', saved[f.id]);
-      toggle.setAttribute('aria-checked', String(saved[f.id]));
+      root.classList.add('show');
+      root.style.display = 'block';
+      root.setAttribute('aria-hidden','false');
+
+      // --- Slide 0: cycle hello words with smooth draw on every word ---
+      var words = ['hello','welcome','hola','bonjour','ciao','hallo','こんにちは','안녕하세요','здравствуйте','مرحبا','olá','नमस्ते'];
+      var i = 0;
+      var helloEl = document.getElementById('nxHelloText');
+      function cycleHello(){
+        if (!helloEl) return;
+        i = (i + 1) % words.length;
+        helloEl.classList.remove('drawing');
+        helloEl.textContent = words[i];
+        void helloEl.getBoundingClientRect();
+        helloEl.classList.add('drawing');
+      }
+      var helloTimer = setInterval(cycleHello, 2600);
+
+      // --- Slide 1: flags ---
+      var defaultFlags = [
+        { id: 'smooth-scrolling',   name: 'Smooth Scrolling',     desc: 'Enables smooth scrolling on pages.', def: true },
+        { id: 'dark-ui',            name: 'Force Dark UI',        desc: 'Apply a dark theme everywhere possible.', def: false },
+        { id: 'experimental-tabs',  name: 'Experimental Tabs',    desc: 'Try the new tab grouping prototype.', def: false },
+        { id: 'gpu-accel',          name: 'GPU Acceleration',     desc: 'Use hardware acceleration for rendering.', def: true },
+        { id: 'autoplay-block',     name: 'Block Autoplay Media', desc: 'Stops audio/video from auto-playing.', def: true },
+        { id: 'lazy-images',        name: 'Lazy-load Images',     desc: 'Defer offscreen images for faster pages.', def: true }
+      ];
+      var saved = {};
+      try { saved = JSON.parse(localStorage.getItem(FLAGS_KEY) || '{}') || {}; } catch(e){ saved = {}; }
+      var flagsList = document.getElementById('nxFlagsList');
+      if (flagsList) {
+        flagsList.innerHTML = '';
+        defaultFlags.forEach(function(f){
+          var on = (f.id in saved) ? !!saved[f.id] : !!f.def;
+          saved[f.id] = on;
+          var row = document.createElement('div');
+          row.className = 'nx-flag';
+          row.innerHTML =
+            '<div class="nx-flag-info"><div class="nx-flag-name">'+f.name+'</div>'+
+            '<div class="nx-flag-desc">'+f.desc+'</div></div>'+
+            '<div class="nx-flag-toggle '+(on?'on':'')+'" role="switch" aria-checked="'+on+'"></div>';
+          var toggle = row.querySelector('.nx-flag-toggle');
+          toggle.addEventListener('click', function(){
+            saved[f.id] = !saved[f.id];
+            toggle.classList.toggle('on', saved[f.id]);
+            toggle.setAttribute('aria-checked', String(saved[f.id]));
+            try { localStorage.setItem(FLAGS_KEY, JSON.stringify(saved)); } catch(e){}
+          });
+          flagsList.appendChild(row);
+        });
+      }
       try { localStorage.setItem(FLAGS_KEY, JSON.stringify(saved)); } catch(e){}
-    });
-    flagsList.appendChild(row);
-  });
-  try { localStorage.setItem(FLAGS_KEY, JSON.stringify(saved)); } catch(e){}
 
-  function go(n){ slides.classList.remove('s1','s2'); if(n===1) slides.classList.add('s1'); if(n===2) slides.classList.add('s2'); }
+      function go(n){ slides.classList.remove('s1','s2'); if(n===1) slides.classList.add('s1'); if(n===2) slides.classList.add('s2'); }
 
-  document.getElementById('nxNext0').onclick = function(){ go(1); };
-  document.getElementById('nxBack1').onclick = function(){ go(0); };
-  document.getElementById('nxNext1').onclick = function(){ go(2); };
+      var n0 = document.getElementById('nxNext0');
+      var b1 = document.getElementById('nxBack1');
+      var n1 = document.getElementById('nxNext1');
+      if (n0) n0.onclick = function(){ go(1); };
+      if (b1) b1.onclick = function(){ go(0); };
+      if (n1) n1.onclick = function(){ go(2); };
 
-  function finish(){
-    try { localStorage.setItem(KEY,'true'); } catch(e){}
-    clearInterval(helloTimer);
-    root.style.transition = 'opacity .5s ease';
-    root.style.opacity = '0';
-    setTimeout(function(){ root.classList.remove('show'); root.style.display='none'; root.setAttribute('aria-hidden','true'); }, 520);
+      function finish(){
+        try { localStorage.setItem(KEY,'true'); } catch(e){}
+        clearInterval(helloTimer);
+        root.style.transition = 'opacity .5s ease';
+        root.style.opacity = '0';
+        setTimeout(function(){ root.classList.remove('show'); root.style.display='none'; root.setAttribute('aria-hidden','true'); }, 520);
+      }
+      var st = document.getElementById('nxStart');
+      var sk = document.getElementById('nxSkip');
+      if (st) st.onclick = finish;
+      if (sk) sk.onclick  = finish;
+    } catch(err) {
+      console.error('[nxWelcome] init failed', err);
+    }
   }
-  document.getElementById('nxStart').onclick = finish;
-  document.getElementById('nxSkip').onclick  = finish;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();
 </script>
 
