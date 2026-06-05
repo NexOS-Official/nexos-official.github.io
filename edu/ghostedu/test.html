@@ -2,6 +2,10 @@
 
 
 
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,14 +22,12 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.8/dist/html2canvas-pro.min.js"></script>
     <script>
-      // ?reset — wipe local data (welcome modal, recap tabs, etc.) so user sees fresh state
       (function(){
         try {
           var p = new URLSearchParams(window.location.search);
           if (p.has('reset')) {
             try { localStorage.clear(); } catch(e) {}
             try { sessionStorage.clear(); } catch(e) {}
-            // strip ?reset from URL so a refresh doesn't keep wiping
             var url = window.location.pathname + window.location.hash;
             window.history.replaceState({}, '', url);
           }
@@ -5558,6 +5560,7 @@ body.reduce-motion *::after {
   font-family: "Google Sans", sans-serif;
 }
 </style>
+<script defer src="/assets/ghost-global/announcements.js?v=1780352096" data-ghost-global-announcements></script>
 </head>
 <body>
     <div id="tab-drag-overlay"></div>
@@ -5578,7 +5581,6 @@ body.reduce-motion *::after {
       <div class="charging-label"><span id="chargingPercentValue">0</span>% Charged</div>
     </div>
 
-<!-- ===== nexOS first-run Welcome Modal ===== -->
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
 
@@ -5612,7 +5614,6 @@ body.reduce-motion *::after {
   .nx-welcome-slide.active{ opacity:1; transform:translateX(0); pointer-events:auto; }
   .nx-welcome-slide.exit-left{ opacity:0; transform:translateX(-36px); }
 
-  /* ---------- Slide 1 ---------- */
   .nx-slide-1{ padding:0; }
   .nx-slide-1 .nx-art{
     flex:0 0 48%; display:flex; align-items:center; justify-content:center;
@@ -5626,7 +5627,6 @@ body.reduce-motion *::after {
     flex:1; display:flex; align-items:center; justify-content:center;
     padding:24px 32px;
   }
-  /* welcomer.html parity: same SVG draw animation, but BLACK + filled */
   .nx-words svg{
     width: 80%; max-width: 380px; height: 150px; display:block; margin:0 auto;
   }
@@ -5649,7 +5649,6 @@ body.reduce-motion *::after {
   }
   @keyframes nxDraw { to { stroke-dashoffset: 0; } }
 
-  /* ---------- Slide 2 (flags) ---------- */
   .nx-slide-2{ flex-direction:column; padding:22px 26px 18px; background:#fff; }
   .nx-slide-2 .nx-head{ margin-bottom:14px; }
   .nx-slide-2 h2{
@@ -5664,39 +5663,40 @@ body.reduce-motion *::after {
     background:#fff;
   }
 
-  /* ---------- Slide 3 (Welcome to nexOS) ---------- */
   .nx-slide-3{
-    flex-direction:column; align-items:center; justify-content:center;
-    background:#ffffff; color:#111; text-align:center; overflow:hidden;
-    position:relative;
+    flex-direction:column; align-items:flex-start; justify-content:flex-start;
+    background:#ffffff; color:#111; text-align:left; overflow:hidden;
+    position:relative; padding:56px 56px 40px;
   }
-  .nx-slide-3 .nx-ghost-bg{
-    position:absolute;
-    left: -120px; bottom: -160px;
-    width: 520px; height: 520px;
-    opacity: .9;
-    pointer-events:none; user-select:none;
-    filter: drop-shadow(0 8px 24px rgba(0,0,0,0.08));
+  .nx-slide-3 .nx-fan{
+    position:absolute; inset:0; width:100%; height:100%;
+    pointer-events:none; user-select:none; z-index:0;
   }
   .nx-slide-3 .nx-typed-wrap{ position:relative; z-index:1; }
   .nx-typed{
     font-family:'Google Sans','Segoe UI',Roboto,sans-serif;
-    font-size:54px; font-weight:500; letter-spacing:-1px;
-    color:#111; min-height:64px; line-height:1;
+    font-size:72px; font-weight:500; letter-spacing:-2.5px;
+    color:#111; line-height:1; margin:0;
   }
-  .nx-typed .nx-caret{
-    display:inline-block; width:3px; height:0.85em; background:#111;
-    margin-left:4px; vertical-align:-2px; animation: nxCaret 1s steps(1) infinite;
+  .nx-sub-line{
+    display:flex; align-items:center; gap:10px; margin-top:6px;
   }
-  @keyframes nxCaret { 50% { opacity:0; } }
-  .nx-byline{
+  .nx-sub-line .nx-sub{
     font-family:'Google Sans','Segoe UI',Roboto,sans-serif;
-    font-size:14px; opacity:0; transition: opacity .6s ease .15s;
-    margin-top:10px; letter-spacing:.4px; color:#666; font-weight:400;
+    font-size:36px; font-weight:400; color:#111; letter-spacing:-1px; line-height:1;
   }
-  .nx-slide-3.typed-done .nx-byline{ opacity:1; }
+  .nx-goog-dots{
+    display:inline-grid; grid-template-columns:5px;
+    gap:2px; margin-left:2px; align-self:center;
+    opacity:0; transition: opacity .5s ease .2s;
+  }
+  .nx-goog-dots i{ width:5px; height:5px; border-radius:1.5px; display:block; }
+  .nx-goog-dots i:nth-child(1){ background:#4285F4; }
+  .nx-goog-dots i:nth-child(2){ background:#EA4335; }
+  .nx-goog-dots i:nth-child(3){ background:#34A853; }
+  .nx-goog-dots i:nth-child(4){ background:#FBBC05; }
+  .nx-slide-3.typed-done .nx-goog-dots{ opacity:1; }
 
-  /* ---------- Footer ---------- */
   .nx-welcome-footer{
     display:flex; align-items:center; justify-content:space-between;
     padding:14px 20px; background:#fff;
@@ -5724,7 +5724,6 @@ body.reduce-motion *::after {
   <div class="nx-welcome-panel" role="dialog" aria-modal="true" aria-label="Welcome to nexOS">
     <div class="nx-welcome-slides" id="nxSlides">
 
-      <!-- Slide 1 -->
       <div class="nx-welcome-slide nx-slide-1 active" data-slide="1">
         <div class="nx-art">
           <img id="nxWelcomeMan"
@@ -5739,7 +5738,6 @@ body.reduce-motion *::after {
         </div>
       </div>
 
-      <!-- Slide 2 -->
       <div class="nx-welcome-slide nx-slide-2" data-slide="2">
         <div class="nx-head">
           <h2>Experimental flags</h2>
@@ -5748,12 +5746,45 @@ body.reduce-motion *::after {
         <iframe class="nx-flags-frame" id="nxFlagsFrame" title="ghost://flags"></iframe>
       </div>
 
-      <!-- Slide 3 -->
       <div class="nx-welcome-slide nx-slide-3" data-slide="3">
-        <img class="nx-ghost-bg" src="/ghost.svg" alt="" aria-hidden="true">
+        <svg class="nx-fan" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+          <defs>
+            <radialGradient id="nxPetal" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="1"/>
+              <stop offset="100%" stop-color="#e9ecef" stop-opacity="1"/>
+            </radialGradient>
+            <filter id="nxPetalShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2"/>
+            </filter>
+          </defs>
+          <g transform="translate(820 520)" filter="url(#nxPetalShadow)">
+            <g id="nxPetals"></g>
+          </g>
+        </svg>
+        <script>
+          (function(){
+            var g = document.currentScript.parentNode.querySelector('#nxPetals');
+            if (!g) return;
+            var n = 11;
+            for (var i = 0; i < n; i++){
+              var angle = -90 - (i * (90 / (n - 1)));
+              var p = document.createElementNS('http://www.w3.org/2000/svg','ellipse');
+              p.setAttribute('cx','-360'); p.setAttribute('cy','0');
+              p.setAttribute('rx','360'); p.setAttribute('ry','70');
+              p.setAttribute('fill','url(#nxPetal)');
+              p.setAttribute('stroke','#dfe3e8');
+              p.setAttribute('stroke-width','0.75');
+              p.setAttribute('transform','rotate('+angle+')');
+              g.appendChild(p);
+            }
+          })();
+        </script>
         <div class="nx-typed-wrap">
-          <div class="nx-typed"><span id="nxTypedText"></span><span class="nx-caret"></span></div>
-          <div class="nx-byline">By Ghost INC.</div>
+          <div class="nx-typed"><span id="nxTypedText"></span></div>
+          <div class="nx-sub-line">
+            <span class="nx-sub">to nexOS</span>
+            <span class="nx-goog-dots" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          </div>
         </div>
       </div>
 
@@ -9410,7 +9441,6 @@ body.reduce-motion *::after {
 }
 const browser = new Browser();
 window.browser = browser;
-// ===== first-run Welcome flow & recap gating =====
 (function nxWelcomeBoot(){
   var WELCOME_KEY = 'nexos_welcome_completed';
   var alreadyDone = false;
@@ -9427,7 +9457,6 @@ window.browser = browser;
     return;
   }
 
-  // Defer recap until welcome finishes
   var overlay = document.getElementById('nxWelcomeOverlay');
   if (!overlay) { maybeShowRecap(); return; }
 
@@ -9436,11 +9465,9 @@ window.browser = browser;
   var nextBtn = document.getElementById('nxNextBtn');
   var current = 0;
 
-  // Word cycling on slide 1 — exact welcomer.html style (Pacifico SVG draw), black + filled
   var words = ['hello','hola','bonjour','ciao','hallo','olá','こんにちは','안녕하세요','привет','مرحبا','नमस्ते','你好'];
   var wIdx = 0;
   var helloEl = document.getElementById('nxHelloWord');
-  // kick off initial draw
   if (helloEl) {
     helloEl.classList.remove('drawing');
     void helloEl.getBoundingClientRect();
@@ -9448,7 +9475,6 @@ window.browser = browser;
   }
   function cycleHello(){
     if (!helloEl) return;
-    // fade current word out, then swap + re-draw
     helloEl.style.opacity = '0';
     setTimeout(function(){
       wIdx = (wIdx + 1) % words.length;
@@ -9461,24 +9487,13 @@ window.browser = browser;
   }
   var helloTimer = setInterval(cycleHello, 4200);
 
-  // Slide 3 typewriter
   var typed = false;
   function runTyped(){
     if (typed) return; typed = true;
     var el = document.getElementById('nxTypedText');
     var slide3 = overlay.querySelector('.nx-slide-3');
-    var full = 'Welcome to nexOS';
-    var i = 0;
-    function step(){
-      if (i <= full.length){
-        el.textContent = full.slice(0, i);
-        i++;
-        setTimeout(step, 85);
-      } else {
-        if (slide3) slide3.classList.add('typed-done');
-      }
-    }
-    setTimeout(step, 250);
+    if (el) el.textContent = 'Welcome';
+    if (slide3) slide3.classList.add('typed-done');
   }
 
   function setSlide(n){
@@ -9532,9 +9547,7 @@ window.browser = browser;
     }
   });
 
-  // Show
   overlay.style.display = 'flex';
-  // force layout then add show
   void overlay.getBoundingClientRect();
   overlay.classList.add('show');
   setSlide(0);
@@ -13328,29 +13341,22 @@ loadTopRightProfilePfp();
       }
       if (window.lucide) lucide.createIcons();
     }
-    taskbarAudioBtn.addEventListener("mousedown", function(e) {
-      e.stopPropagation();
-      e.preventDefault();
-    });
-    taskbarAudioBtn.addEventListener("mouseup", function(e) {
-      e.stopPropagation();
-      e.preventDefault();
+    function toggleAudioPanel(e) {
+      if (e) { e.stopPropagation(); e.preventDefault(); }
       if (audioPanel.classList.contains("visible")) {
         audioPanel.classList.remove("visible");
       } else {
         renderAudioPanel();
         audioPanel.classList.add("visible");
       }
-    });
+    }
+    // Prevent global listeners from swallowing the press, then toggle on click/tap.
+    taskbarAudioBtn.addEventListener("mousedown", function(e) { e.stopPropagation(); });
+    taskbarAudioBtn.addEventListener("pointerdown", function(e) { e.stopPropagation(); });
+    taskbarAudioBtn.addEventListener("click", toggleAudioPanel);
     taskbarAudioBtn.addEventListener("touchend", function(e) {
-      e.stopPropagation();
-      e.preventDefault();
-      if (audioPanel.classList.contains("visible")) {
-        audioPanel.classList.remove("visible");
-      } else {
-        renderAudioPanel();
-        audioPanel.classList.add("visible");
-      }
+      // Touchend fires before the synthesized click; toggle here and suppress the click.
+      toggleAudioPanel(e);
     });
     muteAllBtn.addEventListener("click", function() {
       b.tabs.forEach(function(tab) {
