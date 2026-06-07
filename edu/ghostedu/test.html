@@ -3917,10 +3917,6 @@ body.reduce-motion *::after {
 .tab-audio-icon.playing {
   display: flex;
 }
-.tab-audio-icon.paused {
-  display: flex;
-  opacity: 0.45;
-}
 .tab-audio-icon.muted svg {
   opacity: 0.4;
 }
@@ -4148,24 +4144,24 @@ body.reduce-motion *::after {
   }
 }
 
-/* ===== Media controls ===== */
+/* ===== Chrome-style media controls ===== */
 .media-card {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  border-radius: 18px;
-  padding: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 16px;
+  padding: 13px 15px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.09);
+  gap: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
 }
 .control-center-menu .media-card + .media-card {
   margin-top: 10px;
 }
 .media-card-head {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
 }
 .media-card-text {
   flex: 1;
@@ -4173,7 +4169,7 @@ body.reduce-motion *::after {
 }
 .media-card-source {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  color: rgba(0, 0, 0, 0.42);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4191,31 +4187,31 @@ body.reduce-motion *::after {
 .media-card-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
 }
 .media-card-expand,
 .media-card-icon-btn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: none;
-  background: rgba(255, 255, 255, 0.72);
+  background: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 50%;
   color: #5f6368;
   transition: background 0.18s, transform 0.12s;
 }
 .media-card-expand:hover,
 .media-card-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.98);
+  background: rgba(0, 0, 0, 0.07);
   color: #202124;
 }
 .media-card-expand:active,
 .media-card-icon-btn:active {
-  transform: scale(0.94);
+  transform: scale(0.9);
 }
 .media-card-play {
   width: 46px;
@@ -4232,7 +4228,7 @@ body.reduce-motion *::after {
   transition: background 0.18s, transform 0.12s;
 }
 .media-card-play:hover {
-  background: color-mix(in srgb, var(--nexos-star) 68%, #ffffff);
+  background: color-mix(in srgb, var(--nexos-star) 70%, #ffffff);
 }
 .media-card-play:active {
   transform: scale(0.92);
@@ -4243,43 +4239,29 @@ body.reduce-motion *::after {
   gap: 8px;
 }
 .media-card-volrow .media-card-icon-btn {
-  width: 28px;
-  height: 28px;
-}
-.media-card-select {
-  width: 100%;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 255, 0.82);
-  border-radius: 14px;
-  padding: 9px 12px;
-  font-size: 13px;
-  color: #202124;
-  font-family: "google sans", sans-serif;
-  outline: none;
-}
-.media-card-select:focus {
-  border-color: color-mix(in srgb, var(--nexos-star) 55%, #8ab4f8);
-  box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.18);
+  width: 26px;
+  height: 26px;
 }
 
-/* Old-style slider look, same family as the brightness slider */
+/* Smooth slider used everywhere (seek + volume + brightness) */
 .nx-slider {
   position: relative;
   flex: 1;
-  height: 34px;
+  height: 18px;
   display: flex;
   align-items: center;
   cursor: pointer;
   touch-action: none;
   user-select: none;
+  padding: 7px 0;
 }
 .nx-slider-track {
   position: relative;
   width: 100%;
-  height: 100%;
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--nexos-accent) 75%, transparent);
-  overflow: hidden;
+  height: 4px;
+  border-radius: 2px;
+  background: #e0e0e0;
+  overflow: visible;
 }
 .nx-slider-fill {
   position: absolute;
@@ -4287,8 +4269,8 @@ body.reduce-motion *::after {
   top: 0;
   bottom: 0;
   width: 0%;
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--nexos-star) 45%, transparent);
+  border-radius: 2px;
+  background: #888;
   will-change: width;
 }
 .nx-slider-thumb {
@@ -4298,48 +4280,65 @@ body.reduce-motion *::after {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff;
+  border: 1px solid #e0e0e0;
   transform: translate(-50%, -50%);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.14);
-  will-change: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+  will-change: left, transform;
+  transition: transform 0.12s ease;
 }
+.nx-slider:hover .nx-slider-thumb,
 .nx-slider:active .nx-slider-thumb {
-  width: 20px;
-  height: 20px;
+  transform: translate(-50%, -50%) scale(1.12);
+}
+.media-card-source-select {
+  width: 100%;
+  margin: 6px 0 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.6);
+  font-family: inherit;
+  font-size: 12px;
+  color: #333;
+  outline: none;
+  cursor: pointer;
 }
 
-/* Sidebar-style media controls menu */
+/* Full-screen Media controls menu */
 .media-controls-overlay {
   position: fixed;
   inset: 0;
   z-index: 10020;
   display: flex;
   justify-content: flex-end;
-  align-items: flex-start;
-  padding-top: calc(92px + var(--bookmark-bar-offset, 0px));
-  padding-bottom: 50px;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.18);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.22s ease;
+  transition: opacity 0.28s ease;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 .media-controls-overlay.visible {
   opacity: 1;
   pointer-events: auto;
 }
 .media-controls-sheet {
-  width: 400px;
+  width: 380px;
   max-width: 92vw;
-  height: calc(100vh - 92px - var(--bookmark-bar-offset, 0px) - 50px);
-  background: #ffffff;
-  border-left: 1px solid #e9ecef;
-  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.16);
+  height: 100%;
+  background: linear-gradient(180deg, rgba(240, 242, 246, 0.96), rgba(228, 231, 236, 0.96));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-left: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: -12px 0 48px rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
-  transform: translateX(100%);
-  transition: transform 0.34s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  overflow: hidden;
+  padding: 14px 16px;
+  gap: 14px;
+  transform: translateX(24px);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow-y: auto;
 }
 .media-controls-overlay.visible .media-controls-sheet {
   transform: translateX(0);
@@ -4348,26 +4347,23 @@ body.reduce-motion *::after {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 16px 20px;
-  min-height: 60px;
-  border-bottom: 1px solid #e9ecef;
-  background: #ffffff;
+  padding: 4px 0 2px;
 }
 .media-controls-title {
   flex: 1;
-  text-align: left;
-  font-size: 16px;
+  text-align: center;
+  font-size: 17px;
   font-weight: 500;
   color: #1a1a1a;
   font-family: "google sans", sans-serif;
 }
 .mc-top-btn {
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   border: none;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4376,33 +4372,21 @@ body.reduce-motion *::after {
   transition: background 0.18s, transform 0.12s;
 }
 .mc-top-btn:hover {
-  background: #f1f3f4;
+  background: rgba(255, 255, 255, 0.95);
 }
 .mc-top-btn:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
 .media-controls-list {
-  flex: 1;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 12px;
 }
 .media-controls-empty {
   padding: 40px 16px;
   text-align: center;
   color: #888;
   font-size: 14px;
-}
-@media (max-width: 700px) {
-  .media-controls-overlay {
-    padding-top: 76px;
-  }
-  .media-controls-sheet {
-    width: min(100vw, 400px);
-    height: calc(100vh - 76px - 50px);
-  }
 }
 .tab-restore-overlay {
   position: fixed;
@@ -13412,139 +13396,98 @@ loadTopRightProfilePfp();
     var timeDateContainer = document.getElementById("timeDateContainer");
     var ccWrapper = document.getElementById("ccAnncWrapper");
     var muteAllBtn = document.getElementById("audioPanelMuteAll");
-    function hasAudibleTrack(el) {
-      if (!el) return false;
-      if (el.tagName === "AUDIO") return true;
-      if (el.tagName !== "VIDEO") return false;
+    function getMediaElements(iframe) {
+      var elements = [];
       try {
-        if (el.mozHasAudio) return true;
-      } catch (e) {
-      }
-      try {
-        if (typeof el.webkitAudioDecodedByteCount === "number" && el.webkitAudioDecodedByteCount > 0) return true;
-      } catch (e) {
-      }
-      try {
-        if (el.audioTracks && el.audioTracks.length > 0) return true;
-      } catch (e) {
-      }
-      try {
-        if (el.captureStream) {
-          var stream = el.captureStream();
-          if (stream && stream.getAudioTracks && stream.getAudioTracks().length > 0) return true;
-        }
-      } catch (e) {
-      }
-      return false;
-    }
-    function mediaLabel(el, idx) {
-      var kind = el && el.tagName === "VIDEO" ? "Video" : "Audio";
-      var attr = "";
-      try {
-        attr = el.getAttribute("aria-label") || el.getAttribute("title") || el.getAttribute("data-testid") || el.id || el.className || "";
-      } catch (e) {
-      }
-      attr = String(attr || "").trim().replace(/\s+/g, " ");
-      if (attr) return kind + " · " + attr.slice(0, 42);
-      return kind + " " + (idx + 1);
-    }
-    function collectMediaUnitsFromDocument(doc, bucket, seen) {
-      if (!doc) return;
-      try {
-        Array.prototype.forEach.call(doc.querySelectorAll("audio, video"), function(el) {
-          if (!el || seen.has(el)) return;
-          if (el.tagName === "VIDEO" && !hasAudibleTrack(el)) return;
-          seen.add(el);
-          bucket.push({
-            id: "media-" + bucket.length,
-            element: el,
-            type: el.tagName === "VIDEO" ? "video" : "audio",
-            label: mediaLabel(el, bucket.length)
-          });
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!doc) return elements;
+        var audios = doc.querySelectorAll("audio, video");
+        audios.forEach(function(el) {
+          elements.push(el);
         });
-        Array.prototype.forEach.call(doc.querySelectorAll("iframe"), function(nf) {
+        var nestedIframes = doc.querySelectorAll("iframe");
+        nestedIframes.forEach(function(nf) {
           try {
-            var nestedDoc = nf.contentDocument || (nf.contentWindow && nf.contentWindow.document);
-            if (nestedDoc) collectMediaUnitsFromDocument(nestedDoc, bucket, seen);
+            var nested = getMediaElements(nf);
+            nested.forEach(function(el) {
+              elements.push(el);
+            });
           } catch (e) {
           }
         });
       } catch (e) {
       }
+      return elements;
     }
-    function getMediaUnits(tab) {
-      var units = [];
-      if (!tab || !tab.iframe) return units;
+    function mediaHasAudio(el) {
+      if (!el) return false;
       try {
-        var doc = tab.iframe.contentDocument || (tab.iframe.contentWindow && tab.iframe.contentWindow.document);
-        var seen = new WeakSet();
-        collectMediaUnitsFromDocument(doc, units, seen);
-      } catch (e) {
-      }
-      return units;
+        if (el.tagName === "AUDIO") return true;
+        if (typeof el.webkitAudioDecodedByteCount === "number" && el.webkitAudioDecodedByteCount > 0) return true;
+        if (el.audioTracks && el.audioTracks.length > 0) return true;
+        if (el.mozHasAudio) return true;
+        // Heuristic fallback: a video that has played and isn't permanently muted by the page
+        if (el.tagName === "VIDEO" && el.duration > 0 && el.currentTime > 0 && !el.defaultMuted) {
+          // assume it might have audio if we can't tell
+          return el._nexosAssumedAudible === true;
+        }
+      } catch (e) {}
+      return false;
     }
-    function getPreferredUnit(tab) {
-      var units = getMediaUnits(tab);
-      if (!units.length) return null;
-      var active = tab && tab._activeMediaId ? tab._activeMediaId : null;
-      for (var i = 0; i < units.length; i++) {
-        if (active && units[i].id === active) return units[i];
-      }
-      for (var j = 0; j < units.length; j++) {
-        var el = units[j].element;
-        if (!el.paused && !el.ended && el.readyState > 1) return units[j];
-      }
-      return units[0];
-    }
-    function getCurrentMedia(tab) {
-      var unit = getPreferredUnit(tab);
-      return unit ? unit.element : null;
-    }
-    function isMediaActive(el) {
-      return !!(el && !el.paused && !el.ended && el.readyState > 1);
+    function getAudibleMedia(tab) {
+      if (!tab || !tab.iframe) return [];
+      var media = getMediaElements(tab.iframe);
+      var audible = media.filter(mediaHasAudio);
+      if (audible.length) return audible;
+      // Fall back to audio elements only (never bare videos / bg animations)
+      return media.filter(function(m) { return m.tagName === "AUDIO"; });
     }
     function isTabPlayingAudio(tab) {
-      var units = getMediaUnits(tab);
-      for (var i = 0; i < units.length; i++) {
-        if (isMediaActive(units[i].element)) return true;
+      if (!tab || !tab.iframe) return false;
+      var media = getAudibleMedia(tab);
+      for (var i = 0; i < media.length; i++) {
+        if (!media[i].paused && !media[i].ended && media[i].readyState > 2) {
+          tab._nexosEverPlayed = true;
+          return true;
+        }
       }
       return false;
     }
+    function tabHasControllableMedia(tab) {
+      if (!tab || !tab.iframe) return false;
+      return getAudibleMedia(tab).length > 0;
+    }
     function applyTabPrefsToMedia(tab) {
       if (!tab || !tab.iframe) return;
-      var units = getMediaUnits(tab);
+      var media = getMediaElements(tab.iframe);
       var vol = tab._volume !== void 0 ? tab._volume : 1;
       var muted = tab._muted || false;
-      units.forEach(function(unit) {
-        var el = unit.element;
-        if (!el) return;
-        if (!el._nexosTracked) el._nexosTracked = true;
-        try {
+      media.forEach(function(el) {
+        if (!el._nexosTracked) {
+          el._nexosTracked = true;
           el.volume = vol;
-        } catch (e) {
-        }
-        try {
-          el.muted = muted;
-        } catch (e) {
+          if (!muted) el.muted = false;
+          else el.muted = true;
+        } else {
+          if (el.muted !== muted) el.muted = muted;
+          if (el.volume !== vol) el.volume = vol;
         }
       });
     }
     function getTabVolume(tab) {
       if (!tab || !tab.iframe) return 1;
       if (tab._volume !== void 0) return tab._volume;
-      var media = getCurrentMedia(tab);
-      if (media) return media.volume;
+      var media = getMediaElements(tab.iframe);
+      if (media.length > 0) return media[0].volume;
       return 1;
     }
     function setTabVolume(tab, vol) {
       if (!tab || !tab.iframe) return;
       tab._volume = vol;
-      if (vol > 0) tab._muted = false;
-      var units = getMediaUnits(tab);
-      units.forEach(function(unit) {
-        var el = unit.element;
-        try { el.volume = vol; } catch (e) {}
-        try { el.muted = vol === 0 ? true : !!tab._muted; } catch (e) {}
+      var media = getMediaElements(tab.iframe);
+      media.forEach(function(el) {
+        el.volume = vol;
+        el.muted = vol === 0;
       });
       if (vol === 0) tab._muted = true;
     }
@@ -13555,9 +13498,9 @@ loadTopRightProfilePfp();
       if (!tab || !tab.iframe) return;
       var newMuted = !isTabMuted(tab);
       tab._muted = newMuted;
-      var units = getMediaUnits(tab);
-      units.forEach(function(unit) {
-        try { unit.element.muted = newMuted; } catch (e) {}
+      var media = getMediaElements(tab.iframe);
+      media.forEach(function(el) {
+        el.muted = newMuted;
       });
     }
     function ensureAudioIcon(tab) {
@@ -13579,23 +13522,12 @@ loadTopRightProfilePfp();
       tab._audioIcon = icon;
       return icon;
     }
-    function hasAnyMedia() {
-      var anyMedia = false;
-      b.tabs.forEach(function(tab) {
-        if (getMediaUnits(tab).length) anyMedia = true;
-      });
-      return anyMedia;
-    }
     function updateAudioState() {
       var anyPlaying = false;
-      var anyMedia = false;
       b.tabs.forEach(function(tab) {
-        var hasMedia = getMediaUnits(tab).length > 0;
         var playing = isTabPlayingAudio(tab);
         var icon = ensureAudioIcon(tab);
-        if (hasMedia) anyMedia = true;
-        if (playing || hasMedia) {
-          icon.classList.toggle("paused", hasMedia && !playing);
+        if (playing) {
           anyPlaying = true;
           icon.classList.add("playing");
           if (isTabMuted(tab)) {
@@ -13607,11 +13539,10 @@ loadTopRightProfilePfp();
           }
         } else {
           icon.classList.remove("playing");
-          icon.classList.remove("paused");
           icon.classList.remove("muted");
         }
       });
-      if (anyMedia) {
+      if (anyPlaying) {
         if (taskbarAudioBtn) taskbarAudioBtn.classList.add("has-audio");
         if (timeDateContainer) timeDateContainer.classList.add("has-audio");
         if (audioPanel && timeDateContainer && timeDateContainer.classList.contains("expanded")) {
@@ -13624,7 +13555,11 @@ loadTopRightProfilePfp();
       }
     }
     function hasAnyPlayingAudio() {
-      return hasAnyMedia();
+      var anyPlaying = false;
+      b.tabs.forEach(function(tab) {
+        if (isTabPlayingAudio(tab)) anyPlaying = true;
+      });
+      return anyPlaying;
     }
     var overlay = document.getElementById("mediaControlsOverlay");
     var mediaControlsBody = document.getElementById("mediaControlsBody");
@@ -13637,8 +13572,15 @@ loadTopRightProfilePfp();
       volX: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>'
     };
 
+    function getControlledMedia(tab) {
+      var audible = getAudibleMedia(tab);
+      if (!audible.length) return null;
+      var idx = tab._mcSelectedIdx;
+      if (typeof idx !== "number" || idx < 0 || idx >= audible.length) idx = 0;
+      return audible[idx];
+    }
     function getPrimaryMedia(tab) {
-      return getCurrentMedia(tab);
+      return getControlledMedia(tab);
     }
     function getTabSource(tab) {
       var url = tab.currentUrl || tab.url || "";
@@ -13650,24 +13592,30 @@ loadTopRightProfilePfp();
       return t || "Media";
     }
     function isTabPaused(tab) {
-      var media = getCurrentMedia(tab);
-      if (!media) return true;
-      return media.paused;
+      var media = getAudibleMedia(tab);
+      if (!media.length) return true;
+      return !media.some(function(m) { return !m.paused; });
     }
     function toggleTabPlay(tab) {
-      var media = getCurrentMedia(tab);
-      if (!media) return;
-      try {
-        if (!media.paused) {
-          media.pause();
-        } else {
-          if (media.ended) media.currentTime = 0;
-          media.muted = !!tab._muted;
-          if (tab._volume !== void 0) media.volume = tab._volume;
-          var p = media.play();
-          if (p && p.catch) p.catch(function() {});
-        }
-      } catch (e) {}
+      var media = getAudibleMedia(tab);
+      if (!media.length) return;
+      var anyPlaying = media.some(function(m) { return !m.paused; });
+      media.forEach(function(m) {
+        try {
+          if (anyPlaying) {
+            m.pause();
+          } else {
+            // Resume AudioContext if it was suspended (charging-audio ducking can suspend it)
+            try {
+              if (m._nexosAudioCtx && m._nexosAudioCtx.ctx && m._nexosAudioCtx.ctx.state === "suspended") {
+                m._nexosAudioCtx.ctx.resume();
+              }
+            } catch (e) {}
+            var p = m.play();
+            if (p && p.catch) p.catch(function() {});
+          }
+        } catch (e) {}
+      });
     }
 
     /* Smooth slider with "animate to where you click" behaviour (Chrome-style) */
@@ -13748,7 +13696,6 @@ loadTopRightProfilePfp();
 
       var actions = document.createElement("div");
       actions.className = "media-card-actions";
-      var currentUnits = getMediaUnits(tab);
 
       if (isCompact) {
         var expandBtn = document.createElement("button");
@@ -13786,23 +13733,40 @@ loadTopRightProfilePfp();
       head.appendChild(actions);
       card.appendChild(head);
 
-      if (currentUnits.length > 1) {
-        var picker = document.createElement("select");
-        picker.className = "media-card-select";
-        currentUnits.forEach(function(unit) {
-          var opt = document.createElement("option");
-          opt.value = unit.id;
-          opt.textContent = unit.label;
-          if (tab._activeMediaId === unit.id || (!tab._activeMediaId && getPreferredUnit(tab) && getPreferredUnit(tab).id === unit.id)) {
-            opt.selected = true;
-          }
-          picker.appendChild(opt);
-        });
-        picker.addEventListener("change", function(e) {
-          tab._activeMediaId = e.target.value;
-          card._update && card._update();
-        });
-        card.appendChild(picker);
+      // Dropdown for selecting which audible media to control when more than one exists
+      var sourceSelect = document.createElement("select");
+      sourceSelect.className = "media-card-source-select";
+      sourceSelect.style.display = "none";
+      sourceSelect.addEventListener("click", function(e) { e.stopPropagation(); });
+      sourceSelect.addEventListener("change", function() {
+        tab._mcSelectedIdx = parseInt(sourceSelect.value, 10) || 0;
+        card._update();
+      });
+      card.appendChild(sourceSelect);
+      function refreshSourceSelect() {
+        var audible = getAudibleMedia(tab);
+        if (audible.length <= 1) { sourceSelect.style.display = "none"; return; }
+        sourceSelect.style.display = "";
+        var currentIdx = (typeof tab._mcSelectedIdx === "number" && tab._mcSelectedIdx < audible.length) ? tab._mcSelectedIdx : 0;
+        // Rebuild only if option count changed
+        if (sourceSelect.children.length !== audible.length) {
+          sourceSelect.innerHTML = "";
+          audible.forEach(function(m, i) {
+            var opt = document.createElement("option");
+            opt.value = String(i);
+            var label = (m.tagName === "AUDIO" ? "Audio" : "Video") + " " + (i + 1);
+            try {
+              var src = m.currentSrc || m.src || "";
+              if (src) {
+                var u = src.split("/").pop().split("?")[0];
+                if (u) label += " — " + u.slice(0, 32);
+              }
+            } catch (e) {}
+            opt.textContent = label;
+            sourceSelect.appendChild(opt);
+          });
+        }
+        sourceSelect.value = String(currentIdx);
       }
 
       var seek = buildSlider();
@@ -13810,7 +13774,7 @@ loadTopRightProfilePfp();
       var seekSlider = makeSmoothSlider({
         hit: seek.el, measure: seek.track, fill: seek.fill, thumb: seek.thumb,
         onInput: function(pct) {
-          var m = getPrimaryMedia(tab);
+          var m = getControlledMedia(tab);
           if (m && isFinite(m.duration) && m.duration > 0) m.currentTime = pct * m.duration;
         }
       });
@@ -13839,11 +13803,13 @@ loadTopRightProfilePfp();
 
       paintPlay();
       paintVol();
+      refreshSourceSelect();
       volSlider.paint(isTabMuted(tab) ? 0 : getTabVolume(tab), false);
 
       card._update = function() {
+        refreshSourceSelect();
         if (!seekSlider.isDragging()) {
-          var m = getPrimaryMedia(tab);
+          var m = getControlledMedia(tab);
           if (m && isFinite(m.duration) && m.duration > 0) {
             seekSlider.paint(Math.max(0, Math.min(1, m.currentTime / m.duration)), false);
           } else {
@@ -13861,9 +13827,13 @@ loadTopRightProfilePfp();
     }
 
     function playingTabsList() {
+      // Include any tab with audible/controllable media — even if it's currently paused.
+      // This fixes the bug where pausing made the card disappear and forced a refresh.
       var list = [];
       b.tabs.forEach(function(tab, tabId) {
-        if (getMediaUnits(tab).length) list.push({ tab: tab, id: tabId });
+        if (isTabPlayingAudio(tab) || (tab._nexosEverPlayed && tabHasControllableMedia(tab))) {
+          list.push({ tab: tab, id: tabId });
+        }
       });
       return list;
     }
@@ -13915,24 +13885,75 @@ loadTopRightProfilePfp();
       renderedCompactKey = "__init__";
       renderedOverlayKey = "__init__";
       renderAudioPanel();
-      if (overlay && overlay.classList.contains("visible")) renderMediaControls();
+      if (isMediaSidebarOpen()) renderMediaControls();
     }
 
+    // Open the "big" media controls inside a sidebar app instead of a fullscreen overlay.
+    var _mediaSidebarId = null;
+    function isMediaSidebarOpen() {
+      return !!(window.browser && _mediaSidebarId && window.browser.sidebars && window.browser.sidebars.has(_mediaSidebarId));
+    }
     function openMediaControls() {
-      if (!overlay) return;
+      var br = window.browser;
+      if (!br || typeof br.openSidebar !== "function") return;
+      if (isMediaSidebarOpen()) {
+        // Toggle: a second click closes it
+        br.closeSidebarById(_mediaSidebarId);
+        _mediaSidebarId = null;
+        return;
+      }
+      _mediaSidebarId = br.openSidebar("Media controls", "about:blank");
+      var sb = br.sidebars.get(_mediaSidebarId);
+      if (!sb) return;
+      sb.iframe.style.display = "none";
+      var newTabBtn = sb.element.querySelector(".sidebar-newtab-btn");
+      if (newTabBtn) newTabBtn.style.display = "none";
+
+      // Header "mute all" button inside the sidebar
+      var sidebarActions = sb.element.querySelector(".sidebar-actions");
+      var fullscreenBtn = sb.element.querySelector(".sidebar-fullscreen-btn");
+      if (sidebarActions && !sb.element.querySelector(".mc-sidebar-muteall")) {
+        var muteAll = document.createElement("button");
+        muteAll.className = "sidebar-btn mc-sidebar-muteall";
+        muteAll.title = "Mute all";
+        muteAll.innerHTML = '<i data-lucide="volume-x"></i>';
+        muteAll.addEventListener("click", function(e) {
+          e.stopPropagation();
+          br.tabs.forEach(function(tab) {
+            if (isTabPlayingAudio(tab) || tabHasControllableMedia(tab)) {
+              var media = getMediaElements(tab.iframe);
+              media.forEach(function(el) { el.muted = true; });
+              tab._muted = true;
+            }
+          });
+          updateAudioState();
+          rerenderAll();
+        });
+        if (fullscreenBtn) sidebarActions.insertBefore(muteAll, fullscreenBtn);
+        else sidebarActions.appendChild(muteAll);
+        if (window.lucide) lucide.createIcons();
+      }
+
+      // Inject the body container the existing renderer writes into
+      var body = document.createElement("div");
+      body.className = "media-controls-list mc-sidebar-body";
+      body.style.padding = "12px";
+      body.style.overflowY = "auto";
+      sb.content.appendChild(body);
+      mediaControlsBody = body;
       renderedOverlayKey = "__init__";
       renderMediaControls();
-      overlay.classList.add("visible");
-      overlay.setAttribute("aria-hidden", "false");
     }
     function closeMediaControls() {
-      if (!overlay) return;
-      overlay.classList.remove("visible");
-      overlay.setAttribute("aria-hidden", "true");
+      if (!isMediaSidebarOpen()) return;
+      window.browser.closeSidebarById(_mediaSidebarId);
+      _mediaSidebarId = null;
     }
     if (mediaControlsBack) mediaControlsBack.addEventListener("click", closeMediaControls);
-    if (overlay) overlay.addEventListener("mousedown", function(e) { if (e.target === overlay) closeMediaControls(); });
-    document.addEventListener("keydown", function(e) { if (e.key === "Escape" && overlay && overlay.classList.contains("visible")) closeMediaControls(); });
+    document.addEventListener("keydown", function(e) { if (e.key === "Escape" && isMediaSidebarOpen()) closeMediaControls(); });
+
+    // The old fullscreen overlay is no longer used — remove it from the DOM if present
+    if (overlay && overlay.parentNode) { overlay.parentNode.removeChild(overlay); overlay = null; }
 
     if (taskbarAudioBtn) {
       taskbarAudioBtn.remove();
@@ -13953,8 +13974,9 @@ loadTopRightProfilePfp();
     if (muteAllBtn) {
       muteAllBtn.addEventListener("click", function() {
         b.tabs.forEach(function(tab) {
-          if (getMediaUnits(tab).length) {
-            getMediaUnits(tab).forEach(function(unit) { try { unit.element.muted = true; } catch (e) {} });
+          if (isTabPlayingAudio(tab)) {
+            var media = getMediaElements(tab.iframe);
+            media.forEach(function(el) { el.muted = true; });
             tab._muted = true;
           }
         });
@@ -13964,23 +13986,22 @@ loadTopRightProfilePfp();
     }
     document.addEventListener("mousedown", function(e) {
       if (audioPanel && ccWrapper && !ccWrapper.contains(e.target)) {
-        if (overlay && overlay.contains(e.target)) return;
         audioPanel.classList.remove("visible");
       }
     });
     setInterval(function() {
       b.tabs.forEach(function(tab) {
-        if (getMediaUnits(tab).length) {
+        if (isTabPlayingAudio(tab)) {
           applyTabPrefsToMedia(tab);
         }
       });
       updateAudioState();
       if (audioPanel.classList.contains("visible")) renderAudioPanel();
-      if (overlay && overlay.classList.contains("visible")) renderMediaControls();
+      if (isMediaSidebarOpen() && mediaControlsBody) renderMediaControls();
     }, 1500);
     setInterval(function() {
       if (audioPanel && audioPanel.classList.contains("visible")) updateCards(audioPanelBody);
-      if (overlay && overlay.classList.contains("visible")) updateCards(mediaControlsBody);
+      if (isMediaSidebarOpen() && mediaControlsBody) updateCards(mediaControlsBody);
     }, 300);
     if (window.lucide) lucide.createIcons();
   });
