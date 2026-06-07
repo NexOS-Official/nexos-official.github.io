@@ -4146,14 +4146,16 @@ body.reduce-motion *::after {
 
 /* ===== Chrome-style media controls ===== */
 .media-card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 16px;
-  padding: 13px 15px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 247, 252, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 18px;
+  padding: 15px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  gap: 13px;
+  box-shadow: 0 10px 28px rgba(70, 78, 110, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
 }
 .control-center-menu .media-card + .media-card {
   margin-top: 10px;
@@ -4177,12 +4179,15 @@ body.reduce-motion *::after {
 }
 .media-card-title {
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 520;
   color: #1a1a1a;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.35;
+}
+.media-card[data-paused="true"] .media-card-title {
+  color: rgba(26, 26, 26, 0.78);
 }
 .media-card-actions {
   display: flex;
@@ -4214,8 +4219,8 @@ body.reduce-motion *::after {
   transform: scale(0.9);
 }
 .media-card-play {
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   border: none;
   cursor: pointer;
   border-radius: 50%;
@@ -4225,7 +4230,8 @@ body.reduce-motion *::after {
   flex-shrink: 0;
   color: #2b2f45;
   background: color-mix(in srgb, var(--nexos-star) 55%, #ffffff);
-  transition: background 0.18s, transform 0.12s;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48), 0 8px 18px rgba(92, 107, 150, 0.16);
+  transition: background 0.18s, transform 0.12s, box-shadow 0.18s;
 }
 .media-card-play:hover {
   background: color-mix(in srgb, var(--nexos-star) 70%, #ffffff);
@@ -4255,6 +4261,14 @@ body.reduce-motion *::after {
   user-select: none;
   padding: 7px 0;
 }
+.media-card-volrow .nx-slider {
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--nexos-accent) 75%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
+  overflow: hidden;
+}
 .nx-slider-track {
   position: relative;
   width: 100%;
@@ -4262,6 +4276,12 @@ body.reduce-motion *::after {
   border-radius: 2px;
   background: #e0e0e0;
   overflow: visible;
+}
+.media-card-volrow .nx-slider-track {
+  height: 100%;
+  min-height: 28px;
+  border-radius: 18px;
+  background: transparent;
 }
 .nx-slider-fill {
   position: absolute;
@@ -4272,6 +4292,13 @@ body.reduce-motion *::after {
   border-radius: 2px;
   background: #888;
   will-change: width;
+}
+.media-card-volrow .nx-slider-fill {
+  top: -8px;
+  bottom: -8px;
+  left: -12px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--nexos-star) 45%, transparent);
 }
 .nx-slider-thumb {
   position: absolute;
@@ -4287,9 +4314,48 @@ body.reduce-motion *::after {
   will-change: left, transform;
   transition: transform 0.12s ease;
 }
+.media-card > .nx-slider {
+  height: 24px;
+  padding: 10px 0;
+}
+.media-card > .nx-slider .nx-slider-track {
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0, transparent 2px, #dde1eb 2px, #dde1eb calc(100% - 2px), transparent calc(100% - 2px));
+  background-size: 100% 3px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.media-card > .nx-slider .nx-slider-fill {
+  top: 50%;
+  bottom: auto;
+  height: 8px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='8' viewBox='0 0 28 8'%3E%3Cpath d='M0 4 C3 1.2 4.5 1.2 7 4 S11 6.8 14 4 S18 1.2 21 4 S25 6.8 28 4' fill='none' stroke='%2352607b' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-size: 28px 8px;
+  background-position: left center;
+}
+.media-card > .nx-slider .nx-slider-thumb {
+  width: 7px;
+  height: 22px;
+  border-radius: 5px;
+  border: 0;
+  background: #52607b;
+  box-shadow: 0 1px 2px rgba(31, 42, 68, 0.24);
+}
+.media-card > .nx-slider:hover .nx-slider-thumb,
+.media-card > .nx-slider:active .nx-slider-thumb {
+  transform: translate(-50%, -50%) scaleY(1.08);
+}
 .nx-slider:hover .nx-slider-thumb,
 .nx-slider:active .nx-slider-thumb {
   transform: translate(-50%, -50%) scale(1.12);
+}
+.media-card > .nx-slider:hover .nx-slider-thumb,
+.media-card > .nx-slider:active .nx-slider-thumb {
+  transform: translate(-50%, -50%) scaleY(1.08);
 }
 .media-card-source-select {
   width: 100%;
@@ -4381,6 +4447,54 @@ body.reduce-motion *::after {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.mc-sidebar-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  padding: 16px 12px 18px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(82, 96, 123, 0.32) transparent;
+}
+.mc-sidebar-body::-webkit-scrollbar {
+  width: 8px;
+}
+.mc-sidebar-body::-webkit-scrollbar-thumb {
+  background: rgba(82, 96, 123, 0.28);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.mc-sidebar-body::before,
+.mc-sidebar-body::after {
+  content: "";
+  position: sticky;
+  left: 0;
+  right: 0;
+  display: block;
+  height: 24px;
+  pointer-events: none;
+  z-index: 4;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.mc-sidebar-body::before {
+  top: 0;
+  margin: -16px -12px -8px;
+  background: linear-gradient(180deg, rgba(246, 247, 252, 0.96), rgba(246, 247, 252, 0));
+}
+.mc-sidebar-body::after {
+  bottom: 0;
+  margin: -8px -12px -18px;
+  background: linear-gradient(0deg, rgba(246, 247, 252, 0.96), rgba(246, 247, 252, 0));
+}
+.sidebar-content:has(.mc-sidebar-body) {
+  padding: 0;
+  background: linear-gradient(180deg, rgba(247, 248, 252, 0.96), rgba(237, 240, 247, 0.96));
+  border-radius: 8px;
 }
 .media-controls-empty {
   padding: 40px 16px;
@@ -13396,6 +13510,18 @@ loadTopRightProfilePfp();
     var timeDateContainer = document.getElementById("timeDateContainer");
     var ccWrapper = document.getElementById("ccAnncWrapper");
     var muteAllBtn = document.getElementById("audioPanelMuteAll");
+    if (!b._nexosMediaClosePatched && typeof b.closeTab === "function") {
+      b._nexosMediaClosePatched = true;
+      var originalCloseTab = b.closeTab.bind(b);
+      b.closeTab = function(tabId) {
+        var tab = b.tabs && b.tabs.get ? b.tabs.get(tabId) : null;
+        if (tab) tab._nexosMediaClosed = true;
+        var result = originalCloseTab(tabId);
+        setTimeout(function() { if (typeof rerenderAll === "function") { updateAudioState(); rerenderAll(); } }, 80);
+        setTimeout(function() { if (typeof rerenderAll === "function") { updateAudioState(); rerenderAll(); } }, 380);
+        return result;
+      };
+    }
     function getMediaElements(iframe) {
       var elements = [];
       try {
@@ -13426,21 +13552,32 @@ loadTopRightProfilePfp();
         if (typeof el.webkitAudioDecodedByteCount === "number" && el.webkitAudioDecodedByteCount > 0) return true;
         if (el.audioTracks && el.audioTracks.length > 0) return true;
         if (el.mozHasAudio) return true;
-        // Heuristic fallback: a video that has played and isn't permanently muted by the page
-        if (el.tagName === "VIDEO" && el.duration > 0 && el.currentTime > 0 && !el.defaultMuted) {
-          // assume it might have audio if we can't tell
-          return el._nexosAssumedAudible === true;
-        }
       } catch (e) {}
       return false;
+    }
+    function rememberMedia(tab, el) {
+      if (!tab || !el || el._nexosMediaControlTracked) return;
+      el._nexosMediaControlTracked = true;
+      var mark = function() {
+        tab._nexosEverPlayed = true;
+        tab._nexosLastMediaSeenAt = Date.now();
+        if (typeof rerenderAll === "function") rerenderAll();
+      };
+      el.addEventListener("play", mark);
+      el.addEventListener("playing", mark);
+      el.addEventListener("loadedmetadata", function() { if (mediaHasAudio(el)) mark(); });
+      el.addEventListener("volumechange", function() { tab._nexosLastMediaSeenAt = Date.now(); });
     }
     function getAudibleMedia(tab) {
       if (!tab || !tab.iframe) return [];
       var media = getMediaElements(tab.iframe);
       var audible = media.filter(mediaHasAudio);
+      audible.forEach(function(el) { rememberMedia(tab, el); });
       if (audible.length) return audible;
       // Fall back to audio elements only (never bare videos / bg animations)
-      return media.filter(function(m) { return m.tagName === "AUDIO"; });
+      var audioOnly = media.filter(function(m) { return m.tagName === "AUDIO"; });
+      audioOnly.forEach(function(el) { rememberMedia(tab, el); });
+      return audioOnly;
     }
     function isTabPlayingAudio(tab) {
       if (!tab || !tab.iframe) return false;
@@ -13483,13 +13620,19 @@ loadTopRightProfilePfp();
     }
     function setTabVolume(tab, vol) {
       if (!tab || !tab.iframe) return;
+      vol = Math.max(0, Math.min(1, vol));
       tab._volume = vol;
+      if (vol > 0) {
+        tab._lastNonZeroVolume = vol;
+        tab._muted = false;
+      } else {
+        tab._muted = true;
+      }
       var media = getMediaElements(tab.iframe);
       media.forEach(function(el) {
         el.volume = vol;
-        el.muted = vol === 0;
+        el.muted = vol === 0 ? true : false;
       });
-      if (vol === 0) tab._muted = true;
     }
     function isTabMuted(tab) {
       return tab._muted || false;
@@ -13500,6 +13643,10 @@ loadTopRightProfilePfp();
       tab._muted = newMuted;
       var media = getMediaElements(tab.iframe);
       media.forEach(function(el) {
+        if (!newMuted && el.volume === 0) {
+          el.volume = tab._lastNonZeroVolume || 1;
+          tab._volume = el.volume;
+        }
         el.muted = newMuted;
       });
     }
@@ -13524,9 +13671,13 @@ loadTopRightProfilePfp();
     }
     function updateAudioState() {
       var anyPlaying = false;
+      var anyControllable = false;
       b.tabs.forEach(function(tab) {
+        if (tab._closing || tab._nexosMediaClosed) return;
         var playing = isTabPlayingAudio(tab);
+        var controllable = playing || (tab._nexosEverPlayed && tabHasControllableMedia(tab));
         var icon = ensureAudioIcon(tab);
+        if (controllable) anyControllable = true;
         if (playing) {
           anyPlaying = true;
           icon.classList.add("playing");
@@ -13542,7 +13693,7 @@ loadTopRightProfilePfp();
           icon.classList.remove("muted");
         }
       });
-      if (anyPlaying) {
+      if (anyControllable) {
         if (taskbarAudioBtn) taskbarAudioBtn.classList.add("has-audio");
         if (timeDateContainer) timeDateContainer.classList.add("has-audio");
         if (audioPanel && timeDateContainer && timeDateContainer.classList.contains("expanded")) {
@@ -13557,7 +13708,8 @@ loadTopRightProfilePfp();
     function hasAnyPlayingAudio() {
       var anyPlaying = false;
       b.tabs.forEach(function(tab) {
-        if (isTabPlayingAudio(tab)) anyPlaying = true;
+        if (tab._closing || tab._nexosMediaClosed) return;
+        if (isTabPlayingAudio(tab) || (tab._nexosEverPlayed && tabHasControllableMedia(tab))) anyPlaying = true;
       });
       return anyPlaying;
     }
@@ -13587,8 +13739,21 @@ loadTopRightProfilePfp();
       try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return url || "Audio"; }
     }
     function getTabTitle(tab) {
-      var titleEl = tab.element.querySelector(".tab-title");
-      var t = titleEl ? titleEl.textContent.trim() : "";
+      var t = "";
+      try {
+        var doc = tab.iframe && (tab.iframe.contentDocument || tab.iframe.contentWindow.document);
+        if (doc && doc.title) t = doc.title.trim();
+      } catch (e) {}
+      if (!t && tab.title) t = String(tab.title).trim();
+      var titleEl = tab.element && tab.element.querySelector(".tab-title");
+      if (!t && titleEl) t = titleEl.textContent.trim();
+      if (t) {
+        tab.title = t;
+        if (titleEl && titleEl.textContent !== t) {
+          titleEl.textContent = t;
+          titleEl.title = t;
+        }
+      }
       return t || "Media";
     }
     function isTabPaused(tab) {
@@ -13718,6 +13883,7 @@ loadTopRightProfilePfp();
       var lastPaused = null;
       function paintPlay() {
         var paused = isTabPaused(tab);
+        card.dataset.paused = paused ? "true" : "false";
         if (paused === lastPaused) return;
         lastPaused = paused;
         playBtn.innerHTML = paused ? SVG.play : SVG.pause;
@@ -13807,6 +13973,10 @@ loadTopRightProfilePfp();
       volSlider.paint(isTabMuted(tab) ? 0 : getTabVolume(tab), false);
 
       card._update = function() {
+        var liveSource = getTabSource(tab);
+        var liveTitle = getTabTitle(tab);
+        if (source.textContent !== liveSource) source.textContent = liveSource;
+        if (title.textContent !== liveTitle) title.textContent = liveTitle;
         refreshSourceSelect();
         if (!seekSlider.isDragging()) {
           var m = getControlledMedia(tab);
@@ -13831,6 +14001,7 @@ loadTopRightProfilePfp();
       // This fixes the bug where pausing made the card disappear and forced a refresh.
       var list = [];
       b.tabs.forEach(function(tab, tabId) {
+        if (tab._closing || tab._nexosMediaClosed) return;
         if (isTabPlayingAudio(tab) || (tab._nexosEverPlayed && tabHasControllableMedia(tab))) {
           list.push({ tab: tab, id: tabId });
         }
@@ -13937,8 +14108,6 @@ loadTopRightProfilePfp();
       // Inject the body container the existing renderer writes into
       var body = document.createElement("div");
       body.className = "media-controls-list mc-sidebar-body";
-      body.style.padding = "12px";
-      body.style.overflowY = "auto";
       sb.content.appendChild(body);
       mediaControlsBody = body;
       renderedOverlayKey = "__init__";
