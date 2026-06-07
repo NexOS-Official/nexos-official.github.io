@@ -1918,7 +1918,6 @@ body {
   padding: 0 10px;
   background-color: rgb(255, 255, 255);
   color: #000000;
-  z-index: 10050;
 }
 .taskbar.hidden {
   transform: translateY(calc(100% - 10px));
@@ -3937,9 +3936,6 @@ body.reduce-motion *::after {
   transition: background-color 0.2s;
   padding: 0;
   position: relative;
-  z-index: 10052;
-  pointer-events: auto;
-  touch-action: manipulation;
 }
 .taskbar-audio-btn:hover {
   background-color: rgba(0, 0, 0, 0.08);
@@ -3970,7 +3966,7 @@ body.reduce-motion *::after {
 .audio-panel {
   position: fixed;
   bottom: 56px;
-  right: 16px;
+  right: 180px;
   width: 340px;
   max-height: 400px;
   background: #fff;
@@ -3980,7 +3976,7 @@ body.reduce-motion *::after {
   overflow-y: auto;
   font-family: "google sans", sans-serif;
   color: #1a1a1a;
-  z-index: 10060;
+  z-index: 10001;
   transform: translateY(12px) scale(0.95);
   opacity: 0;
   pointer-events: none;
@@ -10495,7 +10491,7 @@ menu.addEventListener("mouseleave", hideMenu);
             <button class="history-btn" id="historyBtn" title="History">
                 <i data-lucide="history" width="16" height="16" style="color:#000"></i>
             </button>
-            <button class="taskbar-audio-btn" id="taskbarAudioBtn" title="Audio playing" onclick="window.nexosToggleAudioPanel && window.nexosToggleAudioPanel(event)">
+            <button class="taskbar-audio-btn" id="taskbarAudioBtn" title="Audio playing">
                 <i data-lucide="volume-2" width="15" height="15" style="color:#000"></i>
                 <span class="audio-pulse"></span>
             </button>
@@ -13227,6 +13223,7 @@ loadTopRightProfilePfp();
         taskbarAudioBtn.classList.add("has-audio");
       } else {
         taskbarAudioBtn.classList.remove("has-audio");
+        audioPanel.classList.remove("visible");
       }
     }
     function renderAudioPanel() {
@@ -13344,69 +13341,40 @@ loadTopRightProfilePfp();
       }
       if (window.lucide) lucide.createIcons();
     }
-    var lastAudioPanelToggle = 0;
     function positionAudioPanel() {
       var rect = taskbarAudioBtn.getBoundingClientRect();
-      var width = Math.min(340, window.innerWidth - 16);
-      var left = Math.max(8, Math.min(window.innerWidth - width - 8, rect.right - width));
-      audioPanel.style.width = width + "px";
-      audioPanel.style.left = left + "px";
-      audioPanel.style.right = "auto";
-      audioPanel.style.bottom = Math.max(54, window.innerHeight - rect.top + 8) + "px";
-      audioPanel.style.zIndex = "2147483647";
-    }
-    function toggleAudioPanel(e) {
-      if (e) {
-        e.stopPropagation();
-        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-        e.preventDefault();
+      var panelWidth = audioPanel.offsetWidth || 340;
+      var right = Math.max(8, window.innerWidth - rect.right);
+      if (right + panelWidth > window.innerWidth - 8) {
+        right = Math.max(8, window.innerWidth - panelWidth - 8);
       }
+      audioPanel.style.left = "auto";
+      audioPanel.style.right = right + "px";
+      audioPanel.style.bottom = (window.innerHeight - rect.top + 10) + "px";
+    }
+    function toggleAudioPanel() {
       if (audioPanel.classList.contains("visible")) {
         audioPanel.classList.remove("visible");
       } else {
         renderAudioPanel();
         positionAudioPanel();
-        audioPanel.style.display = "block";
-        audioPanel.style.visibility = "visible";
         audioPanel.classList.add("visible");
+        requestAnimationFrame(positionAudioPanel);
       }
     }
-    window.nexosToggleAudioPanel = toggleAudioPanel;
-    function eventHitsAudioButton(e) {
-      if (!e) return false;
-      var target = e.target && e.target.closest ? e.target.closest("#taskbarAudioBtn") : null;
-      if (target === taskbarAudioBtn) return true;
-      var point = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0] : e.touches && e.touches[0] ? e.touches[0] : e;
-      if (typeof point.clientX !== "number" || typeof point.clientY !== "number") return false;
-      var rect = taskbarAudioBtn.getBoundingClientRect();
-      return point.clientX >= rect.left && point.clientX <= rect.right && point.clientY >= rect.top && point.clientY <= rect.bottom;
-    }
-    function handleAudioButtonToggle(e) {
-      if (!eventHitsAudioButton(e)) return;
-      var now = Date.now();
-      if (now - lastAudioPanelToggle < 350) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-        return;
-      }
-      lastAudioPanelToggle = now;
-      toggleAudioPanel(e);
-    }
-    function stopAudioButtonPress(e) {
-      if (eventHitsAudioButton(e)) {
-        e.stopPropagation();
-        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-      }
-    }
-    taskbarAudioBtn.addEventListener("mousedown", stopAudioButtonPress, true);
-    taskbarAudioBtn.addEventListener("pointerdown", stopAudioButtonPress, true);
-    taskbarAudioBtn.addEventListener("pointerup", handleAudioButtonToggle, true);
-    taskbarAudioBtn.addEventListener("touchend", handleAudioButtonToggle, true);
-    taskbarAudioBtn.addEventListener("click", handleAudioButtonToggle, true);
-    document.addEventListener("pointerup", handleAudioButtonToggle, true);
-    document.addEventListener("touchend", handleAudioButtonToggle, true);
-    document.addEventListener("click", handleAudioButtonToggle, true);
+    // Use a single click handler so it works for mouse, touch, pen, and keyboard.
+    taskbarAudioBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleAudioPanel();
+    });
+    // Belt-and-suspenders: some ancestor handlers swallow click; pointerup also opens.
+    taskbarAudioBtn.addEventListener("pointerup", function(e) {
+      e.stopPropagation();
+    });
+    window.addEventListener("resize", function() {
+      if (audioPanel.classList.contains("visible")) positionAudioPanel();
+    });
     muteAllBtn.addEventListener("click", function() {
       b.tabs.forEach(function(tab) {
         if (isTabPlayingAudio(tab)) {
@@ -13420,11 +13388,11 @@ loadTopRightProfilePfp();
       updateAudioState();
       renderAudioPanel();
     });
-    document.addEventListener("mousedown", function(e) {
-      if (!audioPanel.contains(e.target) && !taskbarAudioBtn.contains(e.target)) {
-        audioPanel.classList.remove("visible");
-      }
-    });
+    document.addEventListener("pointerdown", function(e) {
+      if (!audioPanel.classList.contains("visible")) return;
+      if (audioPanel.contains(e.target) || taskbarAudioBtn.contains(e.target)) return;
+      audioPanel.classList.remove("visible");
+    }, true);
     setInterval(function() {
       b.tabs.forEach(function(tab) {
         if (isTabPlayingAudio(tab)) {
