@@ -6,6 +6,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -3916,6 +3917,10 @@ body.reduce-motion *::after {
 .tab-audio-icon.playing {
   display: flex;
 }
+.tab-audio-icon.paused {
+  display: flex;
+  opacity: 0.45;
+}
 .tab-audio-icon.muted svg {
   opacity: 0.4;
 }
@@ -4143,24 +4148,24 @@ body.reduce-motion *::after {
   }
 }
 
-/* ===== Chrome-style media controls ===== */
+/* ===== Media controls ===== */
 .media-card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 16px;
-  padding: 13px 15px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 18px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  gap: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.09);
 }
 .control-center-menu .media-card + .media-card {
   margin-top: 10px;
 }
 .media-card-head {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 12px;
 }
 .media-card-text {
   flex: 1;
@@ -4168,7 +4173,7 @@ body.reduce-motion *::after {
 }
 .media-card-source {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.42);
+  color: rgba(0, 0, 0, 0.45);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -4186,31 +4191,31 @@ body.reduce-motion *::after {
 .media-card-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 .media-card-expand,
 .media-card-icon-btn {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border: none;
-  background: none;
+  background: rgba(255, 255, 255, 0.72);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 10px;
   color: #5f6368;
   transition: background 0.18s, transform 0.12s;
 }
 .media-card-expand:hover,
 .media-card-icon-btn:hover {
-  background: rgba(0, 0, 0, 0.07);
+  background: rgba(255, 255, 255, 0.98);
   color: #202124;
 }
 .media-card-expand:active,
 .media-card-icon-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.94);
 }
 .media-card-play {
   width: 46px;
@@ -4227,7 +4232,7 @@ body.reduce-motion *::after {
   transition: background 0.18s, transform 0.12s;
 }
 .media-card-play:hover {
-  background: color-mix(in srgb, var(--nexos-star) 70%, #ffffff);
+  background: color-mix(in srgb, var(--nexos-star) 68%, #ffffff);
 }
 .media-card-play:active {
   transform: scale(0.92);
@@ -4238,15 +4243,30 @@ body.reduce-motion *::after {
   gap: 8px;
 }
 .media-card-volrow .media-card-icon-btn {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
+}
+.media-card-select {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #202124;
+  font-family: "google sans", sans-serif;
+  outline: none;
+}
+.media-card-select:focus {
+  border-color: color-mix(in srgb, var(--nexos-star) 55%, #8ab4f8);
+  box-shadow: 0 0 0 3px rgba(138, 180, 248, 0.18);
 }
 
-/* Smooth slider used everywhere (seek + volume + brightness) */
+/* Old-style slider look, same family as the brightness slider */
 .nx-slider {
   position: relative;
   flex: 1;
-  height: 22px;
+  height: 34px;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -4256,10 +4276,10 @@ body.reduce-motion *::after {
 .nx-slider-track {
   position: relative;
   width: 100%;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.13);
-  overflow: visible;
+  height: 100%;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--nexos-accent) 75%, transparent);
+  overflow: hidden;
 }
 .nx-slider-fill {
   position: absolute;
@@ -4267,61 +4287,59 @@ body.reduce-motion *::after {
   top: 0;
   bottom: 0;
   width: 0%;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--nexos-star) 90%, #6a78ff);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--nexos-star) 45%, transparent);
   will-change: width;
 }
 .nx-slider-thumb {
   position: absolute;
   top: 50%;
   left: 0%;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #565f8a;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
   transform: translate(-50%, -50%);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.14);
   will-change: left;
 }
 .nx-slider:active .nx-slider-thumb {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
 }
 
-/* Full-screen Media controls menu */
+/* Sidebar-style media controls menu */
 .media-controls-overlay {
   position: fixed;
   inset: 0;
   z-index: 10020;
   display: flex;
   justify-content: flex-end;
-  background: rgba(0, 0, 0, 0.18);
+  align-items: flex-start;
+  padding-top: calc(92px + var(--bookmark-bar-offset, 0px));
+  padding-bottom: 50px;
+  background: transparent;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.28s ease;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  transition: opacity 0.22s ease;
 }
 .media-controls-overlay.visible {
   opacity: 1;
   pointer-events: auto;
 }
 .media-controls-sheet {
-  width: 380px;
+  width: 400px;
   max-width: 92vw;
-  height: 100%;
-  background: linear-gradient(180deg, rgba(240, 242, 246, 0.96), rgba(228, 231, 236, 0.96));
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-left: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: -12px 0 48px rgba(0, 0, 0, 0.18);
+  height: calc(100vh - 92px - var(--bookmark-bar-offset, 0px) - 50px);
+  background: #ffffff;
+  border-left: 1px solid #e9ecef;
+  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.16);
   display: flex;
   flex-direction: column;
-  padding: 14px 16px;
-  gap: 14px;
-  transform: translateX(24px);
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.34s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  overflow: hidden;
 }
 .media-controls-overlay.visible .media-controls-sheet {
   transform: translateX(0);
@@ -4330,23 +4348,26 @@ body.reduce-motion *::after {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 0 2px;
+  padding: 16px 20px;
+  min-height: 60px;
+  border-bottom: 1px solid #e9ecef;
+  background: #ffffff;
 }
 .media-controls-title {
   flex: 1;
-  text-align: center;
-  font-size: 17px;
+  text-align: left;
+  font-size: 16px;
   font-weight: 500;
   color: #1a1a1a;
   font-family: "google sans", sans-serif;
 }
 .mc-top-btn {
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   border: none;
-  background: rgba(255, 255, 255, 0.7);
+  background: #ffffff;
   cursor: pointer;
-  border-radius: 50%;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4355,21 +4376,33 @@ body.reduce-motion *::after {
   transition: background 0.18s, transform 0.12s;
 }
 .mc-top-btn:hover {
-  background: rgba(255, 255, 255, 0.95);
+  background: #f1f3f4;
 }
 .mc-top-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.94);
 }
 .media-controls-list {
+  flex: 1;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 12px;
 }
 .media-controls-empty {
   padding: 40px 16px;
   text-align: center;
   color: #888;
   font-size: 14px;
+}
+@media (max-width: 700px) {
+  .media-controls-overlay {
+    padding-top: 76px;
+  }
+  .media-controls-sheet {
+    width: min(100vw, 400px);
+    height: calc(100vh - 76px - 50px);
+  }
 }
 .tab-restore-overlay {
   position: fixed;
@@ -13379,70 +13412,139 @@ loadTopRightProfilePfp();
     var timeDateContainer = document.getElementById("timeDateContainer");
     var ccWrapper = document.getElementById("ccAnncWrapper");
     var muteAllBtn = document.getElementById("audioPanelMuteAll");
-    function getMediaElements(iframe) {
-      var elements = [];
+    function hasAudibleTrack(el) {
+      if (!el) return false;
+      if (el.tagName === "AUDIO") return true;
+      if (el.tagName !== "VIDEO") return false;
       try {
-        var doc = iframe.contentDocument || iframe.contentWindow.document;
-        if (!doc) return elements;
-        var audios = doc.querySelectorAll("audio, video");
-        audios.forEach(function(el) {
-          elements.push(el);
+        if (el.mozHasAudio) return true;
+      } catch (e) {
+      }
+      try {
+        if (typeof el.webkitAudioDecodedByteCount === "number" && el.webkitAudioDecodedByteCount > 0) return true;
+      } catch (e) {
+      }
+      try {
+        if (el.audioTracks && el.audioTracks.length > 0) return true;
+      } catch (e) {
+      }
+      try {
+        if (el.captureStream) {
+          var stream = el.captureStream();
+          if (stream && stream.getAudioTracks && stream.getAudioTracks().length > 0) return true;
+        }
+      } catch (e) {
+      }
+      return false;
+    }
+    function mediaLabel(el, idx) {
+      var kind = el && el.tagName === "VIDEO" ? "Video" : "Audio";
+      var attr = "";
+      try {
+        attr = el.getAttribute("aria-label") || el.getAttribute("title") || el.getAttribute("data-testid") || el.id || el.className || "";
+      } catch (e) {
+      }
+      attr = String(attr || "").trim().replace(/\s+/g, " ");
+      if (attr) return kind + " · " + attr.slice(0, 42);
+      return kind + " " + (idx + 1);
+    }
+    function collectMediaUnitsFromDocument(doc, bucket, seen) {
+      if (!doc) return;
+      try {
+        Array.prototype.forEach.call(doc.querySelectorAll("audio, video"), function(el) {
+          if (!el || seen.has(el)) return;
+          if (el.tagName === "VIDEO" && !hasAudibleTrack(el)) return;
+          seen.add(el);
+          bucket.push({
+            id: "media-" + bucket.length,
+            element: el,
+            type: el.tagName === "VIDEO" ? "video" : "audio",
+            label: mediaLabel(el, bucket.length)
+          });
         });
-        var nestedIframes = doc.querySelectorAll("iframe");
-        nestedIframes.forEach(function(nf) {
+        Array.prototype.forEach.call(doc.querySelectorAll("iframe"), function(nf) {
           try {
-            var nested = getMediaElements(nf);
-            nested.forEach(function(el) {
-              elements.push(el);
-            });
+            var nestedDoc = nf.contentDocument || (nf.contentWindow && nf.contentWindow.document);
+            if (nestedDoc) collectMediaUnitsFromDocument(nestedDoc, bucket, seen);
           } catch (e) {
           }
         });
       } catch (e) {
       }
-      return elements;
+    }
+    function getMediaUnits(tab) {
+      var units = [];
+      if (!tab || !tab.iframe) return units;
+      try {
+        var doc = tab.iframe.contentDocument || (tab.iframe.contentWindow && tab.iframe.contentWindow.document);
+        var seen = new WeakSet();
+        collectMediaUnitsFromDocument(doc, units, seen);
+      } catch (e) {
+      }
+      return units;
+    }
+    function getPreferredUnit(tab) {
+      var units = getMediaUnits(tab);
+      if (!units.length) return null;
+      var active = tab && tab._activeMediaId ? tab._activeMediaId : null;
+      for (var i = 0; i < units.length; i++) {
+        if (active && units[i].id === active) return units[i];
+      }
+      for (var j = 0; j < units.length; j++) {
+        var el = units[j].element;
+        if (!el.paused && !el.ended && el.readyState > 1) return units[j];
+      }
+      return units[0];
+    }
+    function getCurrentMedia(tab) {
+      var unit = getPreferredUnit(tab);
+      return unit ? unit.element : null;
+    }
+    function isMediaActive(el) {
+      return !!(el && !el.paused && !el.ended && el.readyState > 1);
     }
     function isTabPlayingAudio(tab) {
-      if (!tab || !tab.iframe) return false;
-      var media = getMediaElements(tab.iframe);
-      for (var i = 0; i < media.length; i++) {
-        if (!media[i].paused && !media[i].ended && media[i].readyState > 2) {
-          return true;
-        }
+      var units = getMediaUnits(tab);
+      for (var i = 0; i < units.length; i++) {
+        if (isMediaActive(units[i].element)) return true;
       }
       return false;
     }
     function applyTabPrefsToMedia(tab) {
       if (!tab || !tab.iframe) return;
-      var media = getMediaElements(tab.iframe);
+      var units = getMediaUnits(tab);
       var vol = tab._volume !== void 0 ? tab._volume : 1;
       var muted = tab._muted || false;
-      media.forEach(function(el) {
-        if (!el._nexosTracked) {
-          el._nexosTracked = true;
+      units.forEach(function(unit) {
+        var el = unit.element;
+        if (!el) return;
+        if (!el._nexosTracked) el._nexosTracked = true;
+        try {
           el.volume = vol;
-          if (!muted) el.muted = false;
-          else el.muted = true;
-        } else {
-          if (el.muted !== muted) el.muted = muted;
-          if (el.volume !== vol) el.volume = vol;
+        } catch (e) {
+        }
+        try {
+          el.muted = muted;
+        } catch (e) {
         }
       });
     }
     function getTabVolume(tab) {
       if (!tab || !tab.iframe) return 1;
       if (tab._volume !== void 0) return tab._volume;
-      var media = getMediaElements(tab.iframe);
-      if (media.length > 0) return media[0].volume;
+      var media = getCurrentMedia(tab);
+      if (media) return media.volume;
       return 1;
     }
     function setTabVolume(tab, vol) {
       if (!tab || !tab.iframe) return;
       tab._volume = vol;
-      var media = getMediaElements(tab.iframe);
-      media.forEach(function(el) {
-        el.volume = vol;
-        el.muted = vol === 0;
+      if (vol > 0) tab._muted = false;
+      var units = getMediaUnits(tab);
+      units.forEach(function(unit) {
+        var el = unit.element;
+        try { el.volume = vol; } catch (e) {}
+        try { el.muted = vol === 0 ? true : !!tab._muted; } catch (e) {}
       });
       if (vol === 0) tab._muted = true;
     }
@@ -13453,9 +13555,9 @@ loadTopRightProfilePfp();
       if (!tab || !tab.iframe) return;
       var newMuted = !isTabMuted(tab);
       tab._muted = newMuted;
-      var media = getMediaElements(tab.iframe);
-      media.forEach(function(el) {
-        el.muted = newMuted;
+      var units = getMediaUnits(tab);
+      units.forEach(function(unit) {
+        try { unit.element.muted = newMuted; } catch (e) {}
       });
     }
     function ensureAudioIcon(tab) {
@@ -13477,12 +13579,23 @@ loadTopRightProfilePfp();
       tab._audioIcon = icon;
       return icon;
     }
+    function hasAnyMedia() {
+      var anyMedia = false;
+      b.tabs.forEach(function(tab) {
+        if (getMediaUnits(tab).length) anyMedia = true;
+      });
+      return anyMedia;
+    }
     function updateAudioState() {
       var anyPlaying = false;
+      var anyMedia = false;
       b.tabs.forEach(function(tab) {
+        var hasMedia = getMediaUnits(tab).length > 0;
         var playing = isTabPlayingAudio(tab);
         var icon = ensureAudioIcon(tab);
-        if (playing) {
+        if (hasMedia) anyMedia = true;
+        if (playing || hasMedia) {
+          icon.classList.toggle("paused", hasMedia && !playing);
           anyPlaying = true;
           icon.classList.add("playing");
           if (isTabMuted(tab)) {
@@ -13494,10 +13607,11 @@ loadTopRightProfilePfp();
           }
         } else {
           icon.classList.remove("playing");
+          icon.classList.remove("paused");
           icon.classList.remove("muted");
         }
       });
-      if (anyPlaying) {
+      if (anyMedia) {
         if (taskbarAudioBtn) taskbarAudioBtn.classList.add("has-audio");
         if (timeDateContainer) timeDateContainer.classList.add("has-audio");
         if (audioPanel && timeDateContainer && timeDateContainer.classList.contains("expanded")) {
@@ -13510,11 +13624,7 @@ loadTopRightProfilePfp();
       }
     }
     function hasAnyPlayingAudio() {
-      var anyPlaying = false;
-      b.tabs.forEach(function(tab) {
-        if (isTabPlayingAudio(tab)) anyPlaying = true;
-      });
-      return anyPlaying;
+      return hasAnyMedia();
     }
     var overlay = document.getElementById("mediaControlsOverlay");
     var mediaControlsBody = document.getElementById("mediaControlsBody");
@@ -13528,11 +13638,7 @@ loadTopRightProfilePfp();
     };
 
     function getPrimaryMedia(tab) {
-      var media = getMediaElements(tab.iframe);
-      for (var i = 0; i < media.length; i++) {
-        if (!media[i].ended) return media[i];
-      }
-      return media[0] || null;
+      return getCurrentMedia(tab);
     }
     function getTabSource(tab) {
       var url = tab.currentUrl || tab.url || "";
@@ -13544,16 +13650,24 @@ loadTopRightProfilePfp();
       return t || "Media";
     }
     function isTabPaused(tab) {
-      var media = getMediaElements(tab.iframe);
-      if (!media.length) return true;
-      return !media.some(function(m) { return !m.paused; });
+      var media = getCurrentMedia(tab);
+      if (!media) return true;
+      return media.paused;
     }
     function toggleTabPlay(tab) {
-      var media = getMediaElements(tab.iframe);
-      var anyPlaying = media.some(function(m) { return !m.paused; });
-      media.forEach(function(m) {
-        try { if (anyPlaying) m.pause(); else { var p = m.play(); if (p && p.catch) p.catch(function() {}); } } catch (e) {}
-      });
+      var media = getCurrentMedia(tab);
+      if (!media) return;
+      try {
+        if (!media.paused) {
+          media.pause();
+        } else {
+          if (media.ended) media.currentTime = 0;
+          media.muted = !!tab._muted;
+          if (tab._volume !== void 0) media.volume = tab._volume;
+          var p = media.play();
+          if (p && p.catch) p.catch(function() {});
+        }
+      } catch (e) {}
     }
 
     /* Smooth slider with "animate to where you click" behaviour (Chrome-style) */
@@ -13634,6 +13748,7 @@ loadTopRightProfilePfp();
 
       var actions = document.createElement("div");
       actions.className = "media-card-actions";
+      var currentUnits = getMediaUnits(tab);
 
       if (isCompact) {
         var expandBtn = document.createElement("button");
@@ -13670,6 +13785,25 @@ loadTopRightProfilePfp();
       head.appendChild(textCol);
       head.appendChild(actions);
       card.appendChild(head);
+
+      if (currentUnits.length > 1) {
+        var picker = document.createElement("select");
+        picker.className = "media-card-select";
+        currentUnits.forEach(function(unit) {
+          var opt = document.createElement("option");
+          opt.value = unit.id;
+          opt.textContent = unit.label;
+          if (tab._activeMediaId === unit.id || (!tab._activeMediaId && getPreferredUnit(tab) && getPreferredUnit(tab).id === unit.id)) {
+            opt.selected = true;
+          }
+          picker.appendChild(opt);
+        });
+        picker.addEventListener("change", function(e) {
+          tab._activeMediaId = e.target.value;
+          card._update && card._update();
+        });
+        card.appendChild(picker);
+      }
 
       var seek = buildSlider();
       card.appendChild(seek.el);
@@ -13712,6 +13846,8 @@ loadTopRightProfilePfp();
           var m = getPrimaryMedia(tab);
           if (m && isFinite(m.duration) && m.duration > 0) {
             seekSlider.paint(Math.max(0, Math.min(1, m.currentTime / m.duration)), false);
+          } else {
+            seekSlider.paint(0, false);
           }
         }
         if (!volSlider.isDragging()) {
@@ -13726,7 +13862,9 @@ loadTopRightProfilePfp();
 
     function playingTabsList() {
       var list = [];
-      b.tabs.forEach(function(tab, tabId) { if (isTabPlayingAudio(tab)) list.push({ tab: tab, id: tabId }); });
+      b.tabs.forEach(function(tab, tabId) {
+        if (getMediaUnits(tab).length) list.push({ tab: tab, id: tabId });
+      });
       return list;
     }
     function keyFor(list) { return list.map(function(x) { return x.id; }).join(","); }
@@ -13815,9 +13953,8 @@ loadTopRightProfilePfp();
     if (muteAllBtn) {
       muteAllBtn.addEventListener("click", function() {
         b.tabs.forEach(function(tab) {
-          if (isTabPlayingAudio(tab)) {
-            var media = getMediaElements(tab.iframe);
-            media.forEach(function(el) { el.muted = true; });
+          if (getMediaUnits(tab).length) {
+            getMediaUnits(tab).forEach(function(unit) { try { unit.element.muted = true; } catch (e) {} });
             tab._muted = true;
           }
         });
@@ -13833,7 +13970,7 @@ loadTopRightProfilePfp();
     });
     setInterval(function() {
       b.tabs.forEach(function(tab) {
-        if (isTabPlayingAudio(tab)) {
+        if (getMediaUnits(tab).length) {
           applyTabPrefsToMedia(tab);
         }
       });
