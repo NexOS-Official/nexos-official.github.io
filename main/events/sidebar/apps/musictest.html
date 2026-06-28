@@ -1,1093 +1,1129 @@
-
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Relay Music</title>
-  <script src="https://w.soundcloud.com/player/api.js"></script>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Relay Music v3</title>
   <style>
     :root{
-      --bg:#05060a;
-      --panel:#101116;
-      --panel2:#171820;
-      --panel3:#20212b;
+      --bg:#050507;
+      --panel:#101014;
+      --panel2:#17171d;
       --text:#f7f7fb;
-      --muted:#a6a8b4;
-      --dim:#686b76;
-      --line:rgba(255,255,255,.09);
-      --line2:rgba(255,255,255,.14);
-      --accent:#ff3b6b;
-      --accent2:#ff7aa2;
-      --good:#72e7ac;
+      --muted:#a7a7b4;
+      --soft:#70707e;
+      --line:rgba(255,255,255,.08);
+      --accent:#ff2d55;
+      --accent2:#ff6b8a;
+      --good:#60d394;
       --warn:#ffd166;
       --bad:#ff6b6b;
-      --radius:22px;
-      --sidebar:248px;
-      --player:112px;
-      --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Inter,Roboto,Arial,sans-serif;
+      --sidebar:260px;
+      --player:92px;
+      --radius:24px;
+      --ease:cubic-bezier(.2,.8,.2,1);
     }
+
     *{box-sizing:border-box}
-    html,body{height:100%;margin:0;background:#05060a;color:var(--text);font-family:var(--font);overflow:hidden}
-    button,input,textarea{font:inherit;color:inherit}
-    button{border:0;cursor:pointer}
-    .app{height:100%;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);grid-template-rows:minmax(0,1fr) var(--player);position:relative;isolation:isolate;background:linear-gradient(180deg,#07080d,#040508)}
-    .glow{position:absolute;inset:-80px;z-index:-2;background:radial-gradient(720px 420px at 58% 0%,rgba(255,59,107,.18),transparent 64%),radial-gradient(640px 520px at 98% 42%,rgba(123,92,255,.12),transparent 70%);pointer-events:none}
-    .cover-bg{position:absolute;inset:-80px;z-index:-3;background-image:var(--bg-cover);background-size:cover;background-position:center;filter:blur(58px) saturate(140%);opacity:.20;transform:scale(1.08);transition:.45s ease}
-    .cover-bg:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,6,10,.96),rgba(5,6,10,.70),rgba(5,6,10,.96))}
-    .sidebar{grid-row:1/3;border-right:1px solid var(--line);background:rgba(5,6,10,.80);backdrop-filter:blur(24px);padding:24px 16px;display:flex;flex-direction:column;gap:24px;min-width:0}
-    .brand{display:flex;align-items:center;gap:12px;padding:2px 8px}
-    .brand-mark{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#9b5cff);display:grid;place-items:center}
-    .brand-mark svg{width:18px;height:18px}
-    .brand-title{font-size:18px;font-weight:800;letter-spacing:-.035em;line-height:1}
-    .brand-sub{font-size:11px;color:var(--muted);margin-top:4px}
-    .nav{display:flex;flex-direction:column;gap:6px}
-    .nav button{height:44px;border-radius:12px;background:transparent;color:var(--muted);display:flex;align-items:center;gap:13px;padding:0 13px;text-align:left;transition:.16s ease}
-    .nav button svg{width:18px;height:18px;stroke-width:2}
-    .nav button:hover,.nav button.active{background:rgba(255,255,255,.075);color:var(--text)}
-    .side-note{margin-top:auto;border-top:1px solid var(--line);padding-top:16px;font-size:12px;line-height:1.45;color:var(--muted)}
-    .side-note b{display:block;color:var(--text);margin-bottom:5px}
-    .main{grid-column:2;grid-row:1;min-width:0;min-height:0;padding:22px 24px 18px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:18px;overflow:hidden}
-    .topbar{display:flex;align-items:center;gap:12px;min-width:0}
-    .searchbox{height:48px;flex:1;min-width:0;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.075);border:1px solid var(--line);border-radius:17px;padding:0 14px}
-    .searchbox svg{width:18px;height:18px;color:var(--muted);flex:0 0 auto}
-    .searchbox input{width:100%;min-width:0;border:0;outline:0;background:transparent;font-size:15px}
-    .urlbox{height:48px;display:flex;align-items:center;gap:8px;min-width:320px;max-width:470px;flex:.44;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:17px;padding:0 10px}
-    .urlbox input{width:100%;min-width:0;border:0;outline:0;background:transparent;font-size:13px;color:var(--text)}
-    .primary{height:34px;border-radius:11px;background:var(--text);color:#05060a;font-weight:800;padding:0 14px;white-space:nowrap}
-    .ghostbtn{height:34px;border-radius:11px;background:rgba(255,255,255,.08);color:var(--text);font-weight:700;padding:0 12px;border:1px solid rgba(255,255,255,.06)}
-    .layout{min-height:0;display:grid;grid-template-columns:minmax(285px,420px) minmax(0,1fr);gap:18px}
-    .panel{min-height:0;background:rgba(13,14,20,.72);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;backdrop-filter:blur(24px)}
-    .results-panel{display:grid;grid-template-rows:auto minmax(0,1fr)}
-    .panel-head{padding:18px 18px 12px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1px solid transparent}
-    .panel-head h2{font-size:26px;line-height:1;margin:0;font-weight:850;letter-spacing:-.055em}
-    .count,.status-small{font-size:12px;color:var(--muted);margin-top:6px}
-    .engine-state{font-size:12px;color:var(--muted);text-align:right;line-height:1.35;max-width:180px}
-    .engine-dot{display:inline-block;width:7px;height:7px;border-radius:99px;background:var(--warn);margin-right:6px;vertical-align:middle}
-    .engine-dot.ready{background:var(--good)}
-    .engine-dot.bad{background:var(--bad)}
-    .results{padding:8px 10px 14px;overflow:auto;display:flex;flex-direction:column;gap:8px}
-    .track-row{width:100%;min-height:74px;border-radius:16px;background:transparent;color:var(--text);display:grid;grid-template-columns:56px 1fr auto;align-items:center;gap:12px;padding:9px;text-align:left;transition:.16s ease;border:1px solid transparent}
-    .track-row:hover,.track-row.active{background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.05)}
-    .row-cover{width:56px;height:56px;border-radius:13px;object-fit:cover;background:linear-gradient(135deg,#ff3b6b,#6f5cff)}
-    .row-title{font-size:14px;font-weight:760;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .row-artist{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .row-tag{font-size:11px;color:var(--muted);background:rgba(255,255,255,.07);padding:6px 8px;border-radius:999px;white-space:nowrap}
-    .empty{padding:18px;color:var(--muted);font-size:13px;line-height:1.45}
-    .player-panel{display:grid;grid-template-rows:auto minmax(0,1fr);position:relative}
-    .hero{padding:22px 20px 18px;display:grid;grid-template-columns:132px 1fr auto;gap:18px;align-items:center;border-bottom:1px solid var(--line)}
-    .hero-art-wrap{width:132px;height:132px;border-radius:24px;overflow:hidden;background:#15161e;position:relative;box-shadow:0 0 0 1px rgba(255,255,255,.08) inset}
-    .hero-art,.hero-video{width:100%;height:100%;object-fit:cover;display:block}
-    .hero-video{position:absolute;inset:0;display:none}
-    .art-badge{position:absolute;right:8px;bottom:8px;border-radius:9px;padding:5px 7px;background:rgba(0,0,0,.55);font-size:10px;color:#fff;backdrop-filter:blur(10px)}
-    .hero-kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#ff7aa2;font-weight:850;margin-bottom:7px}
-    .hero h1{font-size:40px;line-height:.96;margin:0;letter-spacing:-.07em;max-width:850px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .hero-artist{font-size:16px;color:var(--muted);margin-top:10px}
-    .hero-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
-    .hero-actions button{height:35px;border-radius:11px;background:rgba(255,255,255,.08);color:var(--text);font-size:12px;font-weight:800;padding:0 13px;border:1px solid rgba(255,255,255,.06)}
-    .debug-card{align-self:stretch;min-width:205px;border-left:1px solid var(--line);padding-left:18px;color:var(--muted);font-size:12px;line-height:1.5;display:flex;flex-direction:column;justify-content:center;gap:5px}
-    .debug-card b{color:var(--text);font-size:12px}
-    .lyrics-wrap{min-height:0;position:relative;display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden}
-    .lyrics{height:100%;overflow:auto;scroll-behavior:smooth;padding:34px 38px 42px}
-    .lyric-line{font-size:28px;line-height:1.22;font-weight:820;letter-spacing:-.045em;color:rgba(255,255,255,.28);padding:9px 0;border-radius:12px;transition:color .18s ease, transform .18s ease, opacity .18s ease;cursor:pointer;max-width:920px}
-    .lyric-line:hover{color:rgba(255,255,255,.55)}
-    .lyric-line.active{color:#fff;transform:translateX(8px);opacity:1}
-    .lyric-line.past{color:rgba(255,255,255,.18)}
-    .lyric-source{position:absolute;top:14px;right:18px;font-size:11px;color:var(--muted);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:6px 9px;backdrop-filter:blur(12px)}
-    .sync-panel{display:none;min-height:0;border-top:1px solid var(--line);background:rgba(0,0,0,.20);grid-template-rows:auto minmax(0,1fr) auto}
-    .sync-panel.open{display:grid}
-    .sync-toolbar{padding:12px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
-    .sync-toolbar .time-read{font-size:12px;color:var(--muted);margin-right:auto}
-    .sync-list{overflow:auto;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
-    .sync-line{display:grid;grid-template-columns:82px 1fr;gap:10px;align-items:center;border:1px solid transparent;background:rgba(255,255,255,.045);border-radius:12px;padding:9px 10px;text-align:left;color:var(--muted)}
-    .sync-line.active{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.09);color:#fff}
-    .sync-time{font-variant-numeric:tabular-nums;font-size:12px;color:var(--accent2);font-weight:800}
-    .sync-text{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .exportbox{display:none;border-top:1px solid var(--line);padding:12px;background:rgba(0,0,0,.18)}
-    .exportbox textarea{width:100%;height:95px;border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:12px;outline:0;resize:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;padding:10px;color:var(--text)}
-    .sc-engine{position:absolute;left:-9999px;top:-9999px;width:360px;height:166px;opacity:.01;pointer-events:none}
-    .sc-engine iframe{width:360px;height:166px;border:0}
-    .playerbar{grid-column:2;grid-row:2;border-top:1px solid var(--line);background:rgba(4,5,8,.88);backdrop-filter:blur(24px);display:grid;grid-template-columns:minmax(220px,340px) 1fr minmax(170px,260px);align-items:center;gap:18px;padding:14px 24px;min-width:0}
-    .now-mini{display:flex;align-items:center;gap:12px;min-width:0}
-    .mini-cover{width:58px;height:58px;border-radius:13px;object-fit:cover;background:linear-gradient(135deg,#ff3b6b,#6f5cff);flex:0 0 auto}
-    .mini-title{font-size:14px;font-weight:800;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .mini-artist{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .controls{min-width:0;display:grid;grid-template-rows:auto auto;gap:10px}
-    .control-buttons{display:flex;justify-content:center;align-items:center;gap:10px}
-    .circle{width:38px;height:38px;border-radius:99px;background:rgba(255,255,255,.09);color:#fff;display:grid;place-items:center;border:1px solid rgba(255,255,255,.05)}
-    .circle.play{width:48px;height:48px;background:#fff;color:#05060a}
-    .circle svg{width:18px;height:18px;stroke-width:2.5}
-    .progressrow{display:grid;grid-template-columns:48px 1fr 48px;gap:10px;align-items:center}
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;overflow:hidden}
+    button,input,textarea{font:inherit}
+    button{border:0;cursor:pointer;color:inherit}
+    body:before{
+      content:"";
+      position:fixed;inset:-160px;
+      background:
+        radial-gradient(circle at 68% 20%, rgba(255,45,85,.22), transparent 32%),
+        radial-gradient(circle at 25% 62%, rgba(90,120,255,.14), transparent 35%),
+        radial-gradient(circle at 80% 86%, rgba(255,200,120,.10), transparent 28%);
+      filter:blur(40px);
+      opacity:.72;
+      pointer-events:none;
+    }
+    .bg-cover{
+      position:fixed;inset:0;z-index:0;
+      background-size:cover;background-position:center;
+      opacity:.18;filter:blur(42px) saturate(1.3);transform:scale(1.14);
+      transition:background-image .5s var(--ease), opacity .4s var(--ease);
+      pointer-events:none;
+    }
+    .app{position:relative;z-index:1;height:100%;display:grid;grid-template-columns:var(--sidebar) 1fr;grid-template-rows:1fr var(--player);gap:0}
+    .sidebar{
+      grid-row:1/3;
+      border-right:1px solid var(--line);
+      background:rgba(12,12,16,.72);
+      backdrop-filter:blur(24px);
+      padding:22px 16px 18px;
+      display:flex;flex-direction:column;gap:22px;
+      min-width:0;
+    }
+    .brand{display:flex;align-items:center;gap:12px;padding:2px 6px}
+    .brand-mark{
+      width:38px;height:38px;border-radius:12px;
+      background:linear-gradient(145deg,#fff,#e8e8ee 45%,#bfc0ca);
+      position:relative;overflow:hidden;box-shadow:0 8px 30px rgba(255,255,255,.08);
+    }
+    .brand-mark:after{
+      content:"";position:absolute;inset:7px 10px 9px;border-radius:50%;
+      border:2px solid rgba(5,5,7,.9);border-left-color:transparent;transform:rotate(-18deg);
+    }
+    .brand-title{font-weight:800;letter-spacing:-.04em;font-size:20px}
+    .brand-sub{font-size:12px;color:var(--muted);margin-top:-2px}
+    .nav{display:flex;flex-direction:column;gap:7px}
+    .nav button{
+      height:42px;border-radius:14px;background:transparent;color:var(--muted);
+      display:flex;align-items:center;gap:11px;padding:0 12px;text-align:left;transition:.18s var(--ease);
+    }
+    .nav button svg{width:18px;height:18px;opacity:.9}
+    .nav button.active,.nav button:hover{background:rgba(255,255,255,.075);color:var(--text)}
+    .mini-card{
+      margin-top:auto;border:1px solid var(--line);border-radius:20px;padding:14px;
+      background:rgba(255,255,255,.045);
+    }
+    .mini-title{font-weight:750;font-size:13px}
+    .mini-text{font-size:12px;color:var(--muted);line-height:1.45;margin-top:6px}
+    .main{min-width:0;min-height:0;display:grid;grid-template-columns:minmax(360px,520px) minmax(0,1fr);gap:18px;padding:18px 18px 12px;overflow:hidden}
+    .column,.lyrics-shell{
+      min-height:0;background:rgba(10,10,14,.62);border:1px solid var(--line);
+      border-radius:var(--radius);backdrop-filter:blur(28px);overflow:hidden;
+    }
+    .column{display:flex;flex-direction:column}
+    .topbar{padding:18px 18px 12px;border-bottom:1px solid var(--line)}
+    .h1{font-size:28px;line-height:1;font-weight:850;letter-spacing:-.055em;margin:0}
+    .hint{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.4}
+    .search-row{display:flex;gap:10px;margin-top:16px}
+    .search{
+      flex:1;height:46px;border:1px solid rgba(255,255,255,.10);border-radius:16px;
+      background:rgba(255,255,255,.065);color:var(--text);padding:0 14px;outline:none;
+    }
+    .search::placeholder{color:#777784}
+    .primary,.secondary,.ghost-btn{
+      height:46px;border-radius:16px;padding:0 16px;background:var(--text);color:#08080b;font-weight:800;
+      transition:.16s var(--ease);white-space:nowrap;
+    }
+    .primary:hover{transform:translateY(-1px)}
+    .secondary{background:rgba(255,255,255,.085);color:var(--text);border:1px solid var(--line)}
+    .ghost-btn{height:36px;border-radius:12px;background:rgba(255,255,255,.08);color:var(--text);font-size:12px;padding:0 12px;border:1px solid var(--line)}
+    .results{padding:10px;overflow:auto;min-height:0}
+    .result{
+      width:100%;display:grid;grid-template-columns:58px 1fr auto;gap:12px;align-items:center;
+      padding:9px;border-radius:18px;background:transparent;text-align:left;transition:.16s var(--ease);
+    }
+    .result:hover,.result.active{background:rgba(255,255,255,.075)}
+    .thumb{
+      width:58px;height:58px;border-radius:14px;background:linear-gradient(145deg,#383842,#111118);
+      background-size:cover;background-position:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+    }
+    .r-title{font-size:14px;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .r-artist{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .r-meta{font-size:11px;color:var(--soft);padding-right:8px}
+    .empty{padding:28px;color:var(--muted);font-size:14px;line-height:1.5}
+    .lyrics-shell{display:grid;grid-template-rows:auto 1fr auto;position:relative}
+    .now-head{
+      display:grid;grid-template-columns:86px 1fr auto;gap:15px;align-items:center;
+      padding:18px;border-bottom:1px solid var(--line);
+    }
+    .cover{
+      width:86px;height:86px;border-radius:19px;background:linear-gradient(145deg,#383842,#111118);
+      background-size:cover;background-position:center;box-shadow:0 18px 44px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.10);
+    }
+    .song-title{font-size:24px;font-weight:880;letter-spacing:-.055em;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .song-artist{font-size:13px;color:var(--muted);margin-top:6px}
+    .status-pill{
+      display:inline-flex;align-items:center;gap:7px;height:30px;border-radius:999px;padding:0 11px;
+      background:rgba(255,255,255,.075);border:1px solid var(--line);color:var(--muted);font-size:12px;
+    }
+    .dot{width:7px;height:7px;border-radius:99px;background:var(--warn)}
+    .dot.ready{background:var(--good)}
+    .dot.bad{background:var(--bad)}
+    .lyrics-area{position:relative;overflow:hidden;min-height:0}
+    .lyrics-scroll{
+      position:absolute;inset:0;overflow:auto;padding:28px clamp(20px,4vw,64px) 180px;
+      scroll-behavior:smooth;
+    }
+    .lyric{
+      padding:14px 0;margin:0;font-weight:850;letter-spacing:-.055em;line-height:1.04;
+      font-size:clamp(26px,4.4vw,58px);color:rgba(255,255,255,.24);
+      transition:color .22s var(--ease), opacity .22s var(--ease), transform .22s var(--ease);
+      cursor:pointer;
+    }
+    .lyric.near{color:rgba(255,255,255,.46)}
+    .lyric.active{color:#fff;transform:translateX(6px)}
+    .lyric.emptyline{font-size:19px;color:var(--muted);letter-spacing:-.02em;font-weight:650;line-height:1.45}
+    .sync-panel{
+      border-top:1px solid var(--line);background:rgba(12,12,16,.80);padding:12px 14px;display:none;
+      gap:10px;align-items:center;flex-wrap:wrap;
+    }
+    .sync-panel.on{display:flex}
+    .sync-time{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;min-width:110px}
+    .sync-list{
+      position:absolute;right:14px;top:122px;width:min(380px,40vw);max-height:calc(100% - 240px);
+      overflow:auto;border:1px solid var(--line);border-radius:18px;background:rgba(8,8,12,.86);backdrop-filter:blur(24px);
+      display:none;padding:8px;z-index:4;
+    }
+    .sync-list.on{display:block}
+    .sync-line{
+      width:100%;text-align:left;border-radius:12px;padding:10px;background:transparent;color:var(--muted);
+      display:grid;grid-template-columns:62px 1fr;gap:10px;font-size:12px;
+    }
+    .sync-line:hover,.sync-line.sel{background:rgba(255,255,255,.075);color:var(--text)}
+    .sync-line time{font-variant-numeric:tabular-nums;color:var(--accent2)}
+    .import-box{
+      width:min(620px,90vw);height:180px;resize:none;background:#0d0d12;color:var(--text);
+      border:1px solid var(--line);border-radius:16px;padding:12px;outline:none;display:none;
+    }
+    .import-box.on{display:block}
+    .player{
+      grid-column:2/3;height:var(--player);border-top:1px solid var(--line);background:rgba(12,12,16,.78);
+      backdrop-filter:blur(26px);display:grid;grid-template-columns:minmax(220px,320px) 1fr minmax(180px,260px);
+      align-items:center;gap:18px;padding:12px 18px;min-width:0;
+    }
+    .p-left{display:grid;grid-template-columns:56px 1fr;gap:12px;align-items:center;min-width:0}
+    .p-cover{width:56px;height:56px;border-radius:14px;background-size:cover;background-position:center;background-color:#202028}
+    .p-title{font-size:13px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .p-artist{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .p-mid{min-width:0;display:flex;flex-direction:column;gap:9px;align-items:center}
+    .transport{display:flex;align-items:center;gap:10px}
+    .icon-btn{
+      width:36px;height:36px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid var(--line);
+      display:grid;place-items:center;color:var(--text);transition:.15s var(--ease)
+    }
+    .icon-btn:hover{background:rgba(255,255,255,.13)}
+    .play-btn{width:42px;height:42px;background:#fff;color:#050507}
+    .icon-btn svg{width:17px;height:17px}
+    .progress-row{width:100%;display:grid;grid-template-columns:46px 1fr 46px;gap:10px;align-items:center}
     .time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:center}
-    .range{appearance:none;width:100%;height:20px;background:transparent;cursor:pointer}
-    .range::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:linear-gradient(90deg,#fff var(--pct,0%),rgba(255,255,255,.16) var(--pct,0%))}
-    .range::-webkit-slider-thumb{appearance:none;width:13px;height:13px;border-radius:99px;background:#fff;margin-top:-4.5px}
-    .range::-moz-range-track{height:4px;border-radius:99px;background:rgba(255,255,255,.16)}
-    .range::-moz-range-progress{height:4px;border-radius:99px;background:#fff}
-    .range::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:99px;background:#fff}
-    .volume{display:flex;align-items:center;justify-content:flex-end;gap:10px;color:var(--muted);font-size:12px;min-width:0}
-    .volume input{max-width:130px}
-    @media(max-width:980px){
+    .range{height:6px;width:100%;appearance:none;background:rgba(255,255,255,.14);border-radius:999px;outline:none;cursor:pointer}
+    .range::-webkit-slider-thumb{appearance:none;width:14px;height:14px;border-radius:50%;background:#fff;border:0}
+    .p-right{display:flex;justify-content:flex-end;gap:10px;align-items:center}
+    .volume{width:120px}
+    .engine{
+      position:fixed;right:18px;bottom:110px;width:420px;max-width:calc(100vw - 36px);height:260px;z-index:12;
+      border:1px solid var(--line);border-radius:22px;background:rgba(10,10,14,.92);backdrop-filter:blur(24px);
+      overflow:hidden;display:none;box-shadow:0 24px 80px rgba(0,0,0,.4)
+    }
+    .engine.on{display:block}
+    .engine-head{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+    #youtube-player{width:100%;height:216px;background:#000}
+    .toast{
+      position:fixed;left:50%;bottom:116px;transform:translateX(-50%) translateY(20px);
+      background:rgba(20,20,26,.92);border:1px solid var(--line);border-radius:16px;color:var(--text);
+      padding:12px 14px;font-size:13px;z-index:30;opacity:0;pointer-events:none;transition:.2s var(--ease);
+      box-shadow:0 18px 50px rgba(0,0,0,.35);max-width:min(540px,calc(100vw - 28px));text-align:center;
+    }
+    .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+    @media (max-width:1050px){
+      :root{--sidebar:82px}
+      .brand div:not(.brand-mark),.nav span,.mini-card{display:none}
+      .sidebar{padding:18px 12px;align-items:center}
+      .nav button{width:50px;justify-content:center;padding:0}
+      .main{grid-template-columns:1fr}
+      .column{display:none}
+      .column.mobile-on{display:flex}
+      .lyrics-shell{min-height:0}
+      .player{grid-template-columns:1fr;gap:8px;height:128px;padding:10px 14px}
+      .p-right{display:none}
+      .p-left{display:none}
+    }
+    @media (max-width:720px){
       :root{--sidebar:0px;--player:132px}
       .app{grid-template-columns:1fr}
       .sidebar{display:none}
-      .main{grid-column:1;padding:14px;gap:12px}
-      .topbar{flex-direction:column;align-items:stretch}
-      .urlbox{min-width:0;max-width:none;width:100%}
-      .layout{grid-template-columns:1fr;grid-template-rows:minmax(180px,35%) minmax(0,1fr)}
-      .hero{grid-template-columns:88px 1fr;gap:13px;padding:15px}
-      .hero-art-wrap{width:88px;height:88px;border-radius:18px}
-      .hero h1{font-size:27px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-      .debug-card{display:none}
-      .lyrics{padding:24px 22px 34px}
-      .lyric-line{font-size:23px}
-      .playerbar{grid-column:1;grid-template-columns:1fr;gap:8px;padding:10px 14px}
-      .now-mini{display:none}
-      .volume{display:none}
+      .main{padding:10px;gap:10px}
+      .now-head{grid-template-columns:64px 1fr;gap:12px}
+      .cover{width:64px;height:64px;border-radius:15px}
+      .song-title{font-size:19px}
+      .status-pill{grid-column:1/3;justify-self:start}
+      .lyric{font-size:34px}
+      .sync-list{position:fixed;left:10px;right:10px;top:auto;bottom:142px;width:auto;max-height:230px}
+      .player{grid-column:1/2}
     }
   </style>
 </head>
 <body>
-  <div class="app" id="app">
-    <div class="cover-bg" id="coverBg"></div>
-    <div class="glow"></div>
-
+  <div class="bg-cover" id="bgCover"></div>
+  <div class="app">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M9 18V7.5L19 5v10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="15.5" r="3" fill="currentColor"/></svg>
-        </div>
+        <div class="brand-mark"></div>
         <div>
           <div class="brand-title">Relay Music</div>
-          <div class="brand-sub">SoundCloud prototype</div>
+          <div class="brand-sub">YouTube engine v3</div>
         </div>
       </div>
       <nav class="nav">
-        <button class="active" data-jump="search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor"/><path d="m20 20-3.8-3.8" stroke="currentColor" stroke-linecap="round"/></svg>Search</button>
-        <button data-jump="library"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5v14M8 5v14M12 5v14M16 5v14M20 5v14" stroke="currentColor" stroke-linecap="round"/></svg>Library</button>
-        <button data-jump="lyrics"><svg viewBox="0 0 24 24" fill="none"><path d="M7 7h10M7 12h8M7 17h6" stroke="currentColor" stroke-linecap="round"/></svg>Lyrics</button>
-        <button data-jump="sync"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0" stroke="currentColor" stroke-linecap="round"/></svg>Sync Mode</button>
+        <button class="active" data-view="search" title="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span>Search</span>
+        </button>
+        <button data-view="lyrics" title="Lyrics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>Lyrics</span>
+        </button>
+        <button id="syncToggleNav" title="Sync">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h7"/><path d="M17 14v6"/><path d="M14 17h6"/></svg><span>Sync</span>
+        </button>
+        <button id="engineToggleNav" title="Engine">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg><span>Engine</span>
+        </button>
       </nav>
-      <div class="side-note">
-        <b>Prototype note</b>
-        Uses SoundCloud's official embedded player. Search is local/paste-link until a Relay backend endpoint is connected.
+      <div class="mini-card">
+        <div class="mini-title">How this works</div>
+        <div class="mini-text">Paste a YouTube music link, or add a YouTube Data API key in the JS for real search. Lyrics come from LRCLIB.</div>
       </div>
     </aside>
 
     <main class="main">
-      <div class="topbar">
-        <div class="searchbox">
-          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.8-3.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          <input id="searchInput" placeholder="Search demo tracks or paste a SoundCloud link" autocomplete="off" />
+      <section class="column mobile-on" id="searchColumn">
+        <div class="topbar">
+          <h1 class="h1">Find a song</h1>
+          <div class="hint">Paste a YouTube link for now. Search works on demo tracks unless you add a YouTube API key in the file.</div>
+          <div class="search-row">
+            <input id="searchInput" class="search" placeholder="Paste YouTube URL or search..." autocomplete="off" />
+            <button id="searchBtn" class="primary">Search</button>
+          </div>
         </div>
-        <div class="urlbox">
-          <input id="urlInput" placeholder="https://soundcloud.com/artist/track" autocomplete="off" />
-          <button class="primary" id="loadUrlBtn">Load</button>
+        <div class="results" id="results"></div>
+      </section>
+
+      <section class="lyrics-shell">
+        <div class="now-head">
+          <div class="cover" id="cover"></div>
+          <div style="min-width:0">
+            <div class="song-title" id="songTitle">No song loaded</div>
+            <div class="song-artist" id="songArtist">Paste a YouTube music link to start</div>
+          </div>
+          <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">Idle</span></div>
         </div>
-      </div>
 
-      <section class="layout">
-        <section class="panel results-panel" id="search">
-          <div class="panel-head">
-            <div>
-              <h2>Discover</h2>
-              <div class="count" id="resultCount">0 tracks</div>
-            </div>
-            <div class="engine-state"><span class="engine-dot" id="engineDot"></span><span id="engineText">starting engine</span></div>
-          </div>
-          <div class="results" id="results"></div>
-        </section>
+        <div class="lyrics-area">
+          <div class="lyrics-scroll" id="lyricsScroll"></div>
+          <div class="sync-list" id="syncList"></div>
+        </div>
 
-        <section class="panel player-panel" id="lyrics">
-          <div class="hero">
-            <div class="hero-art-wrap">
-              <img class="hero-art" id="heroArt" alt="Album artwork" />
-              <video class="hero-video" id="heroVideo" muted loop playsinline></video>
-              <div class="art-badge" id="artBadge">cover</div>
-            </div>
-            <div class="hero-copy">
-              <div class="hero-kicker" id="lyricKicker">SoundCloud ready</div>
-              <h1 id="heroTitle">Relay Music</h1>
-              <div class="hero-artist" id="heroArtist">Paste a SoundCloud track link or use a demo track</div>
-              <div class="hero-actions">
-                <button id="lyricsBtn">Lyrics</button>
-                <button id="syncBtn">Sync Mode</button>
-                <button id="refreshLyricsBtn">Refresh lyrics</button>
-                <button id="showEngineBtn">Show engine</button>
-              </div>
-            </div>
-            <div class="debug-card">
-              <b>Status</b>
-              <span id="statusLine">Waiting for SoundCloud Widget API.</span>
-              <span id="lyricsStatus">Lyrics idle.</span>
-              <span id="artStatus">Artwork idle.</span>
-            </div>
-          </div>
-
-          <div class="lyrics-wrap">
-            <div class="lyric-source" id="lyricSource">no lyrics loaded</div>
-            <div class="lyrics" id="lyricsList"></div>
-          </div>
-
-          <div class="sync-panel" id="syncPanel">
-            <div class="sync-toolbar">
-              <div class="time-read" id="syncReadout">0:00.00</div>
-              <button class="ghostbtn" id="setLineBtn">Set current line</button>
-              <button class="ghostbtn" id="nudgeBackBtn">-0.05s</button>
-              <button class="ghostbtn" id="nudgeForwardBtn">+0.05s</button>
-              <button class="ghostbtn" id="exportBtn">Export JSON</button>
-            </div>
-            <div class="sync-list" id="syncList"></div>
-            <div class="exportbox" id="exportBox"><textarea id="exportText" readonly></textarea></div>
-          </div>
-        </section>
+        <div class="sync-panel" id="syncPanel">
+          <div class="sync-time" id="syncTime">0:00.00</div>
+          <button class="ghost-btn" id="setLineBtn">Set line to now</button>
+          <button class="ghost-btn" id="nudgeBackBtn">-0.05s</button>
+          <button class="ghost-btn" id="nudgeForwardBtn">+0.05s</button>
+          <button class="ghost-btn" id="makeWordBtn">Make word timing</button>
+          <button class="ghost-btn" id="pasteLrcBtn">Paste LRC</button>
+          <button class="ghost-btn" id="exportBtn">Export JSON</button>
+          <textarea class="import-box" id="importBox" placeholder="[00:12.34] Lyric line here&#10;[00:15.00] Another lyric line"></textarea>
+          <button class="ghost-btn" id="applyLrcBtn" style="display:none">Apply pasted LRC</button>
+        </div>
       </section>
     </main>
 
-    <footer class="playerbar">
-      <div class="now-mini">
-        <img class="mini-cover" id="miniCover" alt="Album artwork" />
+    <footer class="player">
+      <div class="p-left">
+        <div class="p-cover" id="playerCover"></div>
         <div style="min-width:0">
-          <div class="mini-title" id="miniTitle">Nothing playing</div>
-          <div class="mini-artist" id="miniArtist">Relay Music</div>
+          <div class="p-title" id="playerTitle">No song loaded</div>
+          <div class="p-artist" id="playerArtist">Relay Music</div>
         </div>
       </div>
-      <div class="controls">
-        <div class="control-buttons">
-          <button class="circle" id="prevBtn" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none"><path d="M18 6 9 12l9 6V6Z" fill="currentColor"/><path d="M6 6v12" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg></button>
-          <button class="circle play" id="playBtn" aria-label="Play"><svg id="playIcon" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7L8 5Z" fill="currentColor"/></svg></button>
-          <button class="circle" id="nextBtn" aria-label="Next"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6v12l9-6-9-6Z" fill="currentColor"/><path d="M18 6v12" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg></button>
+      <div class="p-mid">
+        <div class="transport">
+          <button class="icon-btn" id="prevBtn" title="Previous">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zM9 12l9-6v12z"/></svg>
+          </button>
+          <button class="icon-btn play-btn" id="playBtn" title="Play">
+            <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button class="icon-btn" id="nextBtn" title="Next">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 18l9-6-9-6z"/></svg>
+          </button>
         </div>
-        <div class="progressrow">
-          <div class="time" id="currentTime">0:00</div>
+        <div class="progress-row">
+          <div class="time" id="curTime">0:00</div>
           <input class="range" id="progress" type="range" min="0" max="1000" value="0" />
-          <div class="time" id="durationTime">0:00</div>
+          <div class="time" id="durTime">0:00</div>
         </div>
       </div>
-      <div class="volume">
-        <span>Volume</span>
-        <input class="range" id="volume" type="range" min="0" max="100" value="85" />
+      <div class="p-right">
+        <button class="secondary" id="engineBtn">Show engine</button>
+        <input class="range volume" id="volume" type="range" min="0" max="100" value="80" title="Volume" />
       </div>
     </footer>
-
-    <div class="sc-engine" id="scEngine">
-      <iframe id="scWidget" title="SoundCloud playback engine" allow="autoplay" scrolling="no"></iframe>
-    </div>
   </div>
 
+  <div class="engine" id="engine">
+    <div class="engine-head">
+      <span>YouTube playback engine</span>
+      <button class="ghost-btn" id="closeEngine">Hide</button>
+    </div>
+    <div id="youtube-player"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    const SOUNDCLOUD_SEARCH_ENDPOINT = "";
-    const ARTWORK_ENDPOINT = "https://artwork.m8tec.top";
+    const YOUTUBE_API_KEY = "";
     const LRCLIB_BASE = "https://lrclib.net/api";
+    const ARTWORK_ENDPOINT = "https://artwork.m8tec.top";
+
     const DEMO_TRACKS = [
       {
-        title:"she's all i wanna be",
-        artist:"Tate McRae",
-        album:"I Used to Think I Could Fly",
-        url:"https://soundcloud.com/tate-mcrae/shes-all-i-wanna-be",
-        duration:206,
-        source:"Demo URL"
+        id: "yt-rick",
+        source: "youtube",
+        youtubeId: "dQw4w9WgXcQ",
+        title: "Never Gonna Give You Up",
+        artist: "Rick Astley",
+        album: "Whenever You Need Somebody",
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        artwork: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+        duration: 213
       },
       {
-        title:"chaotic",
-        artist:"Tate McRae",
-        album:"I Used to Think I Could Fly",
-        url:"https://soundcloud.com/tate-mcrae/chaotic",
-        duration:175,
-        source:"Demo URL"
+        id: "yt-weeknd",
+        source: "youtube",
+        youtubeId: "4NRXx6U8ABQ",
+        title: "Blinding Lights",
+        artist: "The Weeknd",
+        album: "After Hours",
+        url: "https://www.youtube.com/watch?v=4NRXx6U8ABQ",
+        artwork: "https://i.ytimg.com/vi/4NRXx6U8ABQ/hqdefault.jpg",
+        duration: 200
       },
       {
-        title:"you broke me first",
-        artist:"Tate McRae",
-        album:"Too Young to Be Sad",
-        url:"https://soundcloud.com/tate-mcrae/you-broke-me-first",
-        duration:170,
-        source:"Demo URL"
+        id: "yt-billie",
+        source: "youtube",
+        youtubeId: "DyDfgMOUjCI",
+        title: "bad guy",
+        artist: "Billie Eilish",
+        album: "WHEN WE ALL FALL ASLEEP, WHERE DO WE GO?",
+        url: "https://www.youtube.com/watch?v=DyDfgMOUjCI",
+        artwork: "https://i.ytimg.com/vi/DyDfgMOUjCI/hqdefault.jpg",
+        duration: 194
       }
     ];
 
     const $ = (id) => document.getElementById(id);
     const els = {
-      app:$("app"), coverBg:$("coverBg"), searchInput:$("searchInput"), urlInput:$("urlInput"), loadUrlBtn:$("loadUrlBtn"),
-      results:$("results"), resultCount:$("resultCount"), engineDot:$("engineDot"), engineText:$("engineText"), statusLine:$("statusLine"),
-      lyricsStatus:$("lyricsStatus"), artStatus:$("artStatus"), heroArt:$("heroArt"), heroVideo:$("heroVideo"), artBadge:$("artBadge"),
-      heroTitle:$("heroTitle"), heroArtist:$("heroArtist"), lyricKicker:$("lyricKicker"), miniCover:$("miniCover"), miniTitle:$("miniTitle"), miniArtist:$("miniArtist"),
-      playBtn:$("playBtn"), playIcon:$("playIcon"), prevBtn:$("prevBtn"), nextBtn:$("nextBtn"), progress:$("progress"), currentTime:$("currentTime"), durationTime:$("durationTime"), volume:$("volume"),
-      lyricsList:$("lyricsList"), lyricSource:$("lyricSource"), lyricsBtn:$("lyricsBtn"), syncBtn:$("syncBtn"), refreshLyricsBtn:$("refreshLyricsBtn"), showEngineBtn:$("showEngineBtn"),
-      syncPanel:$("syncPanel"), syncReadout:$("syncReadout"), syncList:$("syncList"), setLineBtn:$("setLineBtn"), nudgeBackBtn:$("nudgeBackBtn"), nudgeForwardBtn:$("nudgeForwardBtn"), exportBtn:$("exportBtn"), exportBox:$("exportBox"), exportText:$("exportText"),
-      scEngine:$("scEngine"), scWidget:$("scWidget")
+      searchInput: $("searchInput"), searchBtn: $("searchBtn"), results: $("results"),
+      cover: $("cover"), playerCover: $("playerCover"), bgCover: $("bgCover"),
+      songTitle: $("songTitle"), songArtist: $("songArtist"), playerTitle: $("playerTitle"), playerArtist: $("playerArtist"),
+      statusDot: $("statusDot"), statusText: $("statusText"),
+      lyricsScroll: $("lyricsScroll"), syncPanel: $("syncPanel"), syncList: $("syncList"), syncTime: $("syncTime"),
+      playBtn: $("playBtn"), playIcon: $("playIcon"), prevBtn: $("prevBtn"), nextBtn: $("nextBtn"),
+      progress: $("progress"), curTime: $("curTime"), durTime: $("durTime"), volume: $("volume"),
+      engine: $("engine"), engineBtn: $("engineBtn"), closeEngine: $("closeEngine"),
+      setLineBtn: $("setLineBtn"), nudgeBackBtn: $("nudgeBackBtn"), nudgeForwardBtn: $("nudgeForwardBtn"),
+      makeWordBtn: $("makeWordBtn"), pasteLrcBtn: $("pasteLrcBtn"), importBox: $("importBox"), applyLrcBtn: $("applyLrcBtn"),
+      exportBtn: $("exportBtn"), toast: $("toast"), searchColumn: $("searchColumn")
     };
 
     const state = {
-      tracks:[...DEMO_TRACKS],
-      filtered:[...DEMO_TRACKS],
-      current:null,
-      currentIndex:0,
-      playing:false,
-      position:0,
-      duration:0,
-      lyrics:[],
-      lyricSource:"no lyrics loaded",
-      activeLyric:-1,
-      selectedLine:0,
-      syncMode:false,
-      engineVisible:false,
-      widgetReady:false,
-      suppressSeek:false
+      ready: false,
+      player: null,
+      queue: [...DEMO_TRACKS],
+      currentIndex: -1,
+      currentTrack: null,
+      playing: false,
+      duration: 0,
+      position: 0,
+      lyrics: [],
+      activeLyric: -1,
+      selectedLyric: -1,
+      syncMode: false,
+      raf: 0
     };
 
-    function scPlayerUrl(url){
-      const params = new URLSearchParams({
-        url,
-        auto_play:"false",
-        hide_related:"true",
-        show_comments:"false",
-        show_user:"false",
-        show_reposts:"false",
-        show_teaser:"false",
-        visual:"false",
-        buying:"false",
-        sharing:"false",
-        download:"false"
-      });
-      return `https://w.soundcloud.com/player/?${params.toString()}`;
+    function toast(msg) {
+      els.toast.textContent = msg;
+      els.toast.classList.add("on");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(() => els.toast.classList.remove("on"), 2600);
     }
 
-    function isSoundCloudUrl(value){
-      return /^https?:\/\/(m\.)?soundcloud\.com\//i.test((value || "").trim());
+    function setStatus(text, kind = "") {
+      els.statusText.textContent = text;
+      els.statusDot.className = "dot" + (kind ? " " + kind : "");
     }
 
-    function cleanText(value){
-      return (value || "").replace(/&amp;/g,"&").replace(/\s+/g," ").trim();
+    function fmt(sec, decimals = false) {
+      sec = Math.max(0, Number(sec) || 0);
+      const m = Math.floor(sec / 60);
+      const s = sec - m * 60;
+      return decimals ? `${m}:${s.toFixed(2).padStart(5,"0")}` : `${m}:${Math.floor(s).toString().padStart(2,"0")}`;
     }
 
-    function stripJunkTitle(title){
-      return cleanText(title)
-        .replace(/\s*\((official|audio|lyrics?|visualizer|music video|sped up|slowed|live|remix).*?\)\s*/ig," ")
-        .replace(/\s*\[(official|audio|lyrics?|visualizer|music video|sped up|slowed|live|remix).*?\]\s*/ig," ")
-        .replace(/\s+/g," ").trim();
+    function debounce(fn, wait = 300) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), wait);
+      };
     }
 
-    function splitTitleArtist(title, artist){
-      let t = stripJunkTitle(title || "Untitled");
-      let a = cleanText(artist || "SoundCloud");
-      const dash = t.match(/^(.+?)\s[-–—]\s(.+)$/);
-      if(dash){
-        const left = cleanText(dash[1]);
-        const right = stripJunkTitle(dash[2]);
-        if(!a || a.toLowerCase() === "soundcloud" || left.toLowerCase().includes(a.toLowerCase()) || a.toLowerCase().includes(left.toLowerCase())){
-          a = left;
-          t = right;
-        } else if(left.toLowerCase() === a.toLowerCase()) {
-          t = right;
-        }
+    function extractYouTubeId(input) {
+      const value = String(input || "").trim();
+      if (!value) return "";
+      const patterns = [
+        /youtube\.com\/watch\?.*v=([^&]+)/i,
+        /youtu\.be\/([^?&]+)/i,
+        /youtube\.com\/shorts\/([^?&]+)/i,
+        /youtube\.com\/embed\/([^?&]+)/i,
+        /^[A-Za-z0-9_-]{11}$/
+      ];
+      for (const p of patterns) {
+        const m = value.match(p);
+        if (m) return m[1] || m[0];
       }
-      return {title:t, artist:a};
+      return "";
     }
 
-    function normalize(value){
-      return (value || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
-    }
-
-    function formatTime(seconds, detailed=false){
-      seconds = Math.max(0, Number(seconds || 0));
-      const m = Math.floor(seconds / 60);
-      const s = Math.floor(seconds % 60);
-      if(!detailed) return `${m}:${String(s).padStart(2,"0")}`;
-      const cs = Math.floor((seconds - Math.floor(seconds)) * 100);
-      return `${m}:${String(s).padStart(2,"0")}.${String(cs).padStart(2,"0")}`;
-    }
-
-    function gradientData(title, artist){
-      const seed = normalize(`${artist} ${title}`) || "relay music";
-      let hash = 0;
-      for(let i=0;i<seed.length;i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-      const h1 = hash % 360;
-      const h2 = (h1 + 72 + (hash % 80)) % 360;
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="hsl(${h1},82%,58%)"/><stop offset="1" stop-color="hsl(${h2},88%,54%)"/></linearGradient><filter id="b"><feGaussianBlur stdDeviation="22"/></filter></defs><rect width="600" height="600" rx="72" fill="url(#g)"/><circle cx="145" cy="118" r="130" fill="rgba(255,255,255,.28)" filter="url(#b)"/><circle cx="475" cy="455" r="165" fill="rgba(0,0,0,.22)" filter="url(#b)"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="rgba(255,255,255,.9)" font-family="Arial" font-size="56" font-weight="800">${escapeXml((title || "R").slice(0,1).toUpperCase())}</text></svg>`;
-      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-    }
-
-    function escapeXml(s){return String(s).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&apos;",'"':"&quot;"}[c]));}
-
-    function setStatus(text, type="warn"){
-      els.statusLine.textContent = text;
-      els.engineText.textContent = text;
-      els.engineDot.className = `engine-dot ${type === "ready" ? "ready" : type === "bad" ? "bad" : ""}`;
-    }
-
-    function setPlayIcon(){
-      els.playIcon.innerHTML = state.playing
-        ? `<path d="M8 5h3v14H8V5Zm5 0h3v14h-3V5Z" fill="currentColor"/>`
-        : `<path d="M8 5v14l11-7L8 5Z" fill="currentColor"/>`;
-    }
-
-    function updateTrackUi(track){
-      const cover = track.cover || gradientData(track.title, track.artist);
-      els.heroArt.src = cover;
-      els.miniCover.src = cover;
-      els.coverBg.style.setProperty("--bg-cover", `url("${cover}")`);
-      els.heroTitle.textContent = track.title || "Untitled";
-      els.heroArtist.textContent = track.artist || "SoundCloud";
-      els.miniTitle.textContent = track.title || "Untitled";
-      els.miniArtist.textContent = track.artist || "SoundCloud";
-      els.durationTime.textContent = formatTime(state.duration || track.duration || 0);
-      els.lyricKicker.textContent = track.source === "Pasted URL" ? "Pasted SoundCloud track" : "SoundCloud playback";
-      document.title = `${track.title || "Relay Music"} - Relay Music`;
-      renderResults();
-    }
-
-    function showVideoArtwork(src){
-      if(!src){
-        els.heroVideo.pause();
-        els.heroVideo.removeAttribute("src");
-        els.heroVideo.style.display = "none";
-        return;
+    function cleanTitle(rawTitle, rawArtist = "") {
+      let title = String(rawTitle || "Unknown Track");
+      title = title.replace(/\s*\[[^\]]*(official|audio|video|lyrics|visualizer|HD|4K)[^\]]*\]/gi, "");
+      title = title.replace(/\s*\((official|audio|video|lyrics|visualizer|music video|HD|4K)[^)]+\)/gi, "");
+      title = title.replace(/\s+(official music video|official video|official audio|lyrics?|visualizer)\s*$/i, "");
+      title = title.replace(/\s+/g, " ").trim();
+      let artist = String(rawArtist || "").replace(/\s*-\s*Topic$/i, "").trim();
+      if (title.includes(" - ")) {
+        const parts = title.split(" - ");
+        if (!artist) artist = parts[0].trim();
+        title = parts.slice(1).join(" - ").trim();
       }
-      els.heroVideo.src = src;
-      els.heroVideo.style.display = "block";
-      els.heroVideo.play().catch(() => {});
+      return { title: title || rawTitle || "Unknown Track", artist: artist || "Unknown Artist" };
     }
 
-    async function getOembed(url){
-      try{
-        const res = await fetch(`https://soundcloud.com/oembed?format=json&url=${encodeURIComponent(url)}`);
-        if(!res.ok) throw new Error("oEmbed failed");
+    async function fetchJson(url, timeout = 7000) {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), timeout);
+      try {
+        const res = await fetch(url, { signal: ctrl.signal });
+        if (!res.ok) throw new Error("HTTP " + res.status);
         return await res.json();
-      }catch(err){
+      } finally {
+        clearTimeout(id);
+      }
+    }
+
+    async function getYouTubeOEmbed(url) {
+      try {
+        return await fetchJson("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent(url), 5000);
+      } catch {
         return null;
       }
     }
 
-    function pickFirstUrl(obj){
-      const seen = new Set();
-      const stack = [obj];
-      const keys = ["webpUrl","webp","videoUrl","mp4Url","mp4","animatedUrl","animated","squareCoverUrl","tallCoverUrl","coverUrl","imageUrl","artworkUrl","artwork","image","cover","url","src"];
-      while(stack.length){
-        const cur = stack.shift();
-        if(!cur || typeof cur !== "object" || seen.has(cur)) continue;
-        seen.add(cur);
-        for(const key of keys){
-          const val = cur[key];
-          if(typeof val === "string" && /^https?:\/\//.test(val)) return val;
+    async function makeTrackFromYouTubeUrl(url) {
+      const youtubeId = extractYouTubeId(url);
+      if (!youtubeId) return null;
+
+      let title = "YouTube Track";
+      let artist = "Unknown Artist";
+      let thumbnail = `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`;
+
+      const o = await getYouTubeOEmbed(`https://www.youtube.com/watch?v=${youtubeId}`);
+      if (o) {
+        const cleaned = cleanTitle(o.title, o.author_name);
+        title = cleaned.title;
+        artist = cleaned.artist;
+        thumbnail = o.thumbnail_url || thumbnail;
+      }
+
+      return {
+        id: "yt-" + youtubeId,
+        source: "youtube",
+        youtubeId,
+        title,
+        artist,
+        album: title,
+        url: `https://www.youtube.com/watch?v=${youtubeId}`,
+        artwork: thumbnail,
+        duration: 0
+      };
+    }
+
+    function fallbackCover(track) {
+      const seed = encodeURIComponent((track.artist || "") + " " + (track.title || ""));
+      return `https://dummyimage.com/900x900/15151c/ffffff.png&text=${seed.slice(0, 32)}`;
+    }
+
+    function pickImage(obj) {
+      if (!obj || typeof obj !== "object") return "";
+      const candidates = [
+        obj.url, obj.artwork, obj.image, obj.cover, obj.coverUrl, obj.artworkUrl, obj.src,
+        obj.thumbnail, obj.picture, obj.animatedArtwork, obj.staticArtwork
+      ].filter(Boolean);
+      for (const item of candidates) {
+        if (typeof item === "string") return item;
+        if (typeof item === "object") {
+          const nested = pickImage(item);
+          if (nested) return nested;
         }
-        for(const val of Object.values(cur)){
-          if(typeof val === "string" && /^https?:\/\/.*\.(jpg|jpeg|png|webp|mp4|m3u8)(\?|$)/i.test(val)) return val;
-          if(val && typeof val === "object") stack.push(val);
+      }
+      for (const key of Object.keys(obj)) {
+        if (obj[key] && typeof obj[key] === "object") {
+          const nested = pickImage(obj[key]);
+          if (nested) return nested;
         }
       }
       return "";
     }
 
-    function upgradeImage(url, size=1000){
-      if(!url) return "";
-      return url
-        .replace(/-large\./,"-t500x500.")
-        .replace(/-t\d+x\d+\./,"-t500x500.")
-        .replace(/100x100bb\.(jpg|png|webp)/i,`${size}x${size}bb.$1`)
-        .replace(/\/\d+x\d+bb\.(jpg|png|webp)/i,`/${size}x${size}bb.$1`);
-    }
+    async function resolveArtwork(track) {
+      const artist = track.artist || "";
+      const album = track.album || track.title || "";
+      const title = track.title || "";
+      const attempts = [];
 
-    async function fetchItunesArtwork(track){
-      try{
-        const term = `${track.artist || ""} ${track.title || ""}`.trim();
-        const res = await fetch(`https://itunes.apple.com/search?media=music&entity=song&limit=5&term=${encodeURIComponent(term)}`);
-        if(!res.ok) throw new Error("iTunes search failed");
-        const data = await res.json();
-        const results = Array.isArray(data.results) ? data.results : [];
-        let best = results.find(r => normalize(r.artistName).includes(normalize(track.artist)) && normalize(r.trackName).includes(normalize(track.title))) || results[0];
-        if(!best) return null;
-        return {
-          cover: upgradeImage(best.artworkUrl100 || best.artworkUrl60 || "", 1200),
-          album: best.collectionName || track.album || track.title,
-          title: best.trackName || track.title,
-          artist: best.artistName || track.artist
-        };
-      }catch(err){
-        return null;
+      if (artist && album) {
+        attempts.push(`${ARTWORK_ENDPOINT}/api/v1/artwork/search?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}`);
       }
-    }
-
-    async function fetchM8Artwork(track){
-      const tries = [];
-      if(track.artist && track.album) tries.push({artist:track.artist, album:track.album});
-      if(track.artist && track.title) tries.push({artist:track.artist, album:track.title});
-      for(const item of tries){
-        try{
-          const url = `${ARTWORK_ENDPOINT}/api/v1/artwork/search?artist=${encodeURIComponent(item.artist)}&album=${encodeURIComponent(item.album)}`;
-          const res = await fetch(url);
-          if(!res.ok) continue;
-          const data = await res.json();
-          const media = pickFirstUrl(data);
-          if(media) return {media, data};
-        }catch(err){}
-      }
-      return null;
-    }
-
-    async function updateArtwork(track){
-      els.artStatus.textContent = "Artwork loading...";
-      els.artBadge.textContent = "loading";
-      showVideoArtwork("");
-      const fallback = track.soundcloudArtwork || gradientData(track.title, track.artist);
-      track.cover = fallback;
-      updateTrackUi(track);
-
-      const apple = await fetchItunesArtwork(track);
-      if(apple && apple.cover){
-        track.cover = apple.cover;
-        track.album = track.album || apple.album;
-        updateTrackUi(track);
-        els.artStatus.textContent = `Apple cover loaded${apple.album ? `: ${apple.album}` : ""}`;
-        els.artBadge.textContent = "Apple cover";
+      if (artist && title && title !== album) {
+        attempts.push(`${ARTWORK_ENDPOINT}/api/v1/artwork/search?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(title)}`);
       }
 
-      const m8 = await fetchM8Artwork(track);
-      if(m8 && m8.media){
-        if(/\.(mp4|webm|m3u8)(\?|$)/i.test(m8.media)){
-          if(/\.m3u8(\?|$)/i.test(m8.media)){
-            els.artStatus.textContent = "M8 animated HLS found; using static cover in this one-file build.";
-            els.artBadge.textContent = "M8 HLS";
-          }else{
-            showVideoArtwork(m8.media);
-            els.artStatus.textContent = "M8 animated artwork loaded.";
-            els.artBadge.textContent = "M8 animated";
-          }
-        }else{
-          track.cover = m8.media;
-          updateTrackUi(track);
-          els.artStatus.textContent = "M8 artwork loaded.";
-          els.artBadge.textContent = "M8 cover";
+      for (const url of attempts) {
+        try {
+          const data = await fetchJson(url, 4500);
+          const img = pickImage(Array.isArray(data) ? data[0] : data);
+          if (img) return img;
+        } catch {}
+      }
+
+      try {
+        const term = `${artist} ${title}`.trim();
+        if (term) {
+          const data = await fetchJson(`https://itunes.apple.com/search?media=music&entity=song&limit=1&term=${encodeURIComponent(term)}`, 5000);
+          const item = data.results && data.results[0];
+          if (item && item.artworkUrl100) return item.artworkUrl100.replace(/100x100bb/, "1000x1000bb");
         }
-      }else if(!apple){
-        els.artStatus.textContent = track.soundcloudArtwork ? "Using SoundCloud artwork." : "Using generated cover.";
-        els.artBadge.textContent = track.soundcloudArtwork ? "SoundCloud" : "cover";
+      } catch {}
+
+      return track.artwork || fallbackCover(track);
+    }
+
+    function renderResults(list) {
+      els.results.innerHTML = "";
+      if (!list.length) {
+        els.results.innerHTML = `<div class="empty">No results yet. Paste a YouTube song URL, or add a YouTube Data API key inside this file for real search.</div>`;
+        return;
+      }
+      list.forEach((track, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "result" + (state.currentTrack && state.currentTrack.id === track.id ? " active" : "");
+        btn.innerHTML = `
+          <div class="thumb" style="background-image:url('${escapeAttr(track.artwork || fallbackCover(track))}')"></div>
+          <div style="min-width:0">
+            <div class="r-title">${escapeHtml(track.title)}</div>
+            <div class="r-artist">${escapeHtml(track.artist || "Unknown Artist")}</div>
+          </div>
+          <div class="r-meta">${track.source === "youtube" ? "YouTube" : "Track"}</div>
+        `;
+        btn.addEventListener("click", () => {
+          const existing = state.queue.findIndex(t => t.id === track.id);
+          if (existing === -1) {
+            state.queue.unshift(track);
+            loadTrack(0, true);
+          } else {
+            loadTrack(existing, true);
+          }
+        });
+        els.results.appendChild(btn);
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s ?? "").replace(/[&<>"']/g, ch => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[ch]));
+    }
+    function escapeAttr(s) {
+      return String(s ?? "").replace(/'/g, "%27").replace(/"/g, "%22");
+    }
+
+    async function youtubeSearch(q) {
+      if (!YOUTUBE_API_KEY) {
+        const lower = q.toLowerCase();
+        return DEMO_TRACKS.filter(t => (`${t.title} ${t.artist} ${t.album}`.toLowerCase()).includes(lower));
+      }
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoCategoryId=10&maxResults=12&q=${encodeURIComponent(q)}&key=${encodeURIComponent(YOUTUBE_API_KEY)}`;
+      const data = await fetchJson(url, 8000);
+      return (data.items || []).map((item) => {
+        const cleaned = cleanTitle(item.snippet.title, item.snippet.channelTitle);
+        const id = item.id.videoId;
+        return {
+          id: "yt-" + id,
+          source: "youtube",
+          youtubeId: id,
+          title: cleaned.title,
+          artist: cleaned.artist,
+          album: cleaned.title,
+          url: `https://www.youtube.com/watch?v=${id}`,
+          artwork: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+          duration: 0
+        };
+      });
+    }
+
+    async function runSearch() {
+      const q = els.searchInput.value.trim();
+      if (!q) {
+        renderResults(state.queue);
+        return;
+      }
+
+      const ytId = extractYouTubeId(q);
+      if (ytId) {
+        setStatus("Resolving URL", "");
+        const track = await makeTrackFromYouTubeUrl(q);
+        if (!track) {
+          toast("That does not look like a YouTube URL.");
+          setStatus("Bad URL", "bad");
+          return;
+        }
+        const art = await resolveArtwork(track);
+        track.artwork = art;
+        renderResults([track, ...state.queue.filter(t => t.id !== track.id)]);
+        setStatus("URL ready", "ready");
+        return;
+      }
+
+      setStatus("Searching", "");
+      try {
+        const list = await youtubeSearch(q);
+        renderResults(list);
+        setStatus(list.length ? "Results ready" : "No results", list.length ? "ready" : "");
+      } catch (err) {
+        console.error(err);
+        renderResults([]);
+        setStatus("Search failed", "bad");
+        toast("Search failed. Add a valid YouTube API key or paste a direct URL.");
       }
     }
 
-    function parseLrc(lrc, duration=0){
+    function onYouTubeIframeAPIReady() {
+      state.player = new YT.Player("youtube-player", {
+        height: "216",
+        width: "420",
+        playerVars: {
+          playsinline: 1,
+          controls: 1,
+          rel: 0,
+          modestbranding: 1,
+          origin: location.origin && location.origin !== "null" ? location.origin : undefined
+        },
+        events: {
+          onReady: () => {
+            state.ready = true;
+            setStatus("Engine ready", "ready");
+            state.player.setVolume(Number(els.volume.value) || 80);
+          },
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.PLAYING) {
+              state.playing = true;
+              setPlayIcon(true);
+              setStatus("Playing", "ready");
+            } else if (e.data === YT.PlayerState.PAUSED) {
+              state.playing = false;
+              setPlayIcon(false);
+              setStatus("Paused", "");
+            } else if (e.data === YT.PlayerState.ENDED) {
+              state.playing = false;
+              setPlayIcon(false);
+              nextTrack();
+            } else if (e.data === YT.PlayerState.BUFFERING) {
+              setStatus("Buffering", "");
+            }
+          },
+          onError: (e) => {
+            console.warn("YT error", e.data);
+            setStatus("Playback blocked", "bad");
+            toast("YouTube blocked this video here. Try Show engine, a different upload, or another official music video.");
+            els.engine.classList.add("on");
+          }
+        }
+      });
+      tick();
+      renderResults(state.queue);
+    }
+    window.onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+
+    async function loadTrack(index, autoplay = false) {
+      const track = state.queue[index];
+      if (!track) return;
+      state.currentIndex = index;
+      state.currentTrack = track;
+      state.duration = track.duration || 0;
+      state.position = 0;
+      state.activeLyric = -1;
+      state.selectedLyric = -1;
+      state.lyrics = [];
+
+      updateSongUI(track);
+      renderLyrics([{ start: 0, end: 9999, text: "Loading lyrics...", words: [] }]);
+      renderResults(state.queue);
+
+      if (!state.ready || !state.player) {
+        setStatus("Engine loading", "");
+        toast("YouTube engine is still loading. Try play again in a second.");
+        return;
+      }
+
+      setStatus("Loading video", "");
+      try {
+        state.player.loadVideoById({ videoId: track.youtubeId, startSeconds: 0 });
+        if (!autoplay) state.player.pauseVideo();
+        setTimeout(() => {
+          state.duration = Number(state.player.getDuration()) || track.duration || 0;
+          els.durTime.textContent = fmt(state.duration);
+        }, 1200);
+
+        const artwork = await resolveArtwork(track);
+        track.artwork = artwork;
+        updateSongUI(track);
+
+        await loadLyricsForTrack(track);
+      } catch (err) {
+        console.error(err);
+        setStatus("Load failed", "bad");
+      }
+    }
+
+    function updateSongUI(track) {
+      const art = track.artwork || fallbackCover(track);
+      els.songTitle.textContent = track.title || "Unknown Track";
+      els.songArtist.textContent = track.artist || "Unknown Artist";
+      els.playerTitle.textContent = track.title || "Unknown Track";
+      els.playerArtist.textContent = track.artist || "Unknown Artist";
+      [els.cover, els.playerCover].forEach(el => el.style.backgroundImage = `url("${art}")`);
+      els.bgCover.style.backgroundImage = `url("${art}")`;
+      renderResults(state.queue);
+    }
+
+    function setPlayIcon(playing) {
+      els.playIcon.innerHTML = playing
+        ? `<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>`
+        : `<path d="M8 5v14l11-7z"/>`;
+    }
+
+    function togglePlay() {
+      if (!state.currentTrack) {
+        if (state.queue.length) loadTrack(0, true);
+        return;
+      }
+      if (!state.ready || !state.player) {
+        toast("The YouTube engine is still loading.");
+        return;
+      }
+      try {
+        const ytState = state.player.getPlayerState();
+        if (ytState === YT.PlayerState.PLAYING) state.player.pauseVideo();
+        else state.player.playVideo();
+      } catch (err) {
+        console.error(err);
+        toast("Playback failed. Open the engine and press play once.");
+        els.engine.classList.add("on");
+      }
+    }
+
+    function nextTrack() {
+      if (!state.queue.length) return;
+      const next = (state.currentIndex + 1) % state.queue.length;
+      loadTrack(next, true);
+    }
+    function prevTrack() {
+      if (!state.queue.length) return;
+      const prev = (state.currentIndex - 1 + state.queue.length) % state.queue.length;
+      loadTrack(prev, true);
+    }
+
+    function tick() {
+      if (state.player && state.ready) {
+        try {
+          state.position = Number(state.player.getCurrentTime()) || 0;
+          state.duration = Number(state.player.getDuration()) || state.duration || 0;
+        } catch {}
+      }
+      els.curTime.textContent = fmt(state.position);
+      els.durTime.textContent = fmt(state.duration);
+      els.syncTime.textContent = fmt(state.position, true);
+      if (!els.progress.matches(":active")) {
+        els.progress.value = state.duration ? Math.round((state.position / state.duration) * 1000) : 0;
+      }
+      updateActiveLyric(state.position);
+      state.raf = requestAnimationFrame(tick);
+    }
+
+    function parseLrc(lrc) {
+      const rows = String(lrc || "").split(/\r?\n/);
       const out = [];
-      const lines = String(lrc || "").split(/\r?\n/);
-      for(const raw of lines){
-        const matches = [...raw.matchAll(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g)];
-        if(!matches.length) continue;
-        const text = raw.replace(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g,"").trim();
-        if(!text) continue;
-        for(const m of matches){
-          const minutes = Number(m[1]);
-          const seconds = Number(m[2]);
-          const fraction = m[3] ? Number((m[3] + "00").slice(0,3)) / 1000 : 0;
-          out.push({start:minutes*60 + seconds + fraction, end:0, text, words:[]});
+      for (const row of rows) {
+        const matches = [...row.matchAll(/\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]/g)];
+        if (!matches.length) continue;
+        const text = row.replace(/\[[^\]]+\]/g, "").trim();
+        for (const m of matches) {
+          const min = Number(m[1]);
+          const sec = Number(m[2]);
+          const frac = m[3] ? Number(("0." + m[3].padEnd(3, "0").slice(0, 3))) : 0;
+          out.push({ start: min * 60 + sec + frac, end: 0, text, words: [] });
         }
       }
       out.sort((a,b) => a.start - b.start);
-      for(let i=0;i<out.length;i++) out[i].end = out[i+1]?.start ?? (duration || out[i].start + 4);
+      out.forEach((line, i) => {
+        line.end = out[i + 1] ? Math.max(line.start + .15, out[i + 1].start - .05) : line.start + 4;
+      });
       return out;
     }
 
-    function timedPlainLyrics(plain, duration=0){
-      const lines = String(plain || "").split(/\r?\n/).map(x => x.trim()).filter(Boolean);
-      if(!lines.length) return [];
-      const total = duration || Math.max(lines.length * 4, 60);
-      const gap = total / Math.max(lines.length,1);
-      return lines.map((text,i) => ({start:i*gap,end:(i+1)*gap,text,words:[]}));
-    }
-
-    function demoLyrics(track){
-      const lines = [
-        `Now playing ${track.title || "this track"}`,
-        "SoundCloud playback is running under Relay Music",
-        "LRCLIB lyrics load automatically when a match exists",
-        "This fallback keeps the lyric screen testable",
-        "Open Sync Mode to set better timestamps",
-        "Nudge each line until it feels perfect",
-        "Export the timing JSON when the sync is clean"
-      ];
-      const dur = state.duration || track.duration || 120;
-      return lines.map((text,i) => ({start:i * Math.max(4, dur / (lines.length + 2)), end:(i+1)*Math.max(4, dur / (lines.length + 2)), text, words:[]}));
-    }
-
-    async function fetchLyrics(track){
-      els.lyricsStatus.textContent = "Lyrics searching LRCLIB...";
-      state.lyricSource = "searching LRCLIB";
-      renderLyrics();
-      const title = stripJunkTitle(track.title);
-      const artist = cleanText(track.artist);
+    async function loadLyricsForTrack(track) {
+      setStatus("Finding lyrics", "");
+      const title = track.title || "";
+      const artist = track.artist || "";
       const duration = Math.round(state.duration || track.duration || 0);
       const urls = [
-        `${LRCLIB_BASE}/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`,
+        `${LRCLIB_BASE}/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}${duration ? `&duration=${duration}` : ""}`,
+        `${LRCLIB_BASE}/search?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`,
         `${LRCLIB_BASE}/search?q=${encodeURIComponent(`${artist} ${title}`)}`
       ];
-      if(duration) urls.unshift(`${LRCLIB_BASE}/get?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}&duration=${duration}`);
 
-      for(const url of urls){
-        try{
-          const res = await fetch(url, {headers:{"Accept":"application/json"}});
-          if(!res.ok) continue;
-          const data = await res.json();
-          const list = Array.isArray(data) ? data : [data];
-          const ranked = list
-            .filter(Boolean)
-            .map(item => ({item, score:scoreLyricsMatch(item, title, artist, duration)}))
-            .sort((a,b) => b.score - a.score)
-            .map(x => x.item);
-          const synced = ranked.find(x => x.syncedLyrics && x.syncedLyrics.trim());
-          if(synced){
-            const parsed = parseLrc(synced.syncedLyrics, duration);
-            if(parsed.length){
-              state.lyrics = parsed;
-              state.lyricSource = "LRCLIB synced";
-              els.lyricsStatus.textContent = `Lyrics loaded from LRCLIB (${parsed.length} lines).`;
-              renderLyrics();
+      for (const url of urls) {
+        try {
+          const data = await fetchJson(url, 7000);
+          const item = Array.isArray(data) ? pickBestLyric(data, title, artist, duration) : data;
+          const synced = item && (item.syncedLyrics || item.synced_lyrics);
+          const plain = item && (item.plainLyrics || item.plain_lyrics);
+          if (synced) {
+            const lines = parseLrc(synced);
+            if (lines.length) {
+              state.lyrics = lines;
+              renderLyrics(lines);
               renderSyncList();
+              setStatus("Lyrics synced", "ready");
               return;
             }
           }
-          const plain = ranked.find(x => x.plainLyrics && x.plainLyrics.trim());
-          if(plain){
-            const parsed = timedPlainLyrics(plain.plainLyrics, duration);
-            if(parsed.length){
-              state.lyrics = parsed;
-              state.lyricSource = "LRCLIB plain timed by Relay";
-              els.lyricsStatus.textContent = `Plain lyrics loaded; timing is estimated.`;
-              renderLyrics();
-              renderSyncList();
-              return;
-            }
+          if (plain) {
+            const lines = plain.split(/\r?\n/).filter(Boolean).slice(0, 80).map((text, i) => ({
+              start: i * 3.2, end: i * 3.2 + 3, text, words: []
+            }));
+            state.lyrics = lines;
+            renderLyrics(lines, true);
+            renderSyncList();
+            setStatus("Plain lyrics", "");
+            toast("Only plain lyrics found. Sync Mode can fix timing.");
+            return;
           }
-        }catch(err){}
+        } catch (err) {}
       }
-      state.lyrics = demoLyrics(track);
-      state.lyricSource = "demo sync fallback";
-      els.lyricsStatus.textContent = "No synced lyrics found; using demo fallback.";
-      renderLyrics();
+
+      state.lyrics = [
+        { start: 0, end: 9999, text: "No synced lyrics found for this track.", words: [] },
+        { start: 0, end: 9999, text: "Turn on Sync Mode and paste LRC to test/edit timings.", words: [] }
+      ];
+      renderLyrics(state.lyrics, true);
       renderSyncList();
+      setStatus("No lyrics", "");
     }
 
-    function scoreLyricsMatch(item, title, artist, duration){
-      let score = 0;
-      const lt = normalize(item.trackName || item.name || "");
-      const la = normalize(item.artistName || "");
-      const t = normalize(title);
-      const a = normalize(artist);
-      if(lt === t) score += 8; else if(lt.includes(t) || t.includes(lt)) score += 4;
-      if(la === a) score += 8; else if(la.includes(a) || a.includes(la)) score += 4;
-      if(duration && item.duration){
-        const diff = Math.abs(Number(item.duration) - duration);
-        if(diff <= 2) score += 5; else if(diff <= 7) score += 2;
-      }
-      if(item.syncedLyrics) score += 5;
-      return score;
+    function pickBestLyric(items, title, artist, duration) {
+      if (!items || !items.length) return null;
+      const clean = s => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      const ct = clean(title), ca = clean(artist);
+      return items
+        .map(item => {
+          let score = 0;
+          const it = clean(item.trackName || item.track_name);
+          const ia = clean(item.artistName || item.artist_name);
+          if (it === ct) score += 5;
+          if (ia === ca) score += 5;
+          if (item.syncedLyrics || item.synced_lyrics) score += 4;
+          if (duration && item.duration) score += Math.max(0, 3 - Math.abs(Number(item.duration) - duration) / 8);
+          return { item, score };
+        })
+        .sort((a,b) => b.score - a.score)[0].item;
     }
 
-    function renderLyrics(){
-      els.lyricSource.textContent = state.lyricSource || "no lyrics loaded";
-      if(!state.lyrics.length){
-        els.lyricsList.innerHTML = `<div class="empty">No lyrics loaded yet.</div>`;
+    function renderLyrics(lines, plain = false) {
+      els.lyricsScroll.innerHTML = "";
+      if (!lines.length) {
+        els.lyricsScroll.innerHTML = `<p class="lyric emptyline">No lyrics loaded.</p>`;
         return;
       }
-      els.lyricsList.innerHTML = state.lyrics.map((line,i) => `<div class="lyric-line" data-idx="${i}">${escapeHtml(line.text)}</div>`).join("");
-      [...els.lyricsList.querySelectorAll(".lyric-line")].forEach(node => {
-        node.addEventListener("click", () => {
-          const idx = Number(node.dataset.idx);
-          state.selectedLine = idx;
-          seekTo(state.lyrics[idx].start);
+      lines.forEach((line, i) => {
+        const p = document.createElement("p");
+        p.className = "lyric" + (plain ? " emptyline" : "");
+        p.dataset.index = i;
+        p.textContent = line.text || "♪";
+        p.addEventListener("click", () => {
+          state.selectedLyric = i;
+          if (line.start != null && state.player && state.ready) {
+            state.player.seekTo(Math.max(0, line.start), true);
+          }
           renderSyncList();
         });
-      });
-      updateLyricActive(true);
-    }
-
-    function escapeHtml(s){return String(s).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));}
-
-    function updateLyricActive(force=false){
-      if(!state.lyrics.length) return;
-      const t = state.position;
-      let idx = state.lyrics.findIndex(line => t >= line.start && t < line.end);
-      if(idx < 0){
-        for(let i=state.lyrics.length-1;i>=0;i--){ if(t >= state.lyrics[i].start){ idx = i; break; } }
-      }
-      if(idx < 0) idx = 0;
-      if(!force && idx === state.activeLyric) return;
-      state.activeLyric = idx;
-      const nodes = [...els.lyricsList.querySelectorAll(".lyric-line")];
-      nodes.forEach((node,i) => {
-        node.classList.toggle("active", i === idx);
-        node.classList.toggle("past", i < idx);
-      });
-      const active = nodes[idx];
-      if(active){
-        const top = active.offsetTop - els.lyricsList.clientHeight * 0.36;
-        els.lyricsList.scrollTo({top:Math.max(0,top), behavior:force ? "auto" : "smooth"});
-      }
-    }
-
-    function renderSyncList(){
-      if(!state.lyrics.length){ els.syncList.innerHTML = `<div class="empty">No lyric lines yet.</div>`; return; }
-      els.syncList.innerHTML = state.lyrics.map((line,i) => `
-        <button class="sync-line ${i === state.selectedLine ? "active" : ""}" data-idx="${i}">
-          <span class="sync-time">${formatTime(line.start,true)}</span>
-          <span class="sync-text">${escapeHtml(line.text)}</span>
-        </button>`).join("");
-      [...els.syncList.querySelectorAll(".sync-line")].forEach(btn => {
-        btn.addEventListener("click", () => {
-          state.selectedLine = Number(btn.dataset.idx);
-          seekTo(state.lyrics[state.selectedLine].start);
-          renderSyncList();
-        });
+        els.lyricsScroll.appendChild(p);
       });
     }
 
-    function updateProgressUi(){
-      const dur = state.duration || 0;
-      const pos = state.position || 0;
-      els.currentTime.textContent = formatTime(pos);
-      els.durationTime.textContent = formatTime(dur);
-      els.syncReadout.textContent = formatTime(pos,true);
-      if(!state.suppressSeek){
-        const val = dur ? Math.min(1000, Math.max(0, (pos / dur) * 1000)) : 0;
-        els.progress.value = String(val);
-        els.progress.style.setProperty("--pct", `${val / 10}%`);
-      }
-    }
-
-    function renderResults(){
-      els.resultCount.textContent = `${state.filtered.length} ${state.filtered.length === 1 ? "track" : "tracks"}`;
-      if(!state.filtered.length){
-        els.results.innerHTML = `<div class="empty">No local/demo matches. Paste a full SoundCloud track link into the search bar or the URL box, then press Enter/Load. Full SoundCloud search needs a Relay backend endpoint.</div>`;
-        return;
-      }
-      els.results.innerHTML = state.filtered.map((track,idx) => {
-        const active = state.current && track.url === state.current.url;
-        const cover = track.cover || track.soundcloudArtwork || gradientData(track.title, track.artist);
-        return `<button class="track-row ${active ? "active" : ""}" data-idx="${idx}">
-          <img class="row-cover" src="${cover}" alt="">
-          <span style="min-width:0"><span class="row-title">${escapeHtml(track.title)}</span><span class="row-artist">${escapeHtml(track.artist || "SoundCloud")}</span></span>
-          <span class="row-tag">${escapeHtml(track.source || "SoundCloud")}</span>
-        </button>`;
-      }).join("");
-      [...els.results.querySelectorAll(".track-row")].forEach(btn => {
-        btn.addEventListener("click", () => {
-          const track = state.filtered[Number(btn.dataset.idx)];
-          loadTrack(track, true);
-        });
-      });
-    }
-
-    function filterResults(query){
-      const q = cleanText(query);
-      if(isSoundCloudUrl(q)){
-        const pasted = makePastedTrack(q);
-        state.filtered = [pasted, ...state.tracks.filter(x => x.url !== q)];
-        renderResults();
-        return;
-      }
-      if(!q){ state.filtered = [...state.tracks]; renderResults(); return; }
-      const n = normalize(q);
-      state.filtered = state.tracks.filter(track => normalize(`${track.title} ${track.artist} ${track.album || ""}`).includes(n));
-      renderResults();
-    }
-
-    function makePastedTrack(url){
-      return {
-        title:"Pasted SoundCloud track",
-        artist:"SoundCloud",
-        album:"",
-        url:cleanText(url),
-        duration:0,
-        source:"Pasted URL"
-      };
-    }
-
-    const adapter = {
-      widget:null,
-      readyResolvers:[],
-      init(){
-        els.scWidget.src = scPlayerUrl(DEMO_TRACKS[0].url);
-        const start = Date.now();
-        const wait = () => {
-          if(window.SC && window.SC.Widget){
-            this.widget = SC.Widget(els.scWidget);
-            this.bind();
-            setStatus("SoundCloud engine loading", "warn");
-          }else if(Date.now() - start > 9000){
-            setStatus("SoundCloud API blocked or unavailable", "bad");
-          }else{
-            setTimeout(wait, 120);
-          }
-        };
-        wait();
-      },
-      bind(){
-        const E = SC.Widget.Events;
-        this.widget.bind(E.READY, () => {
-          state.widgetReady = true;
-          setStatus("SoundCloud engine ready", "ready");
-          this.pullSound();
-          const resolvers = this.readyResolvers.splice(0);
-          resolvers.forEach(fn => fn());
-        });
-        this.widget.bind(E.PLAY, () => { state.playing = true; setPlayIcon(); this.pullSound(); });
-        this.widget.bind(E.PAUSE, () => { state.playing = false; setPlayIcon(); });
-        this.widget.bind(E.FINISH, () => { state.playing = false; setPlayIcon(); nextTrack(); });
-        this.widget.bind(E.ERROR, () => { setStatus("SoundCloud could not load this track", "bad"); });
-        this.widget.bind(E.PLAY_PROGRESS, (e) => {
-          if(e && typeof e.currentPosition === "number") state.position = e.currentPosition / 1000;
-          updateProgressUi();
-          updateLyricActive();
-        });
-      },
-      onceReady(){
-        return new Promise(resolve => this.readyResolvers.push(resolve));
-      },
-      load(url, autoplay=false){
-        return new Promise((resolve) => {
-          setStatus("Loading SoundCloud track", "warn");
-          this.readyResolvers.push(() => {
-            this.pullSound();
-            if(autoplay) setTimeout(() => this.play(), 180);
-            resolve();
-          });
-          this.widget.load(url, {
-            auto_play: autoplay,
-            hide_related: true,
-            show_comments: false,
-            show_user: false,
-            show_reposts: false,
-            show_teaser: false,
-            visual: false,
-            buying: false,
-            sharing: false,
-            download: false
-          });
-        });
-      },
-      pullSound(){
-        if(!this.widget) return;
-        this.widget.getCurrentSound((sound) => {
-          if(!sound) return;
-          const split = splitTitleArtist(sound.title, sound.user?.username || state.current?.artist || "SoundCloud");
-          if(state.current){
-            state.current.title = split.title || state.current.title;
-            state.current.artist = split.artist || state.current.artist;
-            state.current.duration = sound.duration ? sound.duration / 1000 : state.current.duration;
-            state.current.soundcloudArtwork = upgradeImage(sound.artwork_url || sound.user?.avatar_url || state.current.soundcloudArtwork || "");
-            state.current.url = sound.permalink_url || state.current.url;
-            state.duration = state.current.duration || state.duration;
-            updateTrackUi(state.current);
-          }
-        });
-        this.widget.getDuration((ms) => {
-          if(ms){ state.duration = ms/1000; if(state.current) state.current.duration = state.duration; updateProgressUi(); }
-        });
-        this.widget.getVolume((vol) => { if(typeof vol === "number") els.volume.value = String(vol); });
-      },
-      play(){ if(this.widget) this.widget.play(); },
-      pause(){ if(this.widget) this.widget.pause(); },
-      toggle(){ state.playing ? this.pause() : this.play(); },
-      seek(seconds){ if(this.widget) this.widget.seekTo(Math.max(0,seconds) * 1000); },
-      setVolume(v){ if(this.widget) this.widget.setVolume(Number(v)); }
-    };
-
-    async function loadTrack(inputTrack, autoplay=false){
-      let track = {...inputTrack};
-      state.current = track;
-      state.position = 0;
-      state.duration = track.duration || 0;
-      state.activeLyric = -1;
-      state.selectedLine = 0;
-      state.lyrics = [];
-      state.lyricSource = "loading lyrics";
-      state.currentIndex = Math.max(0, state.tracks.findIndex(x => x.url === track.url));
-      updateTrackUi(track);
-      renderLyrics();
-      renderSyncList();
-      updateProgressUi();
-
-      if(track.source === "Pasted URL"){
-        const meta = await getOembed(track.url);
-        if(meta){
-          const split = splitTitleArtist(meta.title || track.title, meta.author_name || track.artist);
-          track.title = split.title;
-          track.artist = split.artist;
-          track.soundcloudArtwork = upgradeImage(meta.thumbnail_url || "");
-          state.current = track;
-          updateTrackUi(track);
+    function updateActiveLyric(time) {
+      if (!state.lyrics.length) return;
+      let idx = -1;
+      for (let i = 0; i < state.lyrics.length; i++) {
+        const line = state.lyrics[i];
+        if (time >= line.start && time < (line.end || line.start + 4)) {
+          idx = i; break;
         }
       }
-
-      if(!state.tracks.some(x => x.url === track.url)){
-        state.tracks.unshift(track);
-        filterResults(els.searchInput.value);
+      if (idx === -1) {
+        for (let i = state.lyrics.length - 1; i >= 0; i--) {
+          if (time >= state.lyrics[i].start) { idx = i; break; }
+        }
       }
-
-      if(adapter.widget){
-        await adapter.load(track.url, autoplay);
-      }else{
-        setStatus("SoundCloud engine still starting", "warn");
+      if (idx === state.activeLyric) return;
+      state.activeLyric = idx;
+      const children = [...els.lyricsScroll.querySelectorAll(".lyric")];
+      children.forEach((el, i) => {
+        el.classList.toggle("active", i === idx);
+        el.classList.toggle("near", Math.abs(i - idx) === 1);
+      });
+      if (idx >= 0 && children[idx]) {
+        children[idx].scrollIntoView({ block: "center", behavior: "smooth" });
       }
-      adapter.pullSound();
-      updateArtwork(track);
-      fetchLyrics(track);
     }
 
-    function seekTo(seconds){
-      state.position = Math.max(0, seconds || 0);
-      adapter.seek(state.position);
-      updateProgressUi();
-      updateLyricActive(true);
-    }
-
-    function prevTrack(){
-      if(!state.tracks.length) return;
-      const idx = (state.currentIndex - 1 + state.tracks.length) % state.tracks.length;
-      loadTrack(state.tracks[idx], true);
-    }
-
-    function nextTrack(){
-      if(!state.tracks.length) return;
-      const idx = (state.currentIndex + 1) % state.tracks.length;
-      loadTrack(state.tracks[idx], true);
-    }
-
-    function nudgeSelected(delta){
-      if(!state.lyrics.length) return;
-      const idx = state.selectedLine;
-      state.lyrics[idx].start = Math.max(0, state.lyrics[idx].start + delta);
-      state.lyrics.sort((a,b) => a.start - b.start);
-      for(let i=0;i<state.lyrics.length;i++) state.lyrics[i].end = state.lyrics[i+1]?.start ?? (state.duration || state.lyrics[i].start + 4);
-      state.selectedLine = Math.min(idx, state.lyrics.length - 1);
-      renderLyrics();
-      renderSyncList();
-    }
-
-    function exportSync(){
-      const payload = {
-        title: state.current?.title || "",
-        artist: state.current?.artist || "",
-        album: state.current?.album || "",
-        sourceUrl: state.current?.url || "",
-        duration: Number((state.duration || 0).toFixed(3)),
-        source: state.lyricSource,
-        lines: state.lyrics.map(line => ({
-          start:Number(line.start.toFixed(3)),
-          end:Number(line.end.toFixed(3)),
-          text:line.text,
-          words:line.words || []
-        }))
-      };
-      els.exportText.value = JSON.stringify(payload,null,2);
-      els.exportBox.style.display = "block";
-      els.exportText.select();
-      navigator.clipboard?.writeText(els.exportText.value).catch(() => {});
-    }
-
-    function toggleSync(force){
-      state.syncMode = typeof force === "boolean" ? force : !state.syncMode;
-      els.syncPanel.classList.toggle("open", state.syncMode);
-      if(state.syncMode){ renderSyncList(); setTimeout(() => $("syncPanel").scrollIntoView?.({block:"nearest"}), 50); }
-    }
-
-    function bindEvents(){
-      els.searchInput.addEventListener("input", () => filterResults(els.searchInput.value));
-      els.searchInput.addEventListener("keydown", (e) => {
-        if(e.key !== "Enter") return;
-        const q = cleanText(els.searchInput.value);
-        if(isSoundCloudUrl(q)) loadTrack(makePastedTrack(q), true);
-        else if(state.filtered[0]) loadTrack(state.filtered[0], true);
-      });
-      els.urlInput.addEventListener("keydown", (e) => { if(e.key === "Enter") els.loadUrlBtn.click(); });
-      els.loadUrlBtn.addEventListener("click", () => {
-        const url = cleanText(els.urlInput.value);
-        if(!isSoundCloudUrl(url)){ setStatus("Paste a full SoundCloud track URL", "bad"); return; }
-        els.searchInput.value = url;
-        filterResults(url);
-        loadTrack(makePastedTrack(url), true);
-      });
-      els.playBtn.addEventListener("click", () => adapter.toggle());
-      els.prevBtn.addEventListener("click", prevTrack);
-      els.nextBtn.addEventListener("click", nextTrack);
-      els.volume.addEventListener("input", () => {
-        els.volume.style.setProperty("--pct", `${els.volume.value}%`);
-        adapter.setVolume(els.volume.value);
-      });
-      els.progress.addEventListener("input", () => {
-        state.suppressSeek = true;
-        const pct = Number(els.progress.value) / 1000;
-        els.progress.style.setProperty("--pct", `${pct * 100}%`);
-        els.currentTime.textContent = formatTime((state.duration || 0) * pct);
-      });
-      els.progress.addEventListener("change", () => {
-        const pct = Number(els.progress.value) / 1000;
-        state.suppressSeek = false;
-        seekTo((state.duration || 0) * pct);
-      });
-      els.lyricsBtn.addEventListener("click", () => els.lyricsList.scrollTo({top:0,behavior:"smooth"}));
-      els.syncBtn.addEventListener("click", () => toggleSync());
-      els.refreshLyricsBtn.addEventListener("click", () => state.current && fetchLyrics(state.current));
-      els.showEngineBtn.addEventListener("click", () => {
-        state.engineVisible = !state.engineVisible;
-        els.scEngine.style.position = state.engineVisible ? "fixed" : "absolute";
-        els.scEngine.style.left = state.engineVisible ? "18px" : "-9999px";
-        els.scEngine.style.top = state.engineVisible ? "auto" : "-9999px";
-        els.scEngine.style.right = state.engineVisible ? "18px" : "auto";
-        els.scEngine.style.bottom = state.engineVisible ? "128px" : "auto";
-        els.scEngine.style.width = state.engineVisible ? "420px" : "360px";
-        els.scEngine.style.height = state.engineVisible ? "166px" : "166px";
-        els.scEngine.style.opacity = state.engineVisible ? "1" : ".01";
-        els.scEngine.style.zIndex = state.engineVisible ? "99" : "auto";
-        els.scEngine.style.pointerEvents = state.engineVisible ? "auto" : "none";
-        els.showEngineBtn.textContent = state.engineVisible ? "Hide engine" : "Show engine";
-      });
-      els.setLineBtn.addEventListener("click", () => {
-        if(!state.lyrics.length) return;
-        state.lyrics[state.selectedLine].start = state.position;
-        for(let i=0;i<state.lyrics.length;i++) state.lyrics[i].end = state.lyrics[i+1]?.start ?? (state.duration || state.lyrics[i].start + 4);
-        renderLyrics();
-        renderSyncList();
-      });
-      els.nudgeBackBtn.addEventListener("click", () => nudgeSelected(-0.05));
-      els.nudgeForwardBtn.addEventListener("click", () => nudgeSelected(0.05));
-      els.exportBtn.addEventListener("click", exportSync);
-      document.querySelectorAll(".nav button").forEach(btn => {
+    function renderSyncList() {
+      els.syncList.innerHTML = "";
+      state.lyrics.forEach((line, i) => {
+        const btn = document.createElement("button");
+        btn.className = "sync-line" + (state.selectedLyric === i ? " sel" : "");
+        btn.innerHTML = `<time>${fmt(line.start, true)}</time><span>${escapeHtml(line.text || "♪")}</span>`;
         btn.addEventListener("click", () => {
-          document.querySelectorAll(".nav button").forEach(x => x.classList.remove("active"));
-          btn.classList.add("active");
-          if(btn.dataset.jump === "sync") toggleSync(true);
-          if(btn.dataset.jump === "lyrics") els.lyricsList.scrollTo({top:0,behavior:"smooth"});
-          if(btn.dataset.jump === "search") els.searchInput.focus();
+          state.selectedLyric = i;
+          renderSyncList();
         });
+        els.syncList.appendChild(btn);
       });
     }
 
-    function rafLoop(){
-      if(adapter.widget && state.widgetReady){
-        adapter.widget.getPosition((ms) => {
-          if(typeof ms === "number"){
-            state.position = ms / 1000;
-            updateProgressUi();
-            updateLyricActive();
-          }
-        });
+    function toggleSync() {
+      state.syncMode = !state.syncMode;
+      els.syncPanel.classList.toggle("on", state.syncMode);
+      els.syncList.classList.toggle("on", state.syncMode);
+      if (state.syncMode) renderSyncList();
+      toast(state.syncMode ? "Sync Mode enabled" : "Sync Mode disabled");
+    }
+
+    function mutateSelected(delta = 0, setNow = false) {
+      const i = state.selectedLyric >= 0 ? state.selectedLyric : state.activeLyric;
+      if (i < 0 || !state.lyrics[i]) {
+        toast("Select a lyric line first.");
+        return;
       }
-      requestAnimationFrame(() => setTimeout(rafLoop, 120));
+      state.selectedLyric = i;
+      if (setNow) state.lyrics[i].start = Math.max(0, state.position);
+      else state.lyrics[i].start = Math.max(0, state.lyrics[i].start + delta);
+      state.lyrics.sort((a,b) => a.start - b.start);
+      state.lyrics.forEach((line, idx) => line.end = state.lyrics[idx + 1] ? Math.max(line.start + .15, state.lyrics[idx + 1].start - .05) : line.start + 4);
+      renderLyrics(state.lyrics);
+      renderSyncList();
+      updateActiveLyric(state.position);
     }
 
-    function init(){
-      const initialCover = gradientData("Relay Music","SoundCloud");
-      els.heroArt.src = initialCover;
-      els.miniCover.src = initialCover;
-      els.coverBg.style.setProperty("--bg-cover", `url("${initialCover}")`);
-      els.volume.style.setProperty("--pct", "85%");
-      bindEvents();
-      renderResults();
-      renderLyrics();
-      adapter.init();
-      setTimeout(() => loadTrack(DEMO_TRACKS[0], false), 800);
-      rafLoop();
+    function makeWordTiming() {
+      const i = state.selectedLyric >= 0 ? state.selectedLyric : state.activeLyric;
+      if (i < 0 || !state.lyrics[i]) {
+        toast("Select a lyric line first.");
+        return;
+      }
+      const line = state.lyrics[i];
+      const words = String(line.text || "").split(/\s+/).filter(Boolean);
+      if (!words.length) return;
+      const span = Math.max(.4, (line.end || line.start + 3) - line.start);
+      line.words = words.map((text, n) => ({
+        text,
+        start: line.start + (span * n / words.length),
+        end: line.start + (span * (n + 1) / words.length)
+      }));
+      toast("Basic word timing generated for selected line.");
     }
 
-    init();
+    function exportSync() {
+      const payload = {
+        provider: "youtube",
+        title: state.currentTrack?.title || "",
+        artist: state.currentTrack?.artist || "",
+        album: state.currentTrack?.album || "",
+        duration: state.duration || state.currentTrack?.duration || 0,
+        sourceUrl: state.currentTrack?.url || "",
+        videoId: state.currentTrack?.youtubeId || "",
+        lines: state.lyrics
+      };
+      const text = JSON.stringify(payload, null, 2);
+      navigator.clipboard?.writeText(text).then(
+        () => toast("Sync JSON copied."),
+        () => {
+          const w = window.open("", "_blank");
+          if (w) w.document.write(`<pre>${escapeHtml(text)}</pre>`);
+        }
+      );
+    }
+
+    els.searchBtn.addEventListener("click", runSearch);
+    els.searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") runSearch(); });
+    els.searchInput.addEventListener("input", debounce(() => {
+      const val = els.searchInput.value.trim();
+      if (!val) renderResults(state.queue);
+    }, 250));
+
+    els.playBtn.addEventListener("click", togglePlay);
+    els.nextBtn.addEventListener("click", nextTrack);
+    els.prevBtn.addEventListener("click", prevTrack);
+    els.progress.addEventListener("input", () => {
+      const target = state.duration ? (Number(els.progress.value) / 1000) * state.duration : 0;
+      els.curTime.textContent = fmt(target);
+    });
+    els.progress.addEventListener("change", () => {
+      if (!state.player || !state.ready || !state.duration) return;
+      const target = (Number(els.progress.value) / 1000) * state.duration;
+      state.player.seekTo(target, true);
+    });
+    els.volume.addEventListener("input", () => {
+      if (state.player && state.ready) state.player.setVolume(Number(els.volume.value) || 0);
+    });
+
+    els.engineBtn.addEventListener("click", () => els.engine.classList.toggle("on"));
+    $("engineToggleNav").addEventListener("click", () => els.engine.classList.toggle("on"));
+    els.closeEngine.addEventListener("click", () => els.engine.classList.remove("on"));
+    $("syncToggleNav").addEventListener("click", toggleSync);
+    els.setLineBtn.addEventListener("click", () => mutateSelected(0, true));
+    els.nudgeBackBtn.addEventListener("click", () => mutateSelected(-0.05, false));
+    els.nudgeForwardBtn.addEventListener("click", () => mutateSelected(0.05, false));
+    els.makeWordBtn.addEventListener("click", makeWordTiming);
+    els.exportBtn.addEventListener("click", exportSync);
+    els.pasteLrcBtn.addEventListener("click", () => {
+      els.importBox.classList.toggle("on");
+      els.applyLrcBtn.style.display = els.importBox.classList.contains("on") ? "inline-flex" : "none";
+    });
+    els.applyLrcBtn.addEventListener("click", () => {
+      const lines = parseLrc(els.importBox.value);
+      if (!lines.length) {
+        toast("No valid LRC timestamps found.");
+        return;
+      }
+      state.lyrics = lines;
+      state.selectedLyric = -1;
+      renderLyrics(lines);
+      renderSyncList();
+      setStatus("Custom LRC", "ready");
+      toast("Pasted LRC applied.");
+    });
+
+    document.querySelectorAll(".nav button[data-view]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".nav button[data-view]").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        if (btn.dataset.view === "search") els.searchColumn.classList.toggle("mobile-on");
+      });
+    });
+
+    renderResults(state.queue);
+    setStatus("Loading engine", "");
+
+    window.addEventListener("beforeunload", () => cancelAnimationFrame(state.raf));
   </script>
 </body>
 </html>
