@@ -1,2907 +1,1093 @@
 
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ghost | music</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #000000;
-  --surf: #1c1c1e;
-  --s2: #2c2c2e;
-  --s3: #3a3a3c;
-  --border: #38383a;
-  --ink: #ffffff;
-  --ink2: #b0b0b0;
-  --ink3: #6e6e73;
-  --pink: #fc3c6c;
-  --pink2: #e8355f;
-  --glow: rgba(252,60,108,.15);
-  --red: #ff453a;
-  --orange: #ff9f0a;
-  --r: 14px;
-  --rl: 20px;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;background:var(--bg)}
-body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--s3);border-radius:4px}
-
-.app{display:flex;height:100vh;padding:16px;gap:16px;overflow:hidden}
-
-.left{
-  display:flex;flex-direction:column;gap:16px;
-  width:340px;flex-shrink:0;
-}
-.cover-wrap{
-  flex:1;min-height:0;
-  background:var(--surf);border-radius:var(--rl);
-  display:flex;align-items:center;justify-content:center;
-  overflow:hidden;position:relative;
-}
-.cover-wrap .empty-cover{
-  display:flex;flex-direction:column;align-items:center;gap:12px;
-  color:var(--ink3);font-size:13px;
-}
-.idlewave{display:flex;align-items:flex-end;gap:3px;height:30px}
-.idlewave span{width:3.5px;background:var(--s3);border-radius:3px;animation:iw 2s ease-in-out infinite}
-.idlewave span:nth-child(1){height:8px;animation-delay:0s}
-.idlewave span:nth-child(2){height:16px;animation-delay:.18s}
-.idlewave span:nth-child(3){height:24px;animation-delay:.36s}
-.idlewave span:nth-child(4){height:12px;animation-delay:.54s}
-.idlewave span:nth-child(5){height:20px;animation-delay:.72s}
-@keyframes iw{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
-.cover-img{
-  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  display:none;
-}
-.cover-bg{
-  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  filter:blur(0px) saturate(1.5) brightness(.55);opacity:0;
-  transition:opacity .8s;pointer-events:none;
-}
-.cover-bg.on{opacity:1}
-.cover-wrap::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(to bottom,
-    rgba(0,0,0,0.08) 0%,
-    rgba(0,0,0,0.18) 60%,
-    rgba(0,0,0,0.62) 100%
-  );
-  pointer-events:none;z-index:1;border-radius:var(--rl);
-}
-.cover-art{
-  width:62%;aspect-ratio:1;border-radius:var(--r);overflow:hidden;
-  position:relative;z-index:2;
-  box-shadow:0 12px 48px rgba(0,0,0,.7);
-  display:none;
-}
-.cover-art img{width:100%;height:100%;object-fit:cover;display:block}
-.cover-art.playing{}
-.cover-info{
-  position:absolute;bottom:20px;left:20px;right:20px;z-index:3;
-  display:none;
-}
-.cover-title{font-size:18px;font-weight:700;letter-spacing:-.3px;text-shadow:0 2px 10px rgba(0,0,0,.6)}
-.cover-artist{font-size:13px;color:var(--pink);margin-top:2px;text-shadow:0 2px 10px rgba(0,0,0,.5)}
-
-.controls-wrap{
-  background:var(--surf);border-radius:var(--rl);
-  padding:16px 20px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;
-}
-.ctrl-row{display:flex;align-items:center;justify-content:center;gap:12px}
-.icb{width:36px;height:36px;background:none;border:none;cursor:pointer;color:var(--ink3);border-radius:50%;display:grid;place-items:center;transition:color .14s,background .14s;flex-shrink:0}
-.icb svg{width:18px;height:18px}
-.icb:hover{color:var(--ink);background:var(--s2)}
-.icb.on{color:var(--pink)}
-.play-btn{width:50px;height:50px;flex-shrink:0;background:var(--ink);color:var(--bg);border:none;border-radius:50%;cursor:pointer;display:grid;place-items:center;transition:transform .15s}
-.play-btn svg{width:22px;height:22px}
-.play-btn:hover{transform:scale(1.08)}
-.play-btn:active{transform:scale(.95)}
-.prog-row{display:flex;align-items:center;gap:8px}
-.tt{font-size:10px;color:var(--ink3);font-variant-numeric:tabular-nums;min-width:32px;font-weight:500}
-.tt.r{text-align:right}
-.prog{flex:1;height:4px;background:var(--s3);border-radius:4px;cursor:pointer;position:relative;transition:height .14s}
-.prog:hover{height:6px}
-.prog-f{height:100%;background:var(--ink3);border-radius:4px;position:relative;pointer-events:none;transition:background .2s}
-.prog:hover .prog-f{background:var(--pink)}
-.prog-dot{position:absolute;right:-5px;top:50%;transform:translateY(-50%);width:10px;height:10px;background:var(--ink);border-radius:50%;opacity:0;transition:opacity .14s;pointer-events:none}
-.prog:hover .prog-dot{opacity:1}
-.vol-row{display:flex;align-items:center;gap:8px;justify-content:center}
-.vol{width:100px;height:4px;background:var(--s3);border-radius:4px;cursor:pointer;position:relative;transition:height .14s}
-.vol:hover{height:6px}
-.vol-f{height:100%;background:var(--ink3);border-radius:4px;pointer-events:none;transition:background .2s}
-.vol:hover .vol-f{background:var(--pink)}
-
-.right{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0;overflow:hidden}
-.search-row{position:relative;flex-shrink:0}
-.search-box{
-  display:flex;align-items:center;gap:9px;
-  background:var(--surf);border:1.5px solid transparent;
-  border-radius:var(--r);padding:12px 16px;
-  transition:border-color .18s,box-shadow .18s
-}
-.search-box:focus-within{border-color:var(--pink);box-shadow:0 0 0 3px var(--glow)}
-.search-box svg{width:16px;height:16px;color:var(--ink3);flex-shrink:0}
-.search-box input{border:none;background:transparent;outline:none;font-family:inherit;font-size:14px;color:var(--ink);width:100%}
-.search-box input::placeholder{color:var(--ink3)}
-.spin{width:14px;height:14px;flex-shrink:0;border:2px solid var(--s3);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;display:none}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-.drop{
-  position:absolute;top:calc(100% + 6px);left:0;right:0;
-  background:var(--surf);border:1px solid var(--border);
-  border-radius:var(--r);
-  box-shadow:0 12px 40px rgba(0,0,0,.5);
-  z-index:400;max-height:370px;overflow-y:auto;display:none
-}
-.di{display:flex;align-items:center;gap:11px;padding:10px 13px;cursor:pointer;border-bottom:1px solid var(--s2);transition:background .12s}
-.di:last-child{border-bottom:none}
-.di:hover{background:var(--s2)}
-.di:hover .di-add{opacity:1}
-.di-art{width:42px;height:42px;border-radius:8px;background:var(--s2);overflow:hidden;flex-shrink:0;display:grid;place-items:center;font-size:17px}
-.di-art img{width:100%;height:100%;object-fit:cover;display:block}
-.di-inf{flex:1;min-width:0}
-.di-t{font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
-.di-s{font-size:11.5px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.di-dur{font-size:11px;color:var(--ink3);flex-shrink:0}
-.di-add{width:26px;height:26px;border-radius:50%;background:var(--pink);display:grid;place-items:center;flex-shrink:0;opacity:0;transition:opacity .14s}
-.di-add svg{width:13px;height:13px;fill:#fff}
-.drop-msg{padding:18px;text-align:center;font-size:13px;color:var(--ink3);line-height:1.6}
-
-.content-area{
-  flex:1;min-height:0;position:relative;
-  background:var(--surf);border-radius:var(--rl);
-  overflow:hidden;
-}
-.results-panel,.lyrics-panel{
-  position:absolute;inset:0;
-  transition:opacity .3s ease;
-}
-.results-panel{padding:16px;opacity:1;overflow-y:auto;}
-.results-panel.hidden{opacity:0;pointer-events:none}
-.lyrics-panel{
-  opacity:0;pointer-events:none;overflow:hidden;
-}
-.lyrics-panel.active{opacity:1;pointer-events:auto}
-.lrc-scroll-outer{
-  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
-  padding:48px 28px 180px;
-  z-index:1;
-}
-.lrc-bg{
-  position:absolute;inset:0;
-  background-size:cover;background-position:center;
-  filter:blur(40px) saturate(1.6) brightness(.35);
-  transform:scale(1.15);
-  opacity:0;transition:opacity .8s ease;
-  pointer-events:none;z-index:0;
-}
-.lrc-bg.on{opacity:1}
-
-#lscroll.blend-out {
-  animation: lrc-blend-out 1.8s ease-in-out forwards;
-}
-#lscroll.blend-in {
-  animation: lrc-blend-in 1.2s ease-out forwards;
-}
-@keyframes lrc-blend-out {
-  0%   { filter: blur(0px);  opacity: 1; }
-  60%  { filter: blur(6px);  opacity: 0.4; }
-  100% { filter: blur(12px); opacity: 0; }
-}
-@keyframes lrc-blend-in {
-  0%   { filter: blur(12px); opacity: 0; }
-  100% { filter: blur(0px);  opacity: 1; }
-}
-#lscroll{position:relative;z-index:1;}
-.lrc-empty-state-wrap{position:relative;z-index:1;}
-
-.lyric-toggle{
-  position:absolute;bottom:14px;right:14px;z-index:10;
-  width:40px;height:40px;border-radius:50%;
-  background:var(--s2);border:1px solid var(--border);
-  display:grid;place-items:center;cursor:pointer;
-  transition:background .15s,color .15s,transform .15s;
-  color:var(--ink3);
-}
-.lyric-toggle:hover{background:var(--s3);color:var(--ink);transform:scale(1.05)}
-.lyric-toggle.active{background:var(--pink);color:#fff;border-color:var(--pink)}
-.lyric-toggle svg{width:18px;height:18px}
-
-.q-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink3);margin-bottom:10px}
-.qi{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;cursor:pointer;transition:background .12s;position:relative}
-.qi:hover{background:var(--s2)}
-.qi.now{background:rgba(252,60,108,.1)}
-.qi.now .qi-t{color:var(--pink);font-weight:600}
-.qi-th{width:40px;height:40px;border-radius:8px;background:var(--s2);overflow:hidden;flex-shrink:0;display:grid;place-items:center;font-size:15px;position:relative}
-.qi-th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:8px}
-.now-ind{position:absolute;inset:0;border-radius:8px;background:rgba(252,60,108,.85);display:flex;align-items:center;justify-content:center}
-.bars{display:flex;align-items:flex-end;gap:2px;height:14px}
-.bars b{width:2.5px;background:#fff;border-radius:2px;animation:ba .7s ease-in-out infinite}
-.bars b:nth-child(2){animation-name:bb}
-.bars b:nth-child(3){animation-name:bc}
-@keyframes ba{0%,100%{height:4px}50%{height:12px}}
-@keyframes bb{0%,100%{height:9px}50%{height:4px}}
-@keyframes bc{0%,100%{height:5px}50%{height:13px}}
-.qi-inf{flex:1;min-width:0}
-.qi-t{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
-.qi-a{font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.qi-rm{width:22px;height:22px;border:none;background:none;color:var(--ink3);font-size:16px;line-height:1;border-radius:50%;cursor:pointer;display:none;place-items:center;transition:background .12s,color .12s}
-.qi:hover .qi-rm{display:grid}
-.qi-rm:hover{background:var(--s3);color:var(--red)}
-
-.ll{
-  font-size:27px;line-height:1.65;font-weight:700;
-  padding:5px 0 5px 4px;
-  margin-bottom:1px;
-  border-radius:12px;cursor:pointer;
-  color:rgba(255,255,255,0.12);
-  filter:blur(0px);
-  opacity:.32;
-  transform-origin:left center;
-  letter-spacing:-0.015em;
-  transition:
-    color .5s cubic-bezier(.4,0,.2,1),
-    opacity .5s cubic-bezier(.4,0,.2,1),
-    font-size .38s cubic-bezier(.34,1.56,.64,1),
-    letter-spacing .38s cubic-bezier(.4,0,.2,1);
-  will-change:color,opacity;
-  position:relative;
-  clip-path:inset(-6px -10px round 12px);
-}
-.ll.past{
-  color:rgba(255,255,255,0.06);
-  opacity:.18;
-}
-.ll.near{
-  color:rgba(255,255,255,0.46);
-  opacity:.76;
-  font-size:26px;
-}
-.ll.near2{
-  color:rgba(255,255,255,0.24);
-  opacity:.46;
-  font-size:24.5px;
-}
-.ll.now{
-  color:#ffffff;
-  font-size:36px;
-  opacity:1;
-  letter-spacing:-0.025em;
-  animation:ll-bounce 0.30s cubic-bezier(.34,1.56,.64,1) both;
-}
-.ll.now.ll-sung{
-  opacity:0.50;
-  color:rgba(255,255,255,0.50);
-  transition:opacity 1.2s ease-out, color 1.2s ease-out !important;
-}
-@keyframes ll-bounce {
-  0%   { transform:scale(0.93); }
-  52%  { transform:scale(1.05); }
-  100% { transform:scale(1.00); }
-}
-.ll-ripple {
-  position:absolute;
-  border-radius:50%;
-  width:14px;height:14px;
-  margin:-7px 0 0 -7px;
-  background:rgba(255,255,255,0.18);
-  transform:scale(0);
-  animation:ll-ripple-anim 0.55s ease-out forwards;
-  pointer-events:none;
-  z-index:10;
-}
-@keyframes ll-ripple-anim {
-  to { transform:scale(20); opacity:0; }
-}
-.ll.ll-sub{
-  font-size:18px;
-  padding-left:16px;
-  margin-top:-4px;
-  opacity:.55;
-}
-.ll.ll-sub.now{
-  font-size:20px;
-  opacity:1;
-}
-.ll.ll-sub.near{
-  font-size:17px;
-}
-.ll.ll-sub.near2{
-  font-size:16px;
-}
-.lw-inline-paren{
-  display:inline-flex;
-  flex-direction:column;
-  align-items:flex-start;
-  vertical-align:baseline;
-  line-height:1;
-  gap:0;
-  position:relative;
-  top:0;
-}
-.lw-inline-paren .lw-ip-text{
-  font-size:0.42em;
-  line-height:1.2;
-  opacity:0.50;
-  margin-bottom:0;
-  display:block;
-  font-weight:600;
-  font-style:italic;
-  white-space:nowrap;
-}
-.ll.now .lw-inline-paren .lw-ip-text{
-  opacity:0.80;
-}
-
-@property --pct {
-  syntax: '<percentage>';
-  inherits: false;
-  initial-value: -20%;
-}
-
-
-
-.ll.now .lw{
-  display:inline-block;
-  background:linear-gradient(to right,
-    #ffffff calc(var(--pct, -20%) - 10%),
-    rgba(255,255,255,0.92) calc(var(--pct, -20%) - 2%),
-    rgba(255,255,255,0.25) calc(var(--pct, -20%) + 8%),
-    rgba(255,255,255,0.05) calc(var(--pct, -20%) + 18%)
-  );
-  -webkit-background-clip:text;
-  background-clip:text;
-  -webkit-text-fill-color:transparent;
-  transition:
-    filter 120ms ease-out,
-    opacity 80ms ease-out;
-  opacity:1;
-}
-.ll.now .lw.done,
-.ll.past .lw,
-.ll.near .lw,
-.ll.near2 .lw{
-  --pct:110%;
-  filter:none;
-  opacity:1;
-}
-.ll.now .lw.upcoming{
-  --pct:-20%;
-  filter:none;
-  opacity:0.55;
-}
-.ll.now .lw.now-word{
-  filter:none;
-  opacity:1;
-}
-.ll.now .lw.now-word.word-enter{
-  animation: word-entry-glow 220ms ease-out forwards;
-}
-@keyframes word-entry-glow {
-  0%   { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-.ll:hover:not(.now){filter:blur(0px);color:rgba(255,255,255,0.6)}
-
-.beat-dots{
-  display:inline-flex;align-items:flex-end;gap:7px;
-  height:1em;vertical-align:middle;
-}
-.beat-dots span{
-  width:8px;height:8px;border-radius:50%;
-  background:rgba(255,255,255,0.28);
-  display:inline-block;
-  transform:translateY(0);
-  transition:background .3s;
-}
-.ll.now .beat-dots span{
-  background:#ffffff;
-  animation:beatbounce var(--beat-dur,600ms) ease-in-out infinite;
-}
-.ll.now .beat-dots span:nth-child(2){animation-delay:calc(var(--beat-dur,600ms) / 3)}
-.ll.now .beat-dots span:nth-child(3){animation-delay:calc(var(--beat-dur,600ms) / 3 * 2)}
-@keyframes beatbounce{
-  0%,100%{transform:translateY(0) scale(1)}
-  35%{transform:translateY(-11px) scale(1.15)}
-  55%{transform:translateY(-7px) scale(1.05)}
-  75%{transform:translateY(-3px) scale(1.02)}
-}
-.ll.now .beat-dots span{
-  transition: none;
-}
-.lrc-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--ink3);text-align:center}
-.lrc-empty svg{width:38px;height:38px;opacity:.22}
-.lrc-empty p{font-size:13px}
-
-
-.q-empty-msg{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--ink3);font-size:13px;text-align:center;line-height:1.6}
-
-.panel-nav{
-  position:absolute;bottom:14px;right:14px;z-index:10;
-  display:flex;flex-direction:column;gap:6px;align-items:center;
-}
-.pnb{
-  width:40px;height:40px;border-radius:50%;
-  background:var(--s2);border:1px solid var(--border);
-  display:grid;place-items:center;cursor:pointer;
-  transition:background .15s,color .15s,transform .15s,border-color .15s;
-  color:var(--ink3);
-}
-.pnb svg{width:18px;height:18px}
-.pnb:hover{background:var(--s3);color:var(--ink);transform:scale(1.05)}
-.pnb.active{background:var(--pink);color:#fff;border-color:var(--pink)}
-
-.side-panel{
-  position:absolute;inset:0;padding:16px 16px 60px;
-  overflow-y:auto;
-  opacity:0;pointer-events:none;
-  transition:opacity .3s ease;
-}
-.side-panel.active{opacity:1;pointer-events:auto}
-.panel-hdr{
-  font-size:11px;font-weight:700;text-transform:uppercase;
-  letter-spacing:1.2px;color:var(--ink3);margin-bottom:12px;
-  display:flex;align-items:center;justify-content:space-between;
-}
-.panel-hdr button{
-  background:var(--pink);border:none;color:#fff;
-  font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;
-  cursor:pointer;letter-spacing:.3px;
-}
-
-.lk-empty{height:80%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--ink3);font-size:13px}
-.lk-empty svg{width:34px;height:34px;opacity:.2}
-.lk-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:10px;cursor:pointer;transition:background .12s}
-.lk-row:hover{background:var(--s2)}
-.lk-row:hover .lk-rm{opacity:1}
-.lk-thumb{width:38px;height:38px;border-radius:7px;background:var(--s2);flex-shrink:0;overflow:hidden;display:grid;place-items:center;font-size:14px}
-.lk-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.lk-inf{flex:1;min-width:0}
-.lk-t{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lk-a{font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.lk-rm{opacity:0;background:none;border:none;color:var(--ink3);font-size:16px;cursor:pointer;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;transition:background .12s,color .12s,opacity .12s;flex-shrink:0}
-.lk-rm:hover{background:var(--s3);color:var(--red)}
-
-.heart-btn{
-  position:absolute;top:14px;right:14px;z-index:3;
-  width:34px;height:34px;border-radius:50%;
-  background:rgba(0,0,0,.4);backdrop-filter:blur(8px);
-  border:1px solid rgba(255,255,255,.1);
-  display:grid;place-items:center;cursor:pointer;
-  transition:background .15s,transform .15s;color:rgba(255,255,255,.5);
-}
-.heart-btn svg{width:16px;height:16px;transition:color .2s,fill .2s}
-.heart-btn.liked{color:var(--pink)}
-.heart-btn.liked svg{fill:var(--pink)}
-.heart-btn:hover{transform:scale(1.1)}
-
-.pl-grid{display:flex;flex-direction:column;gap:8px}
-.pl-card{
-  display:flex;align-items:center;gap:10px;
-  padding:8px 10px;border-radius:12px;
-  background:var(--s2);cursor:pointer;
-  transition:background .12s;position:relative;
-}
-.pl-card:hover{background:var(--s3)}
-.pl-card:hover .pl-del{opacity:1}
-.pl-cover{
-  width:44px;height:44px;border-radius:8px;
-  background:var(--s3);flex-shrink:0;overflow:hidden;
-  display:grid;place-items:center;font-size:18px;
-  position:relative;
-}
-.pl-cover-grid{display:grid;grid-template-columns:1fr 1fr;width:100%;height:100%}
-.pl-cover-grid img{width:100%;height:100%;object-fit:cover;display:block}
-.pl-inf{flex:1;min-width:0}
-.pl-name{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pl-count{font-size:11px;color:var(--ink3);margin-top:1px}
-.pl-del{opacity:0;background:none;border:none;color:var(--ink3);cursor:pointer;font-size:16px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;transition:opacity .12s,background .12s,color .12s}
-.pl-del:hover{background:var(--s3);color:var(--red)}
-
-.pl-detail-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0}
-.pl-back{background:none;border:none;color:var(--ink3);cursor:pointer;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;transition:background .12s,color .12s}
-.pl-back:hover{background:var(--s2);color:var(--ink)}
-.pl-back svg{width:16px;height:16px}
-.pl-detail-name{font-size:15px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pl-play-all{background:var(--pink);border:none;color:#fff;font-size:11px;font-weight:600;padding:5px 12px;border-radius:10px;cursor:pointer;white-space:nowrap}
-
-.modal-bg{
-  position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);
-  z-index:800;display:none;align-items:center;justify-content:center;
-}
-.modal-bg.open{display:flex}
-.modal{
-  background:var(--surf);border:1px solid var(--border);
-  border-radius:20px;padding:20px;width:300px;
-  box-shadow:0 24px 80px rgba(0,0,0,.6);
-}
-.modal-title{font-size:15px;font-weight:700;margin-bottom:14px}
-.modal-input{
-  width:100%;background:var(--s2);border:1.5px solid transparent;
-  border-radius:10px;padding:10px 12px;color:var(--ink);
-  font-family:inherit;font-size:13px;outline:none;margin-bottom:10px;
-  transition:border-color .15s;
-}
-.modal-input:focus{border-color:var(--pink)}
-.modal-btns{display:flex;gap:8px;justify-content:flex-end}
-.modal-btns button{padding:7px 16px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer}
-.modal-cancel{background:var(--s2);color:var(--ink3)}
-.modal-ok{background:var(--pink);color:#fff}
-.modal-pl-list{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;max-height:200px;overflow-y:auto}
-.modal-pl-row{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;cursor:pointer;transition:background .12s}
-.modal-pl-row:hover{background:var(--s2)}
-.modal-pl-thumb{width:32px;height:32px;border-radius:6px;background:var(--s3);flex-shrink:0;display:grid;place-items:center;font-size:13px;overflow:hidden}
-.modal-pl-thumb img{width:100%;height:100%;object-fit:cover;display:block}
-.modal-pl-name{font-size:13px;font-weight:500;color:var(--ink)}
-
-.ctx-menu{
-  position:fixed;z-index:900;
-  background:var(--surf);border:1px solid var(--border);
-  border-radius:12px;padding:6px;
-  box-shadow:0 8px 32px rgba(0,0,0,.5);
-  min-width:170px;display:none;
-}
-.ctx-menu.open{display:block}
-.ctx-item{
-  display:flex;align-items:center;gap:9px;
-  padding:8px 10px;border-radius:8px;cursor:pointer;
-  font-size:13px;color:var(--ink);transition:background .1s;
-}
-.ctx-item svg{width:15px;height:15px;color:var(--ink3);flex-shrink:0}
-.ctx-item:hover{background:var(--s2)}
-.ctx-item.danger{color:var(--red)}
-.ctx-item.danger svg{color:var(--red)}
-
-
-
-.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--s2);color:var(--ink);padding:10px 22px;border-radius:28px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;z-index:999;white-space:nowrap;transition:opacity .22s,transform .22s;backdrop-filter:blur(20px);border:1px solid var(--border)}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-
-.status-pill{
-  position:absolute;top:12px;left:12px;z-index:5;
-  display:flex;align-items:center;gap:6px;
-  background:rgba(0,0,0,.5);backdrop-filter:blur(10px);
-  border:1px solid var(--border);border-radius:20px;
-  padding:4px 10px;font-size:10px;color:var(--ink3);
-}
-.st-dot{width:6px;height:6px;border-radius:50%;background:var(--s3);transition:background .3s}
-.st-dot.ok{background:#30d158}
-.st-dot.err{background:var(--red)}
-.st-dot.loading{background:var(--orange);animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-
-.artist-panel-bg{
-  position:absolute;inset:0;
-  background-size:cover;background-position:center top;
-  filter:blur(50px) saturate(1.4) brightness(.25);
-  transform:scale(1.2);
-  pointer-events:none;z-index:0;
-  opacity:0;transition:opacity .7s;
-}
-.artist-panel-bg.on{opacity:1}
-.artist-panel-inner{position:relative;z-index:1;padding:20px 18px 70px;}
-.artist-hero{display:flex;align-items:flex-end;gap:16px;margin-bottom:24px;}
-.artist-avatar{
-  width:90px;height:90px;border-radius:50%;
-  background:var(--s2);flex-shrink:0;overflow:hidden;
-  box-shadow:0 8px 32px rgba(0,0,0,.5);
-  display:grid;place-items:center;font-size:32px;
-}
-.artist-avatar img{width:100%;height:100%;object-fit:cover;display:block}
-.artist-hero-info{flex:1;min-width:0}
-.artist-name-big{font-size:26px;font-weight:900;letter-spacing:-.5px;line-height:1.1}
-.artist-meta{font-size:12px;color:var(--ink3);margin-top:4px}
-.artist-play-all{
-  background:var(--pink);border:none;color:#fff;
-  font-size:12px;font-weight:700;padding:8px 18px;
-  border-radius:20px;cursor:pointer;margin-top:10px;
-  transition:transform .15s;
-}
-.artist-play-all:hover{transform:scale(1.05)}
-.artist-section-lbl{
-  font-size:10px;font-weight:700;text-transform:uppercase;
-  letter-spacing:1.2px;color:var(--ink3);margin-bottom:10px;
-}
-.artist-track-row{
-  display:flex;align-items:center;gap:10px;
-  padding:8px 10px;border-radius:10px;cursor:pointer;
-  transition:background .12s;
-}
-.artist-track-row:hover{background:rgba(255,255,255,.07)}
-.artist-track-num{width:22px;text-align:right;font-size:12px;color:var(--ink3);flex-shrink:0}
-.artist-track-art{width:38px;height:38px;border-radius:6px;background:var(--s2);flex-shrink:0;overflow:hidden;display:grid;place-items:center;font-size:14px}
-.artist-track-art img{width:100%;height:100%;object-fit:cover;display:block}
-.artist-track-inf{flex:1;min-width:0}
-.artist-track-t{font-size:13px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.artist-track-alb{font-size:11px;color:var(--ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
-.artist-track-dur{font-size:11px;color:var(--ink3);flex-shrink:0}
-.artist-track-add{width:24px;height:24px;border-radius:50%;background:var(--pink);display:grid;place-items:center;flex-shrink:0;opacity:0;transition:opacity .14s;flex-shrink:0}
-.artist-track-add svg{width:12px;height:12px;fill:#fff}
-.artist-track-row:hover .artist-track-add{opacity:1}
-.artist-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--ink3);font-size:13px}
-.artist-loading .spin{display:block !important}
-
-@media(max-width:768px){
-  .app{flex-direction:column;padding:10px;gap:10px}
-  .left{width:100%;flex-direction:row;gap:10px;flex-shrink:0;height:auto}
-  .cover-wrap{
-    width:140px;height:140px;flex:none;border-radius:var(--r);
-  }
-  .cover-art{width:85%;border-radius:12px}
-  .cover-info{display:none !important}
-  .controls-wrap{flex:1;border-radius:var(--r);padding:12px;justify-content:center}
-  .play-btn{width:44px;height:44px}
-  .play-btn svg{width:20px;height:20px}
-  .vol-row{display:none}
-  .right{flex:1;min-height:0}
-  .content-area{border-radius:var(--r)}
-  .ll.now{font-size:22px}
-  .ll{font-size:18px}
-}
-@media(max-width:480px){
-  .cover-wrap{width:110px;height:110px}
-  .icb{width:30px;height:30px}
-  .icb svg{width:15px;height:15px}
-  .ctrl-row{gap:8px}
-  .play-btn{width:40px;height:40px}
-  .play-btn svg{width:18px;height:18px}
-}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relay Music</title>
+  <script src="https://w.soundcloud.com/player/api.js"></script>
+  <style>
+    :root{
+      --bg:#05060a;
+      --panel:#101116;
+      --panel2:#171820;
+      --panel3:#20212b;
+      --text:#f7f7fb;
+      --muted:#a6a8b4;
+      --dim:#686b76;
+      --line:rgba(255,255,255,.09);
+      --line2:rgba(255,255,255,.14);
+      --accent:#ff3b6b;
+      --accent2:#ff7aa2;
+      --good:#72e7ac;
+      --warn:#ffd166;
+      --bad:#ff6b6b;
+      --radius:22px;
+      --sidebar:248px;
+      --player:112px;
+      --font:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Segoe UI",Inter,Roboto,Arial,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:#05060a;color:var(--text);font-family:var(--font);overflow:hidden}
+    button,input,textarea{font:inherit;color:inherit}
+    button{border:0;cursor:pointer}
+    .app{height:100%;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);grid-template-rows:minmax(0,1fr) var(--player);position:relative;isolation:isolate;background:linear-gradient(180deg,#07080d,#040508)}
+    .glow{position:absolute;inset:-80px;z-index:-2;background:radial-gradient(720px 420px at 58% 0%,rgba(255,59,107,.18),transparent 64%),radial-gradient(640px 520px at 98% 42%,rgba(123,92,255,.12),transparent 70%);pointer-events:none}
+    .cover-bg{position:absolute;inset:-80px;z-index:-3;background-image:var(--bg-cover);background-size:cover;background-position:center;filter:blur(58px) saturate(140%);opacity:.20;transform:scale(1.08);transition:.45s ease}
+    .cover-bg:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(5,6,10,.96),rgba(5,6,10,.70),rgba(5,6,10,.96))}
+    .sidebar{grid-row:1/3;border-right:1px solid var(--line);background:rgba(5,6,10,.80);backdrop-filter:blur(24px);padding:24px 16px;display:flex;flex-direction:column;gap:24px;min-width:0}
+    .brand{display:flex;align-items:center;gap:12px;padding:2px 8px}
+    .brand-mark{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#9b5cff);display:grid;place-items:center}
+    .brand-mark svg{width:18px;height:18px}
+    .brand-title{font-size:18px;font-weight:800;letter-spacing:-.035em;line-height:1}
+    .brand-sub{font-size:11px;color:var(--muted);margin-top:4px}
+    .nav{display:flex;flex-direction:column;gap:6px}
+    .nav button{height:44px;border-radius:12px;background:transparent;color:var(--muted);display:flex;align-items:center;gap:13px;padding:0 13px;text-align:left;transition:.16s ease}
+    .nav button svg{width:18px;height:18px;stroke-width:2}
+    .nav button:hover,.nav button.active{background:rgba(255,255,255,.075);color:var(--text)}
+    .side-note{margin-top:auto;border-top:1px solid var(--line);padding-top:16px;font-size:12px;line-height:1.45;color:var(--muted)}
+    .side-note b{display:block;color:var(--text);margin-bottom:5px}
+    .main{grid-column:2;grid-row:1;min-width:0;min-height:0;padding:22px 24px 18px;display:grid;grid-template-rows:auto minmax(0,1fr);gap:18px;overflow:hidden}
+    .topbar{display:flex;align-items:center;gap:12px;min-width:0}
+    .searchbox{height:48px;flex:1;min-width:0;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.075);border:1px solid var(--line);border-radius:17px;padding:0 14px}
+    .searchbox svg{width:18px;height:18px;color:var(--muted);flex:0 0 auto}
+    .searchbox input{width:100%;min-width:0;border:0;outline:0;background:transparent;font-size:15px}
+    .urlbox{height:48px;display:flex;align-items:center;gap:8px;min-width:320px;max-width:470px;flex:.44;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:17px;padding:0 10px}
+    .urlbox input{width:100%;min-width:0;border:0;outline:0;background:transparent;font-size:13px;color:var(--text)}
+    .primary{height:34px;border-radius:11px;background:var(--text);color:#05060a;font-weight:800;padding:0 14px;white-space:nowrap}
+    .ghostbtn{height:34px;border-radius:11px;background:rgba(255,255,255,.08);color:var(--text);font-weight:700;padding:0 12px;border:1px solid rgba(255,255,255,.06)}
+    .layout{min-height:0;display:grid;grid-template-columns:minmax(285px,420px) minmax(0,1fr);gap:18px}
+    .panel{min-height:0;background:rgba(13,14,20,.72);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;backdrop-filter:blur(24px)}
+    .results-panel{display:grid;grid-template-rows:auto minmax(0,1fr)}
+    .panel-head{padding:18px 18px 12px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1px solid transparent}
+    .panel-head h2{font-size:26px;line-height:1;margin:0;font-weight:850;letter-spacing:-.055em}
+    .count,.status-small{font-size:12px;color:var(--muted);margin-top:6px}
+    .engine-state{font-size:12px;color:var(--muted);text-align:right;line-height:1.35;max-width:180px}
+    .engine-dot{display:inline-block;width:7px;height:7px;border-radius:99px;background:var(--warn);margin-right:6px;vertical-align:middle}
+    .engine-dot.ready{background:var(--good)}
+    .engine-dot.bad{background:var(--bad)}
+    .results{padding:8px 10px 14px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+    .track-row{width:100%;min-height:74px;border-radius:16px;background:transparent;color:var(--text);display:grid;grid-template-columns:56px 1fr auto;align-items:center;gap:12px;padding:9px;text-align:left;transition:.16s ease;border:1px solid transparent}
+    .track-row:hover,.track-row.active{background:rgba(255,255,255,.075);border-color:rgba(255,255,255,.05)}
+    .row-cover{width:56px;height:56px;border-radius:13px;object-fit:cover;background:linear-gradient(135deg,#ff3b6b,#6f5cff)}
+    .row-title{font-size:14px;font-weight:760;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .row-artist{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .row-tag{font-size:11px;color:var(--muted);background:rgba(255,255,255,.07);padding:6px 8px;border-radius:999px;white-space:nowrap}
+    .empty{padding:18px;color:var(--muted);font-size:13px;line-height:1.45}
+    .player-panel{display:grid;grid-template-rows:auto minmax(0,1fr);position:relative}
+    .hero{padding:22px 20px 18px;display:grid;grid-template-columns:132px 1fr auto;gap:18px;align-items:center;border-bottom:1px solid var(--line)}
+    .hero-art-wrap{width:132px;height:132px;border-radius:24px;overflow:hidden;background:#15161e;position:relative;box-shadow:0 0 0 1px rgba(255,255,255,.08) inset}
+    .hero-art,.hero-video{width:100%;height:100%;object-fit:cover;display:block}
+    .hero-video{position:absolute;inset:0;display:none}
+    .art-badge{position:absolute;right:8px;bottom:8px;border-radius:9px;padding:5px 7px;background:rgba(0,0,0,.55);font-size:10px;color:#fff;backdrop-filter:blur(10px)}
+    .hero-kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#ff7aa2;font-weight:850;margin-bottom:7px}
+    .hero h1{font-size:40px;line-height:.96;margin:0;letter-spacing:-.07em;max-width:850px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .hero-artist{font-size:16px;color:var(--muted);margin-top:10px}
+    .hero-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+    .hero-actions button{height:35px;border-radius:11px;background:rgba(255,255,255,.08);color:var(--text);font-size:12px;font-weight:800;padding:0 13px;border:1px solid rgba(255,255,255,.06)}
+    .debug-card{align-self:stretch;min-width:205px;border-left:1px solid var(--line);padding-left:18px;color:var(--muted);font-size:12px;line-height:1.5;display:flex;flex-direction:column;justify-content:center;gap:5px}
+    .debug-card b{color:var(--text);font-size:12px}
+    .lyrics-wrap{min-height:0;position:relative;display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden}
+    .lyrics{height:100%;overflow:auto;scroll-behavior:smooth;padding:34px 38px 42px}
+    .lyric-line{font-size:28px;line-height:1.22;font-weight:820;letter-spacing:-.045em;color:rgba(255,255,255,.28);padding:9px 0;border-radius:12px;transition:color .18s ease, transform .18s ease, opacity .18s ease;cursor:pointer;max-width:920px}
+    .lyric-line:hover{color:rgba(255,255,255,.55)}
+    .lyric-line.active{color:#fff;transform:translateX(8px);opacity:1}
+    .lyric-line.past{color:rgba(255,255,255,.18)}
+    .lyric-source{position:absolute;top:14px;right:18px;font-size:11px;color:var(--muted);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:6px 9px;backdrop-filter:blur(12px)}
+    .sync-panel{display:none;min-height:0;border-top:1px solid var(--line);background:rgba(0,0,0,.20);grid-template-rows:auto minmax(0,1fr) auto}
+    .sync-panel.open{display:grid}
+    .sync-toolbar{padding:12px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+    .sync-toolbar .time-read{font-size:12px;color:var(--muted);margin-right:auto}
+    .sync-list{overflow:auto;padding:8px 12px;display:flex;flex-direction:column;gap:6px}
+    .sync-line{display:grid;grid-template-columns:82px 1fr;gap:10px;align-items:center;border:1px solid transparent;background:rgba(255,255,255,.045);border-radius:12px;padding:9px 10px;text-align:left;color:var(--muted)}
+    .sync-line.active{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.09);color:#fff}
+    .sync-time{font-variant-numeric:tabular-nums;font-size:12px;color:var(--accent2);font-weight:800}
+    .sync-text{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .exportbox{display:none;border-top:1px solid var(--line);padding:12px;background:rgba(0,0,0,.18)}
+    .exportbox textarea{width:100%;height:95px;border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:12px;outline:0;resize:none;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;padding:10px;color:var(--text)}
+    .sc-engine{position:absolute;left:-9999px;top:-9999px;width:360px;height:166px;opacity:.01;pointer-events:none}
+    .sc-engine iframe{width:360px;height:166px;border:0}
+    .playerbar{grid-column:2;grid-row:2;border-top:1px solid var(--line);background:rgba(4,5,8,.88);backdrop-filter:blur(24px);display:grid;grid-template-columns:minmax(220px,340px) 1fr minmax(170px,260px);align-items:center;gap:18px;padding:14px 24px;min-width:0}
+    .now-mini{display:flex;align-items:center;gap:12px;min-width:0}
+    .mini-cover{width:58px;height:58px;border-radius:13px;object-fit:cover;background:linear-gradient(135deg,#ff3b6b,#6f5cff);flex:0 0 auto}
+    .mini-title{font-size:14px;font-weight:800;letter-spacing:-.025em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .mini-artist{font-size:12px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .controls{min-width:0;display:grid;grid-template-rows:auto auto;gap:10px}
+    .control-buttons{display:flex;justify-content:center;align-items:center;gap:10px}
+    .circle{width:38px;height:38px;border-radius:99px;background:rgba(255,255,255,.09);color:#fff;display:grid;place-items:center;border:1px solid rgba(255,255,255,.05)}
+    .circle.play{width:48px;height:48px;background:#fff;color:#05060a}
+    .circle svg{width:18px;height:18px;stroke-width:2.5}
+    .progressrow{display:grid;grid-template-columns:48px 1fr 48px;gap:10px;align-items:center}
+    .time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:center}
+    .range{appearance:none;width:100%;height:20px;background:transparent;cursor:pointer}
+    .range::-webkit-slider-runnable-track{height:4px;border-radius:99px;background:linear-gradient(90deg,#fff var(--pct,0%),rgba(255,255,255,.16) var(--pct,0%))}
+    .range::-webkit-slider-thumb{appearance:none;width:13px;height:13px;border-radius:99px;background:#fff;margin-top:-4.5px}
+    .range::-moz-range-track{height:4px;border-radius:99px;background:rgba(255,255,255,.16)}
+    .range::-moz-range-progress{height:4px;border-radius:99px;background:#fff}
+    .range::-moz-range-thumb{width:13px;height:13px;border:0;border-radius:99px;background:#fff}
+    .volume{display:flex;align-items:center;justify-content:flex-end;gap:10px;color:var(--muted);font-size:12px;min-width:0}
+    .volume input{max-width:130px}
+    @media(max-width:980px){
+      :root{--sidebar:0px;--player:132px}
+      .app{grid-template-columns:1fr}
+      .sidebar{display:none}
+      .main{grid-column:1;padding:14px;gap:12px}
+      .topbar{flex-direction:column;align-items:stretch}
+      .urlbox{min-width:0;max-width:none;width:100%}
+      .layout{grid-template-columns:1fr;grid-template-rows:minmax(180px,35%) minmax(0,1fr)}
+      .hero{grid-template-columns:88px 1fr;gap:13px;padding:15px}
+      .hero-art-wrap{width:88px;height:88px;border-radius:18px}
+      .hero h1{font-size:27px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+      .debug-card{display:none}
+      .lyrics{padding:24px 22px 34px}
+      .lyric-line{font-size:23px}
+      .playerbar{grid-column:1;grid-template-columns:1fr;gap:8px;padding:10px 14px}
+      .now-mini{display:none}
+      .volume{display:none}
+    }
+  </style>
 </head>
 <body>
+  <div class="app" id="app">
+    <div class="cover-bg" id="coverBg"></div>
+    <div class="glow"></div>
 
-<audio id="sc-audio" style="display:none" crossorigin="anonymous"></audio>
-<div class="toast" id="toast"></div>
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M9 18V7.5L19 5v10.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="18" r="3" fill="currentColor"/><circle cx="17" cy="15.5" r="3" fill="currentColor"/></svg>
+        </div>
+        <div>
+          <div class="brand-title">Relay Music</div>
+          <div class="brand-sub">SoundCloud prototype</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="active" data-jump="search"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor"/><path d="m20 20-3.8-3.8" stroke="currentColor" stroke-linecap="round"/></svg>Search</button>
+        <button data-jump="library"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5v14M8 5v14M12 5v14M16 5v14M20 5v14" stroke="currentColor" stroke-linecap="round"/></svg>Library</button>
+        <button data-jump="lyrics"><svg viewBox="0 0 24 24" fill="none"><path d="M7 7h10M7 12h8M7 17h6" stroke="currentColor" stroke-linecap="round"/></svg>Lyrics</button>
+        <button data-jump="sync"><svg viewBox="0 0 24 24" fill="none"><path d="M4 7h10M18 7h2M4 12h3M11 12h9M4 17h12M20 17h0" stroke="currentColor" stroke-linecap="round"/></svg>Sync Mode</button>
+      </nav>
+      <div class="side-note">
+        <b>Prototype note</b>
+        Uses SoundCloud's official embedded player. Search is local/paste-link until a Relay backend endpoint is connected.
+      </div>
+    </aside>
 
-<div class="app">
-  <div class="left">
-    <div class="cover-wrap" id="cover-wrap">
-      <img class="cover-bg" id="cv-bg" src="" alt="">
-      <div class="empty-cover" id="empty-cover">
-        <div class="idlewave"><span></span><span></span><span></span><span></span><span></span></div>
-        <span>Nothing playing</span>
-      </div>
-      <div class="cover-art" id="cover-art">
-        <img id="cv-img" src="" alt="">
-      </div>
-      <div class="cover-info" id="cover-info">
-        <div class="cover-title" id="np-t">—</div>
-        <div class="cover-artist" id="np-a">—</div>
-      </div>
-      <button class="heart-btn" id="btn-heart" title="Like (H)">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-      </button>
-      <div class="status-pill">
-        <div class="st-dot ok" id="sc-dot"></div>
-        <span id="sc-status-txt">SoundCloud</span>
-      </div>
-    </div>
-
-    <div class="controls-wrap">
-      <div class="ctrl-row">
-        <button class="icb" id="btn-sf" title="Shuffle (S)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
-        </button>
-        <button class="icb" id="btn-pv" title="Previous (P)">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
-        </button>
-        <button class="play-btn" id="btn-pp">
-          <svg id="pp-ico" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-        <button class="icb" id="btn-nx" title="Next (N)">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zm10.5-12v12H19V6h-2.5z"/></svg>
-        </button>
-        <button class="icb" id="btn-rp" title="Repeat (R)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-        </button>
-      </div>
-      <div class="prog-row">
-        <span class="tt" id="t-c">0:00</span>
-        <div class="prog" id="prog"><div class="prog-f" id="prog-f" style="width:0%"><div class="prog-dot"></div></div></div>
-        <span class="tt r" id="t-d">0:00</span>
-      </div>
-      <div class="vol-row">
-        <button class="icb" id="btn-vol" style="width:28px;height:28px">
-          <svg id="vol-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-            <path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>
-          </svg>
-        </button>
-        <div class="vol" id="vol-tr"><div class="vol-f" id="vol-f" style="width:80%"></div></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="right">
-    <div class="search-row">
-      <div class="search-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input id="q-in" type="text" placeholder="Search songs, artists…" autocomplete="off" spellcheck="false">
-        <div class="spin" id="q-spin"></div>
-      </div>
-      <div class="drop" id="q-drop"></div>
-    </div>
-
-    <div class="content-area">
-      <div class="results-panel" id="results-panel">
-        <div id="q-list">
-          <div class="q-empty-msg">
-            <div class="idlewave"><span></span><span></span><span></span><span></span><span></span></div>
-            Search for any song above
-          </div>
+    <main class="main">
+      <div class="topbar">
+        <div class="searchbox">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.8-3.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          <input id="searchInput" placeholder="Search demo tracks or paste a SoundCloud link" autocomplete="off" />
+        </div>
+        <div class="urlbox">
+          <input id="urlInput" placeholder="https://soundcloud.com/artist/track" autocomplete="off" />
+          <button class="primary" id="loadUrlBtn">Load</button>
         </div>
       </div>
 
-      <div class="lyrics-panel" id="lyrics-panel">
-        <div class="lrc-bg" id="lrc-bg"></div>
-        <div class="lrc-scroll-outer" id="lrc-scroll-outer">
-          <div class="lrc-empty-state-wrap">
-            <div class="lrc-empty" id="lrc-empty-state">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/>
-              </svg>
-              <p>Play a track to see lyrics</p>
+      <section class="layout">
+        <section class="panel results-panel" id="search">
+          <div class="panel-head">
+            <div>
+              <h2>Discover</h2>
+              <div class="count" id="resultCount">0 tracks</div>
+            </div>
+            <div class="engine-state"><span class="engine-dot" id="engineDot"></span><span id="engineText">starting engine</span></div>
+          </div>
+          <div class="results" id="results"></div>
+        </section>
+
+        <section class="panel player-panel" id="lyrics">
+          <div class="hero">
+            <div class="hero-art-wrap">
+              <img class="hero-art" id="heroArt" alt="Album artwork" />
+              <video class="hero-video" id="heroVideo" muted loop playsinline></video>
+              <div class="art-badge" id="artBadge">cover</div>
+            </div>
+            <div class="hero-copy">
+              <div class="hero-kicker" id="lyricKicker">SoundCloud ready</div>
+              <h1 id="heroTitle">Relay Music</h1>
+              <div class="hero-artist" id="heroArtist">Paste a SoundCloud track link or use a demo track</div>
+              <div class="hero-actions">
+                <button id="lyricsBtn">Lyrics</button>
+                <button id="syncBtn">Sync Mode</button>
+                <button id="refreshLyricsBtn">Refresh lyrics</button>
+                <button id="showEngineBtn">Show engine</button>
+              </div>
+            </div>
+            <div class="debug-card">
+              <b>Status</b>
+              <span id="statusLine">Waiting for SoundCloud Widget API.</span>
+              <span id="lyricsStatus">Lyrics idle.</span>
+              <span id="artStatus">Artwork idle.</span>
             </div>
           </div>
-          <div id="lscroll"></div>
-        </div>
-      </div>
 
-      <div class="side-panel" id="likes-panel">
-        <div class="panel-hdr"><span>Liked Songs</span></div>
-        <div id="likes-list"><div class="lk-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><p>No liked songs yet</p></div></div>
-      </div>
-
-      <div class="side-panel" id="playlists-panel">
-        <div class="panel-hdr"><span>Playlists</span><button onclick="openNewPlaylistModal()">+ New</button></div>
-        <div class="pl-grid" id="pl-grid"><div class="lk-empty" style="height:60%;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:34px;height:34px;opacity:.2"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No playlists yet</p></div></div>
-      </div>
-
-      <div class="side-panel" id="pl-detail-panel">
-        <div class="pl-detail-hdr">
-          <button class="pl-back" onclick="showPanel('playlists')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-          <div class="pl-detail-name" id="pl-detail-name">Playlist</div>
-          <button class="pl-play-all" onclick="playPlaylist()">Play All</button>
-        </div>
-        <div id="pl-detail-list"></div>
-      </div>
-
-
-
-      <div class="side-panel" id="artist-panel" style="padding:0;overflow:hidden;">
-        <div class="artist-panel-bg" id="artist-bg"></div>
-        <div style="position:absolute;top:12px;left:12px;z-index:10;">
-          <button class="pl-back" id="artist-back" onclick="showPanel('queue')" style="background:rgba(0,0,0,.4);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-        </div>
-        <div class="lrc-scroll-outer" style="z-index:1;padding-top:16px;">
-          <div class="artist-panel-inner" id="artist-panel-inner">
-            <div class="artist-loading"><div class="spin"></div><span>Loading artist…</span></div>
+          <div class="lyrics-wrap">
+            <div class="lyric-source" id="lyricSource">no lyrics loaded</div>
+            <div class="lyrics" id="lyricsList"></div>
           </div>
+
+          <div class="sync-panel" id="syncPanel">
+            <div class="sync-toolbar">
+              <div class="time-read" id="syncReadout">0:00.00</div>
+              <button class="ghostbtn" id="setLineBtn">Set current line</button>
+              <button class="ghostbtn" id="nudgeBackBtn">-0.05s</button>
+              <button class="ghostbtn" id="nudgeForwardBtn">+0.05s</button>
+              <button class="ghostbtn" id="exportBtn">Export JSON</button>
+            </div>
+            <div class="sync-list" id="syncList"></div>
+            <div class="exportbox" id="exportBox"><textarea id="exportText" readonly></textarea></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer class="playerbar">
+      <div class="now-mini">
+        <img class="mini-cover" id="miniCover" alt="Album artwork" />
+        <div style="min-width:0">
+          <div class="mini-title" id="miniTitle">Nothing playing</div>
+          <div class="mini-artist" id="miniArtist">Relay Music</div>
         </div>
       </div>
-
-      <div class="panel-nav">
-        <button class="pnb" id="pnb-lyrics" title="Lyrics (L)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h14"/></svg>
-        </button>
-        <button class="pnb" id="pnb-likes" title="Liked Songs">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        </button>
-        <button class="pnb" id="pnb-playlists" title="Playlists">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-        </button>
+      <div class="controls">
+        <div class="control-buttons">
+          <button class="circle" id="prevBtn" aria-label="Previous"><svg viewBox="0 0 24 24" fill="none"><path d="M18 6 9 12l9 6V6Z" fill="currentColor"/><path d="M6 6v12" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg></button>
+          <button class="circle play" id="playBtn" aria-label="Play"><svg id="playIcon" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7L8 5Z" fill="currentColor"/></svg></button>
+          <button class="circle" id="nextBtn" aria-label="Next"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6v12l9-6-9-6Z" fill="currentColor"/><path d="M18 6v12" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg></button>
+        </div>
+        <div class="progressrow">
+          <div class="time" id="currentTime">0:00</div>
+          <input class="range" id="progress" type="range" min="0" max="1000" value="0" />
+          <div class="time" id="durationTime">0:00</div>
+        </div>
       </div>
+      <div class="volume">
+        <span>Volume</span>
+        <input class="range" id="volume" type="range" min="0" max="100" value="85" />
+      </div>
+    </footer>
+
+    <div class="sc-engine" id="scEngine">
+      <iframe id="scWidget" title="SoundCloud playback engine" allow="autoplay" scrolling="no"></iframe>
     </div>
   </div>
-</div>
 
-<div class="modal-bg" id="modal-atp">
-  <div class="modal">
-    <div class="modal-title" id="modal-atp-title">Add to Playlist</div>
-    <div class="modal-pl-list" id="modal-pl-list"></div>
-    <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('modal-atp')">Cancel</button><button class="modal-ok" onclick="createPlaylistFromModal()">New Playlist</button></div>
-  </div>
-</div>
-<div class="modal-bg" id="modal-newpl">
-  <div class="modal">
-    <div class="modal-title">New Playlist</div>
-    <input class="modal-input" id="newpl-input" placeholder="Playlist name…" maxlength="40">
-    <div class="modal-btns"><button class="modal-cancel" onclick="closeModal('modal-newpl')">Cancel</button><button class="modal-ok" onclick="confirmNewPlaylist()">Create</button></div>
-  </div>
-</div>
-<div class="ctx-menu" id="ctx-menu">
-  <div class="ctx-item" id="ctx-like" onclick="ctxLike()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span id="ctx-like-lbl">Like</span></div>
-  <div class="ctx-item" onclick="ctxAddToPlaylist()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add to Playlist</div>
-  <div class="ctx-item" onclick="ctxPlayNext()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>Play Next</div>
-  <div class="ctx-item danger" onclick="ctxRemove()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>Remove</div>
-</div>
+  <script>
+    const SOUNDCLOUD_SEARCH_ENDPOINT = "";
+    const ARTWORK_ENDPOINT = "https://artwork.m8tec.top";
+    const LRCLIB_BASE = "https://lrclib.net/api";
+    const DEMO_TRACKS = [
+      {
+        title:"she's all i wanna be",
+        artist:"Tate McRae",
+        album:"I Used to Think I Could Fly",
+        url:"https://soundcloud.com/tate-mcrae/shes-all-i-wanna-be",
+        duration:206,
+        source:"Demo URL"
+      },
+      {
+        title:"chaotic",
+        artist:"Tate McRae",
+        album:"I Used to Think I Could Fly",
+        url:"https://soundcloud.com/tate-mcrae/chaotic",
+        duration:175,
+        source:"Demo URL"
+      },
+      {
+        title:"you broke me first",
+        artist:"Tate McRae",
+        album:"Too Young to Be Sad",
+        url:"https://soundcloud.com/tate-mcrae/you-broke-me-first",
+        duration:170,
+        source:"Demo URL"
+      }
+    ];
 
-<script>
-'use strict';
-let activePanel = 'queue';
-
-function showPanel(name) {
-  activePanel = name;
-
-  G('results-panel').classList.toggle('hidden', name !== 'queue');
-  G('lyrics-panel').classList.toggle('active', name === 'lyrics');
-  G('likes-panel').classList.toggle('active', name === 'likes');
-  G('playlists-panel').classList.toggle('active', name === 'playlists');
-  G('pl-detail-panel').classList.toggle('active', name === 'pl-detail');
-  G('artist-panel').classList.toggle('active', name === 'artist');
-
-  if (name === 'lyrics' && ST.lrcType === 'synced') {
-    renderSynced();
-    
-    requestAnimationFrame(() => tickLrc(getPrecisePos()));
-  }
-
-  G('pnb-lyrics').classList.toggle('active', name === 'lyrics');
-  G('pnb-likes').classList.toggle('active', name === 'likes');
-  G('pnb-playlists').classList.toggle('active', name === 'playlists' || name === 'pl-detail');
-}
-
-G('pnb-lyrics').addEventListener('click', () => showPanel(activePanel === 'lyrics' ? 'queue' : 'lyrics'));
-G('pnb-likes').addEventListener('click', () => showPanel(activePanel === 'likes' ? 'queue' : 'likes'));
-G('pnb-playlists').addEventListener('click', () => showPanel(activePanel === 'playlists' || activePanel === 'pl-detail' ? 'queue' : 'playlists'));
-
-let likes = JSON.parse(localStorage.getItem('ghost_likes') || '[]');
-function saveLikes() { try { localStorage.setItem('ghost_likes', JSON.stringify(likes)); } catch {} }
-
-function isLiked(track) {
-  const key = (track.title || track.trackName || '') + '||' + (track.artist || track.artistName || '');
-  return likes.some(l => l._key === key);
-}
-function trackKey(track) {
-  return (track.title || track.trackName || '') + '||' + (track.artist || track.artistName || '');
-}
-function toggleLike(track) {
-  const key = trackKey(track);
-  const idx = likes.findIndex(l => l._key === key);
-  if (idx >= 0) {
-    likes.splice(idx, 1);
-    toast('Removed from Liked Songs');
-  } else {
-    likes.unshift({ title: track.title||track.trackName, artist: track.artist||track.artistName, artSm: track.artSm||track.artworkUrl100||null, artLg: track.artLg||track._artLgOverride||null, _key: key });
-    toast('♥ Added to Liked Songs');
-  }
-  saveLikes();
-  renderLikes();
-  syncHeartBtn();
-}
-function syncHeartBtn() {
-  const cur = ST.queue[ST.idx];
-  const liked = cur && isLiked(cur);
-  G('btn-heart').classList.toggle('liked', !!liked);
-}
-function renderLikes() {
-  const el = G('likes-list');
-  if (!likes.length) { el.innerHTML = '<div class="lk-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><p>No liked songs yet</p></div>'; return; }
-  el.innerHTML = likes.map((lk, i) => `<div class="lk-row" onclick="playLikedSong(${i})">
-    <div class="lk-thumb">${lk.artSm ? `<img src="${x(lk.artSm)}" alt="">` : '🎵'}</div>
-    <div class="lk-inf"><div class="lk-t">${x(lk.title)}</div><div class="lk-a">${x(lk.artist)}</div></div>
-    <button class="lk-rm" onclick="event.stopPropagation();unlikeAt(${i})" title="Unlike">×</button>
-  </div>`).join('');
-}
-function playLikedSong(i) {
-  const lk = likes[i]; if (!lk) return;
-  addAndPlay({ title: lk.title, artist: lk.artist, artSm: lk.artSm, artLg: lk.artLg });
-  showPanel('queue');
-}
-function unlikeAt(i) { likes.splice(i, 1); saveLikes(); renderLikes(); syncHeartBtn(); }
-renderLikes();
-
-G('btn-heart').addEventListener('click', () => {
-  const cur = ST.queue[ST.idx]; if (!cur) { toast('Nothing playing'); return; }
-  toggleLike(cur);
-});
-
-let playlists = JSON.parse(localStorage.getItem('ghost_playlists') || '[]');
-let activePlId = null;
-function savePlaylists() { try { localStorage.setItem('ghost_playlists', JSON.stringify(playlists)); } catch {} }
-
-function renderPlaylists() {
-  const el = G('pl-grid');
-  if (!playlists.length) { el.innerHTML = '<div class="lk-empty" style="height:60%;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:34px;height:34px;opacity:.2"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No playlists yet</p></div>'; return; }
-  el.innerHTML = playlists.map((pl, i) => {
-    const arts = pl.tracks.slice(0,4).map(t => t.artSm).filter(Boolean);
-    const thumbHTML = arts.length >= 4
-      ? `<div class="pl-cover-grid">${arts.map(a=>`<img src="${x(a)}" alt="">`).join('')}</div>`
-      : arts.length ? `<img src="${x(arts[0])}" alt="" style="width:100%;height:100%;object-fit:cover">` : '🎵';
-    return `<div class="pl-card" onclick="openPlaylist(${i})">
-      <div class="pl-cover">${thumbHTML}</div>
-      <div class="pl-inf"><div class="pl-name">${x(pl.name)}</div><div class="pl-count">${pl.tracks.length} song${pl.tracks.length!==1?'s':''}</div></div>
-      <button class="pl-del" onclick="event.stopPropagation();deletePlaylist(${i})" title="Delete">×</button>
-    </div>`;
-  }).join('');
-}
-function openPlaylist(i) {
-  activePlId = i;
-  const pl = playlists[i]; if (!pl) return;
-  G('pl-detail-name').textContent = pl.name;
-  renderPlaylistDetail();
-  showPanel('pl-detail');
-}
-function renderPlaylistDetail() {
-  const pl = playlists[activePlId];
-  const el = G('pl-detail-list');
-  if (!pl || !pl.tracks.length) { el.innerHTML = '<div class="lk-empty" style="height:50%;justify-content:center"><p style="font-size:13px;color:var(--ink3)">No songs yet.<br>Right-click a queue item to add.</p></div>'; return; }
-  el.innerHTML = pl.tracks.map((t, i) => `<div class="lk-row" onclick="playFromPlaylist(${i})">
-    <div class="lk-thumb">${t.artSm ? `<img src="${x(t.artSm)}" alt="">` : '🎵'}</div>
-    <div class="lk-inf"><div class="lk-t">${x(t.title)}</div><div class="lk-a">${x(t.artist)}</div></div>
-    <button class="lk-rm" onclick="event.stopPropagation();removePlTrack(${i})" title="Remove">×</button>
-  </div>`).join('');
-}
-function playFromPlaylist(i) {
-  const pl = playlists[activePlId]; if (!pl) return;
-  const tracks = pl.tracks.slice(i).concat(pl.tracks.slice(0, i));
-  ST.queue = []; ST.idx = -1;
-  G('q-list').innerHTML = '';
-  tracks.forEach(t => { const idx = ST.queue.length; ST.queue.push({...t}); appendQI(t, idx); });
-  loadTrack(0); showPanel('queue');
-}
-function playPlaylist() { if (activePlId != null) playFromPlaylist(0); }
-function removePlTrack(i) {
-  if (activePlId == null) return;
-  playlists[activePlId].tracks.splice(i, 1);
-  savePlaylists(); renderPlaylistDetail(); renderPlaylists();
-}
-function deletePlaylist(i) {
-  playlists.splice(i, 1); savePlaylists(); renderPlaylists();
-  if (activePlId === i) { activePlId = null; showPanel('playlists'); }
-}
-function openNewPlaylistModal() {
-  G('newpl-input').value = ''; G('modal-newpl').classList.add('open');
-  setTimeout(() => G('newpl-input').focus(), 50);
-}
-function confirmNewPlaylist() {
-  const name = G('newpl-input').value.trim(); if (!name) return;
-  playlists.unshift({ name, tracks: [], id: Date.now() });
-  savePlaylists(); renderPlaylists(); closeModal('modal-newpl');
-  toast('Playlist "' + name + '" created');
-}
-G('newpl-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmNewPlaylist(); if (e.key === 'Escape') closeModal('modal-newpl'); });
-function closeModal(id) { G(id).classList.remove('open'); }
-G('modal-atp').addEventListener('click', e => { if (e.target === G('modal-atp')) closeModal('modal-atp'); });
-G('modal-newpl').addEventListener('click', e => { if (e.target === G('modal-newpl')) closeModal('modal-newpl'); });
-renderPlaylists();
-
-let ctxTrackIdx = -1;
-function openCtxMenu(e, idx) {
-  e.preventDefault(); e.stopPropagation();
-  ctxTrackIdx = idx;
-  const menu = G('ctx-menu');
-  menu.classList.add('open');
-  const tr = ST.queue[idx];
-  const liked = tr && isLiked(tr);
-  G('ctx-like-lbl').textContent = liked ? 'Unlike' : 'Like';
-  G('ctx-like').querySelector('svg').style.fill = liked ? 'var(--pink)' : 'none';
-  G('ctx-like').querySelector('svg').style.color = liked ? 'var(--pink)' : '';
-  let x2 = e.clientX, y2 = e.clientY;
-  if (x2 + 180 > window.innerWidth) x2 = window.innerWidth - 185;
-  if (y2 + 160 > window.innerHeight) y2 = window.innerHeight - 165;
-  menu.style.left = x2 + 'px'; menu.style.top = y2 + 'px';
-}
-document.addEventListener('click', () => G('ctx-menu').classList.remove('open'));
-document.addEventListener('contextmenu', e => { if (!e.target.closest('#ctx-menu')) G('ctx-menu').classList.remove('open'); });
-function ctxLike() {
-  const t = ST.queue[ctxTrackIdx]; if (!t) return;
-  toggleLike(t); G('ctx-menu').classList.remove('open');
-}
-function ctxAddToPlaylist() {
-  G('ctx-menu').classList.remove('open');
-  const t = ST.queue[ctxTrackIdx]; if (!t) return;
-  openAtpModal(t);
-}
-function ctxPlayNext() {
-  G('ctx-menu').classList.remove('open');
-  if (ctxTrackIdx < 0) return;
-  const t = ST.queue.splice(ctxTrackIdx, 1)[0];
-  const insertAt = ST.idx + 1;
-  ST.queue.splice(insertAt, 0, t);
-  if (ctxTrackIdx < ST.idx) ST.idx--;
-  else if (ctxTrackIdx === ST.idx) ST.idx = insertAt - 1;
-  rebuildQ();
-  toast('Playing next');
-}
-function ctxRemove() {
-  G('ctx-menu').classList.remove('open');
-  if (ctxTrackIdx < 0) return;
-  rmQI({ stopPropagation: ()=>{} }, ctxTrackIdx);
-}
-function openAtpModal(track) {
-  const listEl = G('modal-pl-list');
-  if (!playlists.length) {
-    listEl.innerHTML = '<p style="font-size:13px;color:var(--ink3);padding:4px 0">No playlists. Create one first.</p>';
-  } else {
-    listEl.innerHTML = playlists.map((pl, i) => {
-      const arts = pl.tracks.slice(0,1).map(t=>t.artSm).filter(Boolean);
-      const thumbHTML = arts.length ? `<img src="${x(arts[0])}" alt="">` : '🎵';
-      return `<div class="modal-pl-row" onclick="addToPlaylist(${i})">
-        <div class="modal-pl-thumb">${thumbHTML}</div>
-        <div class="modal-pl-name">${x(pl.name)}</div>
-      </div>`;
-    }).join('');
-  }
-  G('modal-atp-title').textContent = 'Add to Playlist';
-  G('modal-atp')._pendingTrack = track;
-  G('modal-atp').classList.add('open');
-}
-function addToPlaylist(plIdx) {
-  const t = G('modal-atp')._pendingTrack; if (!t) return;
-  const pl = playlists[plIdx];
-  const title = t.title||t.trackName||'';
-  const artist = t.artist||t.artistName||'';
-  const alreadyIn = pl.tracks.some(tr =>
-    tr.title.toLowerCase() === title.toLowerCase() &&
-    tr.artist.toLowerCase() === artist.toLowerCase()
-  );
-  if (alreadyIn) { toast(`Already in "${pl.name}"`); closeModal('modal-atp'); return; }
-  pl.tracks.push({ title, artist, artSm: t.artSm||t.artworkUrl100||null, artLg: t.artLg||t._artLgOverride||null });
-  savePlaylists(); renderPlaylists();
-  closeModal('modal-atp');
-  toast(`Added to "${pl.name}"`);
-}
-function createPlaylistFromModal() {
-  closeModal('modal-atp');
-  openNewPlaylistModal();
-}
-
-function proxyImg(url) {
-  if (!url) return '';
-  
-  if (url.startsWith('data:') || url.includes('weserv.nl') || url.includes('fanart.tv')) return url;
-  return url; 
-}
-function proxyImgFallback(img) {
-  
-  if (!img.src.includes('wsrv.nl')) {
-    const orig = img.getAttribute('data-src') || img.src;
-    img.src = 'https://wsrv.nl/?url=' + encodeURIComponent(orig) + '&w=300';
-  }
-}
-
-const ST = {
-  queue:[], idx:-1,
-  playing:false, shuffle:false, repeat:false, smartRepeat:false, muted:false,
-  vol:0.8, pos:0, dur:0,
-  lrc:[], lrcType:'none', lrcActive:-1, _parenActive:-1, _lineWordsDone:false,
-};
-
-function G(id){ return document.getElementById(id); }
-function ms2t(ms){ if(!ms||ms<0)return'0:00'; const s=Math.floor(ms/1000); return`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`; }
-function x(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-let toastTmr=null;
-function toast(msg){ const el=G('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(toastTmr); toastTmr=setTimeout(()=>el.classList.remove('show'),2800); }
-function setStatus(state, msg) { G('sc-dot').className='st-dot '+state; G('sc-status-txt').textContent=msg; }
-
-const PROXIES = [
-  u => u, 
-  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
-  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-  u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
-  u => 'https://thingproxy.freeboard.io/fetch/' + u,
-];
-
-async function proxyFetch(url, opts = {}, timeoutMs = 5000) {
-  const tryOne = proxy => new Promise(async (res, rej) => {
-    try {
-      const r = await fetch(proxy(url), { ...opts, signal: AbortSignal.timeout(timeoutMs) });
-      if (r.ok) res(r); else rej(r.status);
-    } catch(e) { rej(e); }
-  });
-  
-  return Promise.any(PROXIES.map(tryOne));
-}
-
-// ── SoundCloud audio engine ──────────────────────────────────────────────────
-const SC_SEARCH   = '/v1/search/soundcloud';
-const SC_DOWNLOAD = '/v1/download/soundcloud';
-
-const scAudio = G('sc-audio');
-let scReady = true; // always ready — no external API needed
-let ticker = null;
-
-function getPrecisePos() {
-  return (scAudio.currentTime || 0) * 1000;
-}
-
-// Wire up the <audio> element events
-scAudio.addEventListener('play', () => {
-  ST.playing = true; syncPP();
-  G('cover-art').classList.add('playing');
-  clearInterval(ticker);
-  ticker = setInterval(() => {
-    ST.pos = scAudio.currentTime * 1000;
-    ST.dur = (scAudio.duration || 0) * 1000;
-    syncBar();
-  }, 100);
-  if (!ST._rafRunning) {
-    ST._rafRunning = true;
-    const rafLoop = () => {
-      if (ST.lrcType === 'synced') tickLrc(getPrecisePos());
-      requestAnimationFrame(rafLoop);
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      app:$("app"), coverBg:$("coverBg"), searchInput:$("searchInput"), urlInput:$("urlInput"), loadUrlBtn:$("loadUrlBtn"),
+      results:$("results"), resultCount:$("resultCount"), engineDot:$("engineDot"), engineText:$("engineText"), statusLine:$("statusLine"),
+      lyricsStatus:$("lyricsStatus"), artStatus:$("artStatus"), heroArt:$("heroArt"), heroVideo:$("heroVideo"), artBadge:$("artBadge"),
+      heroTitle:$("heroTitle"), heroArtist:$("heroArtist"), lyricKicker:$("lyricKicker"), miniCover:$("miniCover"), miniTitle:$("miniTitle"), miniArtist:$("miniArtist"),
+      playBtn:$("playBtn"), playIcon:$("playIcon"), prevBtn:$("prevBtn"), nextBtn:$("nextBtn"), progress:$("progress"), currentTime:$("currentTime"), durationTime:$("durationTime"), volume:$("volume"),
+      lyricsList:$("lyricsList"), lyricSource:$("lyricSource"), lyricsBtn:$("lyricsBtn"), syncBtn:$("syncBtn"), refreshLyricsBtn:$("refreshLyricsBtn"), showEngineBtn:$("showEngineBtn"),
+      syncPanel:$("syncPanel"), syncReadout:$("syncReadout"), syncList:$("syncList"), setLineBtn:$("setLineBtn"), nudgeBackBtn:$("nudgeBackBtn"), nudgeForwardBtn:$("nudgeForwardBtn"), exportBtn:$("exportBtn"), exportBox:$("exportBox"), exportText:$("exportText"),
+      scEngine:$("scEngine"), scWidget:$("scWidget")
     };
-    requestAnimationFrame(rafLoop);
-  }
-});
 
-scAudio.addEventListener('pause', () => {
-  ST.playing = false; syncPP();
-  G('cover-art').classList.remove('playing');
-  clearInterval(ticker);
-});
+    const state = {
+      tracks:[...DEMO_TRACKS],
+      filtered:[...DEMO_TRACKS],
+      current:null,
+      currentIndex:0,
+      playing:false,
+      position:0,
+      duration:0,
+      lyrics:[],
+      lyricSource:"no lyrics loaded",
+      activeLyric:-1,
+      selectedLine:0,
+      syncMode:false,
+      engineVisible:false,
+      widgetReady:false,
+      suppressSeek:false
+    };
 
-scAudio.addEventListener('ended', () => {
-  ST.playing = false; syncPP();
-  G('cover-art').classList.remove('playing');
-  clearInterval(ticker); ST._rafRunning = false;
-  if (ST.repeat || ST.smartRepeat) doSmartRepeat();
-  else nextTrack();
-});
-
-scAudio.addEventListener('error', () => {
-  setStatus('err', 'Stream error');
-  toast('⚠ Could not play track — try another');
-});
-
-scAudio.volume = ST.vol;
-let srchTmr=null;
-const qIn=G('q-in'), qDrp=G('q-drop'), qSpn=G('q-spin');
-qIn.addEventListener('input', e => {
-  clearTimeout(srchTmr);
-  const q = e.target.value.trim();
-  if (!q) { hideDrop(); return; }
-  srchTmr = setTimeout(() => doSearch(q), 380);
-});
-qIn.addEventListener('focus', () => { if (qDrp.innerHTML) qDrp.style.display='block'; });
-document.addEventListener('click', e => { if (!e.target.closest('.search-row')) hideDrop(); });
-
-async function itunesFetch(url) {
-  
-  try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (r.ok) return await r.json();
-  } catch {}
-  
-  const enc = encodeURIComponent(url);
-  const proxied = [
-    'https://corsproxy.io/?url=' + enc,
-    'https://api.allorigins.win/raw?url=' + enc,
-    'https://api.codetabs.com/v1/proxy?quest=' + enc,
-  ];
-  const tryOne = u => new Promise(async (res, rej) => {
-    try {
-      const r = await fetch(u, { signal: AbortSignal.timeout(6000) });
-      if (!r.ok) return rej();
-      const j = await r.json();
-      if (j?.results !== undefined || j?.artistId !== undefined) res(j); else rej();
-    } catch { rej(); }
-  });
-  try { return await Promise.any(proxied.map(tryOne)); } catch { return null; }
-}
-
-async function doSearch(q) {
-  qSpn.style.display='block';
-  qDrp.innerHTML='<div class="drop-msg">Searching SoundCloud…</div>';
-  qDrp.style.display='block';
-
-  try {
-    const res = await fetch(SC_SEARCH + '?q=' + encodeURIComponent(q) + '&limit=20', {
-      signal: AbortSignal.timeout(8000)
-    });
-    const data = await res.json();
-    qSpn.style.display='none';
-
-    if (!res.ok || data.status !== 'success' || !data.results?.length) {
-      qDrp.innerHTML = '<div class="drop-msg">No results found — try a different search</div>';
-      return;
+    function scPlayerUrl(url){
+      const params = new URLSearchParams({
+        url,
+        auto_play:"false",
+        hide_related:"true",
+        show_comments:"false",
+        show_user:"false",
+        show_reposts:"false",
+        show_teaser:"false",
+        visual:"false",
+        buying:"false",
+        sharing:"false",
+        download:"false"
+      });
+      return `https://w.soundcloud.com/player/?${params.toString()}`;
     }
-    renderDrop(data.results);
-  } catch (err) {
-    qSpn.style.display='none';
-    qDrp.innerHTML = '<div class="drop-msg">⚠ Search failed — check your connection</div>';
-  }
-}
 
-function scoreTrack(t, ql, words) {
-  const tl = (t.trackName || '').toLowerCase();
-  const al = (t.artistName || '').toLowerCase();
-  let s = 0;
-  
-  if (tl === ql) s += 100;
-  else if (tl.startsWith(ql)) s += 70;
-  else if (words.every(w => tl.includes(w))) s += 45;
-  else s += words.filter(w => tl.includes(w)).length * 10;
-  
-  if (al === ql) s += 80;
-  else if (al.startsWith(ql)) s += 50;
-  else if (words.every(w => al.includes(w))) s += 30;
-  
-  if (t.artworkUrl100) s += 5;
-  if (t.trackTimeMillis > 60000) s += 5;
-  if ((t.trackCount || 0) > 5) s += 3; 
-  return s;
-}
+    function isSoundCloudUrl(value){
+      return /^https?:\/\/(m\.)?soundcloud\.com\//i.test((value || "").trim());
+    }
 
-async function searchItunes(q) {
-  const ql = q.toLowerCase().trim();
-  const words = ql.split(/\s+/).filter(Boolean);
-  const data = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&media=music&entity=song&limit=25&country=US`
-  );
-  if (!data?.results?.length) return [];
-  const results = data.results;
-  results.sort((a, b) => scoreTrack(b, ql, words) - scoreTrack(a, ql, words));
-  return results.slice(0, 25);
-}
+    function cleanText(value){
+      return (value || "").replace(/&amp;/g,"&").replace(/\s+/g," ").trim();
+    }
 
-async function searchMusicBrainz(q) {
-  try {
-    const res = await proxyFetch(`https://musicbrainz.org/ws/2/recording/?query=${encodeURIComponent(q)}&limit=25&fmt=json`, {
-      headers: { 'User-Agent': 'GhostMusic/1.0 (ghost@music.app)' }
-    }, 8000);
-    const data = await res.json();
-    if (!data.recordings?.length) return [];
-    return data.recordings.map(r => {
-      const artist = r['artist-credit']?.[0]?.artist?.name || r['artist-credit']?.[0]?.name || 'Unknown';
-      const release = r.releases?.[0];
-      const album = release?.title || '';
-      const releaseMbid = release?.id || null;
-      return {
-        trackName: r.title,
-        artistName: artist,
-        collectionName: album,
-        artworkUrl100: null,
-        trackTimeMillis: r.length || null,
-        _source: 'musicbrainz',
-        _releaseMbid: releaseMbid,
-      };
-    });
-  } catch { return []; }
-}
+    function stripJunkTitle(title){
+      return cleanText(title)
+        .replace(/\s*\((official|audio|lyrics?|visualizer|music video|sped up|slowed|live|remix).*?\)\s*/ig," ")
+        .replace(/\s*\[(official|audio|lyrics?|visualizer|music video|sped up|slowed|live|remix).*?\]\s*/ig," ")
+        .replace(/\s+/g," ").trim();
+    }
 
-async function searchLastFm(q) {
-  try {
-    const res = await fetch(`https://ws.audioscrobbler.com/2.0/?method=track.search&track=${encodeURIComponent(q)}&limit=25&format=json&api_key=8548f98a6f6e4d9b9b4d4f6a7f3e1b2d`);
-    const data = await res.json();
-    const tracks = data?.results?.trackmatches?.track;
-    if (!tracks?.length) return [];
-    const list = Array.isArray(tracks) ? tracks : [tracks];
-    return list.map(t => {
-      const imgs = Array.isArray(t.image) ? t.image : [];
-      const art = imgs.find(i=>i.size==='medium')?.['#text'] || imgs[0]?.['#text'] || null;
-      const artLg = imgs.find(i=>i.size==='extralarge')?.['#text'] || art;
-      const BLANK = '2a96cbd8b46e442fc41c2b86b821562f';
-      return {
-        trackName: t.name,
-        artistName: t.artist,
-        collectionName: '',
-        artworkUrl100: (art && !art.includes(BLANK)) ? art : null,
-        _artLgOverride: (artLg && !artLg.includes(BLANK)) ? artLg : null,
-        trackTimeMillis: null,
-        _source: 'lastfm',
-        _needsArt: !(art && !art.includes(BLANK)),
-      };
-    });
-  } catch { return []; }
-}
+    function splitTitleArtist(title, artist){
+      let t = stripJunkTitle(title || "Untitled");
+      let a = cleanText(artist || "SoundCloud");
+      const dash = t.match(/^(.+?)\s[-–—]\s(.+)$/);
+      if(dash){
+        const left = cleanText(dash[1]);
+        const right = stripJunkTitle(dash[2]);
+        if(!a || a.toLowerCase() === "soundcloud" || left.toLowerCase().includes(a.toLowerCase()) || a.toLowerCase().includes(left.toLowerCase())){
+          a = left;
+          t = right;
+        } else if(left.toLowerCase() === a.toLowerCase()) {
+          t = right;
+        }
+      }
+      return {title:t, artist:a};
+    }
 
-const _artCache = {};
-async function fetchCoverArt(track) {
-  if (track.artworkUrl100) return;
+    function normalize(value){
+      return (value || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();
+    }
 
-  const ck = ((track.artistName||'') + '||' + (track.trackName||'')).toLowerCase();
-  if (_artCache[ck] !== undefined) {
-    if (_artCache[ck]) { track.artworkUrl100 = _artCache[ck]; track._artLgOverride = _artCache[ck+'_lg']; }
-    return;
-  }
+    function formatTime(seconds, detailed=false){
+      seconds = Math.max(0, Number(seconds || 0));
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      if(!detailed) return `${m}:${String(s).padStart(2,"0")}`;
+      const cs = Math.floor((seconds - Math.floor(seconds)) * 100);
+      return `${m}:${String(s).padStart(2,"0")}.${String(cs).padStart(2,"0")}`;
+    }
 
-  
-  try {
-    const term = encodeURIComponent((track.artistName||'').trim() + ' ' + (track.trackName||'').trim());
-    const r = await fetch(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=5&country=US`);
-    if (r.ok) {
-      const d = await r.json();
-      const tl = (track.trackName||'').toLowerCase();
-      const al = (track.artistName||'').toLowerCase();
-      const hit = d.results?.find(h =>
-        h.trackName?.toLowerCase() === tl && h.artistName?.toLowerCase() === al
-      ) || d.results?.find(h =>
-        h.trackName?.toLowerCase().includes(tl) || h.artistName?.toLowerCase().includes(al)
-      ) || d.results?.[0];
-      if (hit?.artworkUrl100) {
-        const sm = hit.artworkUrl100;
-        const lg = sm.replace('100x100bb','600x600bb');
-        _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
-        track.artworkUrl100 = sm; track._artLgOverride = lg;
+    function gradientData(title, artist){
+      const seed = normalize(`${artist} ${title}`) || "relay music";
+      let hash = 0;
+      for(let i=0;i<seed.length;i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+      const h1 = hash % 360;
+      const h2 = (h1 + 72 + (hash % 80)) % 360;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="hsl(${h1},82%,58%)"/><stop offset="1" stop-color="hsl(${h2},88%,54%)"/></linearGradient><filter id="b"><feGaussianBlur stdDeviation="22"/></filter></defs><rect width="600" height="600" rx="72" fill="url(#g)"/><circle cx="145" cy="118" r="130" fill="rgba(255,255,255,.28)" filter="url(#b)"/><circle cx="475" cy="455" r="165" fill="rgba(0,0,0,.22)" filter="url(#b)"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="rgba(255,255,255,.9)" font-family="Arial" font-size="56" font-weight="800">${escapeXml((title || "R").slice(0,1).toUpperCase())}</text></svg>`;
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    }
+
+    function escapeXml(s){return String(s).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&apos;",'"':"&quot;"}[c]));}
+
+    function setStatus(text, type="warn"){
+      els.statusLine.textContent = text;
+      els.engineText.textContent = text;
+      els.engineDot.className = `engine-dot ${type === "ready" ? "ready" : type === "bad" ? "bad" : ""}`;
+    }
+
+    function setPlayIcon(){
+      els.playIcon.innerHTML = state.playing
+        ? `<path d="M8 5h3v14H8V5Zm5 0h3v14h-3V5Z" fill="currentColor"/>`
+        : `<path d="M8 5v14l11-7L8 5Z" fill="currentColor"/>`;
+    }
+
+    function updateTrackUi(track){
+      const cover = track.cover || gradientData(track.title, track.artist);
+      els.heroArt.src = cover;
+      els.miniCover.src = cover;
+      els.coverBg.style.setProperty("--bg-cover", `url("${cover}")`);
+      els.heroTitle.textContent = track.title || "Untitled";
+      els.heroArtist.textContent = track.artist || "SoundCloud";
+      els.miniTitle.textContent = track.title || "Untitled";
+      els.miniArtist.textContent = track.artist || "SoundCloud";
+      els.durationTime.textContent = formatTime(state.duration || track.duration || 0);
+      els.lyricKicker.textContent = track.source === "Pasted URL" ? "Pasted SoundCloud track" : "SoundCloud playback";
+      document.title = `${track.title || "Relay Music"} - Relay Music`;
+      renderResults();
+    }
+
+    function showVideoArtwork(src){
+      if(!src){
+        els.heroVideo.pause();
+        els.heroVideo.removeAttribute("src");
+        els.heroVideo.style.display = "none";
         return;
       }
+      els.heroVideo.src = src;
+      els.heroVideo.style.display = "block";
+      els.heroVideo.play().catch(() => {});
     }
-  } catch {}
 
-  
-  if (track._releaseMbid) {
-    const mbid = track._releaseMbid;
-    if (_artCache[mbid] !== undefined) {
-      if (_artCache[mbid]) { track.artworkUrl100 = _artCache[mbid]; track._artLgOverride = _artCache[mbid+'_lg']; }
-      _artCache[ck] = _artCache[mbid]; _artCache[ck+'_lg'] = _artCache[mbid+'_lg'];
-      return;
+    async function getOembed(url){
+      try{
+        const res = await fetch(`https://soundcloud.com/oembed?format=json&url=${encodeURIComponent(url)}`);
+        if(!res.ok) throw new Error("oEmbed failed");
+        return await res.json();
+      }catch(err){
+        return null;
+      }
     }
-    try {
-      const r = await fetch(`https://coverartarchive.org/release/${mbid}`);
-      if (r.ok) {
-        const d = await r.json();
-        const img = d.images?.find(i => i.front) || d.images?.[0];
-        if (img) {
-          const sm = img.thumbnails?.['250'] || img.thumbnails?.small || img.image;
-          const lg = img.thumbnails?.['500'] || img.thumbnails?.large || img.image;
-          if (sm) {
-            _artCache[mbid] = sm; _artCache[mbid+'_lg'] = lg;
-            _artCache[ck] = sm; _artCache[ck+'_lg'] = lg;
-            track.artworkUrl100 = sm; track._artLgOverride = lg;
-            return;
-          }
+
+    function pickFirstUrl(obj){
+      const seen = new Set();
+      const stack = [obj];
+      const keys = ["webpUrl","webp","videoUrl","mp4Url","mp4","animatedUrl","animated","squareCoverUrl","tallCoverUrl","coverUrl","imageUrl","artworkUrl","artwork","image","cover","url","src"];
+      while(stack.length){
+        const cur = stack.shift();
+        if(!cur || typeof cur !== "object" || seen.has(cur)) continue;
+        seen.add(cur);
+        for(const key of keys){
+          const val = cur[key];
+          if(typeof val === "string" && /^https?:\/\//.test(val)) return val;
+        }
+        for(const val of Object.values(cur)){
+          if(typeof val === "string" && /^https?:\/\/.*\.(jpg|jpeg|png|webp|mp4|m3u8)(\?|$)/i.test(val)) return val;
+          if(val && typeof val === "object") stack.push(val);
         }
       }
-    } catch {}
-    _artCache[mbid] = null;
-  }
+      return "";
+    }
 
-  _artCache[ck] = null;
-}
+    function upgradeImage(url, size=1000){
+      if(!url) return "";
+      return url
+        .replace(/-large\./,"-t500x500.")
+        .replace(/-t\d+x\d+\./,"-t500x500.")
+        .replace(/100x100bb\.(jpg|png|webp)/i,`${size}x${size}bb.$1`)
+        .replace(/\/\d+x\d+bb\.(jpg|png|webp)/i,`/${size}x${size}bb.$1`);
+    }
 
-function renderDrop(tracks) {
-  window._td = window._td || {};
+    async function fetchItunesArtwork(track){
+      try{
+        const term = `${track.artist || ""} ${track.title || ""}`.trim();
+        const res = await fetch(`https://itunes.apple.com/search?media=music&entity=song&limit=5&term=${encodeURIComponent(term)}`);
+        if(!res.ok) throw new Error("iTunes search failed");
+        const data = await res.json();
+        const results = Array.isArray(data.results) ? data.results : [];
+        let best = results.find(r => normalize(r.artistName).includes(normalize(track.artist)) && normalize(r.trackName).includes(normalize(track.title))) || results[0];
+        if(!best) return null;
+        return {
+          cover: upgradeImage(best.artworkUrl100 || best.artworkUrl60 || "", 1200),
+          album: best.collectionName || track.album || track.title,
+          title: best.trackName || track.title,
+          artist: best.artistName || track.artist
+        };
+      }catch(err){
+        return null;
+      }
+    }
 
-  qDrp.innerHTML = tracks.map((t) => {
-    const artSm = t.thumbnail || '';
-    const id = 'tr_' + Math.random().toString(36).slice(2);
-    window._td[id] = {
-      title:    t.title,
-      artist:   t.author || 'Unknown',
-      album:    t.album || '',
-      artSm:    artSm || null,
-      artLg:    artSm || null,
-      durMs:    t.duration || null,
-      permalink: t.permalink || null,
-      _scTrack: t,
-    };
-    const aName = (t.author||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const aArt  = artSm.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return `<div class="di" onclick="pickTrack('${id}')">
-      <div class="di-art">${artSm ? `<img src="${artSm}" alt="">` : '🎵'}</div>
-      <div class="di-inf"><div class="di-t">${x(t.title)}</div><div class="di-s"><span class="artist-link" onclick="event.stopPropagation();openArtistProfile('${aName}','${aArt}')" style="cursor:pointer;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,.25);">${x(t.author||'Unknown')}</span>${t.album ? ' · '+x(t.album) : ''}</div></div>
-      <span class="di-dur">${ms2t(t.duration)}</span>
-      <div class="di-add"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
-    </div>`;
-  }).join('');
-}
+    async function fetchM8Artwork(track){
+      const tries = [];
+      if(track.artist && track.album) tries.push({artist:track.artist, album:track.album});
+      if(track.artist && track.title) tries.push({artist:track.artist, album:track.title});
+      for(const item of tries){
+        try{
+          const url = `${ARTWORK_ENDPOINT}/api/v1/artwork/search?artist=${encodeURIComponent(item.artist)}&album=${encodeURIComponent(item.album)}`;
+          const res = await fetch(url);
+          if(!res.ok) continue;
+          const data = await res.json();
+          const media = pickFirstUrl(data);
+          if(media) return {media, data};
+        }catch(err){}
+      }
+      return null;
+    }
 
-async function hydrateArt(ids) {
-  if (!ids?.length) return;
-  await Promise.allSettled(ids.map(async id => {
-    const entry = window._td?.[id];
-    if (!entry || entry.artSm) return;
-    const srcTrack = entry._ref;
-    if (!srcTrack) return;
-    await fetchCoverArt(srcTrack);
-    if (!srcTrack.artworkUrl100) return;
-    entry.artSm = srcTrack.artworkUrl100;
-    entry.artLg = srcTrack._artLgOverride || srcTrack.artworkUrl100;
-    const cell = document.getElementById('da_' + id);
-    if (cell) cell.innerHTML = `<img src="${entry.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;display:block">`;
-  }));
-}
+    async function updateArtwork(track){
+      els.artStatus.textContent = "Artwork loading...";
+      els.artBadge.textContent = "loading";
+      showVideoArtwork("");
+      const fallback = track.soundcloudArtwork || gradientData(track.title, track.artist);
+      track.cover = fallback;
+      updateTrackUi(track);
 
-async function pickTrack(id) { hideDrop(); qIn.value=''; const t=window._td?.[id]; if(t) addAndPlay(t); }
-function hideDrop() { qDrp.style.display='none'; }
+      const apple = await fetchItunesArtwork(track);
+      if(apple && apple.cover){
+        track.cover = apple.cover;
+        track.album = track.album || apple.album;
+        updateTrackUi(track);
+        els.artStatus.textContent = `Apple cover loaded${apple.album ? `: ${apple.album}` : ""}`;
+        els.artBadge.textContent = "Apple cover";
+      }
 
-function addAndPlay(track) {
-  // Normalize field names from SC format
-  const normalized = {
-    title:     track.title || track.trackName || 'Untitled',
-    artist:    track.artist || track.author || track.artistName || 'Unknown',
-    album:     track.album || track.collectionName || '',
-    artSm:     track.artSm || track.artworkUrl100 || track.thumbnail || null,
-    artLg:     track.artLg || track._artLgOverride || track.artSm || track.thumbnail || null,
-    durMs:     track.durMs || track.duration || track.trackTimeMillis || null,
-    permalink: track.permalink || null,
-    _downloadUrl: track._downloadUrl || null,
-    _releaseMbid: track._releaseMbid || null,
-    _scTrack: track._scTrack || null,
-  };
-  const i=ST.queue.length; ST.queue.push(normalized); appendQI(normalized,i); loadTrack(i);
-}
+      const m8 = await fetchM8Artwork(track);
+      if(m8 && m8.media){
+        if(/\.(mp4|webm|m3u8)(\?|$)/i.test(m8.media)){
+          if(/\.m3u8(\?|$)/i.test(m8.media)){
+            els.artStatus.textContent = "M8 animated HLS found; using static cover in this one-file build.";
+            els.artBadge.textContent = "M8 HLS";
+          }else{
+            showVideoArtwork(m8.media);
+            els.artStatus.textContent = "M8 animated artwork loaded.";
+            els.artBadge.textContent = "M8 animated";
+          }
+        }else{
+          track.cover = m8.media;
+          updateTrackUi(track);
+          els.artStatus.textContent = "M8 artwork loaded.";
+          els.artBadge.textContent = "M8 cover";
+        }
+      }else if(!apple){
+        els.artStatus.textContent = track.soundcloudArtwork ? "Using SoundCloud artwork." : "Using generated cover.";
+        els.artBadge.textContent = track.soundcloudArtwork ? "SoundCloud" : "cover";
+      }
+    }
 
-function appendQI(track, i) {
-  const list=G('q-list'); list.querySelector('.q-empty-msg')?.remove();
-  const el=document.createElement('div');
-  el.className='qi'; el.id=`qi${i}`; el.dataset.idx=i;
-  el.innerHTML=`<div class="qi-th" id="qt${i}">${track.artSm?`<img src="${track.artSm}" data-src="${track.artSm}" onerror="proxyImgFallback(this)" alt="">`:'🎵'}</div>
-    <div class="qi-inf"><div class="qi-t">${x(track.title)}</div><div class="qi-a">${x(track.artist)}</div></div>
-    <button class="qi-rm" onclick="rmQI(event,${i})">×</button>`;
-  el.addEventListener('click', e => { if(!e.target.classList.contains('qi-rm')) loadTrack(i); });
-  el.addEventListener('contextmenu', e => openCtxMenu(e, i));
-  list.appendChild(el);
-}
-function rmQI(e,i) { e.stopPropagation(); ST.queue.splice(i,1); rebuildQ(); if(ST.idx===i){ST.idx=-1;resetNP();}else if(ST.idx>i)ST.idx--; }
-function rebuildQ() { const l=G('q-list'); l.innerHTML=''; if(!ST.queue.length){l.innerHTML='<div class="q-empty-msg">Queue is empty</div>';return;} ST.queue.forEach((t,i)=>appendQI(t,i)); if(ST.idx>=0)markQI(ST.idx); }
-function markQI(idx) {
-  document.querySelectorAll('.qi').forEach(el => {
-    const i=+el.dataset.idx; el.classList.toggle('now',i===idx);
-    const th=el.querySelector('.qi-th'); th.querySelector('.now-ind')?.remove();
-    if(i===idx){const b=document.createElement('div');b.className='now-ind';b.innerHTML='<div class="bars"><b></b><b></b><b></b></div>';th.appendChild(b);el.scrollIntoView({block:'nearest',behavior:'smooth'});}
-  });
-}
-
-async function loadTrack(idx) {
-  if (idx < 0 || idx >= ST.queue.length) return;
-  ST.idx = idx;
-  const track = ST.queue[idx];
-  markQI(idx); updateNP(track); syncHeartBtn();
-  ST.playing=false; ST.pos=0; ST.dur=0; syncPP();
-
-  scAudio.pause();
-  scAudio.removeAttribute('src');
-
-  setStatus('loading', 'Loading…');
-
-  // If we already have a resolved download URL, use it directly
-  if (track._downloadUrl) {
-    scAudio.src = track._downloadUrl;
-    scAudio.volume = ST.muted ? 0 : ST.vol;
-    scAudio.play().catch(() => {});
-    setStatus('ok', 'SoundCloud');
-    fetchLyrics(track.title, track.artist);
-    return;
-  }
-
-  // Otherwise resolve via the SC download endpoint
-  let permalink = track.permalink || track._scTrack?.permalink;
-
-  // No permalink — try a SoundCloud search to find a matching track
-  if (!permalink) {
-    setStatus('loading', 'Searching…');
-    try {
-      const q = encodeURIComponent((track.artist||'') + ' ' + (track.title||''));
-      const sr = await fetch(SC_SEARCH + '?q=' + q + '&limit=5', { signal: AbortSignal.timeout(8000) });
-      const sd = await sr.json();
-      if (sr.ok && sd.status === 'success' && sd.results?.length) {
-        permalink = sd.results[0].permalink;
-        // Grab art if we don't have any
-        if (!track.artSm && sd.results[0].thumbnail) {
-          track.artSm = sd.results[0].thumbnail;
-          track.artLg = sd.results[0].thumbnail;
-          updateNP(track);
+    function parseLrc(lrc, duration=0){
+      const out = [];
+      const lines = String(lrc || "").split(/\r?\n/);
+      for(const raw of lines){
+        const matches = [...raw.matchAll(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g)];
+        if(!matches.length) continue;
+        const text = raw.replace(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g,"").trim();
+        if(!text) continue;
+        for(const m of matches){
+          const minutes = Number(m[1]);
+          const seconds = Number(m[2]);
+          const fraction = m[3] ? Number((m[3] + "00").slice(0,3)) / 1000 : 0;
+          out.push({start:minutes*60 + seconds + fraction, end:0, text, words:[]});
         }
       }
-    } catch {}
-  }
-
-  if (!permalink) {
-    setStatus('err', 'No link');
-    toast('⚠ Could not resolve track');
-    return;
-  }
-
-  try {
-    const res = await fetch(SC_DOWNLOAD + '?url=' + encodeURIComponent(permalink), {
-      signal: AbortSignal.timeout(15000)
-    });
-    const data = await res.json();
-    if (!res.ok || data.status !== 'success' || !data.download) {
-      setStatus('err', 'Unavailable');
-      toast('⚠ Track unavailable — try another');
-      return;
+      out.sort((a,b) => a.start - b.start);
+      for(let i=0;i<out.length;i++) out[i].end = out[i+1]?.start ?? (duration || out[i].start + 4);
+      return out;
     }
 
-    track._downloadUrl = data.download;
-    // Also enrich metadata if available
-    if (data.thumbnail && !track.artSm) {
-      track.artSm = data.thumbnail;
-      track.artLg = data.thumbnail;
+    function timedPlainLyrics(plain, duration=0){
+      const lines = String(plain || "").split(/\r?\n/).map(x => x.trim()).filter(Boolean);
+      if(!lines.length) return [];
+      const total = duration || Math.max(lines.length * 4, 60);
+      const gap = total / Math.max(lines.length,1);
+      return lines.map((text,i) => ({start:i*gap,end:(i+1)*gap,text,words:[]}));
     }
-    if (data.duration && !track.durMs) track.durMs = data.duration;
 
-    scAudio.src = data.download;
-    scAudio.volume = ST.muted ? 0 : ST.vol;
-    scAudio.play().catch(() => {});
-    setStatus('ok', 'SoundCloud');
-  } catch (err) {
-    setStatus('err', 'Failed');
-    toast('⚠ Could not load track');
-    return;
-  }
+    function demoLyrics(track){
+      const lines = [
+        `Now playing ${track.title || "this track"}`,
+        "SoundCloud playback is running under Relay Music",
+        "LRCLIB lyrics load automatically when a match exists",
+        "This fallback keeps the lyric screen testable",
+        "Open Sync Mode to set better timestamps",
+        "Nudge each line until it feels perfect",
+        "Export the timing JSON when the sync is clean"
+      ];
+      const dur = state.duration || track.duration || 120;
+      return lines.map((text,i) => ({start:i * Math.max(4, dur / (lines.length + 2)), end:(i+1)*Math.max(4, dur / (lines.length + 2)), text, words:[]}));
+    }
 
-  fetchLyrics(track.title, track.artist);
+    async function fetchLyrics(track){
+      els.lyricsStatus.textContent = "Lyrics searching LRCLIB...";
+      state.lyricSource = "searching LRCLIB";
+      renderLyrics();
+      const title = stripJunkTitle(track.title);
+      const artist = cleanText(track.artist);
+      const duration = Math.round(state.duration || track.duration || 0);
+      const urls = [
+        `${LRCLIB_BASE}/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`,
+        `${LRCLIB_BASE}/search?q=${encodeURIComponent(`${artist} ${title}`)}`
+      ];
+      if(duration) urls.unshift(`${LRCLIB_BASE}/get?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}&duration=${duration}`);
 
-  // Hydrate cover art if missing
-  if (!track.artSm && !track.artLg) {
-    const _refTrack = {
-      artworkUrl100: null, _artLgOverride: null,
-      _releaseMbid: track._releaseMbid,
-      artistName: track.artist, trackName: track.title
-    };
-    fetchCoverArt(_refTrack).then(() => {
-      if (!_refTrack.artworkUrl100) return;
-      if (ST.queue[ST.idx] !== track) return;
-      track.artSm = _refTrack.artworkUrl100;
-      track.artLg = _refTrack._artLgOverride || _refTrack.artworkUrl100;
-      const artUrl = track.artLg || track.artSm;
-      G('cv-img').src = artUrl;
-      G('cv-img').setAttribute('data-src', artUrl);
-      G('cv-bg').src = artUrl;
-      G('cv-bg').classList.add('on');
-      G('cover-art').style.display = 'block';
-      const lrcBg = G('lrc-bg');
-      lrcBg.style.backgroundImage = `url('${artUrl}')`;
-      lrcBg.classList.add('on');
-      const th = document.getElementById('qt' + idx);
-      if (th) th.innerHTML = `<img src="${track.artSm}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
-    });
-  }
-}
-
-function updateNP(track) {
-  G('empty-cover').style.display='none';
-  G('cover-art').style.display='block';
-  G('cover-info').style.display='block';
-  G('np-t').textContent=track.title;
-  G('np-a').textContent=track.artist;
-  G('np-a').style.cursor='pointer';
-  G('np-a').onclick=()=>openArtistProfile(track.artist, track.artSm||'');
-  const art = track.artLg || track.artSm;
-  if(art){
-    const artUrl = proxyImg(art);
-    G('cv-img').src=artUrl; G('cv-img').setAttribute('data-src',artUrl); G('cv-img').onerror=function(){proxyImgFallback(this)};
-    G('cv-bg').src=artUrl;
-    G('cv-bg').classList.add('on');
-    const lrcBg = G('lrc-bg');
-    lrcBg.style.backgroundImage = `url('${artUrl}')`;
-    lrcBg.classList.add('on');
-  }
-}
-function resetNP() {
-  G('empty-cover').style.display='';
-  G('cover-art').style.display='none';
-  G('cover-info').style.display='none';
-  G('cover-art').classList.remove('playing');
-  G('cv-bg').classList.remove('on');
-  G('prog-f').style.width='0%'; G('t-c').textContent='0:00'; G('t-d').textContent='0:00';
-  ST.playing=false; syncPP();
-}
-
-function togglePlay() { if(ST.idx<0)return; ST.playing?scAudio.pause():scAudio.play().catch(()=>{}); }
-function prevTrack() { if(!ST.queue.length)return; if(ST.pos>3000){scAudio.currentTime=0;return;} loadTrack(ST.shuffle?rnd():(ST.idx-1+ST.queue.length)%ST.queue.length); }
-function nextTrack() { if(!ST.queue.length)return; loadTrack(ST.shuffle?rnd():(ST.idx+1)%ST.queue.length); }
-function rnd() { return Math.floor(Math.random()*ST.queue.length); }
-function syncPP() { G('pp-ico').innerHTML=ST.playing?'<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>':'<path d="M8 5v14l11-7z"/>'; }
-function syncBar() { if(!ST.dur)return; G('prog-f').style.width=Math.min(100,ST.pos/ST.dur*100).toFixed(2)+'%'; G('t-c').textContent=ms2t(ST.pos); G('t-d').textContent=ms2t(ST.dur); }
-
-G('prog').addEventListener('click', e => {
-  if(!ST.dur||ST.idx<0)return;
-  const r=e.currentTarget.getBoundingClientRect();
-  scAudio.currentTime=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width))*(ST.dur/1000);
-});
-G('vol-tr').addEventListener('click', e => {
-  const r=e.currentTarget.getBoundingClientRect();
-  ST.vol=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));
-  G('vol-f').style.width=(ST.vol*100)+'%';
-  if(!ST.muted) scAudio.volume=ST.vol;
-});
-G('btn-vol').addEventListener('click', () => {
-  ST.muted=!ST.muted; G('btn-vol').classList.toggle('on',ST.muted);
-  scAudio.volume = ST.muted ? 0 : ST.vol;
-  G('vol-ico').innerHTML=ST.muted
-    ?'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15" stroke="currentColor" stroke-width="2"/><line x1="17" y1="9" x2="23" y2="15" stroke="currentColor" stroke-width="2"/>'
-    :'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"/>';
-});
-G('btn-sf').addEventListener('click',()=>{ST.shuffle=!ST.shuffle;G('btn-sf').classList.toggle('on',ST.shuffle);});
-G('btn-rp').addEventListener('click',()=>{
-  
-  if (!ST.repeat && !ST.smartRepeat) {
-    ST.repeat = true; ST.smartRepeat = false;
-    G('btn-rp').classList.add('on');
-    G('btn-rp').title = 'Repeat One';
-    G('btn-rp-ico').innerHTML = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><text x="10" y="14" font-size="7" font-weight="bold" fill="currentColor">1</text>';
-  } else if (ST.repeat && !ST.smartRepeat) {
-    ST.repeat = false; ST.smartRepeat = true;
-    G('btn-rp').classList.add('on');
-    G('btn-rp').title = 'Smart Repeat (AI blend)';
-    G('btn-rp-ico').innerHTML = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><circle cx="12" cy="12" r="2" fill="currentColor"/>';
-  } else {
-    ST.repeat = false; ST.smartRepeat = false;
-    G('btn-rp').classList.remove('on');
-    G('btn-rp').title = 'Repeat (R)';
-    G('btn-rp-ico').innerHTML = '<path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>';
-  }
-});
-G('btn-pv').addEventListener('click',prevTrack);
-G('btn-nx').addEventListener('click',nextTrack);
-G('btn-pp').addEventListener('click',togglePlay);
-
-const wordSyncOn = true;
-
-const AI_MODEL = 'google/gemini-2.5-flash-preview';
-const _aiTimingCache = {};
-
-async function aiRefineWordTimings(lrcLines, title, artist) {
-  const ck = (title + '||' + artist).toLowerCase();
-  if (_aiTimingCache[ck]) return _aiTimingCache[ck];
-
-  const realLines = lrcLines.filter(l =>
-    !l._synthetic &&
-    l.words?.some(w => !w._isPause && !w._isInlineParen && w.word?.trim())
-  );
-  if (!realLines.length) return null;
-
-  function buildPayload(batch) {
-    return batch.map((line, li) => {
-      const globalLi = realLines.indexOf(line);
-      const nextReal  = realLines[globalLi + 1];
-      const rw        = line.words.filter(w => !w._isPause && !w._isInlineParen && w.word?.trim());
-      const lineEnd   = nextReal?.ms ?? (line.ms + 5000);
-      const singMs    = lineEnd - line.ms;
-      const syls      = rw.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
-      const prevReal  = realLines[globalLi - 1];
-      const prevSyls  = prevReal
-        ? prevReal.words.filter(w=>!w._isPause&&!w._isInlineParen&&w.word?.trim()).reduce((a,w)=>a+syllableCount(w.word),0)||1
-        : null;
-      const prevMsps  = prevReal ? Math.round((line.ms - prevReal.ms) / prevSyls) : null;
-      return {
-        i:       lrcLines.indexOf(line),
-        ms:      line.ms,
-        end:     lineEnd,
-        singMs,
-        mspsy:   Math.round(singMs / syls),
-        prevMsps,
-        words:   rw.map(w => w.word),
-      };
-    });
-  }
-
-  async function callAI(payload) {
-    const prompt = `Lyrics sync engine for "${title}" by ${artist}.
-
-You receive LRC lines. Each has exact timestamps from the LRC file.
-Your job: distribute word start times within each line's window, AND decide when the singing ends.
-
-Fields:
-- ms: line start
-- end: next line start (NO word may reach or exceed this)
-- singMs: end - ms (total window in ms)
-- mspsy: ms-per-syllable tempo reference
-- prevMsps: previous line's tempo
-- words: the words to time
-
-TIMING RULES:
-1. First word starts at ms (or up to 80ms after for breath)
-2. Connector words (a, the, and, to, of, in, I, my, you, it, was, is, be, do): duration = 0.4 × mspsy
-3. Content words: duration = 0.9 × mspsy × syllables
-4. Emotionally stressed words (death, love, hate, never, always, etc): 1.2 × mspsy × syllables
-5. Last word gets a natural hold — singer holds the note
-6. Punctuation pause: comma=+0.25×mspsy, period/!/?=+0.5×mspsy — shift NEXT word later
-7. If mspsy < prevMsps: speeding up — shrink connectors to 0.3×
-8. If mspsy > prevMsps: slowing down — stretch last word hold more
-9. All word times strictly increasing
-10. All word times within [ms, end-60]
-
-SING_END: After placing all words, output singEnd = the ms when the LAST word finishes being sung (last word start + its natural hold duration). The line will sit highlighted at 100% from singEnd until end. singEnd must be <= end - 50.
-
-Return ONLY: [{"w":[ms,ms,...],"se":singEndMs},...]
-"w" array length MUST equal words array length.
-"se" = singEnd ms (when last word finishes, line sits done until "end")
-Raw JSON only. No markdown.
-
-${JSON.stringify(payload)}`;
-
-    const res = await fetch('/ai-lyrics', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${AI_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': location.href,
-        'X-Title': 'Ghost Music'
-      },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        max_tokens: 3000,
-        temperature: 0.05,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      signal: AbortSignal.timeout(20000)
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const raw  = data.choices?.[0]?.message?.content?.trim();
-    if (!raw) return null;
-    const clean = raw.replace(/^```[a-z]*\n?/,'').replace(/\n?```$/,'').trim();
-    const parsed = JSON.parse(clean);
-    if (!Array.isArray(parsed)) return null;
-    return parsed;
-  }
-
-  const BATCH = 30;
-  const batches = [];
-  for (let i = 0; i < Math.min(realLines.length, 90); i += BATCH) {
-    batches.push(realLines.slice(i, i + BATCH));
-  }
-
-  const refined = new Map();
-
-  function applyBatch(payload, results) {
-    payload.forEach((lp, si) => {
-      const ai = results[si];
-      if (!ai?.w || ai.w.length !== lp.words.length) return;
-      if (!ai.w.every(t => typeof t==='number' && t >= lp.ms - 100 && t < lp.end)) return;
-      for (let j = 1; j < ai.w.length; j++) if (ai.w[j] <= ai.w[j-1]) return;
-      const singEnd = (typeof ai.se === 'number' && ai.se > lp.ms && ai.se <= lp.end)
-        ? ai.se : null;
-      refined.set(lp.i, { words: ai.w, singEnd });
-    });
-  }
-
-  try {
-    const p1 = buildPayload(batches[0]);
-    const r1 = await callAI(p1);
-    if (r1) applyBatch(p1, r1);
-
-    _aiTimingCache[ck] = refined;
-
-    const remaining = batches.slice(1).map(batch => {
-      const p = buildPayload(batch);
-      return callAI(p).then(r => { if (r) applyBatch(p, r); });
-    });
-
-    if (remaining.length > 0) {
-      Promise.all(remaining).then(() => {
-        const track = ST.queue[ST.idx];
-        if (!track) return;
-        const curCk = (track.title + '||' + track.artist).toLowerCase();
-        if (curCk !== ck) return;
-        applyAIRefinements(ST.lrc, track.title, track.artist, refined).then(reRefined => {
-          if (reRefined !== ST.lrc) {
-            ST.lrc = reRefined;
-            ST.lrcActive = -1;
-            ST._parenActive = -1;
-            Object.keys(_lwState).forEach(k => delete _lwState[k]);
-            renderSynced();
+      for(const url of urls){
+        try{
+          const res = await fetch(url, {headers:{"Accept":"application/json"}});
+          if(!res.ok) continue;
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : [data];
+          const ranked = list
+            .filter(Boolean)
+            .map(item => ({item, score:scoreLyricsMatch(item, title, artist, duration)}))
+            .sort((a,b) => b.score - a.score)
+            .map(x => x.item);
+          const synced = ranked.find(x => x.syncedLyrics && x.syncedLyrics.trim());
+          if(synced){
+            const parsed = parseLrc(synced.syncedLyrics, duration);
+            if(parsed.length){
+              state.lyrics = parsed;
+              state.lyricSource = "LRCLIB synced";
+              els.lyricsStatus.textContent = `Lyrics loaded from LRCLIB (${parsed.length} lines).`;
+              renderLyrics();
+              renderSyncList();
+              return;
+            }
           }
+          const plain = ranked.find(x => x.plainLyrics && x.plainLyrics.trim());
+          if(plain){
+            const parsed = timedPlainLyrics(plain.plainLyrics, duration);
+            if(parsed.length){
+              state.lyrics = parsed;
+              state.lyricSource = "LRCLIB plain timed by Relay";
+              els.lyricsStatus.textContent = `Plain lyrics loaded; timing is estimated.`;
+              renderLyrics();
+              renderSyncList();
+              return;
+            }
+          }
+        }catch(err){}
+      }
+      state.lyrics = demoLyrics(track);
+      state.lyricSource = "demo sync fallback";
+      els.lyricsStatus.textContent = "No synced lyrics found; using demo fallback.";
+      renderLyrics();
+      renderSyncList();
+    }
+
+    function scoreLyricsMatch(item, title, artist, duration){
+      let score = 0;
+      const lt = normalize(item.trackName || item.name || "");
+      const la = normalize(item.artistName || "");
+      const t = normalize(title);
+      const a = normalize(artist);
+      if(lt === t) score += 8; else if(lt.includes(t) || t.includes(lt)) score += 4;
+      if(la === a) score += 8; else if(la.includes(a) || a.includes(la)) score += 4;
+      if(duration && item.duration){
+        const diff = Math.abs(Number(item.duration) - duration);
+        if(diff <= 2) score += 5; else if(diff <= 7) score += 2;
+      }
+      if(item.syncedLyrics) score += 5;
+      return score;
+    }
+
+    function renderLyrics(){
+      els.lyricSource.textContent = state.lyricSource || "no lyrics loaded";
+      if(!state.lyrics.length){
+        els.lyricsList.innerHTML = `<div class="empty">No lyrics loaded yet.</div>`;
+        return;
+      }
+      els.lyricsList.innerHTML = state.lyrics.map((line,i) => `<div class="lyric-line" data-idx="${i}">${escapeHtml(line.text)}</div>`).join("");
+      [...els.lyricsList.querySelectorAll(".lyric-line")].forEach(node => {
+        node.addEventListener("click", () => {
+          const idx = Number(node.dataset.idx);
+          state.selectedLine = idx;
+          seekTo(state.lyrics[idx].start);
+          renderSyncList();
+        });
+      });
+      updateLyricActive(true);
+    }
+
+    function escapeHtml(s){return String(s).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));}
+
+    function updateLyricActive(force=false){
+      if(!state.lyrics.length) return;
+      const t = state.position;
+      let idx = state.lyrics.findIndex(line => t >= line.start && t < line.end);
+      if(idx < 0){
+        for(let i=state.lyrics.length-1;i>=0;i--){ if(t >= state.lyrics[i].start){ idx = i; break; } }
+      }
+      if(idx < 0) idx = 0;
+      if(!force && idx === state.activeLyric) return;
+      state.activeLyric = idx;
+      const nodes = [...els.lyricsList.querySelectorAll(".lyric-line")];
+      nodes.forEach((node,i) => {
+        node.classList.toggle("active", i === idx);
+        node.classList.toggle("past", i < idx);
+      });
+      const active = nodes[idx];
+      if(active){
+        const top = active.offsetTop - els.lyricsList.clientHeight * 0.36;
+        els.lyricsList.scrollTo({top:Math.max(0,top), behavior:force ? "auto" : "smooth"});
+      }
+    }
+
+    function renderSyncList(){
+      if(!state.lyrics.length){ els.syncList.innerHTML = `<div class="empty">No lyric lines yet.</div>`; return; }
+      els.syncList.innerHTML = state.lyrics.map((line,i) => `
+        <button class="sync-line ${i === state.selectedLine ? "active" : ""}" data-idx="${i}">
+          <span class="sync-time">${formatTime(line.start,true)}</span>
+          <span class="sync-text">${escapeHtml(line.text)}</span>
+        </button>`).join("");
+      [...els.syncList.querySelectorAll(".sync-line")].forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.selectedLine = Number(btn.dataset.idx);
+          seekTo(state.lyrics[state.selectedLine].start);
+          renderSyncList();
         });
       });
     }
-  } catch { return refined.size ? refined : null; }
 
-  return refined.size ? refined : null;
-}
+    function updateProgressUi(){
+      const dur = state.duration || 0;
+      const pos = state.position || 0;
+      els.currentTime.textContent = formatTime(pos);
+      els.durationTime.textContent = formatTime(dur);
+      els.syncReadout.textContent = formatTime(pos,true);
+      if(!state.suppressSeek){
+        const val = dur ? Math.min(1000, Math.max(0, (pos / dur) * 1000)) : 0;
+        els.progress.value = String(val);
+        els.progress.style.setProperty("--pct", `${val / 10}%`);
+      }
+    }
 
-async function aiGenerateSyncedLyrics(plainLyrics, title, artist, durMs) {
-  
-  const ck = ('plain||' + title + '||' + artist).toLowerCase();
-  if (_aiTimingCache[ck]) return _aiTimingCache[ck];
+    function renderResults(){
+      els.resultCount.textContent = `${state.filtered.length} ${state.filtered.length === 1 ? "track" : "tracks"}`;
+      if(!state.filtered.length){
+        els.results.innerHTML = `<div class="empty">No local/demo matches. Paste a full SoundCloud track link into the search bar or the URL box, then press Enter/Load. Full SoundCloud search needs a Relay backend endpoint.</div>`;
+        return;
+      }
+      els.results.innerHTML = state.filtered.map((track,idx) => {
+        const active = state.current && track.url === state.current.url;
+        const cover = track.cover || track.soundcloudArtwork || gradientData(track.title, track.artist);
+        return `<button class="track-row ${active ? "active" : ""}" data-idx="${idx}">
+          <img class="row-cover" src="${cover}" alt="">
+          <span style="min-width:0"><span class="row-title">${escapeHtml(track.title)}</span><span class="row-artist">${escapeHtml(track.artist || "SoundCloud")}</span></span>
+          <span class="row-tag">${escapeHtml(track.source || "SoundCloud")}</span>
+        </button>`;
+      }).join("");
+      [...els.results.querySelectorAll(".track-row")].forEach(btn => {
+        btn.addEventListener("click", () => {
+          const track = state.filtered[Number(btn.dataset.idx)];
+          loadTrack(track, true);
+        });
+      });
+    }
 
-  const durSec = Math.round((durMs || 240000) / 1000);
-  const lines = plainLyrics.split('\n').map(l => l.trim()).filter(Boolean).slice(0, 80);
+    function filterResults(query){
+      const q = cleanText(query);
+      if(isSoundCloudUrl(q)){
+        const pasted = makePastedTrack(q);
+        state.filtered = [pasted, ...state.tracks.filter(x => x.url !== q)];
+        renderResults();
+        return;
+      }
+      if(!q){ state.filtered = [...state.tracks]; renderResults(); return; }
+      const n = normalize(q);
+      state.filtered = state.tracks.filter(track => normalize(`${track.title} ${track.artist} ${track.album || ""}`).includes(n));
+      renderResults();
+    }
 
-  const prompt = `You are a music lyrics sync expert. Generate realistic LRC timestamps for the following song lyrics.
+    function makePastedTrack(url){
+      return {
+        title:"Pasted SoundCloud track",
+        artist:"SoundCloud",
+        album:"",
+        url:cleanText(url),
+        duration:0,
+        source:"Pasted URL"
+      };
+    }
 
-Song: "${title}" by ${artist}
-Duration: ${durSec} seconds
-
-Rules:
-- Timestamps must be in LRC format: [mm:ss.xx]
-- Distribute lines naturally across the song duration
-- Account for typical song structure: intro (~10-15s), verses, chorus, bridge, outro
-- Instrumental gaps should have a [mm:ss.xx] entry with just a space or ♪
-- Don't go past ${durSec} seconds
-
-Lyrics lines:
-${lines.map((l, i) => `${i+1}. ${l}`).join('\n')}
-
-Respond ONLY with raw LRC text, no explanation:`;
-
-  try {
-    const res = await fetch('/ai-lyrics', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${AI_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': location.href,
-        'X-Title': 'Ghost Music'
+    const adapter = {
+      widget:null,
+      readyResolvers:[],
+      init(){
+        els.scWidget.src = scPlayerUrl(DEMO_TRACKS[0].url);
+        const start = Date.now();
+        const wait = () => {
+          if(window.SC && window.SC.Widget){
+            this.widget = SC.Widget(els.scWidget);
+            this.bind();
+            setStatus("SoundCloud engine loading", "warn");
+          }else if(Date.now() - start > 9000){
+            setStatus("SoundCloud API blocked or unavailable", "bad");
+          }else{
+            setTimeout(wait, 120);
+          }
+        };
+        wait();
       },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        max_tokens: 2500,
-        temperature: 0.25,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      signal: AbortSignal.timeout(15000)
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const lrcText = data.choices?.[0]?.message?.content?.trim();
-    if (!lrcText) return null;
-    _aiTimingCache[ck] = lrcText;
-    return lrcText;
-  } catch { return null; }
-}
-
-async function applyAIRefinements(lines, title, artist, preRefined) {
-  const refined = preRefined ?? await aiRefineWordTimings(lines, title, artist);
-  if (!refined || !refined.size) return lines;
-  return lines.map((line, i) => {
-    const ai = refined.get(i);
-    if (!ai || !line.words?.length) return line;
-
-    const singEnd  = ai.singEnd ?? null;
-    const rawTimes = ai.words ?? [];
-
-    let wordTimes = rawTimes;
-    if (singEnd && rawTimes.length > 0) {
-      const origFirst = rawTimes[0];
-      const origLast  = rawTimes[rawTimes.length - 1];
-      const origSpan  = Math.max(1, origLast - origFirst);
-      const targetEnd = singEnd - 60;
-      const targetSpan = Math.max(1, targetEnd - line.ms);
-      const scale = Math.min(1, targetSpan / origSpan);
-      wordTimes = rawTimes.map(ms => Math.round(line.ms + (ms - origFirst) * scale));
-    }
-
-    let realWordIdx = 0;
-    const newWords = line.words.map((w) => {
-      if (w._isPause || w._isInlineParen) return w;
-      const newMs = wordTimes[realWordIdx] ?? w.ms;
-      realWordIdx++;
-      return { ...w, ms: newMs };
-    });
-    return { ...line, words: newWords, _singEnd: singEnd };
-  });
-}
-
-async function fetchLyrics(title, artist) {
-  ST.lrc=[]; ST.lrcType='none'; ST.lrcActive=-1; ST._parenActive=-1;
-  const scroll=G('lscroll');
-  G('lrc-empty-state').style.display='none';
-  scroll.innerHTML='<div class="lrc-empty"><p>Finding lyrics…</p></div>';
-  const clean=s=>s.replace(/\[.*?\]/g,'').replace(/\bfeat\.?.*$/i,'').replace(/\bft\.?.*$/i,'').trim();
-  const ct=clean(title), ca=clean(artist);
-
-  
-  const [r1, r2] = await Promise.all([lrclibGET(ct, ca), ct!==title||ca!==artist ? lrclibGET(title, artist) : Promise.resolve(null)]);
-  for (const d of [r1, r2]) {
-    if(d?.syncedLyrics){
-      let lines = buildWordTimings(parseLRC(d.syncedLyrics));
-      if(lines.length){
-        ST.lrc=lines; ST.lrcType='synced'; renderSynced();
-        
-        applyAIRefinements(lines, title, artist).then(refined => {
-          if (refined !== lines && ST.queue[ST.idx]?.title === title) {
-            ST.lrc = refined;
-            ST.lrcActive = -1;
-            ST._parenActive = -1;
-            Object.keys(_lwState).forEach(k => delete _lwState[k]);
-            renderSynced();
-          }
+      bind(){
+        const E = SC.Widget.Events;
+        this.widget.bind(E.READY, () => {
+          state.widgetReady = true;
+          setStatus("SoundCloud engine ready", "ready");
+          this.pullSound();
+          const resolvers = this.readyResolvers.splice(0);
+          resolvers.forEach(fn => fn());
         });
-        return;
-      }
-    }
-  }
-  
-  const [s1, s2] = await Promise.all([lrclibSEARCH(ct, ca), ct!==title||ca!==artist ? lrclibSEARCH(title, artist) : Promise.resolve(null)]);
-
-  
-  for (const d of [s1, s2]) {
-    if(d?.syncedLyrics){
-      let lines = buildWordTimings(parseLRC(d.syncedLyrics));
-      if(lines.length){
-        ST.lrc=lines; ST.lrcType='synced'; renderSynced();
-        applyAIRefinements(lines, title, artist).then(refined => {
-          if (refined !== lines && ST.queue[ST.idx]?.title === title) {
-            ST.lrc = refined;
-            ST.lrcActive = -1;
-            ST._parenActive = -1;
-            Object.keys(_lwState).forEach(k => delete _lwState[k]);
-            renderSynced();
-          }
+        this.widget.bind(E.PLAY, () => { state.playing = true; setPlayIcon(); this.pullSound(); });
+        this.widget.bind(E.PAUSE, () => { state.playing = false; setPlayIcon(); });
+        this.widget.bind(E.FINISH, () => { state.playing = false; setPlayIcon(); nextTrack(); });
+        this.widget.bind(E.ERROR, () => { setStatus("SoundCloud could not load this track", "bad"); });
+        this.widget.bind(E.PLAY_PROGRESS, (e) => {
+          if(e && typeof e.currentPosition === "number") state.position = e.currentPosition / 1000;
+          updateProgressUi();
+          updateLyricActive();
         });
-        return;
-      }
-    }
-  }
-
-  
-  const plainData = [r1,r2,s1,s2].find(d => d?.plainLyrics);
-  if (plainData?.plainLyrics) {
-    scroll.innerHTML='<div class="lrc-empty"><p>Syncing lyrics with AI…</p></div>';
-    const dur = ST.queue[ST.idx]?.durMs || (ST.dur ? ST.dur : 0);
-    const lrcText = await aiGenerateSyncedLyrics(plainData.plainLyrics, title, artist, dur);
-    if (lrcText) {
-      const parsed = parseLRC(lrcText);
-      if (parsed.length) {
-        const lines = buildWordTimings(parsed);
-        if (lines.length) {
-          ST.lrc=lines; ST.lrcType='synced'; renderSynced();
-          applyAIRefinements(lines, title, artist).then(refined => {
-            if (refined !== lines && ST.queue[ST.idx]?.title === title) {
-              ST.lrc = refined;
-              ST.lrcActive = -1;
-              ST._parenActive = -1;
-              Object.keys(_lwState).forEach(k => delete _lwState[k]);
-              renderSynced();
-            }
+      },
+      onceReady(){
+        return new Promise(resolve => this.readyResolvers.push(resolve));
+      },
+      load(url, autoplay=false){
+        return new Promise((resolve) => {
+          setStatus("Loading SoundCloud track", "warn");
+          this.readyResolvers.push(() => {
+            this.pullSound();
+            if(autoplay) setTimeout(() => this.play(), 180);
+            resolve();
           });
-          return;
+          this.widget.load(url, {
+            auto_play: autoplay,
+            hide_related: true,
+            show_comments: false,
+            show_user: false,
+            show_reposts: false,
+            show_teaser: false,
+            visual: false,
+            buying: false,
+            sharing: false,
+            download: false
+          });
+        });
+      },
+      pullSound(){
+        if(!this.widget) return;
+        this.widget.getCurrentSound((sound) => {
+          if(!sound) return;
+          const split = splitTitleArtist(sound.title, sound.user?.username || state.current?.artist || "SoundCloud");
+          if(state.current){
+            state.current.title = split.title || state.current.title;
+            state.current.artist = split.artist || state.current.artist;
+            state.current.duration = sound.duration ? sound.duration / 1000 : state.current.duration;
+            state.current.soundcloudArtwork = upgradeImage(sound.artwork_url || sound.user?.avatar_url || state.current.soundcloudArtwork || "");
+            state.current.url = sound.permalink_url || state.current.url;
+            state.duration = state.current.duration || state.duration;
+            updateTrackUi(state.current);
+          }
+        });
+        this.widget.getDuration((ms) => {
+          if(ms){ state.duration = ms/1000; if(state.current) state.current.duration = state.duration; updateProgressUi(); }
+        });
+        this.widget.getVolume((vol) => { if(typeof vol === "number") els.volume.value = String(vol); });
+      },
+      play(){ if(this.widget) this.widget.play(); },
+      pause(){ if(this.widget) this.widget.pause(); },
+      toggle(){ state.playing ? this.pause() : this.play(); },
+      seek(seconds){ if(this.widget) this.widget.seekTo(Math.max(0,seconds) * 1000); },
+      setVolume(v){ if(this.widget) this.widget.setVolume(Number(v)); }
+    };
+
+    async function loadTrack(inputTrack, autoplay=false){
+      let track = {...inputTrack};
+      state.current = track;
+      state.position = 0;
+      state.duration = track.duration || 0;
+      state.activeLyric = -1;
+      state.selectedLine = 0;
+      state.lyrics = [];
+      state.lyricSource = "loading lyrics";
+      state.currentIndex = Math.max(0, state.tracks.findIndex(x => x.url === track.url));
+      updateTrackUi(track);
+      renderLyrics();
+      renderSyncList();
+      updateProgressUi();
+
+      if(track.source === "Pasted URL"){
+        const meta = await getOembed(track.url);
+        if(meta){
+          const split = splitTitleArtist(meta.title || track.title, meta.author_name || track.artist);
+          track.title = split.title;
+          track.artist = split.artist;
+          track.soundcloudArtwork = upgradeImage(meta.thumbnail_url || "");
+          state.current = track;
+          updateTrackUi(track);
         }
       }
-    }
-    
-    const fallbackLines = buildWordTimings(plainData.plainLyrics.split('\n')
-      .map(l => l.trim()).filter(Boolean)
-      .map((text, i) => ({ ms: i * 4000, text, _wordTimed: null })));
-    ST.lrc=fallbackLines; ST.lrcType='synced'; renderSynced();
-    return;
-  }
 
-  scroll.innerHTML='<div class="lrc-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-3v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/></svg><p>No lyrics found</p></div>';
-}
-
-async function lrclibGET(track, artist) {
-  try {
-    const url = `https://lrclib.net/api/get?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
-    if (r.status === 200 || r.ok) return await r.json();
-  } catch {}
-  return null;
-}
-async function lrclibSEARCH(track, artist) {
-  try {
-    const url = `https://lrclib.net/api/search?track_name=${encodeURIComponent(track)}&artist_name=${encodeURIComponent(artist)}`;
-    const r = await proxyFetch(url, { headers: { 'Lrclib-Client': 'Wavelength/4.0' } }, 6000);
-    if (r.ok) {
-      const a = await r.json();
-      if (a?.length) return a.find(x => x.syncedLyrics) || a.find(x => x.plainLyrics) || null;
-    }
-  } catch {}
-  return null;
-}
-
-function parseLRC(rawStr) {
-  return rawStr.split('\n').map(line => {
-    const m = line.match(/^\[(\d{1,3}):(\d{2}(?:\.\d+)?)\](.*)/);
-    if (!m) return null;
-    const ms = parseInt(m[1])*60000 + parseFloat(m[2])*1000;
-    const raw = m[3];
-
-    
-    const wTagRe = /<(\d{1,3}):(\d{2}\.\d+)>([^<]*)/g;
-    let wm; const wTimed = [];
-    while ((wm = wTagRe.exec(raw)) !== null) {
-      const wMs = parseInt(wm[1])*60000 + parseFloat(wm[2])*1000;
-      const word = wm[3].trim();
-      if (word) wTimed.push({ ms: wMs, word });
-    }
-
-    let text = raw.replace(/<[^>]+>/g,'').trim();
-    if (/^[♪♫\s\-_]+$/.test(text)) text = '';
-    return { ms, text, _wordTimed: wTimed.length > 0 ? wTimed : null };
-  }).filter(Boolean);
-}
-
-function syllableCount(word) {
-  word = word.toLowerCase().replace(/[^a-z']/g,'').replace(/'/g,'');
-  if (!word) return 1;
-  word = word
-    .replace(/tion$/,'shun').replace(/sion$/,'shun')
-    .replace(/cious$/,'shus').replace(/tious$/,'shus')
-    .replace(/eous$/,'us').replace(/geous$/,'jus').replace(/ious$/,'yus')
-    .replace(/ued$/,'ude').replace(/ves$/,'ve');
-  if (word.length > 2 && word.endsWith('e') && !/[aeiou]e$/.test(word)) word = word.slice(0,-1);
-  if (word.endsWith('ed') && !/[dt]ed$/.test(word)) word = word.slice(0,-1);
-  const vowels = word.match(/[aeiouy]+/g);
-  let count = vowels ? vowels.length : 1;
-  if (word[0] === 'y') count = Math.max(1, count - 1);
-  return Math.max(1, count);
-}
-
-const FAST_WORDS = new Set([
-  'a','an','the','and','or','but','in','on','at','to','for','of','by','up',
-  'so','my','me','we','he','she','it','i','is','as','be','do','go','no','if',
-  'oh','ah','mm','mmm','its','im','ive','ill','id','our','are','was','were',
-  'had','has','have','that','this','with','from','not','can','will','just','your',
-]);
-
-const VOWELS = new Set(['a','e','i','o','u']);
-
-function _lerp(x, lo, hi) { return lo + x * (hi - lo); }
-
-function _paceFactor(msPerSyl) {
-  return Math.max(0, Math.min(1, (msPerSyl - 80) / 620));
-}
-
-
-function wordDurMul(word, syls, isLast, msPerSyl) {
-  const clean = word.replace(/[^a-z']/gi,'').replace(/'/g,'').toLowerCase();
-  const len   = clean.length;
-  const pace  = _paceFactor(msPerSyl);
-  let mul = 1.0;
-  if (FAST_WORDS.has(clean))      mul = _lerp(pace, 0.52, 0.65);
-  else if (len <= 2)              mul = _lerp(pace, 0.62, 0.75);
-  else if (len <= 3)              mul = _lerp(pace, 0.76, 0.88);
-  else                            mul = _lerp(pace, 0.92, 1.08);
-  if (/([aeiou])\1{1,}/.test(clean)) mul *= _lerp(pace, 1.25, 1.65);
-  if (/[aeio]$/.test(clean) && len > 2) mul *= _lerp(pace, 1.05, 1.20);
-  if (isLast) mul *= _lerp(pace, 1.20, 1.90);
-  return mul;
-}
-
-function wordPauseAfter(word, msPerSyl) {
-  const pace = _paceFactor(msPerSyl);
-  if (/[,;]$/.test(word))  return msPerSyl * _lerp(pace, 0.20, 0.70);
-  if (/:$/.test(word))     return msPerSyl * _lerp(pace, 0.28, 0.80);
-  if (/[—…]$/.test(word))  return msPerSyl * _lerp(pace, 0.45, 1.20);
-  if (/!$/.test(word))     return msPerSyl * _lerp(pace, 0.25, 0.78);
-  if (/\?$/.test(word))    return msPerSyl * _lerp(pace, 0.30, 0.88);
-  if (/\.$/.test(word))    return msPerSyl * _lerp(pace, 0.18, 0.60);
-  return 0;
-}
-
-function wordSpeedWeight(word, syls, isLast) {
-  return wordDurMul(word, syls, isLast, 200) * syls;
-}
-
-function timingForWords(rawWords, lineMs, nextMs) {
-  const n    = rawWords.length;
-  const syls = rawWords.map(syllableCount);
-  const totalSyls = syls.reduce((a,b) => a+b, 0) || 1;
-  const gapMs = Math.max(300, nextMs - lineMs - 80);
-
-  const neutralMsPerSyl = Math.max(95, gapMs / totalSyls);
-  const estimatedPauseMs = rawWords.reduce((acc, w) =>
-    acc + wordPauseAfter(w, neutralMsPerSyl), 0);
-  const singMs   = Math.max(200, gapMs - estimatedPauseMs);
-  const msPerSyl = Math.max(90, singMs / totalSyls);
-
-  const fillDurs  = rawWords.map((w, wi) =>
-    syls[wi] * msPerSyl * wordDurMul(w, syls[wi], false, msPerSyl));
-  const pauseDurs = rawWords.map(w => wordPauseAfter(w, msPerSyl));
-  const totalDurs = fillDurs.map((f, wi) => f + pauseDurs[wi]);
-  const rawTotal  = totalDurs.reduce((a,b) => a+b, 0);
-
-  let scaledFill  = fillDurs.slice();
-  let scaledPause = pauseDurs.slice();
-
-  if (rawTotal > gapMs) {
-    const overflow  = rawTotal - gapMs;
-    const isFastArr = rawWords.map(w => {
-      const c = w.replace(/[^a-z]/gi,'').toLowerCase();
-      return FAST_WORDS.has(c) || c.length <= 3;
-    });
-    const fastBudget = totalDurs.reduce((s,d,wi) => s + (isFastArr[wi] ? d : 0), 0);
-    if (fastBudget >= overflow * 0.8) {
-      const ratio = Math.max(0.1, (fastBudget - overflow) / fastBudget);
-      scaledFill  = fillDurs.map((d,wi)  => isFastArr[wi] ? d * ratio : d);
-      scaledPause = pauseDurs.map((d,wi) => isFastArr[wi] ? d * ratio : d);
-    } else {
-      const scale  = gapMs / rawTotal;
-      scaledFill   = fillDurs.map(d => d * scale);
-      scaledPause  = pauseDurs.map(d => Math.max(d * 0.35, d * scale));
-      const newTot = scaledFill.reduce((a,b)=>a+b,0) + scaledPause.reduce((a,b)=>a+b,0);
-      if (newTot > gapMs) {
-        const s2 = gapMs / newTot;
-        scaledFill  = scaledFill.map(d => d * s2);
-        scaledPause = scaledPause.map(d => d * s2);
+      if(!state.tracks.some(x => x.url === track.url)){
+        state.tracks.unshift(track);
+        filterResults(els.searchInput.value);
       }
-    }
-    scaledFill = scaledFill.map((d,wi) => {
-      const c = rawWords[wi].replace(/[^a-z]/gi,'').toLowerCase();
-      return FAST_WORDS.has(c) ? Math.max(d,35) : Math.max(d,60);
-    });
-  }
 
-  const result = [];
-  let cursor = lineMs;
-  for (let wi = 0; wi < n; wi++) {
-    result.push({ ms: cursor, word: rawWords[wi] });
-    cursor += scaledFill[wi];
-    if (scaledPause[wi] > 50) {
-      result.push({ ms: cursor, word: '', _isPause: true });
-      cursor += scaledPause[wi];
-    } else {
-      cursor += scaledPause[wi];
-    }
-  }
-  return result;
-}
-
-function buildWordTimings(lrc) {
-  const expanded = [];
-
-  for (let i = 0; i < lrc.length; i++) {
-    const line    = lrc[i];
-    const nextMs  = lrc[i+1]?.ms ?? null;
-    const rawText = line.text?.trim() ?? '';
-
-    
-    if (!rawText) {
-      expanded.push(line);
-      continue;
+      if(adapter.widget){
+        await adapter.load(track.url, autoplay);
+      }else{
+        setStatus("SoundCloud engine still starting", "warn");
+      }
+      adapter.pullSound();
+      updateArtwork(track);
+      fetchLyrics(track);
     }
 
-    const { mainText, parens } = extractParens(rawText);
+    function seekTo(seconds){
+      state.position = Math.max(0, seconds || 0);
+      adapter.seek(state.position);
+      updateProgressUi();
+      updateLyricActive(true);
+    }
 
-    
-    
-    if (!mainText && parens.length > 0) {
-      for (const paren of parens) {
-        expanded.push({
-          ms: line.ms,
-          text: paren.text,
-          _wordTimed: null,
-          _synthetic: false,
-          _isParen: true,
-          _parenParentMs: line.ms,  
-          _wholeLine: true,         
+    function prevTrack(){
+      if(!state.tracks.length) return;
+      const idx = (state.currentIndex - 1 + state.tracks.length) % state.tracks.length;
+      loadTrack(state.tracks[idx], true);
+    }
+
+    function nextTrack(){
+      if(!state.tracks.length) return;
+      const idx = (state.currentIndex + 1) % state.tracks.length;
+      loadTrack(state.tracks[idx], true);
+    }
+
+    function nudgeSelected(delta){
+      if(!state.lyrics.length) return;
+      const idx = state.selectedLine;
+      state.lyrics[idx].start = Math.max(0, state.lyrics[idx].start + delta);
+      state.lyrics.sort((a,b) => a.start - b.start);
+      for(let i=0;i<state.lyrics.length;i++) state.lyrics[i].end = state.lyrics[i+1]?.start ?? (state.duration || state.lyrics[i].start + 4);
+      state.selectedLine = Math.min(idx, state.lyrics.length - 1);
+      renderLyrics();
+      renderSyncList();
+    }
+
+    function exportSync(){
+      const payload = {
+        title: state.current?.title || "",
+        artist: state.current?.artist || "",
+        album: state.current?.album || "",
+        sourceUrl: state.current?.url || "",
+        duration: Number((state.duration || 0).toFixed(3)),
+        source: state.lyricSource,
+        lines: state.lyrics.map(line => ({
+          start:Number(line.start.toFixed(3)),
+          end:Number(line.end.toFixed(3)),
+          text:line.text,
+          words:line.words || []
+        }))
+      };
+      els.exportText.value = JSON.stringify(payload,null,2);
+      els.exportBox.style.display = "block";
+      els.exportText.select();
+      navigator.clipboard?.writeText(els.exportText.value).catch(() => {});
+    }
+
+    function toggleSync(force){
+      state.syncMode = typeof force === "boolean" ? force : !state.syncMode;
+      els.syncPanel.classList.toggle("open", state.syncMode);
+      if(state.syncMode){ renderSyncList(); setTimeout(() => $("syncPanel").scrollIntoView?.({block:"nearest"}), 50); }
+    }
+
+    function bindEvents(){
+      els.searchInput.addEventListener("input", () => filterResults(els.searchInput.value));
+      els.searchInput.addEventListener("keydown", (e) => {
+        if(e.key !== "Enter") return;
+        const q = cleanText(els.searchInput.value);
+        if(isSoundCloudUrl(q)) loadTrack(makePastedTrack(q), true);
+        else if(state.filtered[0]) loadTrack(state.filtered[0], true);
+      });
+      els.urlInput.addEventListener("keydown", (e) => { if(e.key === "Enter") els.loadUrlBtn.click(); });
+      els.loadUrlBtn.addEventListener("click", () => {
+        const url = cleanText(els.urlInput.value);
+        if(!isSoundCloudUrl(url)){ setStatus("Paste a full SoundCloud track URL", "bad"); return; }
+        els.searchInput.value = url;
+        filterResults(url);
+        loadTrack(makePastedTrack(url), true);
+      });
+      els.playBtn.addEventListener("click", () => adapter.toggle());
+      els.prevBtn.addEventListener("click", prevTrack);
+      els.nextBtn.addEventListener("click", nextTrack);
+      els.volume.addEventListener("input", () => {
+        els.volume.style.setProperty("--pct", `${els.volume.value}%`);
+        adapter.setVolume(els.volume.value);
+      });
+      els.progress.addEventListener("input", () => {
+        state.suppressSeek = true;
+        const pct = Number(els.progress.value) / 1000;
+        els.progress.style.setProperty("--pct", `${pct * 100}%`);
+        els.currentTime.textContent = formatTime((state.duration || 0) * pct);
+      });
+      els.progress.addEventListener("change", () => {
+        const pct = Number(els.progress.value) / 1000;
+        state.suppressSeek = false;
+        seekTo((state.duration || 0) * pct);
+      });
+      els.lyricsBtn.addEventListener("click", () => els.lyricsList.scrollTo({top:0,behavior:"smooth"}));
+      els.syncBtn.addEventListener("click", () => toggleSync());
+      els.refreshLyricsBtn.addEventListener("click", () => state.current && fetchLyrics(state.current));
+      els.showEngineBtn.addEventListener("click", () => {
+        state.engineVisible = !state.engineVisible;
+        els.scEngine.style.position = state.engineVisible ? "fixed" : "absolute";
+        els.scEngine.style.left = state.engineVisible ? "18px" : "-9999px";
+        els.scEngine.style.top = state.engineVisible ? "auto" : "-9999px";
+        els.scEngine.style.right = state.engineVisible ? "18px" : "auto";
+        els.scEngine.style.bottom = state.engineVisible ? "128px" : "auto";
+        els.scEngine.style.width = state.engineVisible ? "420px" : "360px";
+        els.scEngine.style.height = state.engineVisible ? "166px" : "166px";
+        els.scEngine.style.opacity = state.engineVisible ? "1" : ".01";
+        els.scEngine.style.zIndex = state.engineVisible ? "99" : "auto";
+        els.scEngine.style.pointerEvents = state.engineVisible ? "auto" : "none";
+        els.showEngineBtn.textContent = state.engineVisible ? "Hide engine" : "Show engine";
+      });
+      els.setLineBtn.addEventListener("click", () => {
+        if(!state.lyrics.length) return;
+        state.lyrics[state.selectedLine].start = state.position;
+        for(let i=0;i<state.lyrics.length;i++) state.lyrics[i].end = state.lyrics[i+1]?.start ?? (state.duration || state.lyrics[i].start + 4);
+        renderLyrics();
+        renderSyncList();
+      });
+      els.nudgeBackBtn.addEventListener("click", () => nudgeSelected(-0.05));
+      els.nudgeForwardBtn.addEventListener("click", () => nudgeSelected(0.05));
+      els.exportBtn.addEventListener("click", exportSync);
+      document.querySelectorAll(".nav button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".nav button").forEach(x => x.classList.remove("active"));
+          btn.classList.add("active");
+          if(btn.dataset.jump === "sync") toggleSync(true);
+          if(btn.dataset.jump === "lyrics") els.lyricsList.scrollTo({top:0,behavior:"smooth"});
+          if(btn.dataset.jump === "search") els.searchInput.focus();
         });
-      }
-      
-
-      continue;
-    }
-
-    const mainRawWords = mainText.split(/\s+/).filter(Boolean);
-    const mainSyls     = mainRawWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
-    const gap          = nextMs !== null ? nextMs - line.ms : 3500;
-
-    const estSingMs = gap * 0.65;
-
-    expanded.push({ ...line, text: mainText,
-      _parensSource: parens.length > 0 ? parens : null,
-      _inlineParens: parens.filter(p => p.isMidLine)
-    });
-
-    for (const paren of parens.filter(p => !p.isMidLine)) {
-      const frac  = mainRawWords.length > 0
-        ? Math.min(0.92, paren.afterWordIdx / mainRawWords.length) : 0.5;
-      let parenMs = Math.round(line.ms + estSingMs * frac);
-      if (nextMs !== null) parenMs = Math.min(parenMs, nextMs - 80);
-      expanded.push({
-        ms: parenMs, text: paren.text,
-        _wordTimed: null, _synthetic: false,
-        _isParen: true, _parenParentMs: line.ms,
       });
     }
 
-
-  }
-
-  
-  for (let i = 0; i < expanded.length - 1; i++) {
-    if (!expanded[i]._isParen) continue;
-    let nextMain = -1;
-    for (let j = i + 1; j < expanded.length; j++) {
-      if (!expanded[j]._isParen && !expanded[j]._synthetic) { nextMain = j; break; }
-    }
-    if (nextMain === -1) continue;
-    if (expanded[i].ms >= expanded[nextMain].ms) {
-      const [paren] = expanded.splice(i, 1);
-      paren.ms = Math.max(paren.ms, expanded[nextMain - 1].ms + 50);
-      expanded.splice(nextMain, 0, paren);
-      i--;
-    }
-  }
-
-  
-  return expanded.map((line, i) => {
-    const lineMs   = line.ms;
-    
-    
-    
-    let nextMs;
-    if (line._isParen || line._synthetic) {
-      
-      nextMs = lineMs + 3500;
-      for (let j = i + 1; j < expanded.length; j++) {
-        if (!expanded[j]._isParen && !expanded[j]._synthetic) {
-          nextMs = expanded[j].ms;
-          break;
-        }
-      }
-    } else {
-      nextMs = expanded[i+1]?.ms ?? (lineMs + 3500);
-    }
-    const rawWords = (line.text || '').split(/\s+/).filter(Boolean);
-
-    if (!rawWords.length) {
-      const nextIsWholeParen = expanded[i+1]?._wholeLine;
-      const gapMs = Math.max(400, nextMs - lineMs);
-      
-      
-      let nearbyMsPerSyl = 200; 
-      for (let k = Math.max(0,i-3); k <= Math.min(expanded.length-1, i+3); k++) {
-        const kl = expanded[k];
-        if (!kl.text?.trim() || kl._isParen || kl._synthetic) continue;
-        const kNext = expanded[k+1]?.ms ?? (kl.ms + 2000);
-        const kWords = kl.text.split(/\s+/).filter(Boolean);
-        const kSyls  = kWords.reduce((a,w) => a + syllableCount(w), 0) || 1;
-        nearbyMsPerSyl = (kNext - kl.ms) / kSyls;
-        break;
-      }
-      
-      const bpm       = Math.round(60000 / Math.max(100, nearbyMsPerSyl * 2));
-      const beatDur   = Math.round(Math.min(800, Math.max(280, 60000 / Math.max(60, bpm))));
-      return { ...line, words: [], beatDur, _skipDots: !!nextIsWholeParen };
-    }
-
-    if (line._wordTimed?.length) {
-      return { ...line, words: line._wordTimed };
-    }
-
-    const baseWords = timingForWords(rawWords, lineMs, nextMs);
-
-    
-    
-    
-    if (line._inlineParens?.length) {
-      const result = [];
-      let realWordIdx = 0;
-      for (let wi = 0; wi < baseWords.length; wi++) {
-        const w = baseWords[wi];
-        if (!w._isPause && !w._isInlineParen) {
-          
-          for (const ip of line._inlineParens) {
-            if (ip.afterWordIdx === realWordIdx) {
-              
-              
-              result.push({ ms: w.ms, word: ip.text, _isInlineParen: true });
-            }
+    function rafLoop(){
+      if(adapter.widget && state.widgetReady){
+        adapter.widget.getPosition((ms) => {
+          if(typeof ms === "number"){
+            state.position = ms / 1000;
+            updateProgressUi();
+            updateLyricActive();
           }
-          realWordIdx++;
-        }
-        result.push(w);
+        });
       }
-      
-      for (const ip of line._inlineParens) {
-        if (ip.afterWordIdx >= realWordIdx) {
-          const lastReal = result.filter(w => !w._isPause && !w._isInlineParen).pop();
-          result.push({ ms: lastReal?.ms ?? lineMs, word: ip.text, _isInlineParen: true });
-        }
-      }
-      return { ...line, words: result };
+      requestAnimationFrame(() => setTimeout(rafLoop, 120));
     }
 
-    return { ...line, words: baseWords };
-  });
-}
-
-function extractParens(text) {
-  const parens = [];
-  
-  let remaining = text;
-  let wordCount = 0;
-  const re = /^(.*?)\(([^)]+)\)([\s\S]*)$/;
-
-  while (remaining.includes('(')) {
-    const m = remaining.match(re);
-    if (!m) break;
-    const before      = m[1];
-    const inner       = m[2];
-    const after       = m[3];
-    const beforeWords = before.trim().split(/\s+/).filter(w => w.length > 0);
-    wordCount += beforeWords.length;
-    const afterWords  = after.trim().split(/\s+/).filter(w => w.length > 0);
-    parens.push({
-      text: inner,
-      afterWordIdx: wordCount,   
-      isMidLine: afterWords.length > 0,
-    });
-    
-    remaining = after;
-    
-  }
-
-  const mainText = text.replace(/\([^)]+\)/g, '').replace(/\s+/g, ' ').trim();
-  return { mainText, parens };
-}
-
-function renderLineHTML(line, i) {
-  
-  if (line._skipDots) return '';
-
-  const isNote = !line.words?.length &&
-    (!line.text || line.text.trim() === '♪' || line.text.trim() === '');
-
-  let mainHTML;
-  if (isNote) {
-    const beatDur = line.beatDur ?? 600;
-    mainHTML = `<span class="beat-dots" style="--beat-dur:${beatDur}ms"><span></span><span></span><span></span></span>`;
-  } else {
-    if (line.words?.length) {
-      
-      
-      const parts = [];
-      for (let wi = 0; wi < line.words.length; wi++) {
-        const w = line.words[wi];
-        if (w._isPause) continue;
-        if (w._isInlineParen) {
-          
-          let nextWi = wi + 1;
-          while (nextWi < line.words.length && (line.words[nextWi]._isPause || line.words[nextWi]._isInlineParen)) nextWi++;
-          const nextW = line.words[nextWi];
-          const ipSpan = `<span class="lw-ip-text lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`;
-          if (nextW && !nextW._isPause && !nextW._isInlineParen) {
-            
-            const wordSpan = `<span class="lw upcoming" id="lw${i}_${nextWi}" style="--pct:-20%">${x(nextW.word)}</span>`;
-            parts.push(`<span class="lw-inline-paren">${ipSpan}${wordSpan}</span>`);
-            wi = nextWi; 
-          } else {
-            parts.push(ipSpan);
-          }
-          continue;
-        }
-        parts.push(`<span class="lw upcoming" id="lw${i}_${wi}" style="--pct:-20%">${x(w.word)}</span>`);
-      }
-      mainHTML = parts.join(' ');
-    } else {
-      mainHTML = x(line.text || '');
-    }
-  }
-
-  
-  
-  const cls = 'll' + (line._isParen && !line._wholeLine ? ' ll-sub' : '');
-  return `<div class="${cls}" id="ll${i}" onclick="seekLrc(${i},event)">${mainHTML}</div>`;
-}
-
-function renderSynced() {
-  
-  Object.keys(_lwState).forEach(k => delete _lwState[k]);
-  G('lscroll').innerHTML = ST.lrc.map((l, i) => renderLineHTML(l, i)).join('');
-}
-
-function seekLrc(i, evt) {
-  if (ST.lrcType !== 'synced' || !ST.lrc[i]) return;
-  
-  const el = document.getElementById('ll'+i);
-  if (el && evt) {
-    const r = document.createElement('span');
-    r.className = 'll-ripple';
-    const rect = el.getBoundingClientRect();
-    r.style.left = (evt.clientX - rect.left) + 'px';
-    r.style.top  = (evt.clientY - rect.top)  + 'px';
-    el.appendChild(r);
-    setTimeout(() => r.remove(), 600);
-  }
-  scAudio.currentTime = ST.lrc[i].ms / 1000;
-}
-
-const _lwState = {};
-
-function _setLwState(id, cls, pct) {
-  const prev = _lwState[id];
-  if (prev && prev.cls === cls && (cls !== 'now-word' || prev.pct === pct)) return;
-
-  const wasUpcoming = prev?.cls === 'upcoming' || !prev;
-  _lwState[id] = { cls, pct };
-
-  const el = document.getElementById(id);
-  if (!el) return;
-
-  
-  const isEntry = wasUpcoming && cls === 'now-word';
-
-  if (isEntry) {
-    
-    el.className = 'lw ' + cls + ' word-enter';
-    
-    
-    requestAnimationFrame(() => {
-      el.style.setProperty('--pct', pct);
-      setTimeout(() => {
-        if (el.classList.contains('word-enter')) el.classList.remove('word-enter');
-      }, 230);
-    });
-  } else {
-    el.className = 'lw ' + cls;
-    el.style.setProperty('--pct', pct);
-  }
-}
-
-function _nextRealLineMs(fromIdx, fallback) {
-  for (let j = fromIdx + 1; j < ST.lrc.length; j++) {
-    if (!ST.lrc[j]._isParen && !ST.lrc[j]._synthetic) return ST.lrc[j].ms;
-  }
-  return fallback;
-}
-
-function _tickWords(lineIdx, t, nextBound) {
-  const words = ST.lrc[lineIdx]?.words;
-  if (!words?.length) return;
-
-  let lastRealIdx = words.length - 1;
-  while (lastRealIdx > 0 && words[lastRealIdx]._isPause) lastRealIdx--;
-
-  const lastW    = words[lastRealIdx];
-  const lastSyls = syllableCount(lastW.word);
-
-  const realWords  = words.filter(w => !w._isPause);
-  const totalSyls  = realWords.reduce((a,w) => a + syllableCount(w.word), 0) || 1;
-  const lineSpanMs = realWords.length > 1
-    ? realWords[realWords.length-1].ms - realWords[0].ms
-    : Math.max(300, nextBound - words[0].ms - 80);
-  const nonLastSyls = Math.max(1, totalSyls - lastSyls);
-  const spacingMs   = realWords.length > 1
-    ? lineSpanMs / nonLastSyls
-    : Math.max(95, (nextBound - words[0].ms) / totalSyls);
-  const msPerSyl  = Math.max(90, spacingMs);
-  const pace      = _paceFactor(msPerSyl);
-  const holdMul   = _lerp(pace, 1.20, 1.90);
-  const naturalEnd  = lastW.ms + lastSyls * msPerSyl * holdMul;
-  const lastWordEnd = Math.min(naturalEnd, nextBound - 160);
-
-  for (let wi = 0; wi < words.length; wi++) {
-    const w = words[wi];
-    if (w._isPause) continue;
-    const wStart = w.ms;
-    let wEnd = lastWordEnd;
-    if (wi < words.length - 1) {
-      for (let ni = wi + 1; ni < words.length; ni++) {
-        const nw = words[ni];
-        if (!nw._isPause && !nw._isInlineParen) { wEnd = nw.ms; break; }
-        if (nw._isPause) { wEnd = nw.ms; break; }
-      }
-    }
-    const id = 'lw' + lineIdx + '_' + wi;
-    if (t < wStart) {
-      _setLwState(id, 'upcoming', '-20%');
-    } else if (t >= wEnd) {
-      _setLwState(id, 'done', '100%');
-    } else {
-      const raw   = (t - wStart) / Math.max(1, wEnd - wStart);
-      const eased = raw < 0.25 ? raw * raw * 4 : 0.25 + (raw - 0.25);
-      _setLwState(id, 'now-word', (Math.min(1, eased) * 100).toFixed(1) + '%');
-    }
-  }
-}
-
-function _snapDone(lineIdx) {
-  (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
-    if (w._isPause) return;
-    _setLwState('lw'+lineIdx+'_'+wi, 'done', '100%');
-  });
-}
-
-function _resetUpcoming(lineIdx) {
-  (ST.lrc[lineIdx]?.words || []).forEach((w, wi) => {
-    if (w._isPause) return;
-    const id = 'lw'+lineIdx+'_'+wi;
-    delete _lwState[id];
-    _setLwState(id, 'upcoming', '-20%');
-  });
-}
-
-function _resetUpcomingSelective(lineIdx, t) {
-  const words = ST.lrc[lineIdx]?.words;
-  if (!words) return;
-  words.forEach((w, wi) => {
-    if (w._isPause) return;
-    const id = 'lw'+lineIdx+'_'+wi;
-    delete _lwState[id];
-    if (w.ms > t) _setLwState(id, 'upcoming', '-20%');
-  });
-}
-
-function tickLrc(posMs) {
-  if (!ST.lrc.length) return;
-
-  let AHEAD = 80;
-  {
-    let lo=0,hi=ST.lrc.length-1,a=0;
-    while(lo<=hi){const m=(lo+hi)>>1;if(ST.lrc[m].ms<=posMs){a=m;lo=m+1;}else hi=m-1;}
-    const aLine = ST.lrc[a];
-    if (aLine?.words?.length > 1) {
-      const realW = aLine.words.filter(w=>!w._isPause&&!w._isInlineParen);
-      if (realW.length > 1) {
-        const span = realW[realW.length-1].ms - realW[0].ms;
-        const mps  = span / (realW.reduce((a,w)=>a+syllableCount(w.word),0)||1);
-        AHEAD = Math.round(Math.max(50, Math.min(150, mps * 0.30)));
-      }
-    }
-  }
-  const t = posMs + AHEAD;
-
-  let lo = 0, hi = ST.lrc.length - 1, active = 0;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (ST.lrc[mid].ms <= t) { active = mid; lo = mid + 1; }
-    else hi = mid - 1;
-  }
-
-  const activeEntry = ST.lrc[active];
-  let focus = active;
-  let parenActive = -1;
-
-  if (activeEntry._synthetic) {
-    while (focus > 0 && (ST.lrc[focus]._isParen || ST.lrc[focus]._synthetic)) focus--;
-  } else if (activeEntry._isParen && !activeEntry._wholeLine) {
-    let prevReal = active - 1;
-    while (prevReal >= 0 && (ST.lrc[prevReal]._isParen || ST.lrc[prevReal]._synthetic)) prevReal--;
-    if (prevReal < 0) {
-      focus = active;
-    } else {
-      const wasRepositioned = activeEntry._parenParentMs !== ST.lrc[prevReal].ms;
-      if (wasRepositioned) { focus = active; }
-      else { focus = prevReal; parenActive = active; }
-    }
-  } else {
-    focus = active;
-    const focusMs = activeEntry.ms;
-    for (let j = focus + 1; j < ST.lrc.length; j++) {
-      const e = ST.lrc[j];
-      if (!e._isParen || e._wholeLine) break;
-      if (e._parenParentMs !== focusMs) break;
-      if (e.ms <= t) parenActive = j;
-    }
-  }
-
-  if (focus !== ST.lrcActive) {
-    const prev = ST.lrcActive;
-    ST.lrcActive = focus;
-
-    const domLines = document.querySelectorAll('#lscroll .ll');
-    domLines.forEach((el, i) => {
-      el.classList.remove('now','past','near','near2');
-      const entry = ST.lrc[i];
-      let di = i;
-      if (entry?._isParen || entry?._synthetic) {
-        for (let k = i - 1; k >= 0; k--) {
-          if (!ST.lrc[k]._isParen && !ST.lrc[k]._synthetic) { di = k; break; }
-        }
-      }
-      const dist = di - focus;
-      const absDist = Math.abs(dist);
-      if      (dist < 0)      el.classList.add('past');
-      else if (absDist === 1) el.classList.add('near');
-      else if (absDist === 2) el.classList.add('near2');
-      if (absDist >= 3) {
-        el.style.filter = dist < 0
-          ? `blur(${Math.min(5,(absDist-2)*1.5).toFixed(1)}px)`
-          : `blur(${Math.min(3,(absDist-2)*0.7).toFixed(1)}px)`;
-      } else { el.style.filter = ''; }
-    });
-
-    const focusEl = document.getElementById('ll'+focus);
-    if (focusEl) {
-      focusEl.classList.remove('now');
-      focusEl.offsetWidth;
-      focusEl.classList.add('now');
-      focusEl.scrollIntoView({ block:'center', behavior:'smooth' });
+    function init(){
+      const initialCover = gradientData("Relay Music","SoundCloud");
+      els.heroArt.src = initialCover;
+      els.miniCover.src = initialCover;
+      els.coverBg.style.setProperty("--bg-cover", `url("${initialCover}")`);
+      els.volume.style.setProperty("--pct", "85%");
+      bindEvents();
+      renderResults();
+      renderLyrics();
+      adapter.init();
+      setTimeout(() => loadTrack(DEMO_TRACKS[0], false), 800);
+      rafLoop();
     }
 
-    if (prev >= 0 && prev !== focus) _snapDone(prev);
-    _resetUpcomingSelective(focus, t);
-
-    if (ST._parenActive >= 0 && ST._parenActive !== parenActive) {
-      document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
-      _snapDone(ST._parenActive);
-      ST._parenActive = -1;
-    }
-  }
-
-  if (parenActive !== ST._parenActive) {
-    if (ST._parenActive >= 0) {
-      document.getElementById('ll'+ST._parenActive)?.classList.remove('now');
-      _snapDone(ST._parenActive);
-    }
-    ST._parenActive = parenActive;
-    if (parenActive >= 0) {
-      document.getElementById('ll'+focus)?.classList.remove('now');
-      document.getElementById('ll'+parenActive)?.classList.add('now');
-      _resetUpcomingSelective(parenActive, t);
-    } else {
-      document.getElementById('ll'+focus)?.classList.add('now');
-    }
-  }
-
-  let focusBound = t + 6000;
-  for (let j = focus + 1; j < ST.lrc.length; j++) {
-    const e = ST.lrc[j];
-    if (e._isParen && !e._wholeLine && e._parenParentMs === ST.lrc[focus]?.ms) continue;
-    focusBound = e.ms;
-    break;
-  }
-
-  if (parenActive >= 0) {
-    _tickWords(focus, t, ST.lrc[parenActive].ms);
-    let parenBound = t + 6000;
-    for (let j = parenActive + 1; j < ST.lrc.length; j++) { parenBound = ST.lrc[j].ms; break; }
-    _tickWords(parenActive, t, parenBound);
-  } else {
-    _tickWords(focus, t, focusBound);
-  }
-}
-
-
-const _smartRepeatCache = {};
-
-async function doSmartRepeat() {
-  const track = ST.queue[ST.idx];
-  if (!track) { scAudio.currentTime=0; scAudio.play().catch(()=>{}); return; }
-
-  const ck = (track.title + '||' + track.artist).toLowerCase();
-  let seekMs = _smartRepeatCache[ck];
-
-  if (seekMs === undefined) {
-    if (ST.lrcType === 'synced' && ST.lrc.length) {
-      seekMs = await _askAIRepeatPoint(track.title, track.artist, ST.lrc);
-    }
-    _smartRepeatCache[ck] = seekMs ?? 0;
-  }
-
-  await _blendSeek((seekMs || 0) / 1000);
-}
-
-async function _askAIRepeatPoint(title, artist, lrc) {
-  
-  const map = lrc
-    .filter(l => l.text && !l._isParen && !l._synthetic)
-    .slice(0, 60)
-    .map(l => `${l.ms} ${l.text.split(/\s+/).slice(0,5).join(' ')}`)
-    .join('\n');
-
-  const prompt = `Song: "${title}" by ${artist}
-
-You are a music producer choosing the perfect gapless loop re-entry point for seamless repeat playback (like Apple Music Dolby Atmos).
-
-Rules:
-- Pick the first line of Verse 1 (after any intro/instrumental opening)
-- If there's no clear verse 1 start, pick the first line where the main vocal melody begins
-- NEVER pick the first line (index 0) unless there is truly no intro
-- NEVER pick an outro, bridge, or "fade out" section
-- The loop should feel natural — listener shouldn't notice the restart
-
-LRC lines available (ms timestamp then lyric snippet):
-${map}
-
-Reply with ONLY the ms integer of your chosen line. Nothing else.`;
-
-  try {
-    const res = await fetch('/ai-lyrics', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${AI_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': location.href,
-        'X-Title': 'Ghost Music'
-      },
-      body: JSON.stringify({
-        model: AI_MODEL,
-        max_tokens: 20,
-        temperature: 0.1,
-        messages: [{ role: 'user', content: prompt }]
-      }),
-      signal: AbortSignal.timeout(8000)
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const raw  = data.choices?.[0]?.message?.content?.trim();
-    const ms   = parseInt(raw);
-    if (isNaN(ms) || ms < 0) return null;
-    
-    const valid = lrc.some(l => Math.abs(l.ms - ms) < 2000);
-    return valid ? ms : null;
-  } catch { return null; }
-}
-
-async function _blendSeek(seekSec) {
-  ST._blending = true;
-  const targetVol = ST.muted ? 0 : ST.vol;
-  const lscroll   = G('lscroll');
-
-  if (lscroll) {
-    lscroll.classList.remove('blend-in');
-    lscroll.classList.add('blend-out');
-  }
-
-  // Fade out
-  const OUT_STEPS = 48, OUT_MS = 25;
-  for (let i = OUT_STEPS; i >= 0; i--) {
-    const frac = i / OUT_STEPS;
-    scAudio.volume = targetVol * frac * frac;
-    await new Promise(r => setTimeout(r, OUT_MS));
-  }
-  scAudio.volume = 0;
-
-  await new Promise(r => setTimeout(r, 200));
-
-  scAudio.currentTime = seekSec;
-  scAudio.play().catch(()=>{});
-
-  // Wait for playing
-  await new Promise(resolve => {
-    const deadline = Date.now() + 3000;
-    const poll = setInterval(() => {
-      if (!scAudio.paused || Date.now() > deadline) { clearInterval(poll); resolve(); }
-    }, 40);
-  });
-
-  if (lscroll) {
-    lscroll.classList.remove('blend-out');
-    lscroll.classList.add('blend-in');
-    setTimeout(() => lscroll.classList.remove('blend-in'), 1300);
-  }
-
-  // Fade in
-  const IN_STEPS = 40, IN_MS = 25;
-  for (let i = 0; i <= IN_STEPS; i++) {
-    const frac = i / IN_STEPS;
-    scAudio.volume = targetVol * (1 - Math.pow(1 - frac, 2.2));
-    await new Promise(r => setTimeout(r, IN_MS));
-  }
-  scAudio.volume = targetVol;
-  ST._blending = false;
-}
-
-const _artistCache = {};
-
-async function openArtistProfile(artistName, hintArt) {
-  showPanel('artist');
-  const inner = G('artist-panel-inner');
-  const bg = G('artist-bg');
-  const spinHTML = '<div class="artist-loading"><div style="width:18px;height:18px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--pink);border-radius:50%;animation:spin .55s linear infinite;flex-shrink:0;"></div><span>Loading artist…</span></div>';
-  inner.innerHTML = spinHTML;
-  if (hintArt) { bg.style.backgroundImage = `url('${hintArt}')`; bg.classList.add('on'); }
-
-  const ck = artistName.toLowerCase().trim();
-  let cached = _artistCache[ck];
-  if (!cached) {
-    cached = await fetchArtistData(artistName);
-    _artistCache[ck] = cached;
-  }
-
-  const { tracks, artistImg } = cached;
-  const heroImg = artistImg || hintArt || tracks.find(t=>t.artworkUrl100)?.artworkUrl100 || '';
-  if (heroImg) { bg.style.backgroundImage = `url('${heroImg}')`; bg.classList.add('on'); }
-
-  renderArtistProfile(artistName, tracks, heroImg, inner);
-}
-
-async function fetchArtistData(artistName) {
-  let artistImg = null;
-  let artistId = null;
-  const al = artistName.toLowerCase();
-
-  
-  const artistData = await itunesFetch(
-    `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&entity=musicArtist&limit=15&country=US`
-  );
-  if (artistData?.results) {
-    const match =
-      artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase() === al) ||
-      artistData.results.find(r => r.wrapperType === 'artist' && r.artistName?.toLowerCase().startsWith(al.split(' ')[0])) ||
-      artistData.results.find(r => r.wrapperType === 'artist');
-    if (match) artistId = match.artistId;
-  }
-
-  let tracks = [];
-
-  
-  if (artistId) {
-    const ld = await itunesFetch(
-      `https://itunes.apple.com/lookup?id=${artistId}&entity=song&limit=200&country=US`
-    );
-    tracks = (ld?.results || []).filter(r => r.wrapperType === 'track' && r.kind === 'song');
-  }
-
-  
-  if (tracks.length < 3) {
-    const ld = await itunesFetch(
-      `https://itunes.apple.com/search?term=${encodeURIComponent(artistName)}&media=music&entity=song&limit=50&country=US`
-    );
-    const extra = (ld?.results || []).filter(t =>
-      t.wrapperType === 'track' && t.kind === 'song' &&
-      t.artistName?.toLowerCase().includes(al.split(' ')[0])
-    );
-    
-    const seen = new Set(tracks.map(t => t.trackId));
-    for (const t of extra) if (!seen.has(t.trackId)) { tracks.push(t); seen.add(t.trackId); }
-  }
-
-  
-  
-
-  
-  const artTrack = tracks.find(t => t.artworkUrl100);
-  if (artTrack) artistImg = artTrack.artworkUrl100.replace('100x100bb', '600x600bb');
-
-  return { tracks: tracks.slice(0, 60), artistImg };
-}
-
-function renderArtistProfile(artistName, tracks, heroImg, container) {
-  const avatarHTML = heroImg
-    ? `<img src="${heroImg}" alt="" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=\"font-size:36px\">🎤</span>'">`
-    : `<span style="font-size:36px">🎤</span>`;
-
-  const playAllId = 'apl_'+Math.random().toString(36).slice(2);
-  window['_apl_'+playAllId] = tracks.map(t=>({
-    title: t.trackName, artist: t.artistName||artistName,
-    artSm: t.artworkUrl100||null,
-    artLg: (t.artworkUrl100||'').replace('100x100bb','600x600bb')||null,
-  }));
-
-  const rowsHTML = tracks.length ? tracks.map((t, i) => {
-    const sm = t.artworkUrl100 || '';
-    const lg = sm.replace('100x100bb','600x600bb');
-    const artCell = sm ? `<img src="${sm}" data-src="${sm}" onerror="proxyImgFallback(this)" alt="">` : '🎵';
-    const id = 'apt_'+Math.random().toString(36).slice(2);
-    (window._td=window._td||{})[id] = {
-      title: t.trackName, artist: t.artistName||artistName,
-      artSm: sm||null, artLg: lg||null, durMs: t.trackTimeMillis||null,
-    };
-    return `<div class="artist-track-row" onclick="pickTrack('${id}')">
-      <div class="artist-track-num">${i+1}</div>
-      <div class="artist-track-art">${artCell}</div>
-      <div class="artist-track-inf">
-        <div class="artist-track-t">${x(t.trackName)}</div>
-        <div class="artist-track-alb">${x(t.collectionName||'')}</div>
-      </div>
-      <div class="artist-track-dur">${ms2t(t.trackTimeMillis||0)}</div>
-      <div class="artist-track-add" onclick="event.stopPropagation();pickTrack('${id}')"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div>
-    </div>`;
-  }).join('') : '<div class="artist-loading" style="padding:30px 0"><span>No tracks found</span></div>';
-
-  container.innerHTML = `
-    <div class="artist-hero">
-      <div class="artist-avatar">${avatarHTML}</div>
-      <div class="artist-hero-info">
-        <div class="artist-name-big">${x(artistName)}</div>
-        <div class="artist-meta">${tracks.length} song${tracks.length!==1?'s':''}</div>
-        <button class="artist-play-all" onclick="playAllArtist('_apl_${playAllId}')">▶ Play All</button>
-      </div>
-    </div>
-    <div class="artist-section-lbl">Songs</div>
-    ${rowsHTML}
-  `;
-}
-
-function playAllArtist(key) {
-  const tracks = window[key]; if (!tracks?.length) return;
-  ST.queue = []; ST.idx = -1;
-  G('q-list').innerHTML = '';
-  tracks.forEach(t => { const i = ST.queue.length; ST.queue.push({...t}); appendQI(t, i); });
-  loadTrack(0);
-  showPanel('queue');
-  toast('Playing artist');
-}
-
-document.addEventListener('keydown', e => {
-  if(['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
-  const ok=ST.idx>=0;
-  switch(e.code){
-    case 'Space': e.preventDefault(); togglePlay(); break;
-    case 'ArrowRight': e.preventDefault(); if(ok)scAudio.currentTime+=10; break;
-    case 'ArrowLeft':  e.preventDefault(); if(ok)scAudio.currentTime=Math.max(0,scAudio.currentTime-10); break;
-    case 'ArrowUp':   e.preventDefault(); ST.vol=Math.min(1,ST.vol+.1);G('vol-f').style.width=(ST.vol*100)+'%';if(!ST.muted)scAudio.volume=ST.vol;break;
-    case 'ArrowDown': e.preventDefault(); ST.vol=Math.max(0,ST.vol-.1);G('vol-f').style.width=(ST.vol*100)+'%';if(!ST.muted)scAudio.volume=ST.vol;break;
-    case 'KeyN': nextTrack(); break;
-    case 'KeyP': prevTrack(); break;
-    case 'KeyS': G('btn-sf').click(); break;
-    case 'KeyR': G('btn-rp').click(); break;
-    case 'KeyM': G('btn-vol').click(); break;
-    case 'KeyL': G('pnb-lyrics').click(); break;
-    case 'KeyH': G('btn-heart').click(); break;
-  }
-});
-</script>
+    init();
+  </script>
 </body>
 </html>
